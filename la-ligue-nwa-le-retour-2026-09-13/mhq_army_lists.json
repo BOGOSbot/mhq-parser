@@ -1,0 +1,5155 @@
+{
+  "event": {
+    "name": "La ligue NWA (le retour)",
+    "date": "2026-09-13",
+    "url": "https://miniheadquarters.com/tournaments/individual/army-lists/la-ligue-nwa-le-retour-2026-09-13"
+  },
+  "count": 9,
+  "players": [
+    {
+      "name": "Aravos",
+      "faction": "Tyranids - Genestealers Cult",
+      "teamName": null,
+      "header": {
+        "playerName": "Aravos",
+        "factionKeyword": "Xenos - Genestealer Cults",
+        "detachment": "Xenocreed Congregation, Xenocult Masses (Unquestioning Fanaticism)",
+        "forceDisposition": "Reconnaissance",
+        "totalPoints": "1995pts",
+        "warlord": "Char3: Acolyte Iconward",
+        "enhancements": "Deeds That Speak to the Masses (on Char1: Acolyte Iconward) & Incendiary Inspiration (on Char2: Acolyte Iconward) & Denunciator of Tyrants (on Char3: Acolyte Iconward)",
+        "unitCount": "21",
+        "secondary": "- Bring It Down: (4x2) - Assassination: 5 Characters - Cull The Horde: 3x5 (before leaders attached)"
+      },
+      "units": [
+        {
+          "label": "Char1",
+          "model": "Acolyte Iconward",
+          "points": 75,
+          "equipment": [],
+          "models": [],
+          "enhancements": "Enhancement: Deeds That Speak to the Masses (+25 pts)",
+          "attachedUnit": "Hybrid Metamorphs",
+          "category": null
+        },
+        {
+          "label": "Char2",
+          "model": "Acolyte Iconward",
+          "points": 65,
+          "equipment": [],
+          "models": [],
+          "enhancements": "Enhancement: Incendiary Inspiration (+15 pts)",
+          "attachedUnit": "Hybrid Metamorphs",
+          "category": null
+        },
+        {
+          "label": "Char3",
+          "model": "Acolyte Iconward",
+          "points": 75,
+          "equipment": [
+            "Warlord"
+          ],
+          "models": [],
+          "enhancements": "Enhancement: Denunciator of Tyrants (+25 pts)",
+          "attachedUnit": "Neophyte Hybrids",
+          "category": null
+        },
+        {
+          "label": "Char4",
+          "model": "Benefictus",
+          "points": 75,
+          "equipment": [],
+          "models": [],
+          "attachedUnit": "Neophyte Hybrids",
+          "category": null
+        },
+        {
+          "label": "Char5",
+          "model": "Benefictus",
+          "points": 75,
+          "equipment": [],
+          "models": [],
+          "attachedUnit": "Neophyte Hybrids",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Acolyte Hybrids with Autopistols",
+          "points": 70,
+          "equipment": [],
+          "models": [
+            {
+              "count": 4,
+              "name": "Acolyte Hybrid",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Acolyte Leader",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Acolyte Hybrids with Hand Flamers",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Acolyte Leader",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Acolyte Hybrid",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Acolyte Hybrids with Hand Flamers",
+          "points": 140,
+          "equipment": [],
+          "models": [
+            {
+              "count": 9,
+              "name": "Acolyte Hybrid",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Acolyte Leader",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Neophyte Hybrids",
+          "points": 135,
+          "equipment": [],
+          "models": [
+            {
+              "count": 19,
+              "name": "Neophyte Hybrid",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Neophyte Leader",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Benefictus",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Neophyte Hybrids",
+          "points": 135,
+          "equipment": [],
+          "models": [
+            {
+              "count": 19,
+              "name": "Neophyte Hybrid",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Neophyte Leader",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Benefictus",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Neophyte Hybrids",
+          "points": 135,
+          "equipment": [],
+          "models": [
+            {
+              "count": 19,
+              "name": "Neophyte Hybrid",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Neophyte Leader",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Acolyte Iconward",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Achilles Ridgerunners",
+          "points": 95,
+          "equipment": [
+            "Survey augur",
+            "Heavy mortar"
+          ],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Achilles Ridgerunners",
+          "points": 95,
+          "equipment": [
+            "Survey augur",
+            "Heavy mortar"
+          ],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Atalan Jackals",
+          "points": 85,
+          "equipment": [],
+          "models": [
+            {
+              "count": 4,
+              "name": "Atalan Jackal",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Atalan Wolfquad",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Atalan Jackals",
+          "points": 85,
+          "equipment": [],
+          "models": [
+            {
+              "count": 4,
+              "name": "Atalan Jackal",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Atalan Wolfquad",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Goliath Truck",
+          "points": 75,
+          "equipment": [],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Goliath Truck",
+          "points": 75,
+          "equipment": [],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Hybrid Metamorphs",
+          "points": 140,
+          "equipment": [],
+          "models": [
+            {
+              "count": 9,
+              "name": "Hybrid Metamorph",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Metamorph Leader",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Acolyte Iconward",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Hybrid Metamorphs",
+          "points": 140,
+          "equipment": [],
+          "models": [
+            {
+              "count": 9,
+              "name": "Hybrid Metamorph",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Metamorph Leader",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Acolyte Iconward",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Purestrain Genestealers",
+          "points": 75,
+          "equipment": [],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Purestrain Genestealers",
+          "points": 75,
+          "equipment": [],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        }
+      ],
+      "format": "bullets",
+      "bodyRest": "Char1: 1x Acolyte Iconward (75 pts)\nEnhancement: Deeds That Speak to the Masses (+25 pts)\nLeading Hybrid Metamorphs[1]\nChar2: 1x Acolyte Iconward (65 pts)\nEnhancement: Incendiary Inspiration (+15 pts)\nLeading Hybrid Metamorphs[2]\nChar3: 1x Acolyte Iconward (75 pts): Warlord\nEnhancement: Denunciator of Tyrants (+25 pts)\nLeading Neophyte Hybrids[3]\nChar4: 1x Benefictus (75 pts)\nLeading Neophyte Hybrids[1]\nChar5: 1x Benefictus (75 pts)\nLeading Neophyte Hybrids[2]\n\n5x Acolyte Hybrids with Autopistols (70 pts)\n• 4x Acolyte Hybrid\n• 1x Acolyte Leader: Leader's Bio-weapons\n5x Acolyte Hybrids with Hand Flamers (75 pts)\n• 1x Acolyte Leader: Leader's bio-weapons\n• 4x Acolyte Hybrid\n10x Acolyte Hybrids with Hand Flamers (140 pts)\n• 9x Acolyte Hybrid\n• 1x Acolyte Leader: Leader's bio-weapons\n20x Neophyte Hybrids (135 pts)\n• 19x Neophyte Hybrid\n    2 with Mining laser\n    2 with Seismic cannon\n    2 with Grenade launcher\n    2 with Webber\n• 1x Neophyte Leader: Autopistol, hybrid firearm and close combat weapon\n  Attached to Benefictus[1]\n20x Neophyte Hybrids (135 pts)\n• 19x Neophyte Hybrid\n    2 with Mining laser\n    2 with Seismic cannon\n    2 with Grenade launcher\n    2 with Webber\n• 1x Neophyte Leader: Autopistol, hybrid firearm and close combat weapon\n  Attached to Benefictus[2]\n20x Neophyte Hybrids (135 pts)\n• 19x Neophyte Hybrid\n    2 with Mining laser\n    2 with Seismic cannon\n    2 with Grenade launcher\n    2 with Webber\n• 1x Neophyte Leader: Autopistol, hybrid firearm and close combat weapon\n  Attached to Acolyte Iconward[3]\n\n1x Achilles Ridgerunners (95 pts): Survey augur, Heavy mortar\n1x Achilles Ridgerunners (95 pts): Survey augur, Heavy mortar\n5x Atalan Jackals (85 pts)\n• 4x Atalan Jackal\n• 1x Atalan Wolfquad: Atalan incinerator\n5x Atalan Jackals (85 pts)\n• 4x Atalan Jackal\n• 1x Atalan Wolfquad: Atalan incinerator\n1x Goliath Truck (75 pts)\n1x Goliath Truck (75 pts)\n10x Hybrid Metamorphs (140 pts)\n• 9x Hybrid Metamorph\n• 1x Metamorph Leader: Hand flamer\n  Attached to Acolyte Iconward[1]\n10x Hybrid Metamorphs (140 pts)\n• 9x Hybrid Metamorph\n• 1x Metamorph Leader: Hand flamer\n  Attached to Acolyte Iconward[2]\n5x Purestrain Genestealers (75 pts)\n5x Purestrain Genestealers (75 pts)\n\nCreated with newrecruit.eu v35.80",
+      "title": "Aravos - Tyranids - Genestealers Cult"
+    },
+    {
+      "name": "Bardric",
+      "faction": "Imperium - Adeptus Mechanicus",
+      "teamName": null,
+      "header": null,
+      "units": [
+        {
+          "label": null,
+          "model": "Tech-priest Dominus",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Macrostubber",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Omnissian axe",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Volkite blaster",
+              "subs": []
+            }
+          ],
+          "enhancements": "Enhancement: Mechanicus Locum",
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Fulgurite Electro-priests",
+          "points": 140,
+          "equipment": [],
+          "models": [
+            {
+              "count": 10,
+              "name": "Fulgurite Electro-Priests",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Electroleech Stave",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Tech-priest Manipulus",
+          "points": 60,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Omnissian staff",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Transonic cannon",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Corpuscarii Electro-priests",
+          "points": 130,
+          "equipment": [],
+          "models": [
+            {
+              "count": 10,
+              "name": "Corpuscarii Electro-Priests",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Electrostatic Gauntlets",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Tech-priest Manipulus",
+          "points": 60,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Omnissian staff",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Transonic cannon",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 3",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Corpuscarii Electro-priests",
+          "points": 130,
+          "equipment": [],
+          "models": [
+            {
+              "count": 10,
+              "name": "Corpuscarii Electro-Priests",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Electrostatic Gauntlets",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 3",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Tech-priest Manipulus",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Omnissian staff",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Transonic cannon",
+              "subs": []
+            }
+          ],
+          "enhancements": "Enhancement: TL-4Ø9",
+          "attachedUnit": "Attached Unit 4",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Corpuscarii Electro-priests",
+          "points": 130,
+          "equipment": [],
+          "models": [
+            {
+              "count": 10,
+              "name": "Corpuscarii Electro-Priests",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Electrostatic Gauntlets",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 4",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Belisarius Cawl",
+          "points": 220,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Arc scourge",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cawl’s omnissian axe",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Mechadendrite hive",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Solar atomiser",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "CHARACTER"
+        },
+        {
+          "label": null,
+          "model": "Thulia Ghuld",
+          "points": 180,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Jericho-class conversion resonator",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Rod of the war forge",
+              "subs": []
+            }
+          ],
+          "isWarlord": true,
+          "attachedUnit": null,
+          "category": "CHARACTER"
+        },
+        {
+          "label": null,
+          "model": "Skitarii Rangers",
+          "points": 85,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Skitarii Ranger Alpha",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Galvanic Rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Close Combat Weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Alpha Combat Weapon",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Skitarii Rangers",
+              "subs": []
+            },
+            {
+              "count": 5,
+              "name": "Galvanic Rifle",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Close Combat Weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arc Rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Plasma Caliver",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Transuranic Arquebus",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Galvanic Rifle and Omnispex",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Skitarii Rangers",
+          "points": 85,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Skitarii Ranger Alpha",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Galvanic Rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Close Combat Weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Alpha Combat Weapon",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Skitarii Rangers",
+              "subs": []
+            },
+            {
+              "count": 5,
+              "name": "Galvanic Rifle",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Close Combat Weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arc Rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Plasma Caliver",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Transuranic Arquebus",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Galvanic Rifle and Omnispex",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Skorpius Dunerider",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Armoured hull",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cognis heavy stubber array",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Skorpius Dunerider",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Armoured hull",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cognis heavy stubber array",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Skorpius Dunerider",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Armoured hull",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cognis heavy stubber array",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Serberys Raiders",
+          "points": 60,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Serberys Raider Alpha",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Archeotech Pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Galvanic Carbine",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cavalry Sabre & Clawed Limbs",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Serberys Raiders",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Galvanic Carbine",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Cavalry Sabre & Clawed Limbs",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Enhanced Data-tether",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Serberys Raiders",
+          "points": 60,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Serberys Raider Alpha",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Archeotech Pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Galvanic Carbine",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cavalry Sabre & Clawed Limbs",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Serberys Raiders",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Galvanic Carbine",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Cavalry Sabre & Clawed Limbs",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Enhanced Data-tether",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Servitor Battleclade",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Servitor Underseer",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Mechanicus Pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Dataspikes",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Servitor with Arc Rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Heavy Arc Rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Servo-claw",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Servitor with Heavy bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Heavy Bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Servo-claw",
+              "subs": []
+            },
+            {
+              "count": 6,
+              "name": "Combat Servitor",
+              "subs": []
+            },
+            {
+              "count": 6,
+              "name": "Servo-claw",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Meltagun",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Incendine Igniter",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Phosphor Blaster",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Servitor Battleclade",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Servitor Underseer",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Dataspikes",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Servitor with Arc Rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Heavy Arc Rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Servo-claw",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Servitor with Heavy bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Heavy Bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Servo-claw",
+              "subs": []
+            },
+            {
+              "count": 6,
+              "name": "Combat Servitor",
+              "subs": []
+            },
+            {
+              "count": 6,
+              "name": "Servo-claw",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Meltagun",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Incendine Igniter",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Phosphor Blaster",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Sicarian Ruststalkers",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Sicarian Ruststalker Princeps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Transonic Blades & Chordclaw",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Sicarian Ruststalkers",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Transonic Blades",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Sicarian Ruststalkers",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Sicarian Ruststalker Princeps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Transonic Blades & Chordclaw",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Sicarian Ruststalkers",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Transonic Blades",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        }
+      ],
+      "format": "bullets",
+      "bodyRest": "ATTACHED UNITS\n\nAttached Unit 1\n\nTech-priest Dominus (65 points)\n  • 1x Macrostubber\n  • 1x Omnissian axe\n  • 1x Volkite blaster\n  • Enhancement: Mechanicus Locum\n\nFulgurite Electro-priests (140 points)\n  • 10x Fulgurite Electro-Priests\n    • 10x Electroleech Stave\n\nAttached Unit 2\n\nTech-priest Manipulus (60 points)\n  • 1x Omnissian staff\n  • 1x Transonic cannon\n\nCorpuscarii Electro-priests (130 points)\n  • 10x Corpuscarii Electro-Priests\n    • 10x Electrostatic Gauntlets\n\nAttached Unit 3\n\nTech-priest Manipulus (60 points)\n  • 1x Omnissian staff\n  • 1x Transonic cannon\n\nCorpuscarii Electro-priests (130 points)\n  • 10x Corpuscarii Electro-Priests\n    • 10x Electrostatic Gauntlets\n\nAttached Unit 4\n\nTech-priest Manipulus (90 points)\n  • 1x Omnissian staff\n  • 1x Transonic cannon\n  • Enhancement: TL-4Ø9\n\nCorpuscarii Electro-priests (130 points)\n  • 10x Corpuscarii Electro-Priests\n    • 10x Electrostatic Gauntlets\n\n\nCHARACTER\n\nBelisarius Cawl (220 points)\n  • 1x Arc scourge\n  • 1x Cawl’s omnissian axe\n  • 1x Mechadendrite hive\n  • 1x Solar atomiser\n\nThulia Ghuld (180 points)\n  • Warlord\n  • 1x Jericho-class conversion resonator\n  • 1x Rod of the war forge\n\n\nBATTLELINE\n\nSkitarii Rangers (85 points)\n  • 1x Skitarii Ranger Alpha\n    • 1x Galvanic Rifle\n    • 1x Close Combat Weapon\n    • 1x Alpha Combat Weapon\n  • 9x Skitarii Rangers\n    • 5x Galvanic Rifle\n    • 9x Close Combat Weapon\n    • 1x Arc Rifle\n    • 1x Plasma Caliver\n    • 1x Transuranic Arquebus\n    • 1x Galvanic Rifle and Omnispex\n\nSkitarii Rangers (85 points)\n  • 1x Skitarii Ranger Alpha\n    • 1x Galvanic Rifle\n    • 1x Close Combat Weapon\n    • 1x Alpha Combat Weapon\n  • 9x Skitarii Rangers\n    • 5x Galvanic Rifle\n    • 9x Close Combat Weapon\n    • 1x Arc Rifle\n    • 1x Plasma Caliver\n    • 1x Transuranic Arquebus\n    • 1x Galvanic Rifle and Omnispex\n\n\nDEDICATED TRANSPORTS\n\nSkorpius Dunerider (75 points)\n  • 1x Armoured hull\n  • 1x Cognis heavy stubber array\n\nSkorpius Dunerider (75 points)\n  • 1x Armoured hull\n  • 1x Cognis heavy stubber array\n\nSkorpius Dunerider (75 points)\n  • 1x Armoured hull\n  • 1x Cognis heavy stubber array\n\n\nOTHER DATASHEETS\n\nSerberys Raiders (60 points)\n  • 1x Serberys Raider Alpha\n    • 1x Archeotech Pistol\n    • 1x Galvanic Carbine\n    • 1x Cavalry Sabre & Clawed Limbs\n  • 2x Serberys Raiders\n    • 2x Galvanic Carbine\n    • 2x Cavalry Sabre & Clawed Limbs\n    • 1x Enhanced Data-tether\n\nSerberys Raiders (60 points)\n  • 1x Serberys Raider Alpha\n    • 1x Archeotech Pistol\n    • 1x Galvanic Carbine\n    • 1x Cavalry Sabre & Clawed Limbs\n  • 2x Serberys Raiders\n    • 2x Galvanic Carbine\n    • 2x Cavalry Sabre & Clawed Limbs\n    • 1x Enhanced Data-tether\n\nServitor Battleclade (65 points)\n  • 1x Servitor Underseer\n    • 1x Mechanicus Pistol\n    • 1x Dataspikes\n  • 1x Gun Servitor with Arc Rifle\n    • 1x Heavy Arc Rifle\n    • 1x Servo-claw\n  • 1x Gun Servitor with Heavy bolter\n    • 1x Heavy Bolter\n    • 1x Servo-claw\n  • 6x Combat Servitor\n    • 6x Servo-claw\n    • 1x Meltagun\n    • 3x Incendine Igniter\n    • 2x Phosphor Blaster\n\nServitor Battleclade (65 points)\n  • 1x Servitor Underseer\n    �� 1x Mechanicus Pistol\n    • 1x Dataspikes\n  • 1x Gun Servitor with Arc Rifle\n    • 1x Heavy Arc Rifle\n    • 1x Servo-claw\n  • 1x Gun Servitor with Heavy bolter\n    • 1x Heavy Bolter\n    • 1x Servo-claw\n  • 6x Combat Servitor\n    • 6x Servo-claw\n    • 1x Meltagun\n    • 3x Incendine Igniter\n    • 2x Phosphor Blaster\n\nSicarian Ruststalkers (75 points)\n  • 1x Sicarian Ruststalker Princeps\n    • 1x Transonic Blades & Chordclaw\n  • 4x Sicarian Ruststalkers\n    • 4x Transonic Blades\n\nSicarian Ruststalkers (75 points)\n  • 1x Sicarian Ruststalker Princeps\n    • 1x Transonic Blades & Chordclaw\n  • 4x Sicarian Ruststalkers\n    • 4x Transonic Blades",
+      "title": "Bardric - Imperium - Adeptus Mechanicus"
+    },
+    {
+      "name": "End_",
+      "faction": "Imperium - Adeptus Astartes - Space Wolves",
+      "teamName": null,
+      "header": {
+        "playerName": "End_",
+        "teamName": "My Team",
+        "factionKeyword": "Imperium - Adeptus Astartes - Space Wolves",
+        "detachment": "Legends of Saga and Song, Saga of the Great Wolf (Loping Charge)",
+        "forceDisposition": "Take and Hold",
+        "totalPoints": "1995pts",
+        "warlord": "Char2: Logan Grimnar",
+        "enhancements": "Fierce Example (on Infa3: Wolf Guard Terminators) & Fierce Example (on Infa3: Wolf Guard Terminators)",
+        "unitCount": "13",
+        "secondary": "- Bring It Down: (2x2) + (1x4) - Assassination: 3 Characters"
+      },
+      "units": [
+        {
+          "label": "Char1",
+          "model": "Arjac Rockfist",
+          "points": 95,
+          "equipment": [
+            "Foehammer"
+          ],
+          "models": [],
+          "attachedUnit": "Wolf Guard Terminators",
+          "category": null
+        },
+        {
+          "label": "Char2",
+          "model": "Logan Grimnar",
+          "points": 100,
+          "equipment": [
+            "Warlord",
+            "Axe Morkai",
+            "Storm bolter",
+            "Tyrnak and Fenrir"
+          ],
+          "models": [],
+          "attachedUnit": "Wolf Guard Terminators",
+          "category": null
+        },
+        {
+          "label": "Char3",
+          "model": "Wolf Priest",
+          "points": 70,
+          "equipment": [
+            "Absolvor bolt pistol",
+            "Crozius arcanum"
+          ],
+          "models": [],
+          "attachedUnit": "Wolf Guard Headtakers",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Intercessor Squad",
+          "points": 80,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Intercessor Sergeant",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Intercessor",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Land Raider",
+          "points": 220,
+          "equipment": [
+            "Armoured Tracks",
+            "2x Godhammer Lascannon",
+            "Hunter-killer missile",
+            "Multi-melta",
+            "Storm bolter",
+            "Twin heavy bolter"
+          ],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Venerable Dreadnought",
+          "points": 125,
+          "equipment": [
+            "Blizzard shield",
+            "Fenrisian great axe",
+            "Heavy Flamer"
+          ],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Venerable Dreadnought",
+          "points": 125,
+          "equipment": [
+            "Blizzard shield",
+            "Fenrisian great axe",
+            "Heavy Flamer"
+          ],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Wolf Guard Headtakers",
+          "points": 170,
+          "equipment": [
+            "6 with Heavy Bolt Pistol",
+            "Paired Master-crafted Power Weapons"
+          ],
+          "models": [],
+          "attachedUnit": "Wolf Priest",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Wolf Guard Terminators",
+          "points": 370,
+          "equipment": [],
+          "models": [
+            {
+              "count": 9,
+              "name": "Wolf Guard Terminator",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Wolf Guard Terminator Pack Leader",
+              "subs": []
+            }
+          ],
+          "enhancements": "Enhancement: Fierce Example (+25 pts)",
+          "attachedUnit": "Arjac Rockfist",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Wolf Guard Terminators",
+          "points": 370,
+          "equipment": [],
+          "models": [
+            {
+              "count": 9,
+              "name": "Wolf Guard Terminator",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Wolf Guard Terminator Pack Leader",
+              "subs": []
+            }
+          ],
+          "enhancements": "Enhancement: Fierce Example (+25 pts)",
+          "attachedUnit": "Logan Grimnar",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Wolf Scouts",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 4,
+              "name": "Wolf Scout",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Wolf Scout Pack Leader",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Hunting Wolf",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Wolf Scouts",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 4,
+              "name": "Wolf Scout",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Wolf Scout Pack Leader",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Hunting Wolf",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Wolf Scouts",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 4,
+              "name": "Wolf Scout",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Wolf Scout Pack Leader",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Hunting Wolf",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        }
+      ],
+      "format": "bullets",
+      "bodyRest": "Char1: 1x Arjac Rockfist (95 pts): Foehammer\nLeading Wolf Guard Terminators[1]\nChar2: 1x Logan Grimnar (100 pts): Warlord, Axe Morkai, Storm bolter, Tyrnak and Fenrir\nLeading Wolf Guard Terminators[2]\nChar3: 1x Wolf Priest (70 pts): Absolvor bolt pistol, Crozius arcanum\nLeading Wolf Guard Headtakers\n\n5x Intercessor Squad (80 pts)\n• 1x Intercessor Sergeant: Bolt pistol, Astartes grenade launcher, Bolt Rifle, Power fist\n• 4x Intercessor: 4 with Bolt pistol, Bolt Rifle, Close combat weapon\n\n1x Land Raider (220 pts): Armoured Tracks, 2x Godhammer Lascannon, Hunter-killer missile, Multi-melta, Storm bolter, Twin heavy bolter\n1x Venerable Dreadnought (125 pts): Blizzard shield, Fenrisian great axe, Heavy Flamer\n1x Venerable Dreadnought (125 pts): Blizzard shield, Fenrisian great axe, Heavy Flamer\n6x Wolf Guard Headtakers (170 pts): 6 with Heavy Bolt Pistol, Paired Master-crafted Power Weapons\n  Attached to Wolf Priest\n10x Wolf Guard Terminators (370 pts)\n• 9x Wolf Guard Terminator\n    7 with Storm shield, Master-crafted Power Weapon\n    2 with Assault Cannon, Power fist\n  Enhancement: Fierce Example (+25 pts)\n• 1x Wolf Guard Terminator Pack Leader: Relic Great Axe\n  Attached to Arjac Rockfist\n10x Wolf Guard Terminators (370 pts)\n• 9x Wolf Guard Terminator\n    7 with Storm shield, Master-crafted Power Weapon\n    2 with Assault Cannon, Power fist\n  Enhancement: Fierce Example (+25 pts)\n• 1x Wolf Guard Terminator Pack Leader: Relic Great Axe\n  Attached to Logan Grimnar\n6x Wolf Scouts (90 pts)\n• 4x Wolf Scout\n    2 with Plasma pistol, Combat Blade\n    1 with Plasma gun, Combat Blade\n    1 with Haywire Mine, Plasma pistol, Combat Blade\n• 1x Wolf Scout Pack Leader: Plasma pistol, Power weapon\n• 1x Hunting Wolf: Teeth and Claws\n6x Wolf Scouts (90 pts)\n• 4x Wolf Scout\n    2 with Plasma pistol, Combat Blade\n    1 with Plasma gun, Combat Blade\n    1 with Haywire Mine, Plasma pistol, Combat Blade\n• 1x Wolf Scout Pack Leader: Plasma pistol, Power weapon\n• 1x Hunting Wolf: Teeth and Claws\n6x Wolf Scouts (90 pts)\n• 4x Wolf Scout\n    2 with Plasma pistol, Combat Blade\n    1 with Plasma gun, Combat Blade\n    1 with Haywire Mine, Plasma pistol, Combat Blade\n• 1x Wolf Scout Pack Leader: Plasma pistol, Power weapon\n• 1x Hunting Wolf: Teeth and Claws\n\nCreated with newrecruit.eu v35.79",
+      "title": "End_ - Imperium - Adeptus Astartes - Space Wolves"
+    },
+    {
+      "name": "Neeks",
+      "faction": "Chaos - Death Guard",
+      "teamName": null,
+      "header": null,
+      "units": [
+        {
+          "label": null,
+          "model": "Malignant Plaguecaster",
+          "points": 70,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Corrupted staff",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Plague wind",
+              "subs": []
+            }
+          ],
+          "enhancements": "Enhancement: Sorrowsyphon",
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Poxwalkers",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 10,
+              "name": "Poxwalkers",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Improvised Weapon",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Typhus",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Lakrimae",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Noxious Blightbringer",
+          "points": 70,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Cursed plague bell",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Plasma pistol",
+              "subs": []
+            }
+          ],
+          "enhancements": "Enhancement: Rejuvenating Swarm",
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Poxwalkers",
+          "points": 130,
+          "equipment": [],
+          "models": [
+            {
+              "count": 20,
+              "name": "Poxwalkers",
+              "subs": []
+            },
+            {
+              "count": 20,
+              "name": "Improvised Weapon",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Malignant Plaguecaster",
+          "points": 60,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Corrupted staff",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Plague wind",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "CHARACTER"
+        },
+        {
+          "label": null,
+          "model": "Mortarion",
+          "points": 375,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Lantern",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Rotwind",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Silence",
+              "subs": []
+            }
+          ],
+          "isWarlord": true,
+          "attachedUnit": null,
+          "category": "CHARACTER"
+        },
+        {
+          "label": null,
+          "model": "Poxwalkers",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 10,
+              "name": "Poxwalkers",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Improvised Weapon",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Poxwalkers",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 10,
+              "name": "Poxwalkers",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Improvised Weapon",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Chaos Rhino",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Armoured tracks",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Combi-bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Havoc launcher",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Defiler",
+          "points": 330,
+          "equipment": [],
+          "models": [
+            {
+              "count": 2,
+              "name": "Excruciator cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Hades battle cannon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Heavy reaper autocannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shearing claws",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Defiler",
+          "points": 380,
+          "equipment": [],
+          "models": [
+            {
+              "count": 2,
+              "name": "Excruciator cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Hades battle cannon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Heavy reaper autocannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shearing claws",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Myphitic Blight-hauler",
+          "points": 95,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Bile spurt",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gnashing maw",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Missile launcher",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Multi-melta",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Myphitic Blight-hauler",
+          "points": 95,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Bile spurt",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gnashing maw",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Missile launcher",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Multi-melta",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        }
+      ],
+      "format": "bullets",
+      "bodyRest": "ATTACHED UNITS\n\nAttached Unit 1\n\nMalignant Plaguecaster (70 points)\n  • 1x Bolt pistol\n  • 1x Corrupted staff\n  • 1x Plague wind\n  • Enhancement: Sorrowsyphon\n\nPoxwalkers (65 points)\n  • 10x Poxwalkers\n    • 10x Improvised Weapon\n\nAttached Unit 2\n\nTyphus (100 points)\n  • 1x Lakrimae\n\nNoxious Blightbringer (70 points)\n  • 1x Cursed plague bell\n  • 1x Plasma pistol\n  • Enhancement: Rejuvenating Swarm\n\nPoxwalkers (130 points)\n  • 20x Poxwalkers\n    • 20x Improvised Weapon\n\n\nCHARACTER\n\nMalignant Plaguecaster (60 points)\n  • 1x Bolt pistol\n  • 1x Corrupted staff\n  • 1x Plague wind\n\nMortarion (375 points)\n  • Warlord\n  • 1x Lantern\n  • 1x Rotwind\n  • 1x Silence\n\n\nBATTLELINE\n\nPoxwalkers (65 points)\n  • 10x Poxwalkers\n    • 10x Improvised Weapon\n\nPoxwalkers (65 points)\n  • 10x Poxwalkers\n    • 10x Improvised Weapon\n\n\nDEDICATED TRANSPORTS\n\nChaos Rhino (75 points)\n  • 1x Armoured tracks\n  • 2x Combi-bolter\n  • 1x Havoc launcher\n\n\nOTHER DATASHEETS\n\nDefiler (330 points)\n  • 2x Excruciator cannon\n  • 1x Hades battle cannon\n  • 2x Heavy reaper autocannon\n  • 1x Shearing claws\n\nDefiler (380 points)\n  • 2x Excruciator cannon\n  • 1x Hades battle cannon\n  • 2x Heavy reaper autocannon\n  • 1x Shearing claws\n\nMyphitic Blight-hauler (95 points)\n  • 1x Bile spurt\n  • 1x Gnashing maw\n  • 1x Missile launcher\n  • 1x Multi-melta\n\nMyphitic Blight-hauler (95 points)\n  • 1x Bile spurt\n  • 1x Gnashing maw\n  • 1x Missile launcher\n  • 1x Multi-melta",
+      "title": "Neeks - Chaos - Death Guard"
+    },
+    {
+      "name": "Pencey",
+      "faction": "Chaos - Chaos Space Marines",
+      "teamName": null,
+      "header": {
+        "playerName": "Pencey",
+        "factionKeyword": "Chaos - Chaos Space Marines",
+        "detachment": "Renegade Raiders (Raiders and Reavers)",
+        "forceDisposition": "Reconnaissance",
+        "totalPoints": "1990pts",
+        "warlord": "Char3: Vashtorr the Arkifane",
+        "enhancements": "Dread Reaver (on Char4: Lord Discordant on Helstalker) & Despot's Claim (on Char5: Warpsmith)",
+        "unitCount": "16",
+        "secondary": "- Bring It Down: (2x2) + (1x4) - Assassination: 5 Characters"
+      },
+      "units": [
+        {
+          "label": "Char1",
+          "model": "Cypher",
+          "points": 90,
+          "equipment": [
+            "Cypher's bolt pistol",
+            "Cypher's plasma pistol"
+          ],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": "Char2",
+          "model": "Huron Blackheart",
+          "points": 130,
+          "equipment": [
+            "Tyrant's Claw and exalted power weapon",
+            "Tyrant's Claw heavy flamer"
+          ],
+          "models": [],
+          "attachedUnit": "Chosen",
+          "category": null
+        },
+        {
+          "label": "Char4",
+          "model": "Lord Discordant on Helstalker",
+          "points": 175,
+          "equipment": [
+            "Bladed limbs",
+            "Bolt pistol",
+            "Impaler chainglaive",
+            "Baleflamer",
+            "Magma cutter"
+          ],
+          "models": [],
+          "enhancements": "Enhancement: Dread Reaver (+15 pts)",
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Masters of the Maelstrom",
+          "points": 145,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Captain Sargotta",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Garlon Souleater",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Garreon the Corpsemaster",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Katar Garrix",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "The Enforcer",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": "Char3",
+          "model": "Vashtorr the Arkifane",
+          "points": 220,
+          "equipment": [
+            "Warlord",
+            "Vashtorr's claw",
+            "Vashtorr's hammer"
+          ],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": "Char5",
+          "model": "Warpsmith",
+          "points": 75,
+          "equipment": [
+            "Flamer tendril",
+            "Forge weapon",
+            "Melta tendril",
+            "Plasma pistol"
+          ],
+          "models": [],
+          "enhancements": "Enhancement: Despot's Claim (+15 pts)",
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Cultist Mob",
+          "points": 50,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Cultist Champion",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Cultist",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Cultist Mob",
+          "points": 50,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Cultist Champion",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Cultist",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Legionaries",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 4,
+              "name": "Legionary",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Aspiring Champion",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Chaos Bikers",
+          "points": 70,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Biker Champion",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Biker",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Chaos Rhino",
+          "points": 65,
+          "equipment": [
+            "Armoured tracks",
+            "Combi-bolter",
+            "Havoc launcher",
+            "Combi-bolter"
+          ],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Chosen",
+          "points": 135,
+          "equipment": [],
+          "models": [
+            {
+              "count": 4,
+              "name": "Chosen",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Chosen Champion",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Masters of the Maelstrom",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Defiler",
+          "points": 330,
+          "equipment": [
+            "Hades battle cannon",
+            "2x Excruciator cannon",
+            "Heavy reaper autocannon",
+            "Heavy reaper autocannon",
+            "Shearing claws"
+          ],
+          "models": [],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Noise Marines",
+          "points": 145,
+          "equipment": [],
+          "models": [
+            {
+              "count": 5,
+              "name": "Noise Marine",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Disharmonist",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Raptors",
+          "points": 110,
+          "equipment": [],
+          "models": [
+            {
+              "count": 4,
+              "name": "Raptor",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Raptor Champion",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Red Corsairs Raiders",
+          "points": 110,
+          "equipment": [],
+          "models": [
+            {
+              "count": 4,
+              "name": "Red Corsairs Raider",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Red Corsairs Raider Champion",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": null
+        }
+      ],
+      "format": "bullets",
+      "bodyRest": "Char1: 1x Cypher (90 pts): Cypher's bolt pistol, Cypher's plasma pistol\nChar2: 1x Huron Blackheart (130 pts): Tyrant's Claw and exalted power weapon, Tyrant's Claw heavy flamer\nLeading Chosen\nChar4: 1x Lord Discordant on Helstalker (175 pts): Bladed limbs, Bolt pistol, Impaler chainglaive, Baleflamer, Magma cutter\nEnhancement: Dread Reaver (+15 pts)\n5x Masters of the Maelstrom (145 pts)\n• 1x Captain Sargotta: Laspistol, Power sabre\n• 1x Garlon Souleater: Force stave, Mind Wrench\n• 1x Garreon the Corpsemaster: Absolver bolt pistol, Reductor array\n• 1x Katar Garrix: Axe of Ending, Bolt pistol\n• 1x The Enforcer: Bionic gauntlet, Londaxi maimer\n  Supporting Chosen\nChar3: 1x Vashtorr the Arkifane (220 pts): Warlord, Vashtorr's claw, Vashtorr's hammer\nChar5: 1x Warpsmith (75 pts): Flamer tendril, Forge weapon, Melta tendril, Plasma pistol\nEnhancement: Despot's Claim (+15 pts)\n\n10x Cultist Mob (50 pts)\n• 1x Cultist Champion: Brutal assault weapon, Autopistol\n• 9x Cultist: 9 with Autopistol, Brutal assault weapon\n10x Cultist Mob (50 pts)\n• 1x Cultist Champion: Brutal assault weapon, Autopistol\n• 9x Cultist: 9 with Autopistol, Brutal assault weapon\n5x Legionaries (90 pts)\n• 4x Legionary\n    2 with Astartes chainsword, Bolt pistol, Close combat weapon\n    1 with Bolt pistol, Close combat weapon, Heavy melee weapon\n    1 with Bolt pistol, Close combat weapon, Astartes chainsword, Plasma pistol\n• 1x Aspiring Champion: Chaos icon, Close combat weapon, Heavy melee weapon, Plasma pistol\n\n3x Chaos Bikers (70 pts)\n• 1x Biker Champion: Chaos icon, Close combat weapon, Combi-bolter, Power fist\n• 2x Biker: 2 with Close combat weapon, Combi-bolter, Meltagun, Astartes chainsword\n1x Chaos Rhino (65 pts): Armoured tracks, Combi-bolter, Havoc launcher, Combi-bolter\n5x Chosen (135 pts)\n• 4x Chosen\n    3 with Accursed weapon, Bolt pistol, Boltgun\n    1 with Paired accursed weapons, Plasma pistol\n• 1x Chosen Champion: Chaos icon, Plasma pistol, Power fist, Boltgun\n  Attached to Huron Blackheart\n  Attached to Masters of the Maelstrom\n1x Defiler (330 pts): Hades battle cannon, 2x Excruciator cannon, Heavy reaper autocannon, Heavy reaper autocannon, Shearing claws\n6x Noise Marines (145 pts)\n• 5x Noise Marine\n    2 with Blastmaster, Close combat weapon\n    3 with Close combat weapon, Sonic blaster\n• 1x Disharmonist: Close combat weapon, Power sword, Screamer pistol\n5x Raptors (110 pts)\n• 4x Raptor\n    1 with Astartes chainsword, Bolt pistol\n    2 with Bolt pistol, Heavy melee weapon\n    1 with Bolt pistol, Mutations\n• 1x Raptor Champion: Heavy melee weapon, Plasma pistol\n5x Red Corsairs Raiders (110 pts)\n• 4x Red Corsairs Raider\n    3 with Bolt pistol, Boltgun, Reaver's blade\n    1 with Bolt pistol, Meltagun, Power fist\n• 1x Red Corsairs Raider Champion: Boltgun, Reaver's blade, Hand flamer\n\nCreated with newrecruit.eu v35.80",
+      "title": "Pencey - Chaos - Chaos Space Marines"
+    },
+    {
+      "name": "Revvvenge",
+      "faction": "Imperium - Astra Militarum",
+      "teamName": null,
+      "header": {
+        "player": "Revvvenge",
+        "factionKeyword": "Des-Astra Militarum",
+        "detachment1": "Hammer of the Emperor (2DP)",
+        "detachment2": "Bridgehead Strike (1 DP)",
+        "dispositionforce": "Priority Assets",
+        "totalPoints": "2000 pts",
+        "alliedunits": "//",
+        "warlord": "Char1 : Lord Solar Leontus",
+        "enhancements": "//",
+        "unitCount": "19"
+      },
+      "units": [
+        {
+          "model": "Lord Solar Leontus",
+          "points": 130,
+          "equipment": [
+            "1x Sol's Righteuous Gaze, 1x Conquest, 1x Konstantin's hooves"
+          ],
+          "models": [
+            {
+              "count": 1,
+              "name": "Lord Solar Leontus",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "model": "Cadian Command Squad",
+          "points": 60,
+          "equipment": [
+            "1x plasma pistol, 1x power fist",
+            "1 with 1x lasgun, 1x close combat weapon, 1x master vox",
+            "1 with 1x lasgun, 1x close combat weapon, 1x medi-pack",
+            "1 with 1x plasma gun, 1x  1x close combat weapon",
+            "1 with 1x plasma gun, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 5,
+              "name": "Cadian Command Squad",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "model": "Cadian Shock Troops",
+          "points": 70,
+          "equipment": [
+            "1x laspistol, 1x chainsword",
+            "1 with 1x lasgun , 1x close combat weapon, 1x vox caster",
+            "1 with 1x plasma gun, 1x close combat weapon",
+            "1 with 1x meltagun, 1x close combat weapon",
+            "6 with 1x lasgun, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 10,
+              "name": "Cadian Shock Troops",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "model": "Militarum Tempestus Command Squad",
+          "points": 85,
+          "equipment": [
+            "1x Tempestus dagger, 1x command rod",
+            "1 with 1x hot-shot laspistol, 1x close combat weapon, 1x master vox",
+            "1 with 1x plasma gun, 1x close combat weapon",
+            "1 with 1x hot-shot volley gun, 1x close combat weapon",
+            "1 with 1x meltagun, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 5,
+              "name": "Militarum Tempestus Command Squad",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "model": "Tempestus Scions",
+          "points": 150,
+          "equipment": [
+            "1x plasma pistol, 1x power fist",
+            "1 with 1x hot-shot laspistol, 1x close combat weapon, 1x vox caster",
+            "2 with 1x plasma gun, 1x close combat weapon",
+            "2 with 1x hot-shot volley gun, 1x close combat weapon",
+            "4 with 1x hot-shot lasgun, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 10,
+              "name": "Tempestus Scions",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "model": "Militarum Tempestus Command Squad",
+          "points": 85,
+          "equipment": [
+            "1x Tempestus dagger, 1x command rod",
+            "1 with 1x hot-shot laspistol, 1x close combat weapon, 1x master vox",
+            "1 with 1x plasma gun, 1x close combat weapon",
+            "1 with 1x hot-shot volley gun, 1x close combat weapon",
+            "1 with 1x meltagun, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 5,
+              "name": "Militarum Tempestus Command Squad",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 3",
+          "category": null
+        },
+        {
+          "model": "Tempestus Scions",
+          "points": 150,
+          "equipment": [
+            "1x plasma pistol, 1x power fist",
+            "1 with 1x hot-shot laspistol, 1x close combat weapon, 1x vox caster",
+            "2 with 1x plasma gun, 1x close combat weapon",
+            "2 with 1x hot-shot volley gun, 1x close combat weapon",
+            "4 with 1x hot-shot lasgun, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 10,
+              "name": "Tempestus Scions",
+              "subs": []
+            }
+          ],
+          "attachedUnit": "Attached Unit 3",
+          "category": null
+        },
+        {
+          "model": "Tech-Priest Enginseer",
+          "points": 45,
+          "equipment": [
+            "1x Mechanicus pistol, 1x Enginseer axe, 1x servo-arm"
+          ],
+          "models": [
+            {
+              "count": 1,
+              "name": "Tech-Priest Enginseer",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "CHARACTERS"
+        },
+        {
+          "model": "Tech-Priest Enginseer",
+          "points": 45,
+          "equipment": [
+            "1x Mechanicus pistol, 1x Enginseer axe, 1x servo-arm"
+          ],
+          "models": [
+            {
+              "count": 1,
+              "name": "Tech-Priest Enginseer",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "CHARACTERS"
+        },
+        {
+          "model": "Death Korps of Krieg",
+          "points": 135,
+          "equipment": [
+            "2 with 1x plasma pistol, 1x power weapon",
+            "2 with 1x lasgun, 1x close combat weapon, 1x vox caster",
+            "2 with 1x lasgun, 1x close combat weapon, 1x Death Korps medi-pack",
+            "2 with 1x plasma gun, 1x close combat weapon",
+            "2 with 1x flamer, 1x close combat weapon",
+            "10 with 1x lasgun, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 20,
+              "name": "Death Korps of Krieg",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "model": "Tempestus Aquilons",
+          "points": 95,
+          "equipment": [
+            "1x hot-shot lascarbine, 1x close combat weapon, 1x sentry hot-shot volley gun",
+            "1 with 1x hot-shot long-las, 1x close combat weapon",
+            "1 with 1x plasma carbine, 1x close combat weapon",
+            "7 with 1x hot-shot lascarbine, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 10,
+              "name": "Tempestus Aquilons",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "model": "Scout Sentinel",
+          "points": 55,
+          "equipment": [
+            "1x lascannon, 1x hunter-killer missile, 1x Sentinel chainsaw, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 1,
+              "name": "Scout Sentinel",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "model": "Scout Sentinel",
+          "points": 55,
+          "equipment": [
+            "1x lascannon, 1x hunter-killer missile, 1x Sentinel chainsaw, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 1,
+              "name": "Scout Sentinel",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "model": "Scout Sentinel",
+          "points": 55,
+          "equipment": [
+            "1x lascannon, 1x hunter-killer missile, 1x Sentinel chainsaw, 1x close combat weapon"
+          ],
+          "models": [
+            {
+              "count": 1,
+              "name": "Scout Sentinel",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "model": "Leman Russ Battle Tank",
+          "points": 175,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Leman Russ Battle Tank",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Leman Russ battle cannon, 1x lascannon",
+          "points": 5,
+          "equipment": [],
+          "models": [],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "model": "Leman Russ Battle Tank",
+          "points": 175,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Leman Russ Battle Tank",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Leman Russ battle cannon, 1x lascannon",
+          "points": 5,
+          "equipment": [],
+          "models": [],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "model": "Leman Russ Battle Tank",
+          "points": 175,
+          "equipment": [
+            "1x Leman Russ battle cannon, 1x heavy bolter, 2x heavy bolter, 1x heavy stubber, 1x hunter-killer missile, 1x armoured tracks"
+          ],
+          "models": [
+            {
+              "count": 1,
+              "name": "Leman Russ Battle Tank",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "model": "Leman Russ Vanquisher",
+          "points": 130,
+          "equipment": [
+            "1x Vanquisher battle cannon, 1x flamer, 2x flamer, 1x heavy stubber, 1x hunter-killer missile, 1x armoured tracks"
+          ],
+          "models": [
+            {
+              "count": 1,
+              "name": "Leman Russ Vanquisher",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        },
+        {
+          "model": "Leman Russ Vanquisher",
+          "points": 130,
+          "equipment": [
+            "1x Vanquisher battle cannon, 1x flamer, 2x flamer, 1x heavy stubber, 1x hunter-killer missile, 1x armoured tracks"
+          ],
+          "models": [
+            {
+              "count": 1,
+              "name": "Leman Russ Vanquisher",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHERS DATASHEETS"
+        }
+      ],
+      "format": "bullets",
+      "bodyRest": "ATTACHED UNITS\n\n* Attached Unit 1\n\n• 1x Lord Solar Leontus (130 pts)\nWarlord\n1x Sol's Righteuous Gaze, 1x Conquest, 1x Konstantin's hooves\n\n• 5x Cadian Command Squad (60 pts)\n- 1x Cadian Commander\n1x plasma pistol, 1x power fist\n- 4x Cadian Veteran Guardsmen\n1 with 1x lasgun, 1x close combat weapon, 1x master vox\n1 with 1x lasgun, 1x close combat weapon, 1x medi-pack\n1 with 1x plasma gun, 1x  1x close combat weapon\n1 with 1x plasma gun, 1x close combat weapon\n\n• 10x Cadian Shock Troops (70 pts)\n- 1x Shock Trooper Sergeant\n1x laspistol, 1x chainsword\n- 9x Shock Troopers\n1 with 1x lasgun , 1x close combat weapon, 1x vox caster\n1 with 1x plasma gun, 1x close combat weapon\n1 with 1x meltagun, 1x close combat weapon\n6 with 1x lasgun, 1x close combat weapon\n\n* Attached Unit 2\n\n• 5x Militarum Tempestus Command Squad (85 pts)\n- 1x Tempestor Prime\n1x Tempestus dagger, 1x command rod\n- 4x Tempestus Scions\n1 with 1x hot-shot laspistol, 1x close combat weapon, 1x master vox\n1 with 1x plasma gun, 1x close combat weapon\n1 with 1x hot-shot volley gun, 1x close combat weapon\n1 with 1x meltagun, 1x close combat weapon\n\n•  10x Tempestus Scions (150 pts)\n- 1x Tempestor\n1x plasma pistol, 1x power fist\n- 9x Tempestus Scions\n1 with 1x hot-shot laspistol, 1x close combat weapon, 1x vox caster\n2 with 1x plasma gun, 1x close combat weapon\n2 with 1x hot-shot volley gun, 1x close combat weapon\n4 with 1x hot-shot lasgun, 1x close combat weapon\n\n* Attached Unit 3\n\n•  5x Militarum Tempestus Command Squad (85 pts)\n- 1x Tempestor Prime\n1x Tempestus dagger, 1x command rod\n- 4x Tempestus Scions\n1 with 1x hot-shot laspistol, 1x close combat weapon, 1x master vox\n1 with 1x plasma gun, 1x close combat weapon\n1 with 1x hot-shot volley gun, 1x close combat weapon\n1 with 1x meltagun, 1x close combat weapon\n\n•  10x Tempestus Scions (150 pts)\n- 1x Tempestor\n1x plasma pistol, 1x power fist\n- 9x Tempestus Scions\n1 with 1x hot-shot laspistol, 1x close combat weapon, 1x vox caster\n2 with 1x plasma gun, 1x close combat weapon\n2 with 1x hot-shot volley gun, 1x close combat weapon\n4 with 1x hot-shot lasgun, 1x close combat weapon\n\n\nCHARACTERS\n\n• 1x Tech-Priest Enginseer (45 pts)\n1x Mechanicus pistol, 1x Enginseer axe, 1x servo-arm\n\n•  1x Tech-Priest Enginseer (45 pts)\n1x Mechanicus pistol, 1x Enginseer axe, 1x servo-arm\n\n\nOTHERS DATASHEETS\n\n•  20x Death Korps of Krieg (135 pts)\n- 2x Death Korps Watchmaster\n2 with 1x plasma pistol, 1x power weapon\n- 18x Death Korps Troopers\n2 with 1x lasgun, 1x close combat weapon, 1x vox caster\n2 with 1x lasgun, 1x close combat weapon, 1x Death Korps medi-pack\n2 with 1x plasma gun, 1x close combat weapon\n2 with 1x flamer, 1x close combat weapon\n10 with 1x lasgun, 1x close combat weapon\n\n•  10x Tempestus Aquilons (95 pts)\n- 1x Tempestor Aquilon\n1x hot-shot lascarbine, 1x close combat weapon, 1x sentry hot-shot volley gun\n- 9x Tempestus Aquilons\n1 with 1x hot-shot long-las, 1x close combat weapon\n1 with 1x plasma carbine, 1x close combat weapon\n7 with 1x hot-shot lascarbine, 1x close combat weapon\n\n•  1x Scout Sentinel (55 pts)\n1x lascannon, 1x hunter-killer missile, 1x Sentinel chainsaw, 1x close combat weapon\n\n•  1x Scout Sentinel (55 pts)\n1x lascannon, 1x hunter-killer missile, 1x Sentinel chainsaw, 1x close combat weapon\n\n•  1x Scout Sentinel (55 pts)\n1x lascannon, 1x hunter-killer missile, 1x Sentinel chainsaw, 1x close combat weapon\n\n• 1x Leman Russ Battle Tank (175 pts)\n1x Leman Russ battle cannon, 1x lascannon (5 pts), 2x plasma cannons (5+5 pts), 1x heavy stubber, 1x hunter-killer missile, 1x armoured tracks\n\n• 1x Leman Russ Battle Tank (175 pts)\n1x Leman Russ battle cannon, 1x lascannon (5 pts), 2x plasma cannons (5+5 pts), 1x heavy stubber, 1x hunter-killer missile, 1x armoured tracks\n\n•  1x Leman Russ Battle Tank (175 pts)\n1x Leman Russ battle cannon, 1x heavy bolter, 2x heavy bolter, 1x heavy stubber, 1x hunter-killer missile, 1x armoured tracks\n\n•  1x Leman Russ Vanquisher (130 pts)\n1x Vanquisher battle cannon, 1x flamer, 2x flamer, 1x heavy stubber, 1x hunter-killer missile, 1x armoured tracks\n\n• 1x Leman Russ Vanquisher (130 pts)\n1x Vanquisher battle cannon, 1x flamer, 2x flamer, 1x heavy stubber, 1x hunter-killer missile, 1x armoured tracks\n\nIRON WITHIN, IRON WITHOUT",
+      "title": "Revvvenge - Imperium - Astra Militarum"
+    },
+    {
+      "name": "Vaelys",
+      "faction": "T'au Empire",
+      "teamName": null,
+      "header": null,
+      "units": [
+        {
+          "label": null,
+          "model": "Commander Farsight",
+          "points": 70,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Dawn Blade",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "High-intensity plasma rifle",
+              "subs": []
+            }
+          ],
+          "role": "Meneur (Personnage)",
+          "isWarlord": true,
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Crisis Sunforge Battlesuits",
+          "points": 125,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Crisis Sunforge Shas’vre",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shield Drone",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Crisis Sunforge Shas’ui",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Shield Drone",
+              "subs": []
+            }
+          ],
+          "role": "Gardes du Corps",
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Commander in Coldstar Battlesuit",
+          "points": 110,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Burst cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cyclic ion blaster",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "High-output burst cannon",
+              "subs": []
+            }
+          ],
+          "role": "Meneur (Personnage)",
+          "enhancements": "Optimisations : Prototype Weapon System",
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Crisis Starscythe Battlesuits",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Crisis Starscythe Shas’vre",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Burst cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shield Drone",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Crisis Starscythe Shas’ui",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Burst cannon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Shield Drone",
+              "subs": []
+            }
+          ],
+          "role": "Gardes du Corps",
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Commander in Enforcer Battlesuit",
+          "points": 80,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Burst cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cyclic ion blaster",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Gun Drone",
+              "subs": []
+            }
+          ],
+          "role": "Meneur (Personnage)",
+          "attachedUnit": "Attached Unit 3",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Crisis Starscythe Battlesuits",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Crisis Starscythe Shas’vre",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Burst cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shield Drone",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Crisis Starscythe Shas’ui",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Burst cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shield Drone",
+              "subs": []
+            }
+          ],
+          "role": "Gardes du Corps",
+          "attachedUnit": "Attached Unit 3",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Commander in Coldstar Battlesuit",
+          "points": 115,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Gun Drone",
+              "subs": []
+            }
+          ],
+          "role": "Meneur (Personnage)",
+          "enhancements": "Optimisations : Starflare Ignition System",
+          "attachedUnit": "Attached Unit 4",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Crisis Sunforge Battlesuits",
+          "points": 125,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Crisis Sunforge Shas’vre",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shield Drone",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Crisis Sunforge Shas’ui",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Shield Drone",
+              "subs": []
+            }
+          ],
+          "role": "Gardes du Corps",
+          "attachedUnit": "Attached Unit 4",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "The Twin Lance",
+          "points": 230,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Ri’Lantar",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Fusion eliminator",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "MV15 Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shardstorm burst system",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "XV pulse pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Ri’Locai",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Ion scattercannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "MV15 Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shardstorm burst system",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "XV pulse pistol",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "PERSONNAGES"
+        },
+        {
+          "label": null,
+          "model": "Broadside Battlesuits",
+          "points": 150,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Broadside Shas’vre",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Crushing bulk",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Heavy rail rifle",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Missile Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Seeker missile",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Twin plasma rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Broadside Shas’ui",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Crushing bulk",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Heavy rail rifle",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Missile Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Seeker missile",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Twin plasma rifle",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        },
+        {
+          "label": null,
+          "model": "Broadside Battlesuits",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Broadside Shas’vre",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Crushing bulk",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Heavy rail rifle",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Missile Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Seeker missile",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Twin plasma rifle",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        },
+        {
+          "label": null,
+          "model": "Kroot Carnivores",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Long-quill",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Kroot pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Kroot rifle",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Kroot Carnivore",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 8,
+              "name": "Kroot rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Tanglebomb launcher",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        },
+        {
+          "label": null,
+          "model": "Kroot Carnivores",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Long-quill",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Kroot pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Kroot rifle",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Kroot Carnivore",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 8,
+              "name": "Kroot rifle",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Tanglebomb launcher",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        },
+        {
+          "label": null,
+          "model": "Pathfinder Team",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Pathfinder Shas’ui",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Grav-inhibitor Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Marker Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pulse carbine",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pulse pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Semi-automatic grenade launcher",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shield Drone",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Pathfinder",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Ion rifle",
+              "subs": []
+            },
+            {
+              "count": 6,
+              "name": "Pulse carbine",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Pulse pistol",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        },
+        {
+          "label": null,
+          "model": "Pathfinder Team",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Pathfinder Shas’ui",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Grav-inhibitor Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Marker Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pulse carbine",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pulse pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Semi-automatic grenade launcher",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shield Drone",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Pathfinder",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Ion rifle",
+              "subs": []
+            },
+            {
+              "count": 6,
+              "name": "Pulse carbine",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Pulse pistol",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Rail rifle",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        },
+        {
+          "label": null,
+          "model": "Piranhas",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Armoured hull",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Piranha fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Seeker missile",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Twin pulse carbine",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        },
+        {
+          "label": null,
+          "model": "Piranhas",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Armoured hull",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Piranha fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Seeker missile",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Twin pulse carbine",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        },
+        {
+          "label": null,
+          "model": "Stealth Battlesuits",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Stealth Shas’vre",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Marker Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pulse pistol",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Stealth Shas’ui",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Burst cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Homing Beacon",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        },
+        {
+          "label": null,
+          "model": "Stealth Battlesuits",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Stealth Shas’vre",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gun Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Marker Drone",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pulse pistol",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Stealth Shas’ui",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Battlesuit fists",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Burst cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Fusion blaster",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Homing Beacon",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        },
+        {
+          "label": null,
+          "model": "Vespid Stingwings",
+          "points": 70,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Vespid Strain Leader",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Neutron blaster",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Stingwing claws",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Vespid Stingwing",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Neutron blaster",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Stingwing claws",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "AUTRES FICHES TECHNIQUES"
+        }
+      ],
+      "format": "bullets",
+      "bodyRest": "UNITÉS ATTACHÉES\n\nUnité Attachée 1\n\nCommander Farsight (70 Points)\n  • Attachée en tant que : Meneur (Personnage)\n  • Seigneur de Guerre\n  • 1x Dawn Blade\n  • 1x High-intensity plasma rifle\n\nCrisis Sunforge Battlesuits (125 Points)\n  • Attachée en tant que : Gardes du Corps\n  • 1x Crisis Sunforge Shas’vre\n     ◦ 1x Battlesuit fists\n     ◦ 2x Fusion blaster\n     ◦ 1x Gun Drone\n     ◦ 1x Shield Drone\n  • 2x Crisis Sunforge Shas’ui\n     ◦ 2x Battlesuit fists\n     ◦ 4x Fusion blaster\n     ◦ 2x Gun Drone\n     ◦ 2x Shield Drone\n\nUnité Attachée 2\n\nCommander in Coldstar Battlesuit (110 Points)\n  • Attachée en tant que : Meneur (Personnage)\n  • 1x Battlesuit fists\n  • 2x Burst cannon\n  • 1x Cyclic ion blaster\n  • 2x Gun Drone\n  • 1x High-output burst cannon\n  • Optimisations : Prototype Weapon System\n\nCrisis Starscythe Battlesuits (100 Points)\n  • Attachée en tant que : Gardes du Corps\n  • 1x Crisis Starscythe Shas’vre\n     ◦ 1x Battlesuit fists\n     ◦ 2x Burst cannon\n     ◦ 1x Gun Drone\n     ◦ 1x Shield Drone\n  • 2x Crisis Starscythe Shas’ui\n     ◦ 2x Battlesuit fists\n     ◦ 4x Burst cannon\n     ◦ 2x Gun Drone\n     ◦ 2x Shield Drone\n\nUnité Attachée 3\n\nCommander in Enforcer Battlesuit (80 Points)\n  • Attachée en tant que : Meneur (Personnage)\n  • 1x Battlesuit fists\n  • 3x Burst cannon\n  • 1x Cyclic ion blaster\n  • 2x Gun Drone\n\nCrisis Starscythe Battlesuits (100 Points)\n  • Attachée en tant que : Gardes du Corps\n  • 1x Crisis Starscythe Shas’vre\n     ◦ 1x Battlesuit fists\n     ◦ 2x Burst cannon\n     ◦ 1x Gun Drone\n     ◦ 1x Shield Drone\n  • 2x Crisis Starscythe Shas’ui\n     ◦ 2x Battlesuit fists\n     ◦ 4x Burst cannon\n     ◦ 1x Gun Drone\n     ◦ 1x Shield Drone\n\nUnité Attachée 4\n\nCommander in Coldstar Battlesuit (115 Points)\n  • Attachée en tant que : Meneur (Personnage)\n  • 1x Battlesuit fists\n  • 1x Fusion blaster\n  • 3x Fusion blaster\n  • 2x Gun Drone\n  • Optimisations : Starflare Ignition System\n\nCrisis Sunforge Battlesuits (125 Points)\n  • Attachée en tant que : Gardes du Corps\n  • 1x Crisis Sunforge Shas’vre\n     ◦ 1x Battlesuit fists\n     ◦ 2x Fusion blaster\n     ◦ 1x Gun Drone\n     ◦ 1x Shield Drone\n  • 2x Crisis Sunforge Shas’ui\n     ◦ 2x Battlesuit fists\n     ◦ 4x Fusion blaster\n     ◦ 2x Gun Drone\n     ◦ 2x Shield Drone\n\nPERSONNAGES\n\nThe Twin Lance (230 Points)\n  • 1x Ri’Lantar\n     ◦ 1x Fusion eliminator\n     ◦ 1x MV15 Gun Drone\n     ◦ 1x Shardstorm burst system\n     ◦ 1x XV pulse pistol\n  • 1x Ri’Locai\n     ◦ 1x Ion scattercannon\n     ◦ 1x MV15 Gun Drone\n     ◦ 1x Shardstorm burst system\n     ◦ 1x XV pulse pistol\n\nAUTRES FICHES TECHNIQUES\n\nBroadside Battlesuits (150 Points)\n  • 1x Broadside Shas’vre\n     ◦ 1x Crushing bulk\n     ◦ 1x Heavy rail rifle\n     ◦ 2x Missile Drone\n     ◦ 1x Seeker missile\n     ◦ 1x Twin plasma rifle\n  • 1x Broadside Shas’ui\n     ◦ 1x Crushing bulk\n     ◦ 1x Heavy rail rifle\n     ◦ 2x Missile Drone\n     ◦ 1x Seeker missile\n     ◦ 1x Twin plasma rifle\n\nBroadside Battlesuits (75 Points)\n  • 1x Broadside Shas’vre\n     ◦ 1x Crushing bulk\n     ◦ 1x Heavy rail rifle\n     ◦ 2x Missile Drone\n     ◦ 1x Seeker missile\n     ◦ 1x Twin plasma rifle\n\nKroot Carnivores (65 Points)\n  • 1x Long-quill\n     ◦ 1x Close combat weapon\n     ◦ 1x Kroot pistol\n     ◦ 1x Kroot rifle\n  • 9x Kroot Carnivore\n     ◦ 9x Close combat weapon\n     ◦ 8x Kroot rifle\n     ◦ 1x Tanglebomb launcher\n\nKroot Carnivores (65 Points)\n  • 1x Long-quill\n     ◦ 1x Close combat weapon\n     ◦ 1x Kroot pistol\n     ◦ 1x Kroot rifle\n  • 9x Kroot Carnivore\n     ◦ 9x Close combat weapon\n     ◦ 8x Kroot rifle\n     ◦ 1x Tanglebomb launcher\n\nPathfinder Team (100 Points)\n  • 1x Pathfinder Shas’ui\n     ◦ 1x Close combat weapon\n     ◦ 1x Grav-inhibitor Drone\n     ◦ 1x Marker Drone\n     ◦ 1x Pulse carbine\n     ◦ 1x Pulse pistol\n     ◦ 1x Semi-automatic grenade launcher\n     ◦ 1x Shield Drone\n  • 9x Pathfinder\n     ◦ 9x Close combat weapon\n     ◦ 3x Ion rifle\n     ◦ 6x Pulse carbine\n     ◦ 9x Pulse pistol\n\nPathfinder Team (90 Points)\n  • 1x Pathfinder Shas’ui\n     ◦ 1x Close combat weapon\n     ◦ 1x Grav-inhibitor Drone\n     ◦ 1x Marker Drone\n     ◦ 1x Pulse carbine\n     ◦ 1x Pulse pistol\n     ◦ 1x Semi-automatic grenade launcher\n     ◦ 1x Shield Drone\n  • 9x Pathfinder\n     ◦ 9x Close combat weapon\n     ◦ 1x Ion rifle\n     ◦ 6x Pulse carbine\n     ◦ 9x Pulse pistol\n     ◦ 2x Rail rifle\n\nPiranhas (65 Points)\n  • 1x Armoured hull\n  • 1x Piranha fusion blaster\n  • 2x Seeker missile\n  • 2x Twin pulse carbine\n\nPiranhas (65 Points)\n  • 1x Armoured hull\n  • 1x Piranha fusion blaster\n  • 2x Seeker missile\n  • 2x Twin pulse carbine\n\nStealth Battlesuits (100 Points)\n  • 1x Stealth Shas’vre\n     ◦ 1x Battlesuit fists\n     ◦ 1x Fusion blaster\n     ◦ 1x Gun Drone\n     ◦ 1x Marker Drone\n     ◦ 1x Pulse pistol\n  • 4x Stealth Shas’ui\n     ◦ 4x Battlesuit fists\n     ◦ 3x Burst cannon\n     ◦ 1x Fusion blaster\n     ◦ 1x Homing Beacon\n\nStealth Battlesuits (100 Points)\n  • 1x Stealth Shas’vre\n     ◦ 1x Battlesuit fists\n     ◦ 1x Fusion blaster\n     ◦ 1x Gun Drone\n     ◦ 1x Marker Drone\n     ◦ 1x Pulse pistol\n  • 4x Stealth Shas’ui\n     ◦ 4x Battlesuit fists\n     ◦ 3x Burst cannon\n     ◦ 1x Fusion blaster\n     ◦ 1x Homing Beacon\n\nVespid Stingwings (70 Points)\n  • 1x Vespid Strain Leader\n     ◦ 1x Neutron blaster\n     ◦ 1x Stingwing claws\n  • 4x Vespid Stingwing\n     ◦ 4x Neutron blaster\n     ◦ 4x Stingwing claws\n\nExporté avec la Version de l'Appli : v2.5.0 (1), Version de Données : v931",
+      "title": "Vaelys - T'au Empire"
+    },
+    {
+      "name": "Yeden",
+      "faction": "Imperium - Adepta Sororitas",
+      "teamName": null,
+      "header": null,
+      "units": [
+        {
+          "label": null,
+          "model": "Morvenn Vahl",
+          "points": 200,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Fidelis",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Lance of Illumination",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Paragon missile launcher",
+              "subs": []
+            }
+          ],
+          "role": "Leader (Character)",
+          "isWarlord": true,
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Paragon Warsuits",
+          "points": 180,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Paragon Superior",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Heavy bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Paragon grenade launchers",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Paragon war blade",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Paragon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Heavy bolter",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Paragon grenade launchers",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Paragon war blade",
+              "subs": []
+            }
+          ],
+          "role": "Bodyguard",
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Hospitaller",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Chirurgeon’s tools",
+              "subs": []
+            }
+          ],
+          "role": "Support (Character)",
+          "enhancements": "Enhancements: Chaplet of Sacrifice",
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Celestian Sacresants",
+          "points": 150,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Sacresant Superior",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Inferno pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Spear of the faithful",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Celestian Sacresant",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Hallowed mace",
+              "subs": []
+            }
+          ],
+          "role": "Bodyguard",
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Canoness",
+          "points": 70,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Bolt Pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Hallowed chainsword",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Null Rod",
+              "subs": []
+            }
+          ],
+          "enhancements": "Enhancements: Saintly Example",
+          "attachedUnit": null,
+          "category": "CHARACTERS"
+        },
+        {
+          "label": null,
+          "model": "Intranzia Fraye",
+          "points": 135,
+          "equipment": [],
+          "models": [
+            {
+              "count": 2,
+              "name": "Heavy bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Mace of Saint Praxedes",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Melta missile array",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Ministorum heavy flamer",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Throne of Blame",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "CHARACTERS"
+        },
+        {
+          "label": null,
+          "model": "Saint Celestine",
+          "points": 150,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Celestine",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "The Ardent Blade",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Geminae Superia",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Power weapon",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "CHARACTERS"
+        },
+        {
+          "label": null,
+          "model": "Battle Sisters Squad",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Sister Superior",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Plasma pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Power weapon",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Battle Sister",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 7,
+              "name": "Boltgun",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Meltagun",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Multi-melta",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Simulacrum Imperialis",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Immolator",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Armoured tracks",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Heavy bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Hunter-killer missile",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Immolation flamers",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Sororitas Rhino",
+          "points": 65,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Armoured tracks",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Hunter-killer missile",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Storm bolter",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "BATTLELINE"
+        },
+        {
+          "label": null,
+          "model": "Castigator",
+          "points": 165,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Armoured tracks",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Castigator battle cannon",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Heavy bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Hunter-killer missile",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Storm bolter",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Castigator",
+          "points": 165,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Armoured tracks",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Castigator battle cannon",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Heavy bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Hunter-killer missile",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Storm bolter",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Celestian Insidiants",
+          "points": 120,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Celestian Insidiant Superior",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Inferno pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Null mace",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Celestian Insidiant",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Blessed sword",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Condemnor bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Denuncia oratory",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Ministorum hand flamer",
+              "subs": []
+            },
+            {
+              "count": 6,
+              "name": "Null mace",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Simulacrum Imperialis",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Virge of admonition",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Repentia Squad",
+          "points": 140,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Repentia Superior",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Neural whips",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Sister Repentia",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Penitent eviscerator",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Seraphim Squad",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Seraphim Superior",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Plasma pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Power weapon",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Seraphim",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Ministorum hand flamer",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Sisters Novitiate Squad",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Novitiate Superior",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Bolt pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Boltgun",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Sister Novitiate",
+              "subs": []
+            },
+            {
+              "count": 6,
+              "name": "Autogun",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Autopistol",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Close combat weapon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Ministorum flamer",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Simulacrum Imperialis",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        }
+      ],
+      "format": "bullets",
+      "bodyRest": "ATTACHED UNITS\n\nAttached unit 1\n\nMorvenn Vahl (200 Points)\n  • Attached as: Leader (Character)\n  • Warlord\n  • 1x Fidelis\n  • 1x Lance of Illumination\n  • 1x Paragon missile launcher\n\nParagon Warsuits (180 Points)\n  • Attached as: Bodyguard\n  • 1x Paragon Superior\n     ◦ 1x Bolt pistol\n     ◦ 1x Heavy bolter\n     ◦ 1x Paragon grenade launchers\n     ◦ 1x Paragon war blade\n  • 2x Paragon\n     ◦ 2x Bolt pistol\n     ◦ 2x Heavy bolter\n     ◦ 2x Paragon grenade launchers\n     ◦ 2x Paragon war blade\n\nAttached unit 2\n\nHospitaller (90 Points)\n  • Attached as: Support (Character)\n  • 1x Bolt pistol\n  • 1x Chirurgeon’s tools\n  • Enhancements: Chaplet of Sacrifice\n\nCelestian Sacresants (150 Points)\n  • Attached as: Bodyguard\n  • 1x Sacresant Superior\n     ◦ 1x Inferno pistol\n     ◦ 1x Spear of the faithful\n  • 9x Celestian Sacresant\n     ◦ 9x Bolt pistol\n     ◦ 9x Hallowed mace\n\nCHARACTERS\n\nCanoness (70 Points)\n  • 1x Bolt Pistol\n  • 1x Hallowed chainsword\n  • 1x Null Rod\n  • Enhancements: Saintly Example\n\nIntranzia Fraye (135 Points)\n  • 2x Heavy bolter\n  • 1x Mace of Saint Praxedes\n  • 1x Melta missile array\n  • 2x Ministorum heavy flamer\n  • 1x Throne of Blame\n\nSaint Celestine (150 Points)\n  • 1x Celestine\n     ◦ 1x The Ardent Blade\n  • 2x Geminae Superia\n     ◦ 2x Bolt pistol\n     ◦ 2x Power weapon\n\nBATTLELINE\n\nBattle Sisters Squad (100 Points)\n  • 1x Sister Superior\n     ◦ 1x Bolt pistol\n     ◦ 1x Close combat weapon\n     ◦ 1x Plasma pistol\n     ◦ 1x Power weapon\n  • 9x Battle Sister\n     ◦ 9x Bolt pistol\n     ◦ 7x Boltgun\n     ◦ 9x Close combat weapon\n     ◦ 1x Meltagun\n     ◦ 1x Multi-melta\n     ◦ 1x Simulacrum Imperialis\n\nDEDICATED TRANSPORTS\n\nImmolator (100 Points)\n  • 1x Armoured tracks\n  • 1x Heavy bolter\n  • 1x Hunter-killer missile\n  • 1x Immolation flamers\n\nSororitas Rhino (65 Points)\n  • 1x Armoured tracks\n  • 1x Hunter-killer missile\n  • 1x Storm bolter\n\nOTHER DATASHEETS\n\nCastigator (165 Points)\n  • 1x Armoured tracks\n  • 1x Castigator battle cannon\n  • 3x Heavy bolter\n  • 1x Hunter-killer missile\n  • 1x Storm bolter\n\nCastigator (165 Points)\n  • 1x Armoured tracks\n  • 1x Castigator battle cannon\n  • 3x Heavy bolter\n  • 1x Hunter-killer missile\n  • 1x Storm bolter\n\nCelestian Insidiants (120 Points)\n  • 1x Celestian Insidiant Superior\n     ◦ 1x Inferno pistol\n     ◦ 1x Null mace\n  • 9x Celestian Insidiant\n     ◦ 2x Blessed sword\n     ◦ 3x Condemnor bolt pistol\n     ◦ 1x Denuncia oratory\n     ◦ 2x Ministorum hand flamer\n     ◦ 6x Null mace\n     ◦ 1x Simulacrum Imperialis\n     ◦ 1x Virge of admonition\n\nRepentia Squad (140 Points)\n  • 1x Repentia Superior\n     ◦ 1x Bolt pistol\n     ◦ 1x Neural whips\n  • 9x Sister Repentia\n     ◦ 9x Penitent eviscerator\n\nSeraphim Squad (75 Points)\n  • 1x Seraphim Superior\n     ◦ 1x Close combat weapon\n     ◦ 1x Plasma pistol\n     ◦ 1x Power weapon\n  • 4x Seraphim\n     ◦ 4x Bolt pistol\n     ◦ 4x Close combat weapon\n     ◦ 4x Ministorum hand flamer\n\nSisters Novitiate Squad (90 Points)\n  • 1x Novitiate Superior\n     ◦ 1x Bolt pistol\n     ◦ 1x Boltgun\n     ◦ 1x Close combat weapon\n  • 9x Sister Novitiate\n     ◦ 6x Autogun\n     ◦ 9x Autopistol\n     ◦ 9x Close combat weapon\n     ◦ 2x Ministorum flamer\n     ◦ 1x Simulacrum Imperialis\n\nExported with App Version: v2.6.0 (3), Data Version: v946",
+      "title": "Yeden - Imperium - Adepta Sororitas"
+    },
+    {
+      "name": "Zimboula",
+      "faction": "Imperium - Inquisition",
+      "teamName": null,
+      "header": {
+        "factionKeyword": "Imperium - Agents of the Imperium",
+        "detachment": "Classis Imperialis, Force d’Élimination de Lame Voilée (At All Costs)",
+        "forceDisposition": "Perturbation",
+        "totalPoints": "1995pts",
+        "warlord": "Char1: Inquisitor Coteaz",
+        "enhancements": "Combat Landers (on Pers7: Rogue Trader Entourage - Rogue Trader) & Fleetmaster (on Pers8: Rogue Trader Entourage - Rogue Trader) & Clandestine Operation (on Pers9: Rogue Trader Entourage - Rogue Trader)",
+        "unitCount": "22",
+        "secondary": "- Bring It Down: (3x2) - Assassination: 10 Characters"
+      },
+      "units": [
+        {
+          "label": null,
+          "model": "Inquisiteur",
+          "points": 55,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Arme combinée",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de force",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Psychic gifts",
+              "subs": []
+            }
+          ],
+          "role": "Leader (Character)",
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Inquisitorial Agents",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 10,
+              "name": "Agent",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Agent firearm",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Agent melee weapon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Eviscerator",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Sceptre Mystique",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Pistolet à plasma",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Servitor",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Agent melee weapon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Multi-fuseur",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Tome-skull",
+              "subs": []
+            }
+          ],
+          "role": "Bodyguard",
+          "attachedUnit": "Attached Unit 1",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Inquisiteur",
+          "points": 55,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Arme combinée",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de force",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Psychic gifts",
+              "subs": []
+            }
+          ],
+          "role": "Leader (Character)",
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Inquisitorial Agents",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 10,
+              "name": "Agent",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Agent firearm",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Agent melee weapon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Eviscerator",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Sceptre Mystique",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Pistolet à plasma",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Servitor",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Agent melee weapon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Multi-fuseur",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Tome-skull",
+              "subs": []
+            }
+          ],
+          "role": "Bodyguard",
+          "attachedUnit": "Attached Unit 2",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Inquisiteur",
+          "points": 55,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Arme combinée",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de force",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Psychic gifts",
+              "subs": []
+            }
+          ],
+          "role": "Leader (Character)",
+          "attachedUnit": "Attached Unit 3",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Inquisitorial Agents",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 10,
+              "name": "Agent",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Agent firearm",
+              "subs": []
+            },
+            {
+              "count": 10,
+              "name": "Agent melee weapon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Eviscerator",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Sceptre Mystique",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Pistolet à plasma",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Servitor",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Agent melee weapon",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Multi-fuseur",
+              "subs": []
+            },
+            {
+              "count": 2,
+              "name": "Tome-skull",
+              "subs": []
+            }
+          ],
+          "role": "Bodyguard",
+          "attachedUnit": "Attached Unit 3",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Inquisitor Coteaz",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Nemesis daemon hammer",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pistolet bolter",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Psychic Blast",
+              "subs": [
+                "Glovodan Psyber-eagle, Seigneur de guerre"
+              ]
+            }
+          ],
+          "role": "Leader (Character)",
+          "attachedUnit": "Attached Unit 4",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Subductor Squad",
+          "points": 85,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Proctor Subductor",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arbites shotpistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shock maul",
+              "subs": [
+                "Nuncio-aquila"
+              ]
+            },
+            {
+              "count": 9,
+              "name": "Subductor",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Arbites shotpistol",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Shock maul",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cyber-mastiff",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Morsure Mécanique",
+              "subs": []
+            }
+          ],
+          "role": "Bodyguard",
+          "attachedUnit": "Attached Unit 4",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Inquisitor Draxus",
+          "points": 75,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Dirgesinger",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Gantelet énergétique",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Psychic Tempest",
+              "subs": []
+            }
+          ],
+          "role": "Leader (Character)",
+          "attachedUnit": "Attached Unit 5",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Imperial Navy Breachers",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Navis Sergeant-at-Arms",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Navis shotgun",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Navis Armsman",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 7,
+              "name": "Navis shotgun",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Fuseur",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Charges de démolition",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Navis heavy shotgun",
+              "subs": [
+                "Endurant shield"
+              ]
+            }
+          ],
+          "role": "Bodyguard",
+          "attachedUnit": "Attached Unit 5",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Rogue Trader Entourage",
+          "points": 95,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Rogue Trader",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Household pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Monomolecular cane-rapier",
+              "subs": [
+                "Fleetmaster (+20 pts)"
+              ]
+            },
+            {
+              "count": 1,
+              "name": "Death Cult Assassin",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Dartmask",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Death Cult power blade",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Lectro-maester",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Voltaic pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Rejuvenant Adept",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pistolet laser",
+              "subs": [
+                "Healing Serum"
+              ]
+            }
+          ],
+          "role": "Leader (Character)",
+          "attachedUnit": "Attached Unit 6",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Imperial Navy Breachers",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Navis Sergeant-at-Arms",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Navis shotgun",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Navis Armsman",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 7,
+              "name": "Navis shotgun",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Fuseur",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Charges de démolition",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Navis heavy shotgun",
+              "subs": [
+                "Endurant shield"
+              ]
+            }
+          ],
+          "role": "Bodyguard",
+          "attachedUnit": "Attached Unit 6",
+          "category": null
+        },
+        {
+          "label": null,
+          "model": "Inquisitor Kroyle",
+          "points": 100,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Jindarii tox-cycler",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Stubcarbine",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Butcher blade",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Garralisk's claws and teeth",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "CHARACTER"
+        },
+        {
+          "label": null,
+          "model": "Rogue Trader Entourage",
+          "points": 85,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Rogue Trader",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Household pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Monomolecular cane-rapier",
+              "subs": [
+                "Combat Landers (+10 pts)"
+              ]
+            },
+            {
+              "count": 1,
+              "name": "Death Cult Assassin",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Dartmask",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Death Cult power blade",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Lectro-maester",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Voltaic pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Rejuvenant Adept",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pistolet laser",
+              "subs": [
+                "Healing Serum"
+              ]
+            }
+          ],
+          "attachedUnit": null,
+          "category": "CHARACTER"
+        },
+        {
+          "label": null,
+          "model": "Rogue Trader Entourage",
+          "points": 90,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Rogue Trader",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Household pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Monomolecular cane-rapier",
+              "subs": [
+                "Clandestine Operation (+15 pts)"
+              ]
+            },
+            {
+              "count": 1,
+              "name": "Death Cult Assassin",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Dartmask",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Death Cult power blade",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Lectro-maester",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Voltaic pistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Rejuvenant Adept",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pistolet laser",
+              "subs": [
+                "Healing Serum"
+              ]
+            }
+          ],
+          "attachedUnit": null,
+          "category": "CHARACTER"
+        },
+        {
+          "label": null,
+          "model": "Inquisitorial Chimera",
+          "points": 60,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Bordée de fusils laser",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Chenilles blindées",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Missile traqueur",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Mitrailleuse",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Lance-flammes lourd",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Lance-flammes lourd",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Inquisitorial Chimera",
+          "points": 60,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Bordée de fusils laser",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Chenilles blindées",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Missile traqueur",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Mitrailleuse",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Lance-flammes lourd",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Lance-flammes lourd",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Knight Errant",
+          "points": 355,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Thermal cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Stormspear rocket pod",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Fuseur",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Tronçonneuse Reaper",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Subductor Squad",
+          "points": 85,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Proctor Subductor",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arbites shotpistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shock maul",
+              "subs": [
+                "Nuncio-aquila"
+              ]
+            },
+            {
+              "count": 9,
+              "name": "Subductor",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Arbites shotpistol",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Shock maul",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cyber-mastiff",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Morsure Mécanique",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Subductor Squad",
+          "points": 85,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Proctor Subductor",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arbites shotpistol",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Shock maul",
+              "subs": [
+                "Nuncio-aquila"
+              ]
+            },
+            {
+              "count": 9,
+              "name": "Subductor",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Arbites shotpistol",
+              "subs": []
+            },
+            {
+              "count": 9,
+              "name": "Shock maul",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Cyber-mastiff",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Morsure Mécanique",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Voidsmen-at-Arms",
+          "points": 50,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Voidmaster",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Artificer shotgun",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pistolet laser",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Voidsman",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Fusil laser",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Pistolet laser",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Voidsman rotor cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Canid",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Vicious bite",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        },
+        {
+          "label": null,
+          "model": "Voidsmen-at-Arms",
+          "points": 50,
+          "equipment": [],
+          "models": [
+            {
+              "count": 1,
+              "name": "Voidmaster",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Artificer shotgun",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Pistolet laser",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Voidsman",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Arme de corps à corps",
+              "subs": []
+            },
+            {
+              "count": 3,
+              "name": "Fusil laser",
+              "subs": []
+            },
+            {
+              "count": 4,
+              "name": "Pistolet laser",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Voidsman rotor cannon",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Canid",
+              "subs": []
+            },
+            {
+              "count": 1,
+              "name": "Vicious bite",
+              "subs": []
+            }
+          ],
+          "attachedUnit": null,
+          "category": "OTHER DATASHEETS"
+        }
+      ],
+      "format": "bullets",
+      "bodyRest": "Attached Units\nAttached Unit 1\n\nInquisiteur (55 pts)\n• Attached as: Leader (Character)\n• 1x Arme combinée\n• 1x Arme de force\n• 1x Psychic gifts\n\nInquisitorial Agents (100 pts)\n• Attached as: Bodyguard\n• 10x Agent\n    • 10x Agent firearm\n    • 10x Agent melee weapon\n    • 2x Eviscerator\n    • 2x Sceptre Mystique\n    • 2x Pistolet à plasma\n• 2x Servitor\n    • 2x Agent melee weapon\n    • 2x Multi-fuseur\n  • 2x Tome-skull\n\nAttached Unit 2\n\nInquisiteur (55 pts)\n• Attached as: Leader (Character)\n• 1x Arme combinée\n• 1x Arme de force\n• 1x Psychic gifts\n\nInquisitorial Agents (100 pts)\n• Attached as: Bodyguard\n• 10x Agent\n    • 10x Agent firearm\n    • 10x Agent melee weapon\n    • 2x Eviscerator\n    • 2x Sceptre Mystique\n    • 2x Pistolet à plasma\n• 2x Servitor\n    • 2x Agent melee weapon\n    • 2x Multi-fuseur\n  • 2x Tome-skull\n\nAttached Unit 3\n\nInquisiteur (55 pts)\n• Attached as: Leader (Character)\n• 1x Arme combinée\n• 1x Arme de force\n• 1x Psychic gifts\n\nInquisitorial Agents (100 pts)\n• Attached as: Bodyguard\n• 10x Agent\n    • 10x Agent firearm\n    • 10x Agent melee weapon\n    • 2x Eviscerator\n    • 2x Sceptre Mystique\n    • 2x Pistolet à plasma\n• 2x Servitor\n    • 2x Agent melee weapon\n    • 2x Multi-fuseur\n  • 2x Tome-skull\n\nAttached Unit 4\n\nInquisitor Coteaz (75 pts)\n• Attached as: Leader (Character)\n• 1x Nemesis daemon hammer\n• 1x Pistolet bolter\n• 1x Psychic Blast\n• Glovodan Psyber-eagle, Seigneur de guerre\n\nSubductor Squad (85 pts)\n• Attached as: Bodyguard\n• 1x Proctor Subductor\n    • 1x Arbites shotpistol\n    • 1x Shock maul\n    • Nuncio-aquila\n• 9x Subductor\n    • 9x Arbites shotpistol\n    • 9x Shock maul\n• 1x Cyber-mastiff\n    • 1x Morsure Mécanique\n\nAttached Unit 5\n\nInquisitor Draxus (75 pts)\n• Attached as: Leader (Character)\n• 1x Dirgesinger\n• 1x Gantelet énergétique\n• 1x Psychic Tempest\n\nImperial Navy Breachers (90 pts)\n• Attached as: Bodyguard\n• 1x Navis Sergeant-at-Arms\n    • 1x Arme de corps à corps\n    • 1x Navis shotgun\n• 9x Navis Armsman\n    • 9x Arme de corps à corps\n    • 7x Navis shotgun\n    • 1x Fuseur\n    • 1x Charges de démolition\n    • 1x Navis heavy shotgun\n    • Endurant shield\n\nAttached Unit 6\n\nRogue Trader Entourage (95 pts)\n• Attached as: Leader (Character)\n• 1x Rogue Trader\n    • 1x Household pistol\n    • 1x Monomolecular cane-rapier\n    • Fleetmaster (+20 pts)\n• 1x Death Cult Assassin\n    • 1x Dartmask\n    • 1x Death Cult power blade\n• 1x Lectro-maester\n    • 1x Arme de corps à corps\n    • 1x Voltaic pistol\n• 1x Rejuvenant Adept\n    • 1x Arme de corps à corps\n    • 1x Pistolet laser\n    • Healing Serum\n\nImperial Navy Breachers (90 pts)\n• Attached as: Bodyguard\n• 1x Navis Sergeant-at-Arms\n    • 1x Arme de corps à corps\n    • 1x Navis shotgun\n• 9x Navis Armsman\n    • 9x Arme de corps à corps\n    • 7x Navis shotgun\n    • 1x Fuseur\n    • 1x Charges de démolition\n    • 1x Navis heavy shotgun\n    • Endurant shield\n\nCHARACTER\n\nInquisitor Kroyle (100 pts)\n• 1x Jindarii tox-cycler\n• 1x Stubcarbine\n• 1x Butcher blade\n• 1x Garralisk's claws and teeth\n\nRogue Trader Entourage (85 pts)\n• 1x Rogue Trader\n    • 1x Household pistol\n    • 1x Monomolecular cane-rapier\n    • Combat Landers (+10 pts)\n• 1x Death Cult Assassin\n    • 1x Dartmask\n    • 1x Death Cult power blade\n• 1x Lectro-maester\n    • 1x Arme de corps à corps\n    • 1x Voltaic pistol\n• 1x Rejuvenant Adept\n    • 1x Arme de corps à corps\n    • 1x Pistolet laser\n    • Healing Serum\n\nRogue Trader Entourage (90 pts)\n• 1x Rogue Trader\n    • 1x Household pistol\n    • 1x Monomolecular cane-rapier\n    • Clandestine Operation (+15 pts)\n• 1x Death Cult Assassin\n    • 1x Dartmask\n    • 1x Death Cult power blade\n• 1x Lectro-maester\n    • 1x Arme de corps à corps\n    • 1x Voltaic pistol\n• 1x Rejuvenant Adept\n    • 1x Arme de corps à corps\n    • 1x Pistolet laser\n    • Healing Serum\n\nOTHER DATASHEETS\n\nInquisitorial Chimera (60 pts)\n• 1x Bordée de fusils laser\n• 1x Chenilles blindées\n• 1x Missile traqueur\n• 1x Mitrailleuse\n• 1x Lance-flammes lourd\n• 1x Lance-flammes lourd\n\nInquisitorial Chimera (60 pts)\n• 1x Bordée de fusils laser\n• 1x Chenilles blindées\n• 1x Missile traqueur\n• 1x Mitrailleuse\n• 1x Lance-flammes lourd\n• 1x Lance-flammes lourd\n\nKnight Errant (355 pts)\n• 1x Thermal cannon\n• 1x Stormspear rocket pod\n• 1x Fuseur\n• 1x Tronçonneuse Reaper\n\nSubductor Squad (85 pts)\n• 1x Proctor Subductor\n    • 1x Arbites shotpistol\n    • 1x Shock maul\n    • Nuncio-aquila\n• 9x Subductor\n    • 9x Arbites shotpistol\n    • 9x Shock maul\n• 1x Cyber-mastiff\n    • 1x Morsure Mécanique\n\nSubductor Squad (85 pts)\n• 1x Proctor Subductor\n    • 1x Arbites shotpistol\n    • 1x Shock maul\n    • Nuncio-aquila\n• 9x Subductor\n    • 9x Arbites shotpistol\n    • 9x Shock maul\n• 1x Cyber-mastiff\n    • 1x Morsure Mécanique\n\nVoidsmen-at-Arms (50 pts)\n• 1x Voidmaster\n    • 1x Arme de corps à corps\n    • 1x Artificer shotgun\n    • 1x Pistolet laser\n• 4x Voidsman\n    • 4x Arme de corps à corps\n    • 3x Fusil laser\n    • 4x Pistolet laser\n    • 1x Voidsman rotor cannon\n• 1x Canid\n    • 1x Vicious bite\n\nVoidsmen-at-Arms (50 pts)\n• 1x Voidmaster\n    • 1x Arme de corps à corps\n    • 1x Artificer shotgun\n    • 1x Pistolet laser\n• 4x Voidsman\n    • 4x Arme de corps à corps\n    • 3x Fusil laser\n    • 4x Pistolet laser\n    • 1x Voidsman rotor cannon\n• 1x Canid\n    • 1x Vicious bite\n\nCreated with newrecruit.eu v35.79",
+      "title": "Zimboula - Imperium - Inquisition"
+    }
+  ]
+}

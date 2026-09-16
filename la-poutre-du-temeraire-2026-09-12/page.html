@@ -1,0 +1,1499 @@
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>La Poutre du Téméraire 2026 | MiniHeadQuarters</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    
+
+<link rel="stylesheet" type="text/css" href="/static/css/dist/styles.27082cd9d5b9.css">
+
+
+    
+    
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/base/img/apple-touch-icon.0b123100bf2d.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/base/img/favicon-32x32.fb83e8eb14ad.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/base/img/favicon-16x16.fc7db748d8a0.png">
+    <link rel="icon" href="/static/base/img/favicon.ac629b028f5d.ico">
+
+    <script src="https://kit.fontawesome.com/9ac22e37d6.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased">
+    <header class="sticky top-0 z-50 border-b border-white/10 bg-slate-950/90 backdrop-blur">
+        <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 items-center justify-between gap-4">
+                <a href="/" class="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <img src="/static/base/img/logo.3e47dcf11ae4.png" alt="" class="h-8 w-8">
+                    <div class="leading-tight">
+                        <div class="text-sm font-semibold tracking-wide text-white">MiniHeadQuarters</div>
+                        <div class="text-xs text-slate-400">Competitive wargaming</div>
+                    </div>
+                </a>
+
+                <div class="hidden items-center gap-2 lg:flex">
+                    <details class="relative group" id="tournaments-menu-desktop">
+                        <summary class="list-none cursor-pointer rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/60">
+                            <span class="inline-flex items-center gap-2">
+                                Tournaments
+                                <i class="fa-solid fa-chevron-down text-xs text-slate-500 transition group-open:rotate-180"></i>
+                            </span>
+                        </summary>
+
+                        <div class="absolute left-0 z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl shadow-black/40">
+                            <div class="border-b border-white/10 px-4 py-3">
+                                <p class="text-xs uppercase tracking-wider text-slate-400">Tournaments</p>
+                                <p class="mt-1 text-sm text-slate-300">Tournament type</p>
+                            </div>
+
+                            <div class="p-2">
+                                <a href="/tournaments/individual/"
+                                   class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Individual</a>
+                                <a href="/tournaments/side-by-side/"
+                                   class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">2v2</a>
+                                <a href="/tournaments/team/"
+                                   class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Team</a>
+
+                                <div class="my-2 border-t border-white/10"></div>
+
+                                <a href="/tournaments/create/select-type"
+                                   class="flex rounded-xl bg-orange-500/10 px-3 py-2 text-sm font-medium text-orange-300 transition hover:bg-orange-500/20 hover:text-orange-200">
+                                    <i class="fa-solid fa-plus mr-2 mt-0.5"></i>
+                                    Create a tournament
+                                </a>
+                            </div>
+                        </div>
+                    </details>
+                    <a href="/elo/seasons/solo"
+                       class="rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                        Rankings
+                    </a>
+                    <details class="relative group" id="meta-menu-desktop">
+                        <summary class="list-none cursor-pointer rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/60">
+                            <span class="inline-flex items-center gap-2">
+                                Meta
+                                <i class="fa-solid fa-chevron-down text-xs text-slate-500 transition group-open:rotate-180"></i>
+                            </span>
+                        </summary>
+
+                        <div class="absolute left-0 z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl shadow-black/40">
+                            <div class="border-b border-white/10 px-4 py-3">
+                                <p class="text-xs uppercase tracking-wider text-slate-400">Meta</p>
+                                <p class="mt-1 text-sm text-slate-300">Choose a game system</p>
+                            </div>
+
+                            <div class="p-2">
+                                
+                                    <a href="/meta/solo/warhammer-40000/stats/"
+                                       class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Warhammer 40000</a>
+                                
+                            </div>
+                        </div>
+                    </details>
+
+                    
+                        <a href="/users/login"
+                           class="rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                            Log in
+                        </a>
+                        <a href="/users/signup"
+                           class="rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-300">
+                            Sign up
+                        </a>
+                    
+                </div>
+
+                <button
+                    type="button"
+                    id="mobile-menu-button"
+                    class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-200 transition hover:border-orange-500/40 hover:bg-orange-500/10 lg:hidden"
+                    aria-expanded="false"
+                    aria-controls="mobile-menu-panel"
+                    aria-label="Ouvrir">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+        </nav>
+
+        <div id="mobile-menu-overlay" class="fixed inset-0 z-[55] hidden bg-black/60 backdrop-blur-sm lg:hidden"></div>
+
+        <aside
+            id="mobile-menu-panel"
+            class="fixed inset-x-0 top-0 z-[60] hidden max-h-[100dvh] overflow-y-auto border-b border-white/10 bg-slate-900 shadow-2xl shadow-black/50 lg:hidden">
+            <div class="sticky top-0 border-b border-white/10 bg-slate-900/95 backdrop-blur">
+                <div class="flex items-center justify-between px-4 py-4">
+                    <div class="flex items-center gap-3">
+                        <img src="/static/base/img/logo.3e47dcf11ae4.png" alt="" class="h-10 w-10">
+                        <div>
+                            <div class="text-sm font-semibold text-white">MiniHeadQuarters</div>
+                            <div class="text-xs text-slate-400">MiniHeadQuarters</div>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        id="mobile-menu-close"
+                        class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-200 transition hover:bg-white/10"
+                        aria-label="Fermer">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-5 px-4 py-4">
+                <section>
+                    <p class="mb-2 text-xs uppercase tracking-wider text-slate-400">Navigation</p>
+                    <div class="space-y-2">
+                        <a href="/"
+                           class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/5 hover:text-white">
+                            Home
+                        </a>
+                        <details class="rounded-2xl border border-white/10 bg-white/5">
+                            <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-2xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/60">
+                                <span>Tournaments</span>
+                                <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
+                            </summary>
+                            <div class="space-y-1 px-2 pb-2">
+                                <a href="/tournaments/individual/"
+                                   class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Individual</a>
+                                <a href="/tournaments/side-by-side/"
+                                   class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">2v2</a>
+                                <a href="/tournaments/team/"
+                                   class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Team</a>
+                                <div class="mx-2 my-2 border-t border-white/10"></div>
+                                <a href="/tournaments/create/select-type"
+                                   class="flex min-h-11 items-center rounded-xl bg-orange-500/10 px-3 py-3 text-sm font-medium text-orange-300 transition hover:bg-orange-500/20 hover:text-orange-200">
+                                    <i class="fa-solid fa-plus mr-2"></i>
+                                    Create a tournament
+                                </a>
+                            </div>
+                        </details>
+                        <a href="/elo/seasons/solo"
+                           class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/5 hover:text-white">
+                            Rankings
+                        </a>
+                        <details class="rounded-2xl border border-white/10 bg-white/5">
+                            <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-2xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/60">
+                                <span>Meta</span>
+                                <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
+                            </summary>
+                            <div class="space-y-1 px-2 pb-2">
+                                
+                                    <a href="/meta/solo/warhammer-40000/stats/"
+                                       class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Warhammer 40000</a>
+                                
+                            </div>
+                        </details>
+                        
+                    </div>
+                </section>
+
+                <div class="border-t border-white/10"></div>
+
+                
+                    <section>
+                        <p class="mb-2 text-xs uppercase tracking-wider text-slate-400">My account</p>
+                        <div class="space-y-2">
+                            <a href="/users/signup"
+                               class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Sign up</a>
+                            <a href="/users/login"
+                               class="flex min-h-11 items-center justify-center rounded-xl bg-orange-500 px-3 py-3 text-sm font-semibold text-slate-950 transition hover:bg-orange-400">
+                                Log in
+                            </a>
+                        </div>
+                    </section>
+                
+            </div>
+        </aside>
+    </header>
+
+    
+    <div class="border-b border-white/10 bg-slate-900/60">
+        <div class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+            <nav aria-label="breadcrumb">
+                <ol class="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+                    <li>
+                        <a href="/" class="transition hover:text-white">
+                            Home
+                        </a>
+                    </li>
+
+                    <li class="text-slate-600">/</li>
+
+                    <li>
+                        <a href="/tournaments/individual/" class="transition hover:text-white">
+                            Tournaments
+                        </a>
+                    </li>
+
+                    <li class="text-slate-600">/</li>
+
+                    <li>
+                        <a href="/tournaments/individual/details/la-poutre-du-temeraire-2026-09-12" class="transition hover:text-white">
+                            La Poutre du Téméraire 2026
+                        </a>
+                    </li>
+
+                    <li class="text-slate-600">/</li>
+
+                    <li class="font-medium text-slate-200">
+                        Army lists
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+
+    <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        
+    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <section class="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-lg shadow-black/10 sm:p-8">
+            <div class="flex flex-col gap-2">
+                <p class="text-sm font-semibold uppercase tracking-[0.24em] text-orange-400">
+                    La Poutre du Téméraire 2026
+                </p>
+                <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                    Army lists
+                </h1>
+            </div>
+
+            <div class="mt-8 space-y-4">
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="true"
+                            aria-controls="solo-panel-0"
+                            id="solo-button-0"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Ahuizolte - Aeldari - Drukhari
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 " viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-0"
+                            class=" border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-0"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        +++++++++++++++++++++++++++++++++++++++++++++++<br>+ FACTION KEYWORD: Xenos - Drukhari<br>+ DETACHMENT: Exhibition of Slaughter, Kabalite Cartel (Exacting Cruelty)<br>+ FORCE DISPOSITION: Reconnaissance<br>+ TOTAL ARMY POINTS: 2000pts<br>+<br>+ WARLORD: Char4: Archon<br>+ ENHANCEMENT: Towering Arrogance (on Char4: Archon)<br>&amp; Periapt of Torments (on Char5: Succubus)<br>+ NUMBER OF UNITS: 22<br>+ SECONDARY: - Bring It Down: (6x2) - Assassination: 5 Characters<br>+++++++++++++++++++++++++++++++++++++++++++++++<br><br>Char3: 1x Archon (80 pts): Shadowfield, Soul Trap, Huskblade<br>Leading Hand of the Archon<br>Char4: 1x Archon (100 pts): Warlord, Shadowfield, Soul Trap, Huskblade<br>Enhancement: Towering Arrogance (+20 pts)<br>Leading Kabalite Warriors<br>Char1: 1x Drazhar (85 pts): The Executioner&#x27;s demiklaives<br>Leading Incubi[1]<br>Char2: 1x Lady Malys (100 pts): Melee Weapons<br>Leading Incubi[2]<br>Char5: 1x Succubus (70 pts): Archite glaive and agoniser<br>Enhancement: Periapt of Torments (+20 pts)<br>Leading Wyches<br><br>10x Kabalite Warriors (110 pts)<br>• 1x Sybarite: Phantasm Grenade Launcher, Power Weapon, Blast Pistol<br>• 5x Kabalite Warrior: 5 with Close Combat Weapon, Splinter rifle<br>• 1x Kabalite Warrior with Blaster: Blaster, Close Combat Weapon<br>• 1x Kabalite Warrior with Dark Lance: Close Combat Weapon, Dark lance<br>• 1x Kabalite Warrior with Shredder: Close Combat Weapon, Shredder<br>• 1x Kabalite Warrior with Splinter Cannon: Close Combat Weapon, Splinter cannon<br>  Attached to Archon[2]<br>10x Wyches (90 pts)<br>• 9x Wych<br>    6 with Hekatarii Blade, Splinter Pistol<br>    3 with Gladiatorial weapons<br>• 1x Hekatrix: Hekatarii Blade, Blast Pistol<br>  Attached to Succubus<br><br>10x Hand of the Archon (115 pts)<br>• 1x Kabalite Archsybarite: Kabalite icon, Power Weapon, Blast Pistol<br>• 4x Kabalite Agent: 4 with Close Combat Weapon, Splinter rifle<br>• 1x Kabalite Agent with heavy weapon: Close Combat Weapon, Dark lance<br>• 1x Kabalite Agent with pain sculptors: Close Combat Weapon, Pain sculptors<br>• 1x Kabalite Agent with razorflail: Close Combat Weapon, Razorflail, Splinter Pistol<br>• 1x Kabalite Agent with special weapon: Close Combat Weapon, Blaster<br>• 1x Kabalite Agent with stimm-needler: Stimm-needler, Close Combat Weapon, Splinter rifle<br>  Attached to Archon[1]<br>5x Hellions (90 pts)<br>• 1x Heliarch: Phantasm Grenade Launcher, Splinter Pods, Hellglaive<br>• 4x Hellion: 4 with Hellglaive, Splinter Pods<br>5x Incubi (90 pts)<br>• 1x Klaivex: Demiklaives<br>• 4x Incubi: 4 with Klaive<br>  Attached to Drazhar<br>5x Incubi (90 pts)<br>• 1x Klaivex: Demiklaives<br>• 4x Incubi: 4 with Klaive<br>  Attached to Lady Malys<br>5x Mandrakes (80 pts)<br>• 1x Nightfiend: Baleblast, Glimmersteel Blade<br>• 4x Mandrake: 4 with Baleblast, Glimmersteel Blade<br>1x Raider (75 pts): Bladevanes and chainsnares, Dark Lance<br>1x Ravager (110 pts): Bladevanes, 3x Disintegrator Cannon<br>1x Ravager (110 pts): Bladevanes, 3x Disintegrator Cannon<br>3x Reavers (75 pts)<br>• 1x Arena Champion: Cluster Caltrops, Bladevanes, Splinter Pistol, Heat Lance<br>• 2x Reaver: 2 with Bladevanes, Splinter Pistol, Splinter Rifle<br>3x Reavers (75 pts)<br>• 1x Arena Champion: Cluster Caltrops, Bladevanes, Splinter Pistol, Heat Lance<br>• 2x Reaver: 2 with Bladevanes, Splinter Pistol, Splinter Rifle<br>5x Scourges with Heavy Weapons (130 pts)<br>• 1x Solarite: Close combat weapon, Shardcarbine<br>• 4x Scourge with Heavy Weapon: 4 with Close combat weapon, Dark Lance<br>5x Scourges with Heavy Weapons (130 pts)<br>• 1x Solarite: Close combat weapon, Shardcarbine<br>• 4x Scourge with Heavy Weapon: 4 with Close combat weapon, Dark Lance<br>1x Venom (65 pts): Bladevanes, Splinter Cannon, Splinter Cannon<br>1x Venom (65 pts): Bladevanes, Splinter Cannon, Splinter Cannon<br>1x Venom (65 pts): Bladevanes, Splinter Cannon, Splinter Cannon<br><br>Created with newrecruit.eu v35.79
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-1"
+                            id="solo-button-1"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Azeekel - Chaos - Death Guard
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-1"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-1"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        +++++++++++++++++++++++++++++++++++++++++++++++<br>+ PLAYER NAME: Azeekel<br>+ TEAM NAME: Les Loups du Téméraire<br>+ FACTION KEYWORD: Chaos - Death Guard<br>+ DETACHMENT: Death Lord&#x27;s Chosen, Paragons of Putrescence (Deadly Vectors)<br>+ FORCE DISPOSITION: Priority Assets<br>+ TOTAL ARMY POINTS: 2000pts<br>+<br>+ WARLORD: Char1: Mortarion<br>+ ENHANCEMENT: Face of Death (on Char3: Lord of Contagion)<br>&amp; Vile Vigour (on Char4: Lord of Virulence)<br>+ NUMBER OF UNITS: 14<br>+ SECONDARY: - Bring It Down: (4x2) + (1x4) - Assassination: 4 Characters<br>+++++++++++++++++++++++++++++++++++++++++++++++<br><br>Char3: 1x Lord of Contagion (130 pts): Manreaper<br>Enhancement: Face of Death (+10 pts)<br>Leading Deathshroud Terminators[2]<br>Char4: 1x Lord of Virulence (115 pts): Power fist, Twin plague spewer<br>Enhancement: Vile Vigour (+15 pts)<br>Leading Blightlord Terminators<br>Char1: 1x Mortarion (375 pts): Warlord, Lantern, Rotwind, Silence<br>Char2: 1x Typhus (100 pts): Lakrimae<br>Leading Deathshroud Terminators[1]<br><br>10x Blightlord Terminators (360 pts)<br>• 9x Blightlord Terminator<br>    2 with Blight launcher, Bubotic blade<br>    3 with Bubotic blade, Combi-bolter<br>    2 with Bubotic blade, Plague spewer<br>    2 with Bubotic blade, Reaper autocannon<br>• 1x Blightlord Champion: Bubotic blade, Combi-bolter<br>  Attached to Lord of Virulence<br>2x Chaos Spawn (80 pts): 2 with Hideous Mutations<br>3x Deathshroud Terminators (160 pts)<br>• 1x Deathshroud Terminator Champion: Icon of Despair, Manreaper, 2x Plaguespurt gauntlet<br>• 2x Deathshroud Terminator: 2 with Manreaper, Plaguespurt gauntlet<br>  Attached to Typhus<br>3x Deathshroud Terminators (160 pts)<br>• 1x Deathshroud Terminator Champion: Icon of Despair, Manreaper, 2x Plaguespurt gauntlet<br>• 2x Deathshroud Terminator: 2 with Manreaper, Plaguespurt gauntlet<br>  Attached to Lord of Contagion<br>1x Foetid Bloat-drone (100 pts): Plague probe, 2x Plaguespitter<br>1x Foetid Bloat-drone (100 pts): Plague probe, 2x Plaguespitter<br>1x Myphitic Blight-hauler (95 pts): Bile spurt, Gnashing maw, Missile launcher, Multi-melta<br>1x Myphitic Blight-hauler (95 pts): Bile spurt, Gnashing maw, Missile launcher, Multi-melta<br>10x Poxwalkers (65 pts): 10 with Improvised weapons<br>10x Poxwalkers (65 pts): 10 with Improvised weapons<br><br>Created with newrecruit.eu v35.79
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-2"
+                            id="solo-button-2"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Berec - Leagues of Votann
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-2"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-2"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Atrebande needgard priority asset guerriers (2 000 Points)<br><br>Ligues de Votann<br>Convention d&#x27;Âtrebandes et Needgaârd Oathband (3 Points de Détachement)<br>Atouts Prioritaires<br>Force de Frappe (2 000 Points)<br><br>UNITÉS ATTACHÉES<br><br>Unité Attachée 1<br><br>Ûthar the Destined (90 Points)<br>  • Attachée en tant que : Meneur (Personnage)<br>  • Seigneur de Guerre<br>  • 1x Blade of the Ancestors<br>  • 1x Rampart Crest<br>  • 1x Volkanite disintegrator<br><br>Hearthkyn Warriors (90 Points)<br>  • Attachée en tant que : Gardes du Corps (Ligne)<br>  • 1x Theyn<br>     ◦ 1x Autoch-pattern bolt pistol<br>     ◦ 1x Close combat weapon<br>     ◦ 1x Theyn’s melee weapon<br>     ◦ 1x Theyn’s pistol<br>     ◦ 1x Weavefield crest<br>  • 9x Hearthkyn Warrior<br>     ◦ 9x Autoch-pattern bolt pistol<br>     ◦ 5x Autoch-pattern bolter<br>     ◦ 9x Close combat weapon<br>     ◦ 1x L7 missile launcher<br>     ◦ 1x Magna-rail rifle<br>     ◦ 2x Plasma knife<br><br>Unité Attachée 2<br><br>Kâhl (65 Points)<br>  • Attachée en tant que : Meneur (Personnage)<br>  • 1x Mass gauntlet<br>  • 1x Teleport Crest<br>  • 1x Volkanite disintegrator<br><br>Einhyr Hearthguard (130 Points)<br>  • Attachée en tant que : Gardes du Corps<br>  • 1x Hesyr<br>     ◦ 1x Concussion gauntlet<br>     ◦ 1x EtaCarn plasma gun<br>     ◦ 1x Exoarmour grenade launcher<br>     ◦ 1x Weavefield crest<br>  • 4x Einhyr Hearthguard<br>     ◦ 4x Concussion gauntlet<br>     ◦ 4x EtaCarn plasma gun<br>     ◦ 4x Exoarmour grenade launcher<br><br>Unité Attachée 3<br><br>Einhyr Champion (65 Points)<br>  • Attachée en tant que : Meneur (Personnage)<br>  • 1x Autoch-pattern combi-bolter<br>  • 1x Mass hammer<br>  • 1x Teleport Crest<br><br>Einhyr Hearthguard (130 Points)<br>  • Attachée en tant que : Gardes du Corps<br>  • 1x Hesyr<br>     ◦ 1x EtaCarn plasma gun<br>     ◦ 1x Exoarmour grenade launcher<br>     ◦ 1x Graviton hammer<br>     ◦ 1x Weavefield crest<br>  • 4x Einhyr Hearthguard<br>     ◦ 4x Concussion gauntlet<br>     ◦ 4x EtaCarn plasma gun<br>     ◦ 4x Exoarmour grenade launcher<br><br>TRANSPORTS ASSIGNÉS<br><br>Kapricus Carrier (70 Points)<br>  • 1x Armoured hull<br>  • 1x Magna-coil autocannon<br>  • 1x Smoke Launcher<br>  • 1x Twin magna‑coil autocannon<br><br>Sagitaur (85 Points)<br>  • 1x Armoured wheels<br>  • 1x L7 missile launcher<br>  • 1x Sagitaur missile launcher<br>  • 1x Twin bolt cannon<br><br>AUTRES FICHES TECHNIQUES<br><br>Brôkhyr Thunderkyn (170 Points)<br>  • 6x Brôkhyr Thunderkyn<br>     ◦ 6x Close combat weapon<br>     ◦ 6x SP conversion beamer<br><br>Brôkhyr Thunderkyn (170 Points)<br>  • 6x Brôkhyr Thunderkyn<br>     ◦ 6x Close combat weapon<br>     ◦ 6x SP conversion beamer<br><br>Hekaton Land Fortress (250 Points)<br>  • 1x Armoured wheels<br>  • 1x Heavy magna-rail cannon<br>  • 1x MATR autocannon<br>  • 1x Panspectral Scanner<br>  • 2x Twin bolt cannon<br><br>Hekaton Land Fortress (265 Points)<br>  • 1x Armoured wheels<br>  • 1x Heavy magna-rail cannon<br>  • 1x MATR autocannon<br>  • 1x Panspectral Scanner<br>  • 2x Twin bolt cannon<br><br>Hernkyn Pioneers (80 Points)<br>  • 3x Hernkyn Pioneer<br>     ◦ 3x Bolt revolver<br>     ◦ 3x Bolt shotgun<br>     ◦ 1x HYLas rotary cannon<br>     ◦ 3x Magna-coil autocannon<br>     ◦ 1x Panspectral Scanner<br>     ◦ 3x Plasma knife<br>     ◦ 1x Rollbar Searchlight<br><br>Hernkyn Pioneers (80 Points)<br>  • 3x Hernkyn Pioneer<br>     ◦ 3x Bolt revolver<br>     ◦ 3x Bolt shotgun<br>     ◦ 1x HYLas rotary cannon<br>     ◦ 3x Magna-coil autocannon<br>     ◦ 1x Panspectral Scanner<br>     ◦ 3x Plasma knife<br>     ◦ 1x Rollbar Searchlight<br><br>Hernkyn Yaegirs (90 Points)<br>  • 1x Yaegir Theyn<br>     ◦ 1x Bolt revolver<br>     ◦ 1x Close combat weapon<br>     ◦ 1x Plasma knife<br>  • 9x Hernkyn Yaegir<br>     ◦ 1x APM launcher<br>     ◦ 7x Bolt revolver<br>     ◦ 9x Close combat weapon<br>     ◦ 1x Magna-coil rifle<br>     ◦ 7x Plasma knife<br><br>Ironkin Steeljacks with Heavy Volkanite Disintegrators (170 Points)<br>  • 1x Steeljack Theyn<br>     ◦ 1x Heavy volkanite disintegrator<br>     ◦ 1x Plasma knife<br>     ◦ 1x Preymark Crest<br>  • 5x Ironkin Steeljack<br>     ◦ 5x Heavy volkanite disintegrator<br>     ◦ 5x Plasma knife<br><br>Exporté avec la Version de l&#x27;Appli : v2.6.0 (3), Version de Données : v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-3"
+                            id="solo-button-3"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Blackout7899 - Chaos - Thousand Sons
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-3"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-3"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Hell&#x27;s birds (2000 points)<br><br>Thousand Sons<br>Changehost of Deceit and Ritual of Regeneration (3 Detachment Points)<br>Reconnaissance<br>Strike Force (2000 points)<br><br><br>CHARACTERS<br><br>Daemon Prince of Tzeentch (185 points)<br>  • Warlord<br>  • 1x Dark Blessing<br>    1x Hellforged weapons<br>    1x Infernal cannon<br>  • Enhancement: Duplicitous Malediction<br><br>Daemon Prince of Tzeentch with Wings (170 points)<br>  • 1x Dark Blessing<br>    1x Hellforged weapons<br>    1x Infernal cannon<br><br>Daemon Prince of Tzeentch with Wings (180 points)<br>  • 1x Dark Blessing<br>    1x Hellforged weapons<br>    1x Infernal cannon<br><br>Lord of Change (330 points)<br>  • 1x Bolt of Change<br>    1x Rod of sorcery<br>    1x Staff of Tzeentch<br>  • Enhancement: Nethershriek Mind-Eater<br><br>Lord of Change (320 points)<br>  • 1x Bolt of Change<br>    1x Rod of sorcery<br>    1x Staff of Tzeentch<br><br>Tzaangor Shaman (65 points)<br>  • 1x Baleful Devolution<br>    1x Force stave<br><br><br>OTHER DATASHEETS<br><br>Chaos Spawn (65 points)<br>  • 2x Chaos Spawn<br>    • 2x Hideous mutations<br><br>Defiler (330 points)<br>  • 1x Ectoplasma destructor<br>    2x Excruciator cannon<br>    2x Heavy reaper autocannon<br>    1x Shearing claws<br><br>Mutalith Vortex Beast (170 points)<br>  • 1x Betentacled maw<br>    1x Mutalith claws<br>    1x Warp vortex<br><br>Tzaangor Enlightened with Fatecaster Greatbows (55 points)<br>  • 1x Aviarch<br>    • 1x Close combat weapon<br>      1x Fatecaster greatbow<br>  • 2x Enlightened<br>    • 2x Close combat weapon<br>      2x Fatecaster greatbow<br><br>Tzaangor Enlightened with Fatecaster Greatbows (55 points)<br>  • 1x Aviarch<br>    • 1x Close combat weapon<br>      1x Fatecaster greatbow<br>  • 2x Enlightened<br>    • 2x Close combat weapon<br>      2x Fatecaster greatbow<br><br>Tzaangors (75 points)<br>  • 1x Twistbray<br>    • 1x Tzaangor blades<br>  • 9x Tzaangor<br>    • 1x Brayhorn<br>      1x Herd banner<br>      9x Tzaangor blades<br><br>Exported with App Version: v2.5.0 (140), Data Version: v931
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-4"
+                            id="solo-button-4"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Coco5429 - Necrons
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-4"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-4"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        +++++++++++++++++++++++++++++++++++++++++++++++<br>+ FACTION KEYWORD: Xenos - Necrons<br>+ DETACHMENT: Cursed Legion, Skyshroud Spearhead (Cold Fervour)<br>+ FORCE DISPOSITION: Purge the Foe<br>+ TOTAL ARMY POINTS: 2000pts<br>+<br>+ WARLORD: Char3: Nekrosor Ammentar<br>+ ENHANCEMENT: Destroyer Ankh (on Char6: Overlord with Translocation Shroud)<br>&amp; Deepening Madness (on Moun8: Lokhust Destroyers)<br>+ NUMBER OF UNITS: 16<br>+ SECONDARY: - Bring It Down: (1x2) + (1x4) - Assassination: 8 Characters<br>+++++++++++++++++++++++++++++++++++++++++++++++<br><br>Char1: 1x C&#x27;tan Shard of the Void Dragon (345 pts): Canoptek tail blades, Spear of the Void Dragon, Voltaic storm<br>Char2: 1x Imotekh the Stormlord (100 pts): Gauntlet of Fire, Staff of the Destroyer<br>Char4: 1x Lokhust Lord (80 pts): Resurrection orb, Lord&#x27;s blade<br>Leading Lokhust Destroyers[1]<br>Char5: 1x Lokhust Lord (80 pts): Resurrection orb, Lord&#x27;s blade<br>Leading Lokhust Destroyers[2]<br>Char3: 1x Nekrosor Ammentar (185 pts): Warlord, Nullstone field generator, Blade tail and whip coils, Enmitic disintegrators, Unmaker gauntlet<br>Char6: 1x Overlord with Translocation Shroud (110 pts): Resurrection orb, Overlord&#x27;s blade<br>Enhancement: Destroyer Ankh (+20 pts)<br>Leading Lychguard<br>Char7: 1x Skorpekh Lord (95 pts): Enmitic annihilator, Flensing claw, Hyperphase harvester<br>Leading Skorpekh Destroyers[1]<br>Char8: 1x Skorpekh Lord (95 pts): Enmitic annihilator, Flensing claw, Hyperphase harvester<br>Leading Skorpekh Destroyers[2]<br><br>1x Canoptek Reanimator (75 pts): 2x Atomiser beam, Reanimator&#x27;s claws<br>5x Flayed Ones (55 pts): 5 with Flayer claws<br>6x Lokhust Destroyers (195 pts)<br>  Enhancement: Deepening Madness (+20 pts)<br>  6 with Close combat weapon, Gauss cannon<br>  Attached to Lokhust Lord[1]<br>6x Lokhust Destroyers (175 pts): 6 with Close combat weapon, Gauss cannon<br>  Attached to Lokhust Lord[2]<br>10x Lychguard (160 pts): 10 with Dispersion shield, Hyperphase sword<br>  Attached to Overlord with Translocation Shroud<br>3x Ophydian Destroyers (80 pts): Plasmacyte, 3 with Ophydian hyperphase weapons<br>3x Skorpekh Destroyers (85 pts): Plasmacyte, 3 with Skorpekh hyperphase weapons<br>  Attached to Skorpekh Lord[1]<br>3x Skorpekh Destroyers (85 pts): Plasmacyte, 3 with Skorpekh hyperphase weapons<br>  Attached to Skorpekh Lord[2]<br><br>Created with newrecruit.eu v35.70
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-5"
+                            id="solo-button-5"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                cocodex - Imperium - Astra Militarum
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-5"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-5"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        +++++++++++++++++++++++++++++++++++++++++++++++<br>Nom du joueur : Cocodex<br>Nom de l&#x27;équipe : VROUM VROUM<br>Factions utilisées : Astra Militarum <br>Points d&#x27;armée : 2000<br>Améliorations d&#x27;armée : AUCUNE<br>Disposition : Atouts prioritaires<br>+++++++++++++++++++++++++++++++++++++++++++++++<br>Détachements : <br>Astra Militarum - Compagnie de Briscards<br>+++++++++++++++++++++++++++++++++++++++++++++++<br><br>Personnages 1 : Commandant de Leman Russ [210pts] Canon laser, Obusier Leman Russ, Missile traqueur, Mitrailleuse, 2 Multi-fuseur, Chenilles blindées<br>Personnages 2 : Commandant de Leman Russ [210pts] Canon laser, Obusier Leman Russ, Missile traqueur, Mitrailleuse, 2 Multi-fuseur, Chenilles blindées<br><br>Véhicules 1 : Leman Russ Eradicator [145pts] Canon Nova Eradicator, 3 Bolter lourd, Missile traqueur, Mitrailleuse, Chenilles blindées<br>Véhicules 2 : Leman Russ Eradicator [145pts] Canon Nova Eradicator, 3 Bolter lourd, Missile traqueur, Mitrailleuse, Chenilles blindées<br>Véhicules 3 : Leman Russ Eradicator [145pts] Canon Nova Eradicator, 3 Bolter lourd, Missile traqueur, Mitrailleuse, Chenilles blindées<br>Véhicules 4 : Leman Russ Executioner [145pts] Canon à plasma Executioner, 3 Bolter lourd, Missile traqueur, Mitrailleuse, Chenilles blindées<br>Véhicules 5 : Leman Russ Executioner [145pts] Canon à plasma Executioner, 3 Bolter lourd, Missile traqueur, Mitrailleuse, Chenilles blindées<br>Véhicules 6 : Leman Russ Exterminator [160pts] Autocanon Exterminator, 3 Bolter lourd, Missile traqueur, Mitrailleuse, Chenilles blindées<br>Véhicules 7 : Leman Russ Exterminator [160pts] Autocanon Exterminator, 3 Bolter lourd, Missile traqueur, Mitrailleuse, Chenilles blindées<br>Véhicules 8 : Leman Russ Punisher [130pts] Canon gatling Punisher, 3 Lance-flammes lourd, Missile traqueur, Mitrailleuse, Chenilles blindées<br>Véhicules 9 : Leman Russ Punisher [130pts] Canon gatling Punisher, 3 Lance-flammes lourd, Missile traqueur, Mitrailleuse, Chenilles blindées<br>Véhicules 10 : Leman Russ Vanquisher [130pts] Obusier Vanquisher, 3 Bolter lourd, Missile traqueur, Mitrailleuse, Chenilles blindées<br>Véhicules 11 : Leman Russ Vanquisher [130pts] Obusier Vanquisher, 3 Bolter lourd, Missile traqueur, Mitrailleuse, Chenilles blindées
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-6"
+                            id="solo-button-6"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Colin - Aeldari
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-6"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-6"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        +++++++++++++++++++++++++++++++++++++++++++++++++++++<br>Nom du joueur : Colin<br>Faction utilisée : Aeldari<br>Points d&#x27;armée : 2000<br>Améliorations d&#x27;armée : Autarque - Manteau de Sagesse<br>Disposition : Atouts prioritaires<br>Seigneur de Guerre : Asurmen<br>+++++++++++++++++++++++++++++++++++++++++++++++++++++<br>Détachement : Aeldari - Ost Aspect<br>+++++++++++++++++++++++++++++++++++++++++++++++++++++<br><br>Héros épiques 1 : Eldrad Ulthran [120pts] Guerre Mentale, Pistolet shuriken, Bâton d&#x27;Ulthamar et Lame Sorcière<br><br>Infanterie 1 : 5 Araignées Spectrales [105pts] 4 File-mort, 4 Arme de corps à corps, Pion de Temple Aspect + Exarque Araignée Spectrale, Panoplie de Lames énergétiques<br>|	Héros épiques 2 : [Meneur] Lhykhis [135pts] Soeurs Filières, Chélicères, Tranche-Fil<br><br>Infanterie 2 : 5 Banshees Huantes [85pts] 4 Pistolet shuriken, 4 Lame de Banshee, Pion de Temple Aspect + Exarque Banshee Huante, Pistolet shuriken, Éxécuteur<br>|	Héros épiques 3 : [Meneur] Jain Zar [105pts] Mort Silencieuse, Lame de Destruction<br><br>Infanterie 3 : 10 Éperviers Voltigeurs [190pts] 9 Eclateur laser, 9 Arme de corps à corps, 2 Pion de Temple Aspect + Exarque Épervier Voltigeur, Serre d&#x27;épervier, Arme de corps à corps<br>|	Héros épiques 4 : [Meneur] Baharroth [125pts] Fureur de la Tempête, Lame scintillante<br><br>Infanterie 4 : 5 Vengeurs Lugubres [70pts] 4 Catapulte shuriken de Vengeur, 4 Arme de corps à corps, Pion de Temple Aspect + Exarque Vengeur Lugubre, 2 Catapulte shuriken de Vengeur, Arme de corps à corps<br>|	Héros épiques 5 : [Warlord] [Meneur] Asurmen [135pts] Jumelles sanglantes, Epée d&#x27;Asur<br><br>Infanterie 5 : 10 Éperviers Voltigeurs [190pts] 9 Eclateur laser, 9 Arme de corps à corps, 2 Pion de Temple Aspect + Exarque Épervier Voltigeur,  Eclateur laser d&#x27;Exarque, Arme de corps à corps<br>Infanterie 6 : 5 Rangers [60pts] 5 Long fusil de ranger, 5 Pistolet shuriken, 5 Arme de corps à corps<br>Infanterie 7 : 5 Rangers [60pts] 5 Long fusil de ranger, 5 Pistolet shuriken, 5 Arme de corps à corps<br>Infanterie 8 : 5 Faucheurs Noirs [95pts] 4 Lanceur Faucheur, 4 Arme de corps à corps, Pion de Temple Aspect + Exarque Faucheur Noir, Lance-missiles, Arme de corps à corps<br>Infanterie 9 : 5 Faucheurs Noirs [95pts] 4 Lanceur Faucheur, 4 Arme de corps à corps, Pion de Temple Aspect + Exarque Faucheur Noir, Lance-missiles, Arme de corps à corps<br><br>Montés 1 : 3 Lances Étincelantes [100pts] 2 Catapultes shuriken jumelées, 2 Lance laser + Exarque Lance Étincelante, Canon shuriken, Lance stellaire, Bouclier Miroitant<br>Montés 2 : 3 Lances Étincelantes [100pts] 2 Catapultes shuriken jumelées, 2 Lance laser + Exarque Lance Étincelante, Canon shuriken, Lance stellaire, Bouclier Miroitant<br>Montés 3 : 3 Lances Étincelantes [100pts] 2 Catapultes shuriken jumelées, 2 Lance laser + Exarque Lance Étincelante, Canon shuriken, Lance stellaire, Bouclier Miroitant<br><br>Véhicules 1 : Faucon [130pts] Laser à impulsions, Canon shuriken, Lance ardente, Coque de Moelle Spectrale
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-7"
+                            id="solo-button-7"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                DualJo - Chaos - Chaos Knights
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-7"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-7"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        list (2000 points)<br><br>Chevaliers du Chaos<br>Infernal Lance (3 Points de Détachement)<br>Atouts Prioritaires<br>Force de Frappe (2000 points)<br><br><br>PERSONNAGES<br><br>Chaos Cerastus Knight Lancer (385 points)<br>  • Seigneur de Guerre<br>  • 1x Cerastus shock lance<br><br>Knight Despoiler (395 points)<br>  • 1x Daemonbreath meltagun<br>    1x Despoiler battle cannon<br>    1x Despoiler gatling cannon<br>    1x Diabolus heavy stubber<br>    1x Heavy darkflamer<br>    1x Ruinspear rocket pod<br>    1x Titanic feet<br><br>Knight Despoiler (425 points)<br>  • 1x Daemonbreath meltagun<br>    1x Despoiler battle cannon<br>    1x Despoiler gatling cannon<br>    1x Diabolus heavy stubber<br>    1x Heavy darkflamer<br>    1x Ruinspear rocket pod<br>    1x Titanic feet<br><br><br>AUTRES FICHES TECHNIQUES<br><br>War Dog Brigand (135 points)<br>  • 1x Armoured feet<br>    1x Avenger chaincannon<br>    1x Daemonbreath spear<br>    1x Havoc multi-launcher<br><br>War Dog Brigand (135 points)<br>  • 1x Armoured feet<br>    1x Avenger chaincannon<br>    1x Daemonbreath spear<br>    1x Havoc multi-launcher<br><br>War Dog Karnivore (145 points)<br>  • 1x Havoc multi-launcher<br>    1x Reaper chaintalon<br>    1x Slaughterclaw<br><br>War Dog Karnivore (145 points)<br>  • 1x Havoc multi-launcher<br>    1x Reaper chaintalon<br>    1x Slaughterclaw<br><br>War Dog Karnivore (145 points)<br>  • 1x Havoc multi-launcher<br>    1x Reaper chaintalon<br>    1x Slaughterclaw<br><br><br>UNITÉS ALLIÉES<br><br>Nurglings (45 points)<br>  • 3x Nurgling Swarm<br>    • 3x Diseased claws and teeth<br><br>Nurglings (45 points)<br>  • 3x Nurgling Swarm<br>    • 3x Diseased claws and teeth<br><br>Exporté avec la Version de l&#x27;Appli : v2.6.0 (144), Version de Données : v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-8"
+                            id="solo-button-8"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Evergrey-44 - Imperium - Adeptus Astartes - Blood Angels
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-8"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-8"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        BA fort toujours (2000 points)<br><br>Space Marines<br>Blood Angels<br>Liberator Assault Group (3 Points de Détachement)<br>Prendre et Tenir<br>Force de Frappe (2000 points)<br><br>Unités Attachées<br>Unité 1 Attachée<br><br>Chaplain in Terminator Armour (75 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • Seigneur de Guerre<br>  • 1x Crozius arcanum<br>    1x Relic Shield<br><br>Terminator Assault Squad (180 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 1x Assault Terminator Sergeant<br>    • 1x Storm Shield<br>      1x Thunder hammer<br>  • 4x Assault Terminator<br>    • 4x Storm Shield<br>      4x Thunder hammer<br><br>Unité 2 Attachée<br><br>Blood Angels Captain (80 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Inferno pistol<br>    1x Power fist<br><br>Assault Intercessor Squad (150 points)<br>• Attachée en tant que : Gardes du Corps (Ligne)<br>  • 1x Assault Intercessor Sergeant<br>    • 1x Plasma pistol<br>      1x Power fist<br>  • 9x Assault Intercessor<br>    • 9x Astartes chainsword<br>      9x Heavy bolt pistol<br><br>Unité 3 Attachée<br><br>Chaplain (60 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Absolvor bolt pistol<br>    1x Crozius arcanum<br><br>Bladeguard Veteran Squad (170 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 1x Bladeguard Veteran Sergeant<br>    • 1x Master-crafted power weapon<br>      1x Neo-volkite pistol<br>  • 5x Bladeguard Veteran<br>    • 5x Heavy bolt pistol<br>      5x Master-crafted power weapon<br><br>Unité 4 Attachée<br><br>Chaplain with Jump Pack (80 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Absolvor bolt pistol<br>    1x Crozius arcanum<br><br>Death Company Marines with Jump Packs (230 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 10x Death Company Marine with Jump Packs<br>    • 5x Astartes chainsword<br>      2x Eviscerator<br>      6x Heavy bolt pistol<br>      1x Inferno pistol<br>      3x Plasma pistol<br>      3x Power fist<br><br>Unité 5 Attachée<br><br>Lemartes (100 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Absolvor bolt pistol<br>    1x The Blood Crozius<br><br>Death Company Marines with Jump Packs (230 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 10x Death Company Marine with Jump Packs<br>    • 5x Astartes chainsword<br>      2x Eviscerator<br>      6x Heavy bolt pistol<br>      2x Inferno pistol<br>      2x Plasma pistol<br>      3x Power fist<br><br><br>LIGNE<br><br>Intercessor Squad (80 points)<br>  • 1x Intercessor Sergeant<br>    • 1x Bolt pistol<br>      1x Bolt rifle<br>      1x Power fist<br>  • 4x Intercessor<br>    • 4x Bolt pistol<br>      4x Bolt rifle<br>      4x Close combat weapon<br><br><br>AUTRES FICHES TECHNIQUES<br><br>Assault Intercessors with Jump Packs (95 points)<br>  • 1x Assault Intercessor Sergeant with Jump Pack<br>    • 1x Hand flamer<br>      1x Power fist<br>  • 4x Assault Intercessors with Jump Packs<br>    • 4x Astartes chainsword<br>      3x Heavy bolt pistol<br>      1x Plasma pistol<br><br>Infiltrator Squad (110 points)<br>  • 1x Infiltrator Sergeant<br>    • 1x Bolt pistol<br>      1x Close combat weapon<br>      1x Marksman bolt carbine<br>  • 4x Infiltrator<br>    • 4x Bolt pistol<br>      4x Close combat weapon<br>      1x Helix Gauntlet<br>      4x Marksman bolt carbine<br><br>Land Raider (220 points)<br>  • 1x Armoured tracks<br>    2x Godhammer lascannon<br>    1x Hunter-killer missile<br>    1x Multi-melta<br>    1x Storm bolter<br>    1x Twin heavy bolter<br><br>Outrider Squad (75 points)<br>  • 1x Outrider Sergeant<br>    • 1x Astartes chainsword<br>      1x Heavy bolt pistol<br>      1x Twin bolt rifle<br>  • 2x Outrider<br>    • 2x Astartes chainsword<br>      2x Heavy bolt pistol<br>      2x Twin bolt rifle<br><br>Scout Squad (65 points)<br>  • 1x Scout Sergeant<br>    • 1x Astartes chainsword<br>      1x Bolt pistol<br>      1x Close combat weapon<br>  • 4x Scout<br>    • 4x Bolt pistol<br>      3x Boltgun<br>      4x Close combat weapon<br>      1x Heavy bolter<br><br>Exporté avec la Version de l&#x27;Appli : v2.6.0 (144), Version de Données : v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-9"
+                            id="solo-button-9"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Fylrias - Chaos - Emperor&#x27;s Children
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-9"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-9"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        +++++++++++++++++++++++++++++++++++++++++++++++<br>+ FACTION KEYWORD: Chaos - Emperor&#x27;s Children<br>+ DETACHMENT: Carnival of Excess, Frenzied Host (Daemonic Empowerment)<br>+ FORCE DISPOSITION: Disruption<br>+ TOTAL ARMY POINTS: 2000pts<br>+<br>+ WARLORD: Char1: Lord Exultant<br>+ ENHANCEMENT: Possessed Blade (on Char1: Lord Exultant)<br>&amp; Warp Walker (on Char2: Lord Exultant)<br>+ NUMBER OF UNITS: 16<br>+ SECONDARY: - Bring It Down: (1x2) + (2x4) - Assassination: 3 Characters<br>+++++++++++++++++++++++++++++++++++++++++++++++<br><br>Attached Units<br>Attached Unit 1<br><br>Lord Exultant (125 pts)<br>• Attached as: Leader (Character)<br>• 1x Bolt pistol<br>• 1x Close combat weapon<br>• 1x Phoenix power spear<br>• 1x Rapture lash<br>• Warlord<br>• Possessed Blade (+35 pts)<br><br>Infractors (85 pts)<br>• Attached as: Bodyguard<br>• 1x Obsessionist<br>    • 1x Rapture lash<br>    • 1x Plasma pistol<br>• 4x Infractor<br>    • 4x Bolt pistol<br>    • 4x Duelling sabre<br>    • Icon of Excess<br><br>Attached Unit 2<br><br>Lord Exultant (125 pts)<br>• Attached as: Leader (Character)<br>• 1x Bolt pistol<br>• 1x Close combat weapon<br>• 1x Phoenix power spear<br>• 1x Rapture lash<br>• Warp Walker (+35 pts)<br><br>Infractors (85 pts)<br>• Attached as: Bodyguard<br>• 1x Obsessionist<br>    • 1x Rapture lash<br>    • 1x Plasma pistol<br>• 4x Infractor<br>    • 4x Bolt pistol<br>    • 4x Duelling sabre<br>    • Icon of Excess<br><br>Attached Unit 3<br><br>Lord Exultant (100 pts)<br>• Attached as: Leader (Character)<br>• 1x Bolt pistol<br>• 1x Close combat weapon<br>• 1x Phoenix power spear<br>• 1x Plasma pistol<br><br>Infractors (85 pts)<br>• Attached as: Bodyguard<br>• 1x Obsessionist<br>    • 1x Rapture lash<br>    • 1x Plasma pistol<br>• 4x Infractor<br>    • 4x Bolt pistol<br>    • 4x Duelling sabre<br>    • Icon of Excess<br><br>BATTLELINE<br><br>Daemonettes (100 pts)<br>• 1x Alluress<br>    • 1x Slashing claws<br>• 9x Daemonette<br>    • 9x Slashing claws<br>    • Instrument of Chaos, Daemonic Icon<br><br>Daemonettes (100 pts)<br>• 1x Alluress<br>    • 1x Slashing claws<br>• 9x Daemonette<br>    • 9x Slashing claws<br>    • Instrument of Chaos, Daemonic Icon<br><br>Daemonettes (100 pts)<br>• 1x Alluress<br>    • 1x Slashing claws<br>• 9x Daemonette<br>    • 9x Slashing claws<br>    • Instrument of Chaos, Daemonic Icon<br><br>Tormentors (80 pts)<br>• 1x Obsessionist<br>    • 1x Plasma pistol<br>    • 1x Power sword<br>• 4x Tormentor<br>    • 2x Boltgun<br>    • 4x Close combat weapon<br>    • 1x Meltagun<br>    • 1x Plasma gun<br>    • Icon of Excess<br><br>Tormentors (80 pts)<br>• 1x Obsessionist<br>    • 1x Plasma pistol<br>    • 1x Power sword<br>• 4x Tormentor<br>    • 2x Boltgun<br>    • 4x Close combat weapon<br>    • 1x Meltagun<br>    • 1x Plasma gun<br>    • Icon of Excess<br><br>OTHER DATASHEETS<br><br>Chaos Rhino (70 pts)<br>• 1x Armoured tracks<br>• 1x Combi-bolter<br>• 1x Havoc launcher<br>• 1x Combi-weapon<br><br>Chaos Spawn (70 pts)<br>• 2x Chaos Spawn<br>    • 2x Hideous Mutations<br><br>Defiler (330 pts)<br>• 1x Ectoplasma destructor<br>• 2x Excruciator cannon<br>• 1x Heavy reaper autocannon<br>• 1x Heavy reaper autocannon<br>• 1x Shearing claws<br><br>Defiler (380 pts)<br>• 1x Ectoplasma destructor<br>• 2x Excruciator cannon<br>• 1x Heavy reaper autocannon<br>• 1x Heavy reaper autocannon<br>• 1x Shearing claws<br><br>Seekers (85 pts)<br>• 1x Heartseeker<br>    • 1x Lashing tongues<br>    • 1x Slashing claws<br>• 4x Seeker<br>    • 4x Lashing tongues<br>    • 4x Slashing claws<br>    • Instrument of Chaos, Daemonic Icon<br><br>Created with newrecruit.eu v35.80
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-10"
+                            id="solo-button-10"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                gimukay - Leagues of Votann
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-10"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-10"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        l3 (1995 points)<br><br>Ligues de Votann<br>Convention d&#x27;Âtrebandes et Needgaârd Oathband (3 Points de Détachement)<br>Atouts Prioritaires<br>Force de Frappe (2000 points)<br><br>Unités Attachées<br>Unité 1 Attachée<br><br>Brôkhyr Iron-master (70 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Brôkhyr Iron-master<br>    • 1x Graviton hammer<br>      1x Graviton rifle<br>  • 1x Ironkin Assistant<br>    • 1x Close combat weapon<br>      1x Las-beam cutter<br>  • 1x E-COG<br>    • 1x Plasma torch<br>  • 1x E-COG<br>    • 1x Manipulator arms<br>  • 1x E-COG<br>    • 1x Autoch-pattern bolt pistol<br>      1x Close combat weapon<br><br>Brôkhyr Thunderkyn (80 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 3x Brôkhyr Thunderkyn<br>    • 3x Close combat weapon<br>      3x Graviton blast cannon<br><br>Unité 2 Attachée<br><br>Kâhl (95 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Mass gauntlet<br>    1x Teleport Crest<br>    1x Volkanite disintegrator<br>  • Optimisation : Grand Kâhl<br><br>Einhyr Hearthguard (270 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 1x Hesyr<br>    • 1x EtaCarn plasma gun<br>      1x Exoarmour grenade launcher<br>      1x Graviton hammer<br>      1x Weavefield crest<br>  • 9x Einhyr Hearthguard<br>    • 9x Concussion gauntlet<br>      9x EtaCarn plasma gun<br>      9x Exoarmour grenade launcher<br><br>Unité 3 Attachée<br><br>Memnyr Strategist (45 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Autoch-pattern bolt pistol<br>    1x Close combat weapon<br><br>Ironkin Steeljacks with Heavy Volkanite Disintegrators (170 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 1x Steeljack Theyn<br>    • 1x Heavy volkanite disintegrator<br>      1x Plasma knife<br>      1x Preymark Crest<br>  • 5x Ironkin Steeljack<br>    • 5x Heavy volkanite disintegrator<br>      5x Plasma knife<br><br><br>PERSONNAGES<br><br>Berehk Stornbröw (85 points)<br>  • 1x Kromlôk’s Revenge<br>    1x Warforge Gauntlets<br><br>Buri Aegnirssen (85 points)<br>  • 1x Autoch‑pattern bolt pistol<br>    1x Bane<br><br>Ûthar the Destined (90 points)<br>  • Seigneur de Guerre<br>  • 1x Blade of the Ancestors<br>    1x Rampart Crest<br>    1x Volkanite disintegrator<br><br><br>TRANSPORT ASSIGNÉ<br><br>Kapricus Carrier (70 points)<br>  • 1x Armoured hull<br>    1x Magna-coil autocannon<br>    1x Smoke Launcher<br>    1x Twin magna‑coil autocannon<br><br>Sagitaur (85 points)<br>  • 1x Armoured wheels<br>    1x L7 missile launcher<br>    1x Sagitaur missile launcher<br>    1x Twin bolt cannon<br><br><br>AUTRES FICHES TECHNIQUES<br><br>Brôkhyr Thunderkyn (170 points)<br>  • 6x Brôkhyr Thunderkyn<br>    • 6x Close combat weapon<br>      6x SP conversion beamer<br><br>Hekaton Land Fortress (250 points)<br>  • 1x Armoured wheels<br>    1x Heavy magna-rail cannon<br>    1x MATR autocannon<br>    1x Panspectral Scanner<br>    2x Twin bolt cannon<br><br>Hekaton Land Fortress (265 points)<br>  • 1x Armoured wheels<br>    1x MATR autocannon<br>    1x Panspectral Scanner<br>    1x SP heavy conversion beamer<br>    2x Twin bolt cannon<br><br>Hernkyn Yaegirs (90 points)<br>  • 1x Yaegir Theyn<br>    • 1x Bolt shotgun<br>      1x Close combat weapon<br>  • 9x Hernkyn Yaegir<br>    • 1x APM launcher<br>      7x Bolt shotgun<br>      9x Close combat weapon<br>      1x Magna-coil rifle<br><br>Ironkin Steeljacks with Melee Weapons (75 points)<br>  • 1x Steeljack Theyn<br>    • 1x Autoch-pattern bolter<br>      1x Plasma sword<br>      1x Preymark Crest<br>  • 2x Ironkin Steeljack<br>    • 2x Autoch-pattern bolter<br>      2x Plasma sword<br><br>Exporté avec la Version de l&#x27;Appli : v2.6.0 (144), Version de Données : v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-11"
+                            id="solo-button-11"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Gnark54 - Imperium - Astra Militarum
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-11"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-11"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Astra Militarum : Le bus tragique <br><br>### Détachements : <br>* Astra Militarum - Assaut Motorisé<br>* Astra Militarum - Frappe de Tête de Pont<br>=&gt; Disposition : Reconnaissance<br><br>	<br><br>--- Héros épiques ---<br><br>Fantômes de Gaunt  &quot;Aussi absent sur la table que mon père dans ma vie &quot; : 95 pts<br>- Colonel Colm Corbec :  Carabine radiant laser de Corbec, Couteau Crêve-coeur<br>- Colonel-Commisaire Ibram Gaunt :  Pistolet bolter, Epée tronçonneuse de Gaunt<br>- Maitre sniper Hlaine Larkin :  Fusil laser long de Larkin, Couteau Crêve-coeur<br>- Major Elim Rawne :  Carabine laser de Rawne, Couteau Crêve-coeur<br>- Sergent scout Dan Mkoll :  Carabine laser, Couteau Crêve-coeur de Mkoll<br>- Soldat Bragg &quot;Essaye encore&quot; :  Autocanon de Bragg, Couteau Crêve-coeur<br><br>Seigneur-Maréchal Dreir  &quot;Petit poney &quot; : 75 pts<br>- Pistolet laser, Griffes sauvages, Sabre de Sacrifice<br><br>	--- Ligne ---<br><br>Death Korps de Krieg (10) &quot;Les teutons suicidaires &quot; : 70 pts<br>- 7 Fusil laser, 1 Fuseur, 1Fusil à plasma, 9 Arme de corps à corps, Emetteur vox, 1 Medipac<br>- Maître du Guet de la Death Korps :  1 Pistolet à plasma, 1 Arme énergétique<br><br>Troupes de Choc Cadiennes (10) &quot;Sticker arrête de sticker&quot; : 70 pts<br>- 7 Fusil laser, Fuseur, Fusil à plasma, 9 Arme de corps à corps, Emetteur vox<br>- Sergent de Choc :  Pistolet bolter, Epée tronçonneuse<br><br>	--- Transports assignés ---<br><br>Taurox  &quot;V12 atmosphérique &quot; : 65 pts<br>- Autocanon jumelé,bolter storm Chenilles blindées<br><br>Taurox Primus  &quot;Pigeot 208&quot; : 75 pts<br>- Obusier Taurox, Autocanon jumelé, Bolter Storm, Chenilles blindées<br><br>Taurox Primus  &quot;Clio 4&quot; : 75 pts<br>- Obusier Taurox, Autocanon jumelé, Bolter Storm, Chenilles blindées<br><br>VFR Centaur  &quot;Renault Wind&quot; : 65 pts<br>- Mitrailleuse sur pivot, Coque blindée<br><br>VFR Centaur  &quot;Mazda mx-5 &quot; : 65 pts<br>- Mitrailleuse sur pivot, Coque blindée<br><br>	--- Infanterie ---<br><br>Escouade d&#x27;Armes Lourdes Catachan (3) &quot;Les canons de beauté &quot; : 70 pts<br>- 3 Fusil laser, 3 Canon laser, 3 Armes de corps à corps d&#x27;équipe d&#x27;Armes<br><br>Escouade d&#x27;Armes Lourdes Catachan (3) &quot;Les détatoueurs lasers &quot; : 70 pts<br>- 3 Fusil laser, 3 Canon laser, 3 Armes de corps à corps d&#x27;équipe d&#x27;Armes<br><br>Kasrkins (10) &quot;L&#x27;agence tout risque &quot; : 105 pts<br>- 3 Fusil radiant laser, 2 Fuseur, 2 Fusil à plasma, 9 Arme de corps à corps, Emetteur vox, Mine à fusion<br>- Sergent kasrkin :  Pistolet à plasma, Arme énergétique<br><br>Pupilles du Tempestus (10) &quot;Tempestus émotionnelle : la colère &quot; : 150 pts<br>- 4 Fusil radiant laser, 2 Fuseur, 2 Fusil à plasma, Pistolet Radiant Laser, 9 Arme de corps à corps, Emetteur vox<br>- Tempestor :  Pistolet à plasma, Gantelet énergétique<br><br>	| [Meneur] Escouade d&#x27;état-major du Militarum Tempestus (5) &quot;Le bon ..&quot; : 85 pts<br>	| - Fusil radiant laser, Fuseur, Fusil à plasma, Fusil radiant à salves, 4 Arme de corps à corps, Medipac<br>	| - Tempestor Primus [seigneur de guerre] :  Dague du Tempestus, Sceptre de commandement<br><br>Kasrkins (10) &quot;Bon courage pour prononcer notre nom sans postilloner &quot; : 105 pts<br>- 3 Fusil radiant laser, 2 Fuseur, 2 Fusil à plasma, 9 Arme de corps à corps, Emetteur vox, Mine à fusion<br>- Sergent kasrkin :  Pistolet à plasma, Arme énergétique<br><br>Pupilles du Tempestus (5) &quot;Tempestus émotionnelle : la joie&quot; : 75 pts<br>- 2 Fusil radiant laser, Fuseur, Fusil à plasma, 4 Arme de corps à corps<br>- Tempestor :  Pistolet à plasma, Gantelet énergétique<br><br>	| [Meneur] Escouade d&#x27;état-major du Militarum Tempestus (5) &quot;La brute ..&quot; : 85 pts<br>	| - Fusil radiant laser, Fuseur, Fusil à plasma, Fusil radiant à salves, 4 Arme de corps à corps, Medipac<br>	| - Tempestor Primus :  Dague du Tempestus, Sceptre de commandement<br><br>Pupilles du Tempestus (5) &quot;Tempestus émotionnelle : la tristesse &quot; : 75 pts(+10)<br>- 2 Fusil radiant laser, Fuseur, Fusil à plasma, 4 Arme de corps à corps<br>- Tempestor :  Pistolet à plasma, Gantelet énergétique<br><br>	| [Meneur] Escouade d&#x27;état-major du Militarum Tempestus (5) &quot;Et le truand&quot; : 85 pts(+10)<br>	| - Fusil radiant laser, Fuseur, Fusil à plasma, Fusil radiant à salves, 4 Arme de corps à corps, Medipac<br>	| - Tempestor Primus :  Dague du Tempestus, Sceptre de commandement<br><br>Sapeurs de Krieg (5) &quot;Attention les jeunes, grenades&quot; : 65 pts<br>- 3 Fusil à pompe de combat, Lance-flammes, 4 Matraque de tranchée, Mine Télécommandée<br>- Maître du Guet Ingénieur :  Lance-flammes léger, Matraque de tranchée, Arme énergétique<br><br>Sapeurs de Krieg (5) &quot;Ça va péter, PÉTER!&quot; : 65 pts<br>- 3 Fusil à pompe de combat, Lance-flammes, 4 Matraque de tranchée, Mine Télécommandée<br>- Maître du Guet Ingénieur :  Lance-flammes léger, Matraque de tranchée, Arme énergétique<br><br>Ratlings  (5) &quot;Les hobbits du futur &quot; : 60 pts<br>- 5 Fusil de sniper, 5 Arme de corps à corps<br><br>	--- Montés ---<br><br>Cavaliers d&#x27;Attila (5) &quot;Courez à la ruine...&quot; : 60 pts<br>- 4 Fusil laser, 4 Pistolet laser, 4 Lance de chasse, 4 Sabots de cheval<br>- Sergent Cavalier :  Fusil laser, Pistolet laser, Lance de chasse, Sabots de cheval<br><br>Cavaliers d&#x27;Attila (5) &quot;Et à la fin du monde&quot; : 60 pts<br>- 4 Fusil laser, 4 Pistolet laser, 4 Lance de chasse, 4 Sabots de cheval<br>- Sergent Cavalier :  Fusil laser, Pistolet laser, Lance de chasse, Sabots de cheval<br><br>	--- Véhicules ---<br><br>Sentinel de Reconnaissance  : 55 pts<br>- Canon laser, Missile traqueur, Tronçonneuse Sentinel<br><br>Sentinel de Reconnaissance  : 55 pts<br>- Canon laser, Missile traqueur, Tronçonneuse Sentinel<br><br>Total : 2000 points - 105 figurines - 23 unités<br>url : https://40k.armylistnetwork.com/liste-2061377-le_bus_tragique.html<br>Une armée qui aime le sans plomb, et le sang et les plombs
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-12"
+                            id="solo-button-12"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                ilidaa - Imperium - Imperial Knights
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-12"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-12"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Liste 2000 point (1 995 Points)<br><br>Chevaliers Impériaux<br>Dominus Briseurs d’Ennemis et Valourstrike Lance (3 Points de Détachement)<br>Atouts Prioritaires<br>Force de Frappe (2 000 Points)<br><br>PERSONNAGES<br><br>Knight Castellan (450 Points)<br>  • Seigneur de Guerre<br>  • 1x Plasma decimator<br>  • 2x Shieldbreaker missile launcher<br>  • 1x Titanic feet<br>  • 2x Twin meltagun<br>  • 1x Twin siegebreaker cannon<br>  • 1x Volcano lance<br>  • Optimisations : Autochargeurs Archéotechnologiques<br><br>Knight Crusader (410 Points)<br>  • 1x Avenger gatling cannon<br>  • 1x Heavy flamer<br>  • 1x Questoris heavy stubber<br>  • 1x Questoris heavy stubber<br>  • 1x Rapid-fire battle cannon<br>  • 1x Stormspear rocket pod<br>  • 1x Titanic feet<br><br>Knight Defender (425 Points)<br>  • 1x Conversion beam obliterator<br>  • 1x Phosphor blaster<br>  • 1x Plasma executor<br>  • 1x Titanic feet<br>  • 1x Twin incendine combustor<br>  • Optimisations : Bearer of the Judicant’s Helm<br><br>Knight Destrier (265 Points)<br>  • 1x Chastiser gatling cannon<br>  • 1x Frag bombard<br>  • 1x Questoris heavy stubber<br>  • 1x Titanic feet<br><br>AUTRES FICHES TECHNIQUES<br><br>Armiger Helverin (140 Points)<br>  • 2x Armiger autocannon<br>  • 1x Armoured feet<br>  • 1x Meltagun<br><br>Armiger Helverin (140 Points)<br>  • 2x Armiger autocannon<br>  • 1x Armoured feet<br>  • 1x Meltagun<br><br>UNITÉS ALLIÉES<br><br>Callidus Assassin (100 Points)<br>  • 1x Neural shredder<br>  • 1x Phase sword and poison blades<br><br>Watch Captain Artemis (65 Points)<br>  • 1x Hellfire Extremis<br>  • 1x Master-crafted power weapon<br><br>Exporté avec la Version de l&#x27;Appli : v2.6.0 (3), Version de Données : v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-13"
+                            id="solo-button-13"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Jansanter - Chaos - Emperor&#x27;s Children
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-13"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-13"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Liste Peerless (1990 points)<br><br>Emperor’s Children<br>Peerless Bladesmen et Spectacle of Slaughter (3 Points de Détachement)<br>Priority Assets<br>Strike Force (2000 points)<br><br>Unités Attachées<br>Unité 1 Attachée<br><br>Lucius the Eternal (120 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • Seigneur de Guerre<br>  • 1x Blade of the Laer<br>    1x Lash of Torment<br><br>Flawless Blades (205 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 6x Flawless Blade<br>    • 6x Blissblade<br>      6x Bolt pistol<br>    • Optimisation : Beguiling Grotesquerie (Upgrade)<br><br>Unité 2 Attachée<br><br>Lord Exultant (115 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Bolt Pistol<br>    1x Close combat weapon<br>    1x Phoenix power spear<br>    1x Rapture lash<br>  • Optimisation : Distortion<br><br>Infractors (160 points)<br>• Attachée en tant que : Gardes du Corps (Ligne)<br>  • 1x Obsessionist<br>    • 1x Bolt pistol<br>      1x Rapture lash<br>  • 9x Infractor<br>    • 9x Bolt pistol<br>      9x Duelling sabre<br>      1x Icon of Excess<br><br>Unité 3 Attachée<br><br>Lord Exultant (90 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Bolt Pistol<br>    1x Close combat weapon<br>    1x Phoenix power spear<br>    1x Rapture lash<br><br>Infractors (85 points)<br>• Attachée en tant que : Gardes du Corps (Ligne)<br>  • 1x Obsessionist<br>    • 1x Bolt pistol<br>      1x Rapture lash<br>  • 4x Infractor<br>    • 4x Bolt pistol<br>      4x Duelling sabre<br>      1x Icon of Excess<br><br><br>LIGNE<br><br>Tormentors (80 points)<br>  • 1x Obsessionist<br>    • 1x Bolt pistol<br>      1x Power sword<br>  • 4x Tormentor<br>    • 2x Boltgun<br>      4x Close combat weapon<br>      1x Icon of Excess<br>      1x Meltagun<br>      1x Plasma gun<br><br>Tormentors (80 points)<br>  • 1x Obsessionist<br>    • 1x Bolt pistol<br>      1x Power sword<br>  • 4x Tormentor<br>    • 2x Boltgun<br>      4x Close combat weapon<br>      1x Icon of Excess<br>      1x Meltagun<br>      1x Plasma gun<br><br><br>TRANSPORT ASSIGNÉ<br><br>Chaos Rhino (70 points)<br>  • 1x Armoured tracks<br>    1x Combi-bolter<br>    1x Combi-weapon<br>    1x Havoc launcher<br><br>Chaos Rhino (70 points)<br>  • 1x Armoured tracks<br>    1x Combi-bolter<br>    1x Combi-weapon<br>    1x Havoc launcher<br><br><br>AUTRES FICHES TECHNIQUES<br><br>Chaos Spawn (70 points)<br>  • 2x Chaos Spawn<br>    • 2x Hideous mutations<br><br>Chaos Spawn (70 points)<br>  • 2x Chaos Spawn<br>    • 2x Hideous mutations<br><br>Defiler (330 points)<br>  • 1x Ectoplasma destructor<br>    2x Excruciator cannon<br>    2x Heavy reaper autocannon<br>    1x Shearing Claws<br><br>Flawless Blades (205 points)<br>  • 6x Flawless Blade<br>    • 6x Blissblade<br>      6x Bolt pistol<br>    • Optimisation : Beguiling Grotesquerie (Upgrade)<br><br>Maulerfiend (120 points)<br>  • 2x Magma cutters<br>    1x Maulerfiend fists<br><br>Maulerfiend (120 points)<br>  • 2x Magma cutters<br>    1x Maulerfiend fists
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-14"
+                            id="solo-button-14"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Jmm - Imperium - Adeptus Astartes - Space Wolves
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-14"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-14"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        MAJ (1985 points)<br><br>Space Marines<br>Space Wolves<br>Legends of Saga and Song and Saga of the Great Wolf (3 Detachment Points)<br>Take and Hold<br>Strike Force (2000 points)<br><br>Attached Units<br>Attached Unit 1<br><br>Logan Grimnar (100 points)<br>• Attached as: Leader (Character)<br>  • Warlord<br>  • 1x Axe Morkai<br>    1x Storm bolter<br>    1x Tyrnak and Fenrir<br><br>Wolf Guard Terminators (370 points)<br>• Attached as: Bodyguard<br>  • Enhancement: Fierce Example (Upgrade)<br>  • 1x Wolf Guard Terminator Pack Leader<br>    • 1x Relic greataxe<br>  • 9x Wolf Guard Terminator<br>    • 2x Assault cannon<br>      7x Master-crafted power weapon<br>      2x Power fist<br>      7x Storm Shield<br><br>Attached Unit 2<br><br>Wolf Guard Battle Leader (90 points)<br>• Attached as: Leader (Character)<br>  • 1x Storm Shield<br>    1x Thunder hammer<br>  • Enhancement: Skjald’s Foretelling<br><br>Wolf Guard Headtakers (170 points)<br>• Attached as: Bodyguard<br>  • 6x Wolf Guard Headtaker<br>    • 6x Heavy bolt pistol<br>      6x Master-crafted power weapon<br>      6x Storm Shield<br><br>Attached Unit 3<br><br>Arjac Rockfist (95 points)<br>• Attached as: Leader (Character)<br>  • 1x Foehammer<br><br>Wolf Guard Terminators (370 points)<br>• Attached as: Bodyguard<br>  • Enhancement: Fierce Example (Upgrade)<br>  • 1x Wolf Guard Terminator Pack Leader<br>    • 1x Relic greataxe<br>  • 9x Wolf Guard Terminator<br>    • 2x Assault cannon<br>      7x Master-crafted power weapon<br>      2x Power fist<br>      7x Storm Shield<br><br><br>CHARACTERS<br><br>Bjorn the Fell-Handed (160 points)<br>  • 1x Heavy flamer<br>    1x Helfrost cannon<br>    1x Trueclaw<br><br><br>BATTLELINE<br><br>Intercessor Squad (80 points)<br>  • 1x Intercessor Sergeant<br>    • 1x Bolt pistol<br>      1x Bolt rifle<br>      1x Close combat weapon<br>  • 4x Intercessor<br>    • 1x Astartes grenade launcher<br>      4x Bolt pistol<br>      4x Bolt rifle<br>      4x Close combat weapon<br><br><br>OTHER DATASHEETS<br><br>Assault Intercessors with Jump Packs (85 points)<br>  • 1x Assault Intercessor Sergeant with Jump Pack<br>    • 1x Plasma pistol<br>      1x Power fist<br>  • 4x Assault Intercessors with Jump Packs<br>    • 4x Astartes chainsword<br>      3x Heavy bolt pistol<br>      1x Plasma pistol<br><br>Scout Squad (65 points)<br>  • 1x Scout Sergeant<br>    • 1x Astartes chainsword<br>      1x Bolt pistol<br>      1x Close combat weapon<br>  • 4x Scout<br>    • 4x Bolt pistol<br>      4x Close combat weapon<br>      4x Combat knife<br><br>Wulfen with Storm Shields (200 points)<br>  • 10x Wulfen<br>    • 10x Death Totem<br>      10x Thunder hammer<br><br>Wulfen with Storm Shields (200 points)<br>  • 10x Wulfen<br>    • 10x Death Totem<br>      10x Thunder hammer<br><br>Exported with App Version: v2.6.0 (144), Data Version: v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-15"
+                            id="solo-button-15"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                JNEX - Chaos - Daemons
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-15"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-15"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        REKHORNE  (2000 points)<br><br>Chaos Daemons<br>Cavalcade of Chaos, Lords of the Warp and Warptide (3 Detachment Points)<br>Reconnaissance<br>Strike Force (2000 points)<br><br>Attached Units<br>Attached Unit 1<br><br>Skullmaster (85 points)<br>• Attached as: Leader (Character)<br>  • 1x Blade of blood<br>    1x Juggernaut’s bladed horn<br><br>Bloodcrushers (210 points)<br>• Attached as: Bodyguard<br>  • Enhancement: Soul-shattering Charge (Upgrade)<br>  • 1x Bloodhunter<br>    • 1x Hellblade<br>      1x Juggernaut’s bladed horn<br>  • 5x Bloodcrusher<br>    • 5x Hellblade<br>      5x Juggernaut’s bladed horn<br><br>Attached Unit 2<br><br>Skullmaster (85 points)<br>• Attached as: Leader (Character)<br>  • 1x Blade of blood<br>    1x Juggernaut’s bladed horn<br><br>Bloodcrushers (210 points)<br>• Attached as: Bodyguard<br>  • Enhancement: Soul-shattering Charge (Upgrade)<br>  • 1x Bloodhunter<br>    • 1x Hellblade<br>      1x Juggernaut’s bladed horn<br>  • 5x Bloodcrusher<br>    • 5x Hellblade<br>      5x Juggernaut’s bladed horn<br><br>Attached Unit 3<br><br>Bloodmaster (65 points)<br>• Attached as: Leader (Character)<br>  • 1x Blade of blood<br><br>Bloodletters (125 points)<br>• Attached as: Bodyguard (Battleline)<br>  • Enhancement: Bane-forged Weapons (Upgrade)<br>  • 1x Bloodreaper<br>    • 1x Hellblade<br>  • 9x Bloodletter<br>    • 9x Hellblade<br><br>Attached Unit 4<br><br>Bloodmaster (65 points)<br>• Attached as: Leader (Character)<br>  • 1x Blade of blood<br><br>Bloodletters (125 points)<br>• Attached as: Bodyguard (Battleline)<br>  • Enhancement: Bane-forged Weapons (Upgrade)<br>  • 1x Bloodreaper<br>    • 1x Hellblade<br>  • 9x Bloodletter<br>    • 9x Hellblade<br><br><br>CHARACTERS<br><br>Rendmaster on Blood Throne (170 points)<br>  • 1x Attendants’ hellblades<br>    1x Blade of blood<br>  • Enhancement: Apocalyptic Steeds (Upgrade)<br><br>Rendmaster on Blood Throne (170 points)<br>  • 1x Attendants’ hellblades<br>    1x Blade of blood<br>  • Enhancement: Apocalyptic Steeds (Upgrade)<br><br>Skarbrand (315 points)<br>  • Warlord<br>  • 1x Bellow of endless fury<br>    1x Slaughter and Carnage<br><br><br>BATTLELINE<br><br>Nurglings (55 points)<br>  • 3x Nurgling Swarm<br>    • 3x Diseased claws and teeth<br>    • Enhancement: Soul-hungry Slaughterers (Upgrade)<br><br><br>OTHER DATASHEETS<br><br>Flesh Hounds (75 points)<br>  • 1x Gore Hound<br>    • 1x Burning roar<br>      1x Collar of Khorne<br>      1x Gore-drenched fangs<br>  • 4x Flesh Hound<br>    • 4x Collar of Khorne<br>      4x Gore-drenched fangs<br><br>Flesh Hounds (75 points)<br>  • 1x Gore Hound<br>    • 1x Burning roar<br>      1x Collar of Khorne<br>      1x Gore-drenched fangs<br>  • 4x Flesh Hound<br>    • 4x Collar of Khorne<br>      4x Gore-drenched fangs<br><br>Seekers (85 points)<br>  • 1x Heartseeker<br>    • 1x Lashing tongue<br>      1x Slashing claws<br>  • 4x Seeker<br>    • 4x Lashing tongue<br>      4x Slashing claws<br><br>Seekers (85 points)<br>  • 1x Heartseeker<br>    • 1x Lashing tongue<br>      1x Slashing claws<br>  • 4x Seeker<br>    • 4x Lashing tongue<br>      4x Slashing claws<br><br>Exported with App Version: v2.6.0 (144), Data Version: v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-16"
+                            id="solo-button-16"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                LeonHart - Imperium - Adeptus Custodes
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-16"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-16"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Les Autobots (2000 points)<br><br>Adeptus Custodes<br>Solar Spearhead and Tharanatoi Hammerblow (3 Detachment Points)<br>Take and Hold<br>Strike Force (2000 points)<br><br>Attached Units<br>Attached Unit 1<br><br>Blade Champion (135 points)<br>• Attached as: Leader (Character)<br>  • 1x Vaultswords<br>  • Enhancement: Adamantine Talisman<br><br>Custodian Guard (170 points)<br>• Attached as: Bodyguard (Battleline)<br>  • 4x Custodian Guard<br>    • 3x Guardian spear<br>      1x Misericordia<br>      1x Praesidium Shield<br>      1x Vexilla<br><br>Attached Unit 2<br><br>Valerian (110 points)<br>• Attached as: Leader (Character)<br>  • 1x Gnosis<br><br>Custodian Wardens (250 points)<br>• Attached as: Bodyguard<br>  • 5x Custodian Warden<br>    • 5x Guardian spear<br>      1x Vexilla<br><br><br>CHARACTERS<br><br>Telemon Heavy Dreadnought (260 points)<br>  • Solar Spearhead Keywords: Character<br>  • Warlord<br>  • 1x Arachnus storm cannon<br>    1x Armoured feet<br>    1x Spiculus bolt launcher<br>    1x Telemon caestus<br>    1x Twin plasma projector<br>  • Enhancement: Augury Uplink<br><br><br>OTHER DATASHEETS<br><br>Allarus Custodians (280 points)<br>  • 5x Allarus Custodian<br>    • 5x Balistus grenade launcher<br>      5x Guardian spear<br><br>Contemptor-Galatus Dreadnought (165 points)<br>  • 1x Galatus warblade<br><br>Prosecutors (45 points)<br>  • 1x Prosecutor Sister Superior<br>    • 1x Boltgun<br>      1x Close combat weapon<br>  • 3x Prosecutor<br>    • 3x Boltgun<br>      3x Close combat weapon<br><br>Prosecutors (45 points)<br>  • 1x Prosecutor Sister Superior<br>    • 1x Boltgun<br>      1x Close combat weapon<br>  • 3x Prosecutor<br>    • 3x Boltgun<br>      3x Close combat weapon<br><br>Venerable Contemptor Dreadnought (170 points)<br>  • 1x Combi-bolter<br>    1x Contemptor combat weapon<br>    1x Multi-melta<br><br>Venerable Contemptor Dreadnought (170 points)<br>  • 1x Combi-bolter<br>    1x Contemptor combat weapon<br>    1x Multi-melta<br><br>Vertus Praetors (145 points)<br>  • 2x Vertus Praetor<br>    • 2x Interceptor lance<br>      2x Vertus hurricane bolter<br><br>Witchseekers (55 points)<br>  • 1x Witchseeker Sister Superior<br>    • 1x Close combat weapon<br>      1x Witchseeker flamer<br>  • 4x Witchseeker<br>    • 4x Close combat weapon<br>      4x Witchseeker flamer<br><br>Exported with App Version: v2.6.0 (144), Data Version: v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-17"
+                            id="solo-button-17"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                LeVV - Chaos - Chaos Space Marines
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-17"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-17"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        I&#x27;m Batman (1995 points)<br><br>Hereticus Astartes<br>Pillards de Meurtre-serre et Veterans of the Long War (3 Points de Détachement)<br>Prendre et Tenir<br>Force de Frappe (2000 points)<br><br>Unités Attachées<br>Unité 1 Attachée<br><br>Chaos Lord with Jump Pack (100 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • Seigneur de Guerre<br>  • 1x Plasma pistol<br>    1x Power fist<br>  • Optimisation : Pacte des Rémiges Maudites<br><br>Warp Talons (125 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 1x Warp Talon Champion<br>    • 1x Warp claws<br>  • 4x Warp Talon<br>    • 4x Warp claws<br><br>Unité 2 Attachée<br><br>Chaos Lord (105 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Daemon hammer<br>    1x Plasma pistol<br>  • Optimisation : Warmaster’s Gift<br><br>Chosen (270 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 1x Chosen Champion<br>    • 1x Accursed weapon<br>      1x Chaos Icon<br>      1x Combi-weapon<br>      1x Plasma pistol<br>  • 9x Chosen<br>    • 5x Accursed weapon<br>      8x Bolt pistol<br>      4x Boltgun<br>      3x Combi-weapon<br>      2x Paired accursed weapons<br>      1x Plasma pistol<br>      2x Power fist<br><br><br>PERSONNAGES<br><br>Cypher (90 points)<br>  • 1x Cypher’s bolt pistol<br>    1x Cypher’s plasma pistol<br><br>Heretic Astartes Daemon Prince (165 points)<br>  • Daemonic Allegiance: Khorne<br>  • 1x Hellforged weapons<br>    1x Infernal cannon<br><br><br>LIGNE<br><br>Cultist Mob (50 points)<br>  • 1x Cultist Champion<br>    • 1x Autopistol<br>      1x Brutal assault weapon<br>  • 9x Chaos Cultist<br>    • 9x Autopistol<br>      9x Brutal assault weapon<br><br>Cultist Mob (50 points)<br>  • 1x Cultist Champion<br>    • 1x Autopistol<br>      1x Brutal assault weapon<br>  • 9x Chaos Cultist<br>    • 9x Autopistol<br>      9x Brutal assault weapon<br><br><br>TRANSPORT ASSIGNÉ<br><br>Chaos Rhino (65 points)<br>  • 1x Armoured tracks<br>    2x Combi-bolter<br>    1x Havoc launcher<br><br><br>AUTRES FICHES TECHNIQUES<br><br>Defiler (330 points)<br>  • 2x Excruciator cannon<br>    1x Hades battle cannon<br>    2x Heavy reaper autocannon<br>    1x Shearing claws<br><br>Forgefiend (175 points)<br>  • 1x Armoured limbs<br>    3x Ectoplasma cannon<br><br>Possessed (120 points)<br>  • 1x Possessed Champion<br>    • 1x Hideous mutations<br>  • 4x Possessed<br>    • 4x Hideous mutations<br><br>Possessed (120 points)<br>  • 1x Possessed Champion<br>    • 1x Hideous mutations<br>  • 4x Possessed<br>    • 4x Hideous mutations<br><br>Red Corsairs Raiders (110 points)<br>  • 1x Red Corsairs Raider Champion<br>    • 1x Bolt pistol<br>      1x Boltgun<br>      1x Reaver’s blade<br>  • 4x Red Corsairs Raider<br>    • 4x Bolt pistol<br>      4x Boltgun<br>      4x Reaver’s blade<br><br>Venomcrawler (120 points)<br>  • 2x Excruciator cannon<br>    1x Soulflayer tendrils and claws<br><br>Exporté avec la Version de l&#x27;Appli : v2.6.0 (144), Version de Données : v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-18"
+                            id="solo-button-18"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                LyonElJonson - Imperium - Adeptus Custodes
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-18"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-18"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        +++++++++++++++++++++++++++++++++++++++++++++++<br>Nom du joueur : LyonElJonson<br>Nom de l&#x27;équipe : <br>Factions utilisées : Adeptus Custodes<br>Points d&#x27;armée : 1990<br>Améliorations d&#x27;armée : Chevalière-Centura : Chevalière de l&#x27;Oubli (25), Chevalière-Centura : Cape Nébuleuse Améliorée (10), Chevalière-Centura : Lame Rapace (5), Vigilators : Grenads anti-psy (10), Vigilators : Grenads anti-psy (10), Vigilators : Grenads anti-psy (10)<br>Disposition : Reconnaissance<br>+++++++++++++++++++++++++++++++++++++++++++++++<br>Détachements : <br>Adeptus Custodes - Chasseresses Silencieuses<br>Adeptus Custodes - Voile de Dames du Néant<br>+++++++++++++++++++++++++++++++++++++++++++++++<br><br>Héros épiques 1 : Aleya [55pts] Somnus (0) <br><br>attaché à une escouade de vigilator.<br><br>Personnages 1 : Chevalier Castellan [425pts] 2 Fuseur jumelé (0), Lance-missiles Shieldbreaker (0), 2 Canon Siegebreaker jumelé (0), Décimateur Plasma (0), Lance Volcano (0), Pieds titanesques (0)<br><br>Personnages 2 : Chevalière-Centura [80pts] Espadon d&#x27;éxécutrice (0) <br>--- Optimisations : Chevalière de l&#x27;Oubli (25) <br><br>attaché à une escouade de vigilator <br><br>Personnages 3 : Chevalière-Centura [65pts] Espadon d&#x27;éxécutrice (0)<br>--- Optimisations : Cape Nébuleuse Améliorée (10)<br><br>Attaché à une escouade de repurgatrices<br><br>Personnages 4 : Chevalière-Centura [60pts] Espadon d&#x27;éxécutrice (0)<br>--- Optimisations : Lame Rapace (5)<br><br>Attaché à une escouade de vigilator <br><br><br>Transports assignés 1 : Rhino Anathema Psykana [65pts] Bolter Storm (0), Missile traqueur (0), Chenilles blindées (0)<br>Transports assignés 2 : Rhino Anathema Psykana [65pts] Bolter Storm (0), Missile traqueur (0), Chenilles blindées (0)<br>Transports assignés 3 : Rhino Anathema Psykana [65pts] Bolter Storm (0), Missile traqueur (0), Chenilles blindées (0)<br>Transports assignés 4 : Rhino Anathema Psykana [65pts] Bolter Storm (0), Missile traqueur (0), Chenilles blindées (0)<br>Transports assignés 5 : Rhino Anathema Psykana [65pts] Bolter Storm (0), Missile traqueur (0), Chenilles blindées (0)<br>Transports assignés 6 : Rhino Anathema Psykana [65pts] Bolter Storm (0), Missile traqueur (0), Chenilles blindées (0)<br><br>Infanterie 1 : 10 Prosecutors [85pts] 10 Bolter (0), 10 Arme de corps à corps (0)<br>Infanterie 2 : 10 Prosecutors [85pts] 10 Bolter (0), 10 Arme de corps à corps (0)<br>Infanterie 3 : 10 Prosecutors [85pts] 10 Bolter (0), 10 Arme de corps à corps (0)<br>Infanterie 4 : 10 Répurgatrices [100pts] 10 Lance-flammes de répurgatrice (0), 10 Arme de corps à corps (0)<br>Infanterie 5 : 10 Répurgatrices [100pts] 10 Lance-flammes de répurgatrice (0), 10 Arme de corps à corps (0)<br>Infanterie 6 : 10 Répurgatrices [100pts] 10 Lance-flammes de répurgatrice (0), 10 Arme de corps à corps (0)<br>Infanterie 7 : 10 Vigilators [110pts] 10 Espadon d&#x27;éxécutrice (0)<br>--- Optimisations : Grenads anti-psy (10)<br>Infanterie 8 : 10 Vigilators [110pts] 10 Espadon d&#x27;éxécutrice (0)<br>--- Optimisations : Grenads anti-psy (10)<br>Infanterie 9 : 10 Vigilators [110pts] 10 Espadon d&#x27;éxécutrice (0)<br>--- Optimisations : Grenads anti-psy (10)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-19"
+                            id="solo-button-19"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                MaNa - Tyranids
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-19"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-19"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Tyty (2 000 Points)<br><br>Tyranides<br>Serres de la Reine Norne et Synaptic Nexus (3 Points de Détachement)<br>Prendre et Tenir<br>Force de Frappe (2 000 Points)<br><br>UNITÉS ATTACHÉES<br><br>Unité Attachée 1<br><br>Neurotyrant (130 Points)<br>  • Attachée en tant que : Meneur (Personnage)<br>  • Seigneur de Guerre<br>  • 1x Neurotyrant claws and lashes<br>  • 1x Psychic scream<br><br>Zoanthropes (190 Points)<br>  • Attachée en tant que : Gardes du Corps<br>  • 1x Neurothrope<br>     ◦ 1x Chitinous claws and teeth<br>     ◦ 1x Warp Blast<br>  • 5x Zoanthrope<br>     ◦ 5x Chitinous claws and teeth<br>     ◦ 5x Warp Blast<br><br>PERSONNAGES<br><br>Deathleaper (80 Points)<br>  • 1x Lictor claws and talons<br><br>Hyperadapted Raveners (195 Points)<br>  • 1x Ravener Prime<br>     ◦ 1x Prime claws and talons<br>     ◦ Optimisations : Psychostatic Disruption<br>  • 4x Raveners<br>     ◦ 4x Ravener heavy claws and talons<br>     ◦ 1x Venom bolt<br><br>AUTRES FICHES TECHNIQUES<br><br>Biovores (60 Points)<br>  • 1x Chitin-barbed limbs<br>  • 1x Spore Mine launcher<br><br>Maleceptor (180 Points)<br>  • 1x Massive scything talons<br>  • 1x Psychic overload<br><br>Maleceptor (180 Points)<br>  • 1x Massive scything talons<br>  • 1x Psychic overload<br><br>Neurolictor (80 Points)<br>  • 1x Piercing claws and talons<br><br>Neurolictor (80 Points)<br>  • 1x Piercing claws and talons<br><br>Norn Emissary (250 Points)<br>  • 1x Monstrous rending claws<br>  • 1x Monstrous scything talons<br>  • 1x Psychic Tendril<br><br>Norn Emissary (270 Points)<br>  • 1x Monstrous rending claws<br>  • 1x Monstrous scything talons<br>  • 1x Psychic Tendril<br><br>Screamer-Killer (125 Points)<br>  • 1x Bio-plasmic scream<br>  • 1x Screamer-Killer talons<br><br>Screamer-Killer (125 Points)<br>  • 1x Bio-plasmic scream<br>  • 1x Screamer-Killer talons<br><br>Von Ryan’s Leapers (55 Points)<br>  • 3x Von Ryan’s Leaper<br>     ◦ 3x Leaper’s talons<br><br>Exporté avec la Version de l&#x27;Appli : v2.6.0 (3), Version de Données : v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-20"
+                            id="solo-button-20"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Morgrog - Chaos - Chaos Knights
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-20"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-20"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        La Poutre (1990 points)<br><br>Chevaliers du Chaos<br>Infernal Lance (3 Points de Détachement)<br>Atouts Prioritaires<br>Force de Frappe (2000 points)<br><br><br>PERSONNAGES<br><br>Knight Rampager (355 points)<br>  • Seigneur de Guerre<br>  • 1x Diabolus heavy stubber<br>    1x Reaper chainsword<br>    1x Warpstrike claw<br><br>Knight Rampager (355 points)<br>  • 1x Diabolus heavy stubber<br>    1x Reaper chainsword<br>    1x Warpstrike claw<br><br><br>AUTRES FICHES TECHNIQUES<br><br>War Dog Brigand (135 points)<br>  • 1x Armoured feet<br>    1x Avenger chaincannon<br>    1x Daemonbreath spear<br>    1x Diabolus heavy stubber<br><br>War Dog Brigand (135 points)<br>  • 1x Armoured feet<br>    1x Avenger chaincannon<br>    1x Daemonbreath spear<br>    1x Diabolus heavy stubber<br><br>War Dog Brigand (135 points)<br>  • 1x Armoured feet<br>    1x Avenger chaincannon<br>    1x Daemonbreath spear<br>    1x Diabolus heavy stubber<br><br>War Dog Karnivore (145 points)<br>  • 1x Diabolus heavy stubber<br>    1x Reaper chaintalon<br>    1x Slaughterclaw<br><br>War Dog Karnivore (145 points)<br>  • 1x Diabolus heavy stubber<br>    1x Reaper chaintalon<br>    1x Slaughterclaw<br><br>War Dog Karnivore (145 points)<br>  • 1x Diabolus heavy stubber<br>    1x Reaper chaintalon<br>    1x Slaughterclaw<br><br>War Dog Stalker (135 points)<br>  • 1x Daemonbreath spear<br>    1x Diabolus heavy stubber<br>    1x Slaughterclaw<br><br>War Dog Stalker (135 points)<br>  • 1x Daemonbreath spear<br>    1x Diabolus heavy stubber<br>    1x Slaughterclaw<br><br><br>UNITÉS ALLIÉES<br><br>Beasts of Nurgle (80 points)<br>  • 1x Putrid appendages<br><br>Nurglings (45 points)<br>  • 3x Nurgling Swarm<br>    • 3x Diseased claws and teeth<br><br>Nurglings (45 points)<br>  • 3x Nurgling Swarm<br>    • 3x Diseased claws and teeth
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-21"
+                            id="solo-button-21"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Nahartek - Necrons
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-21"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-21"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        +++++++++++++++++++++++++++++++++++++++++++++++<br>+ PLAYER NAME: Nahart&#x27;ek<br>+ TEAM NAME: Carduus Dominatus<br>+ FACTION KEYWORD: Xenos - Necrons<br>+ DETACHMENT: Canoptek Court (Power Matrix)<br>+ FORCE DISPOSITION: Take and Hold<br>+ TOTAL ARMY POINTS: 1995pts<br>+<br>+ WARLORD: Char3: Hexmark Destroyer<br>+ ENHANCEMENT: Dimensional Sanctum (on Char4: Technomancer)<br>+ NUMBER OF UNITS: 14<br>+ SECONDARY: - Bring It Down: (4x2) + (1x4) - Assassination: 6 Characters<br>+++++++++++++++++++++++++++++++++++++++++++++++<br><br>Attached Units<br>Attached Unit 1<br><br>Technomancer (100 pts)<br>• Attached as: Support (Character)<br>• 1x Staff of light<br>• Dimensional Sanctum (+20 pts)<br><br>Canoptek Wraiths (220 pts)<br>• Attached as: Bodyguard<br>• 6x Wraith<br>    • 6x Particle caster<br>    • 6x Vicious claws<br><br>Attached Unit 2<br><br>Technomancer (90 pts)<br>• Attached as: Support (Character)<br>• 1x Staff of light<br><br>Canoptek Wraiths (240 pts)<br>• Attached as: Bodyguard<br>• 6x Wraith<br>    • 6x Particle caster<br>    • 6x Vicious claws<br><br>Attached Unit 3<br><br>Technomancer (90 pts)<br>• Attached as: Support (Character)<br>• 1x Staff of light<br><br>Canoptek Wraiths (240 pts)<br>• Attached as: Bodyguard<br>• 6x Wraith<br>    • 6x Particle caster<br>    • 6x Vicious claws<br><br>CHARACTER<br><br>C&#x27;tan Shard of the Deceiver (330 pts)<br>• 1x Cosmic insanity<br>• 1x Golden fists<br><br>Catacomb Command Barge (120 pts)<br>• 1x Gauss cannon<br>• 1x Overlord&#x27;s blade<br>• Resurrection orb<br><br>Hexmark Destroyer (75 pts)<br>• 1x Close combat weapon<br>• 1x Enmitic disintegrator pistols<br>• Warlord<br><br>OTHER DATASHEETS<br><br>Canoptek Doomstalker (140 pts)<br>• 1x Doomsday blaster<br>• 1x Doomstalker limbs<br>• 1x Twin gauss flayer<br><br>Canoptek Doomstalker (140 pts)<br>• 1x Doomsday blaster<br>• 1x Doomstalker limbs<br>• 1x Twin gauss flayer<br><br>Canoptek Reanimator (75 pts)<br>• 2x Atomiser beam<br>• 1x Reanimator&#x27;s claws<br><br>Flayed Ones (55 pts)<br>• 5x Flayed One<br>    • 5x Flayer claws<br><br>Ophydian Destroyers (80 pts)<br>• 3x Ophydian Destroyer<br>    • 3x Ophydian hyperphase weapons<br>  • Plasmacyte
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-22"
+                            id="solo-button-22"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Nov0x - Imperium - Imperial Knights
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-22"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-22"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Comme un IK (1995 points)<br><br>Chevaliers Impériaux<br>Dominus Briseurs d’Ennemis et Valourstrike Lance (3 Points de Détachement)<br>Éliminez l’Adversaire<br>Force de Frappe (2000 points)<br><br><br>PERSONNAGES<br><br>Knight Castellan (450 points)<br>  • Seigneur de Guerre<br>  • 1x Plasma decimator<br>    2x Shieldbreaker missile launcher<br>    1x Titanic feet<br>    2x Twin meltagun<br>    1x Twin siegebreaker cannon<br>    1x Volcano lance<br>  • Optimisation : Autochargeurs Archéotechnologiques<br><br>Knight Crusader (410 points)<br>  • 1x Avenger gatling cannon<br>    1x Heavy flamer<br>    2x Questoris heavy stubber<br>    1x Rapid-fire battle cannon<br>    1x Stormspear rocket pod<br>    1x Titanic feet<br><br>Knight Gallant (355 points)<br>  • 1x Meltagun<br>    1x Reaper chainsword<br>    1x Stormspear rocket pod<br>    1x Thunderstrike gauntlet<br><br>Knight Warden (400 points)<br>  • 1x Avenger gatling cannon<br>    1x Heavy flamer<br>    1x Questoris heavy stubber<br>    1x Reaper chainsword<br>    1x Stormspear rocket pod<br>  • Optimisation : Bearer of the Judicant’s Helm<br><br><br>AUTRES FICHES TECHNIQUES<br><br>Armiger Helverin (140 points)<br>  • 2x Armiger autocannon<br>    1x Armoured feet<br>    1x Questoris heavy stubber<br><br>Armiger Warglaive (140 points)<br>  • 1x Meltagun<br>    1x Reaper chain-cleaver<br>    1x Thermal spear<br><br><br>UNITÉS ALLIÉES<br><br>Callidus Assassin (100 points)<br>  • 1x Neural shredder<br>    1x Phase sword and poison blades<br><br>Exporté avec la Version de l&#x27;Appli : v2.4.0 (139), Version de Données : v925
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-23"
+                            id="solo-button-23"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                quiet - Orks
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-23"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-23"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Joueur : quiet<br><br>Mauvais chasseur<br><br>Orks 1990 points<br><br>Détachements:<br>La chasse au gros (1 point)<br>Boss Brutes (1 point)<br>Brigade Blitz (1 point)<br><br>Eliminez l&#x27;adversaire<br><br>Unité attachée 1<br><br>Boss Dresseur (115 poins)<br>• Attaché come Meneur<br>• Fling&#x27;<br>• Pince d’Alpagueur et Kikoup’ à Bestiass<br>• Optimisation : [Boss brutes] Brutal mais ruzé<br><br>Boyz Alpagueurs (85 points)<br>• Attachés comme gardes du corps<br>• 9x Boyz alpagueurs<br>◦ 9x Kikoup&#x27;<br>◦ 9x Kalibr&#x27;<br>◦ 1x Fuzil kikogn&#x27;<br>• 1x Nob Alpagueur<br>◦ 1x Sékateur énergetik&#x27;<br>◦ 1x Kalibr&#x27;<br><br>Unité attachée 2<br><br>Boss Dresseur (85 poins)<br>• Attaché come Meneur<br>• Fling&#x27;<br>• Pince d’Alpagueur et Kikoup’ à Bestiass<br><br>Boyz Alpagueurs (85 points)<br>• Attachés comme gardes du corps<br>• 9x Boyz alpagueurs<br>◦ 9x Kikoup&#x27;<br>◦ 9x Kalibr&#x27;<br>◦ 1x Fuzil kikogn&#x27;<br>• 1x Nob Alpagueur<br>◦ 1x Sékateur énergetik&#x27;<br>◦ 1x Kalibr&#x27;<br><br>Personnages: <br><br>Mozrog Skragbad (170 points)<br>• Fuzil kikogn&#x27;<br>• Etripeur<br>• Machoires de Gros Krok&#x27;<br><br>Boss dresseur sur squigosaure (165 points)<br>• Kalibr&#x27;<br>• Kikoup&#x27; à Bestiass<br>• Machoires de Squigosaure<br>• Optimisation [La Chasse au Gros] Echappé d&#x27;la Fosse<br>• Seigneur de guerre<br><br>Boss dresseur sur squigosaure (170 points)<br>• Kalibr&#x27;<br>• Kikoup&#x27; à Bestiass<br>• Machoires de Squigosaure<br>• Optimisation  [La Chasse au Gros] Coureur de Gloire<br><br>Autres unités :<br><br>Boyz Alpagueurs (85 points)<br>• 9x Boyz alpagueurs<br>◦ 9x Kikoup&#x27;<br>◦ 9x Kalibr&#x27;<br>• 1x Nob Alpagueur<br>◦ 1x Sékateur énergetik&#x27;<br>◦ 1x Kalibr&#x27;<br><br>Boyz sur squigliers (140 points)<br>• 4x Boyz sur squiglier<br>◦ 4x Kipik&#x27;<br>◦ 4x Kalibr&#x27;<br>◦ 4x Schlass de grot de selle<br>• 1x Nob sur squig krazeur<br>◦ 1x Gros Kikoup&#x27;<br>◦ 1x Kalibr&#x27;<br>◦ Gueule de squig<br><br>Boyz sur squigliers (140 points)<br>• 4x Boyz sur squiglier<br>◦ 4x Kipik&#x27;<br>◦ 4x Kalibr&#x27;<br>◦ 4x Schlass de grot de selle<br>• 1x Nob sur squig krazeur<br>◦ 1x Gros Kikoup&#x27;<br>◦ 1x Kalibr&#x27;<br>◦ Gueule de squig<br><br>Boyz sur squigliers (160 points)<br>• 4x Boyz sur squiglier<br>◦ 4x Kipik&#x27;<br>◦ 4x Kalibr&#x27;<br>◦ 4x Schlass de grot de selle<br>• 1x Nob sur squig krazeur<br>◦ 1x Gros Kikoup&#x27;<br>◦ 1x Kalibr&#x27;<br>◦ Gueule de squig<br><br>Kommandos (125 points)<br>• 9x Kommando<br>◦ 8x Kikoup&#x27;<br>◦ 9x Kalibr&#x27;<br>◦ 1x Bélier<br>• 1x Nob<br>◦ 1x Pince énergetik&#x27;<br>◦ 1x Kalibr&#x27;<br><br>Chokboyz (70 points)<br>• 4x Chokboyz<br>◦ 4x Kikoup&#x27;<br>◦ 4x Kalibr&#x27;<br>• 1x Nob<br>◦ 1x Pince énergetik&#x27;<br>◦ 1x Kalibr&#x27;<br><br>Gretchins (45 points)<br>◦ 10x Pétoire<br>◦ 10x Schlass de Rékup&#x27;<br><br>Kariol&#x27; Kitu (175 points)<br>◦ Kanon Kipik&#x27;<br>◦ Lobeur lourd<br>◦ Zarmat<br>◦ Boyz bouchers<br>◦ Cornes et sabots sauvages<br>◦ Lames de scie<br><br>Kariol&#x27; Kitu (175 points)<br>◦ Kanon Kipik&#x27;<br>◦ Lobeur lourd<br>◦ Zarmat<br>◦ Boyz bouchers<br>◦ Cornes et sabots sauvages<br>◦ Lames de scie
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-24"
+                            id="solo-button-24"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Roi_des_As - Chaos - Daemons
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-24"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-24"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        +++++++++++++++++++++++++++++++++++++++++++++++<br>Nom du joueur : Roi des As<br>Nom de l&#x27;équipe :<br>Factions utilisées : Chaos Daemons<br>Points d&#x27;armée : 2000<br>Améliorations d&#x27;armée : Buveur de Sang : Gueule d&#x27;Airain (15)<br>Disposition :<br>+++++++++++++++++++++++++++++++++++++++++++++++<br>Détachements :<br>Chaos Daemons - Cavalcade du Chaos<br>Chaos Daemons - Légion du Sang<br>+++++++++++++++++++++++++++++++++++++++++++++++<br><br>Héros épiques 1 : Be&#x27;Lakor [390pts] Ombres traitresses (0), La Lame des Ombres (0) (Seigneur de guerre)<br><br>Héros épiques 2 meneur : Preneur de Crânes [85pts] Épée du Tueur (0)<br>Unité mené : Ligne 1 : 10 Sanguinaires [110pts] 10 Lame Infernale (0), Icône Démoniaque (0), Instrument du Chaos (0)<br><br>Héros épiques 3 : Skarbrand [315pts] Hurlement de fureur infinie (0), Massacre et Carnage (0)<br><br>Personnages 1 : Buveur de Sang [335pts] Souffle de feu d&#x27;Enfer (0), Grande hache de Khorne (0)<br>--- Optimisations : Gueule d&#x27;Airain (15)<br><br>Personnages 2 : Buveur de Sang [320pts] Souffle de feu d&#x27;Enfer (0), Grande hache de Khorne (0)<br><br><br><br>Bêtes 1 : 5 Molosses de Khorne [75pts] 4 Crocs ensanglantés (0), 4 Collier de Khorne (0)<br>--- Molosse de Sang,Rugissement Brûlant (0), Crocs ensanglantés (0), Collier de Khorne (0)<br>Bêtes 2 : 5 Molosses de Khorne [75pts] 4 Crocs ensanglantés (0), 4 Collier de Khorne (0)<br>--- Molosse de Sang,Rugissement Brûlant (0), Crocs ensanglantés (0), Collier de Khorne (0)<br><br>Montés 1 : 6 Equarrisseurs [200pts] 6 Corne ferrée (0), 6 Lame Infernale (0), Icône Démoniaque (0), Instrument du Chaos (0)<br>Montés 2 : 3 Equarrisseurs [95pts] 3 Corne ferrée (0), 3 Lame Infernale (0), Icône Démoniaque (0), Instrument du Chaos (0)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-25"
+                            id="solo-button-25"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Steph57 - Chaos - Thousand Sons
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-25"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-25"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Duperie A (2000 points)<br><br>Thousand Sons<br>Changehost of Deceit et Rituel de Régénération (3 Points de Détachement)<br>Reconnaissance<br>Force de Frappe (2000 points)<br><br>Unités Attachées<br>Unité 1 Attachée<br><br>Exalted Sorcerer (115 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • Seigneur de Guerre<br>  • 1x Astral Blast<br>    1x Force weapon<br>    1x Inferno bolt pistol<br>  • Optimisation : Diabolic Savant<br><br>Rubric Marines (100 points)<br>• Attachée en tant que : Gardes du Corps (Ligne)<br>  • 1x Aspiring Sorcerer<br>    • 1x Force weapon<br>      1x Inferno bolt pistol<br>      1x Malefic Curse<br>  • 4x Rubric Marine<br>    • 4x Close combat weapon<br>      1x Icon of Flame<br>      1x Soulreaper cannon<br>      3x Warpflamer<br><br>Unité 2 Attachée<br><br>Sorcerer in Terminator Armour (100 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Force weapon<br>    1x Gaze of Hate<br>    1x Inferno combi-bolter<br><br>Scarab Occult Terminators (385 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 1x Scarab Occult Sorcerer<br>    • 1x Force weapon<br>      1x Inferno combi-bolter<br>      1x Malefic Curse<br>  • 9x Scarab Occult Terminator<br>    • 2x Hellfyre missile rack<br>      7x Inferno combi-bolter<br>      9x Prosperine khopesh<br>      2x Soulreaper cannon<br><br>Unité 3 Attachée<br><br>Exalted Sorcerer on Disc of Tzeentch (110 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Arcane Fire<br>    1x Force weapon<br>    1x Inferno bolt pistol<br>  • Optimisation : Malédiction de la Vie<br><br>Tzaangor Enlightened with Fatecaster Greatbows (55 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 1x Aviarch<br>    • 1x Close combat weapon<br>      1x Fatecaster greatbow<br>  • 2x Enlightened<br>    • 2x Close combat weapon<br>      2x Fatecaster greatbow<br><br><br>PERSONNAGES<br><br>Kairos Fateweaver (305 points)<br>  • 1x Infernal Gateway<br>    1x Staff of Tomorrow<br><br>Lord of Change (335 points)<br>  • 1x Bolt of Change<br>    1x Staff of Tzeentch<br>  • Optimisation : Duplicitous Malediction<br><br><br>LIGNE<br><br>Pink Horrors (115 points)<br>  • 10x Pink Horror<br>    • 10x Coruscating pink flames<br>      10x Pink claws<br><br>Rubric Marines (100 points)<br>  • 1x Aspiring Sorcerer<br>    • 1x Force weapon<br>      1x Inferno bolt pistol<br>      1x Malefic Curse<br>  • 4x Rubric Marine<br>    • 4x Close combat weapon<br>      1x Icon of Flame<br>      3x Inferno boltgun<br>      1x Soulreaper cannon<br><br><br>AUTRES FICHES TECHNIQUES<br><br>Flamers (65 points)<br>  • 1x Pyrocaster<br>    • 1x Flamer mouths<br>      1x Flickering flames<br>  • 2x Flamer<br>    • 2x Flamer mouths<br>      2x Flickering flames<br><br>Screamers (160 points)<br>  • 6x Screamer<br>    • 6x Lamprey bite<br><br>Tzaangor Enlightened with Fatecaster Greatbows (55 points)<br>  • 1x Aviarch<br>    • 1x Close combat weapon<br>      1x Fatecaster greatbow<br>  • 2x Enlightened<br>    • 2x Close combat weapon<br>      2x Fatecaster greatbow<br><br>Exporté avec la Version de l&#x27;Appli : v2.6.0 (144), Version de Données : v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-26"
+                            id="solo-button-26"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Sytri - Chaos - Daemons
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-26"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-26"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        nancy&#x27;s shadow (2000 points)<br><br>Chaos Daemons<br>Lords of the Warp and Shadow Legion (3 Detachment Points)<br>Purge the Foe<br>Strike Force (2000 points)<br><br>Attached Units<br>Attached Unit 1<br><br>Skullmaster (95 points)<br>• Attached as: Leader (Character)<br>  • 1x Blade of blood<br>    1x Juggernaut’s bladed horn<br>  • Enhancement: Swollen with Power (Upgrade)<br><br>Bloodcrushers (95 points)<br>• Attached as: Bodyguard<br>  • 1x Bloodhunter<br>    • 1x Hellblade<br>      1x Juggernaut’s bladed horn<br>  • 2x Bloodcrusher<br>    • 1x Daemonic Icon<br>      2x Hellblade<br>      1x Instrument of Chaos<br>      2x Juggernaut’s bladed horn<br><br>Attached Unit 2<br><br>Bloodmaster (95 points)<br>• Attached as: Leader (Character)<br>  • 1x Blade of blood<br>  • Enhancement: Fade to Darkness<br><br>Bloodletters (110 points)<br>• Attached as: Bodyguard (Battleline)<br>  • 1x Bloodreaper<br>    • 1x Hellblade<br>  • 9x Bloodletter<br>    • 1x Daemonic Icon<br>      9x Hellblade<br>      1x Instrument of Chaos<br><br>Attached Unit 3<br><br>Tranceweaver (85 points)<br>• Attached as: Leader (Character)<br>  • 1x Ravaging claws<br>  • Enhancement: Leaping Shadows<br><br>Daemonettes (100 points)<br>• Attached as: Bodyguard (Battleline)<br>  • 1x Alluress<br>    • 1x Slashing claws<br>  • 9x Daemonette<br>    • 1x Daemonic Icon<br>      1x Instrument of Chaos<br>      9x Slashing claws<br><br><br>CHARACTERS<br><br>Be’lakor (390 points)<br>  • Warlord<br>  • 1x Betraying Shades<br>    1x The Blade of Shadows<br><br>Bloodthirster (320 points)<br>  • 1x Great axe of Khorne<br>    1x Hellfire breath<br><br>Lord of Change (320 points)<br>  • 1x Bolt of Change<br>    1x Staff of Tzeentch<br><br>Rendmaster on Blood Throne (160 points)<br>  • 1x Attendants’ hellblades<br>    1x Blade of blood<br><br><br>OTHER DATASHEETS<br><br>Beasts of Nurgle (80 points)<br>  • 1x Putrid appendages<br><br>Flesh Hounds (75 points)<br>  • 1x Gore Hound<br>    • 1x Burning roar<br>      1x Collar of Khorne<br>      1x Gore-drenched fangs<br>  • 4x Flesh Hound<br>    • 4x Collar of Khorne<br>      4x Gore-drenched fangs<br><br>Flesh Hounds (75 points)<br>  • 1x Gore Hound<br>    • 1x Burning roar<br>      1x Collar of Khorne<br>      1x Gore-drenched fangs<br>  • 4x Flesh Hound<br>    • 4x Collar of Khorne<br>      4x Gore-drenched fangs
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-27"
+                            id="solo-button-27"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Technically - Chaos - Emperor&#x27;s Children
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-27"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-27"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Fast as fluff boyzz (1995 points)<br><br>Emperor’s Children<br>Massacre Spectaculaire et Mercurial Host (3 Points de Détachement)<br>Reconnaissance<br>Force de Frappe (2000 points)<br><br>Unités Attachées<br>Unité 1 Attachée<br><br>Lord Exultant (105 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Bolt Pistol<br>    1x Close combat weapon<br>    1x Phoenix power spear<br>    1x Rapture lash<br>  • Optimisation : Tactical Perfection<br><br>Infractors (85 points)<br>• Attachée en tant que : Gardes du Corps (Ligne)<br>  • 1x Obsessionist<br>    • 1x Plasma pistol<br>      1x Power sword<br>  • 4x Infractor<br>    • 4x Bolt pistol<br>      4x Duelling sabre<br>      1x Icon of Excess<br><br>Unité 2 Attachée<br><br>Lord Exultant (90 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Bolt Pistol<br>    1x Close combat weapon<br>    1x Phoenix power spear<br>    1x Rapture lash<br><br>Infractors (85 points)<br>• Attachée en tant que : Gardes du Corps (Ligne)<br>  • 1x Obsessionist<br>    • 1x Plasma pistol<br>      1x Power sword<br>  • 4x Infractor<br>    • 4x Bolt pistol<br>      4x Duelling sabre<br>      1x Icon of Excess<br><br>Unité 3 Attachée<br><br>Lord Exultant (100 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Bolt Pistol<br>    1x Close combat weapon<br>    1x Phoenix power spear<br>    1x Rapture lash<br><br>Infractors (85 points)<br>• Attachée en tant que : Gardes du Corps (Ligne)<br>  • 1x Obsessionist<br>    • 1x Plasma pistol<br>      1x Power sword<br>  • 4x Infractor<br>    • 4x Bolt pistol<br>      4x Duelling sabre<br>      1x Icon of Excess<br><br>Unité 4 Attachée<br><br>Lord Kakophonist (90 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Close combat weapon<br>    2x Screamer pistol<br>  • Optimisation : Steeped in Suffering<br><br>Noise Marines (145 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 1x Disharmonist<br>    • 1x Close combat weapon<br>      1x Sonic blaster<br>  • 5x Noise Marine<br>    • 2x Blastmaster<br>      5x Close combat weapon<br>      3x Sonic blaster<br><br><br>PERSONNAGES<br><br>Lucius the Eternal (120 points)<br>  • Seigneur de Guerre<br>  • 1x Blade of the Laer<br>    1x Lash of Torment<br><br><br>TRANSPORT ASSIGNÉ<br><br>Chaos Rhino (70 points)<br>  • 1x Armoured tracks<br>    1x Combi-bolter<br>    1x Havoc launcher<br><br>Chaos Rhino (70 points)<br>  • 1x Armoured tracks<br>    1x Combi-bolter<br>    1x Havoc launcher<br><br><br>AUTRES FICHES TECHNIQUES<br><br>Chaos Spawn (70 points)<br>  • 2x Chaos Spawn<br>    • 2x Hideous mutations<br><br>Chaos Spawn (70 points)<br>  • 2x Chaos Spawn<br>    • 2x Hideous mutations<br><br>Chaos Terminators (145 points)<br>  • 1x Terminator Champion<br>    • 1x Combi-weapon<br>      1x Power fist<br>  • 4x Chaos Terminator<br>    • 1x Accursed weapon<br>      1x Chainfist<br>      3x Combi-weapon<br>      2x Power fist<br>      1x Reaper autocannon<br><br>Chaos Terminators (145 points)<br>  • 1x Terminator Champion<br>    • 1x Combi-weapon<br>      1x Power fist<br>  • 4x Chaos Terminator<br>    • 1x Accursed weapon<br>      1x Chainfist<br>      3x Combi-weapon<br>      2x Power fist<br>      1x Reaper autocannon<br><br>Flawless Blades (190 points)<br>  • 6x Flawless Blade<br>    • 6x Blissblade<br>      6x Bolt pistol<br><br>Flawless Blades (210 points)<br>  • 6x Flawless Blade<br>    • 6x Blissblade<br>      6x Bolt pistol<br>    • Optimisation : Avide de Faire ses Preuves (Amélioration)<br><br>Maulerfiend (120 points)<br>  • 2x Magma cutters<br>    1x Maulerfiend fists<br><br>Exporté avec la Version de l&#x27;Appli : v2.6.0 (144), Version de Données : v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-28"
+                            id="solo-button-28"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Themys54 - Chaos - Thousand Sons
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-28"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-28"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        ​La Cabale de Cendre et de Chair (1995 points)<br><br>Thousand Sons<br>Cohorte Sekhetar, Rituel de Régénération et Serviteurs du Changement (3 Points de Détachement)<br>Perturbation<br>Force de Frappe (2000 points)<br><br>Unités Attachées<br>Unité 1 Attachée<br><br>Exalted Sorcerer (95 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  ��� 1x Astral Blast<br>    1x Force weapon<br>    1x Inferno bolt pistol<br><br>Rubric Marines (190 points)<br>• Attachée en tant que : Gardes du Corps (Ligne)<br>  • 1x Aspiring Sorcerer<br>    • 1x Force weapon<br>      1x Malefic Curse<br>      1x Warpflame pistol<br>  • 9x Rubric Marine<br>    • 9x Close combat weapon<br>      1x Icon of Flame<br>      1x Soulreaper cannon<br>      8x Warpflamer<br><br>Unité 2 Attachée<br><br>Sorcerer (95 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Force weapon<br>    1x Inferno bolt pistol<br>    1x Pandaemonic Delusion<br><br>Rubric Marines (100 points)<br>• Attachée en tant que : Gardes du Corps (Ligne)<br>  • 1x Aspiring Sorcerer<br>    • 1x Force weapon<br>      1x Malefic Curse<br>      1x Warpflame pistol<br>  • 4x Rubric Marine<br>    • 4x Close combat weapon<br>      1x Icon of Flame<br>      1x Soulreaper cannon<br>      3x Warpflamer<br><br>Unité 3 Attachée<br><br>Sorcerer in Terminator Armour (100 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Force weapon<br>    1x Gaze of Hate<br>    1x Inferno combi-bolter<br><br>Scarab Occult Terminators (385 points)<br>• Attachée en tant que : Gardes du Corps<br>  • 1x Scarab Occult Sorcerer<br>    • 1x Force weapon<br>      1x Inferno combi-bolter<br>      1x Malefic Curse<br>  • 9x Scarab Occult Terminator<br>    • 2x Hellfyre missile rack<br>      7x Inferno combi-bolter<br>      9x Prosperine khopesh<br>      2x Soulreaper cannon<br><br><br>PERSONNAGES<br><br>Daemon Prince of Tzeentch (170 points)<br>  • Seigneur de Guerre<br>  • 1x Dark Blessing<br>    1x Hellforged weapons<br>    1x Infernal cannon<br><br>Tzaangor Shaman (65 points)<br>  • 1x Baleful Devolution<br>    1x Force stave<br><br><br>LIGNE<br><br>Rubric Marines (100 points)<br>  • 1x Aspiring Sorcerer<br>    • 1x Force weapon<br>      1x Malefic Curse<br>      1x Warpflame pistol<br>  • 4x Rubric Marine<br>    • 4x Close combat weapon<br>      1x Soulreaper cannon<br>      3x Warpflamer<br>     1x Icon of Flame<br><br>Tzaangors (75 points)<br>  • 1x Twistbray<br>    • 1x Tzaangor blades<br>  • 9x Tzaangor<br>    • 9x Tzaangor blades<br><br><br>AUTRES FICHES TECHNIQUES<br><br>Chaos Predator Annihilator (140 points)<br>  • 1x Armoured tracks<br>    1x Predator twin lascannon<br><br>Mutalith Vortex Beast (170 points)<br>  • 1x Betentacled maw<br>    1x Mutalith claws<br>    1x Warp vortex<br><br>Mutalith Vortex Beast (170 points)<br>  • 1x Betentacled maw<br>    1x Mutalith claws<br>    1x Warp vortex<br><br>Sekhetar Robots (85 points)<br>  • 2x Sekhetar Robot<br>    • 2x Close combat weapon<br>      2x Heavy warpflamer<br>      2x Hellfyre missile rack<br>      2x Power claw<br>      2x Warpflame projector<br><br>Tzaangor Enlightened with Fatecaster Greatbows (55 points)<br>  • 1x Aviarch<br>    • 1x Close combat weapon<br>      1x Fatecaster greatbow<br>  • 2x Enlightened<br>    • 2x Close combat weapon<br>      2x Fatecaster greatbow<br><br>Exporté avec la Version de l&#x27;Appli : v2.6.0 (144), Version de Données : v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-29"
+                            id="solo-button-29"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                Thorrox - Imperium - Adeptus Astartes - Dark Angels
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-29"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-29"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        1 wrath vfinale (1 985 Points)<br><br>Space Marines<br>Dark Angels<br>Wrath of the Rock (3 Detachment Points)<br>Priority Assets<br>Strike Force (2 000 Points)<br><br>ATTACHED UNITS<br><br>Attached unit 1<br><br>Azrael (140 Points)<br>  • Attached as: Leader (Character)<br>  • 1x Lion’s Wrath<br>  • 1x The Lion Helm<br>  • 1x The Sword of Secrets<br><br>Inner Circle Companions (160 Points)<br>  • Attached as: Bodyguard<br>  • 6x Inner Circle Companion<br>     ◦ 6x Calibanite greatsword<br>     ◦ 6x Heavy bolt pistol<br><br>CHARACTERS<br><br>Lion El’Jonson (265 Points)<br>  • Warlord<br>  • 1x Arma Luminis<br>  • 1x Fealty<br><br>BATTLELINE<br><br>Heavy Intercessor Squad (100 Points)<br>  • 1x Heavy Intercessor Sergeant<br>     ◦ 1x Bolt pistol<br>     ◦ 1x Close combat weapon<br>     ◦ 1x Heavy bolt rifle<br>  • 4x Heavy Intercessor<br>     ◦ 4x Bolt pistol<br>     ◦ 4x Close combat weapon<br>     ◦ 3x Heavy bolt rifle<br>     ◦ 1x Heavy bolter<br><br>Intercessor Squad (80 Points)<br>  • 1x Intercessor Sergeant<br>     ◦ 1x Astartes grenade launcher<br>     ◦ 1x Bolt pistol<br>     ◦ 1x Bolt rifle<br>     ◦ 1x Power fist<br>  • 4x Intercessor<br>     ◦ 4x Bolt pistol<br>     ◦ 4x Bolt rifle<br>     ◦ 4x Close combat weapon<br><br>OTHER DATASHEETS<br><br>Deathwing Knights (240 Points)<br>  • 1x Knight Master<br>     ◦ 1x Great weapon of the Unforgiven<br>  • 4x Deathwing Knight<br>     ◦ 4x Mace of absolution<br><br>Deathwing Knights (240 Points)<br>  • 1x Knight Master<br>     ◦ 1x Great weapon of the Unforgiven<br>  • 4x Deathwing Knight<br>     ◦ 4x Mace of absolution<br><br>Land Raider Redeemer (260 Points)<br>  • 1x Armoured tracks<br>  • 2x Flamestorm cannon<br>  • 1x Hunter-killer missile<br>  • 1x Multi-melta<br>  • 1x Storm bolter<br>  • 1x Twin assault cannon<br><br>Scout Squad (65 Points)<br>  • 1x Scout Sergeant<br>     ◦ 1x Astartes chainsword<br>     ◦ 1x Bolt pistol<br>     ◦ 1x Close combat weapon<br>  • 4x Scout<br>     ◦ 4x Bolt pistol<br>     ◦ 4x Close combat weapon<br>     ◦ 4x Combat knife<br><br>Scout Squad (65 Points)<br>  • 1x Scout Sergeant<br>     ◦ 1x Astartes chainsword<br>     ◦ 1x Bolt pistol<br>     ◦ 1x Close combat weapon<br>  • 4x Scout<br>     ◦ 4x Bolt pistol<br>     ◦ 4x Close combat weapon<br>     ◦ 4x Combat knife<br><br>Vindicator (185 Points)<br>  • 1x Armoured tracks<br>  • 1x Demolisher cannon<br>  • 1x Hunter-killer missile<br>  • 1x Storm bolter<br><br>Vindicator (185 Points)<br>  • 1x Armoured tracks<br>  • 1x Demolisher cannon<br>  • 1x Hunter-killer missile<br>  • 1x Storm bolter<br><br>Exported with App Version: v2.6.0 (3), Data Version: v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-30"
+                            id="solo-button-30"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                tomtoms - Orks
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-30"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-30"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        tournoi (1985 points)<br><br>Orks<br>Bouzilleurs, Kulte d’la Vitess’ et La Chasse au Gros (3 Points de Détachement)<br>Éliminez l’Adversaire<br>Force de Frappe (2000 points)<br><br>Unités Attachées<br>Unité 1 Attachée<br><br>Trike Morkitu (95 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • Seigneur de Guerre<br>  • 1x Fuzis Kiboum<br>    1x Jet kitu<br>    1x Pince Kichop’<br>  • Optimisation : La Kompèt’<br><br>Motards de Guerre (75 points)<br>• Attachée en tant que : Gardes du Corps (Ligne)<br>  • 2x Motard de Guerre<br>    • 2x Double Dakkafling’<br>      2x Kikoup’<br>  • 1x Nob Motard<br>    • 1x Double Kombi-rokette<br>      1x Kikoup’ Kustom<br><br>Unité 2 Attachée<br><br>Gros Mek (85 points)<br>• Attachée en tant que : Meneur (Personnage)<br>  • 1x Méga-klateur Kustom<br>    1x Pince Énergétik’<br><br>Frimeurs (230 points)<br>• Attachée en tant que : Gardes du Corps<br>  • Optimisation : Dakka Super Lux (Amélioration)<br>  • 9x Frimeur<br>    • 9x Fling’ de Lux<br>      9x Kikoup’<br>  • 1x Kaptin<br>    • 1x Fling’ de Lux<br>      1x Kikoup’<br><br><br>PERSONNAGES<br><br>Boss Snikrot (80 points)<br>  • 1x Crocs de Mork<br>    1x Kalibr’<br><br>Mozrog Skragbad (170 points)<br>  • 1x Fuzi Kikogn<br>    1x Mâchoires de Gros Krok<br>    1x Étripeur<br><br>Wazdakka Gutsmek (200 points)<br>  • 1x Chop’-traîne<br>    1x Clé de Retap’<br>    1x Masse Filante et Flammes d’Échappement<br>    1x Psyko-gatling<br><br><br>LIGNE<br><br>Boyz Alpagueurs (85 points)<br>  • 9x Boy Alpagueur<br>    • 9x Kalibr’<br>      9x Kikoup’<br>  • 1x Nob<br>    • 1x Kalibr’<br>      1x Sékateur Énergétik’<br><br>Boyz Alpagueurs (85 points)<br>  • 9x Boy Alpagueur<br>    • 9x Kalibr’<br>      9x Kikoup’<br>  • 1x Nob<br>    • 1x Kalibr’<br>      1x Sékateur Énergétik’<br><br><br>AUTRES FICHES TECHNIQUES<br><br>Boyz sur Squiglier (140 points)<br>  • 3x Boyz sur Squigliers<br>    • 3x Gueule de Squig<br>      3x Kipik<br>      3x Schlass de Grot de Selle<br>  • 1x Nob sur Squig Krazeur<br>    • 1x Gros Kikoup’<br>      1x Gueule de Squig<br>      1x Kalibr’<br><br>Boyz sur Squiglier (140 points)<br>  • 3x Boyz sur Squigliers<br>    • 3x Gueule de Squig<br>      3x Kipik<br>      3x Schlass de Grot de Selle<br>  • 1x Nob sur Squig Krazeur<br>    • 1x Gros Kikoup’<br>      1x Gueule de Squig<br>      1x Kalibr’<br><br>Gretchins (45 points)<br>  • 10x Gretchin<br>    • 10x Pétoire Grot<br>      10x Schlass de Rékup’<br><br>Gretchins (45 points)<br>  • 10x Gretchin<br>    • 10x Pétoire Grot<br>      10x Schlass de Rékup’<br><br>Kariol’ Kitu (175 points)<br>  • 1x Boyz Bouchers<br>    1x Cornes et Sabots Sauvages<br>    1x Kanon Kipik<br>    1x Lames de Scie<br>    1x Lobeur Lourd<br>    1x Zarmât<br><br>Kariol’ Kitu (175 points)<br>  • 1x Boyz Bouchers<br>    1x Cornes et Sabots Sauvages<br>    1x Kanon Kipik<br>    1x Lames de Scie<br>    1x Lobeur Lourd<br>    1x Zarmât<br><br>Kopters d’la Mort (80 points)<br>  • 3x Kopter d&#x27;la Mort<br>    • 3x Kalibr’<br>      3x Kikoup’<br>      3x Lames Kitourn<br>      2x Lance-rokettes<br>      1x Méga-klateur Kustom<br><br>Kopters d’la Mort (80 points)<br>  • 3x Kopter d&#x27;la Mort<br>    • 3x Kalibr’<br>      3x Kikoup’<br>      3x Lames Kitourn<br>      2x Lance-rokettes<br>      1x Méga-klateur Kustom
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+                    <article class="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            data-accordion-button
+                            aria-expanded="false"
+                            aria-controls="solo-panel-31"
+                            id="solo-button-31"
+                        >
+                            <span class="text-base font-semibold text-white sm:text-lg">
+                                WiZard - Imperium - Adeptus Custodes
+                            </span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition">
+                                <svg class="h-4 w-4 transition-transform duration-200 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.042l3.71-3.811a.75.75 0 1 1 1.08 1.04l-4.24 4.36a.75.75 0 0 1-1.08 0l-4.24-4.36a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <div
+                            id="solo-panel-31"
+                            class="hidden border-t border-white/10 px-5 py-5"
+                            role="region"
+                            aria-labelledby="solo-button-31"
+                        >
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <div class="prose prose-invert max-w-none">
+                                    <div class="whitespace-pre-line text-sm leading-7 text-slate-300">
+                                        Allarus go brrr (1995 points)<br><br>Adeptus Custodes<br>Lions of the Emperor (3 Detachment Points)<br>Take and Hold<br>Strike Force (2000 points)<br><br>Attached Units<br>Attached Unit 1<br><br>Blade Champion (110 points)<br>• Attached as: Leader (Character)<br>  • Warlord<br>  • 1x Vaultswords<br><br>Custodian Wardens (250 points)<br>• Attached as: Bodyguard<br>  • 5x Custodian Warden<br>    • 5x Guardian spear<br>      1x Vexilla<br><br>Attached Unit 2<br><br>Inquisitor Draxus (110 points)<br>• Attached as: Leader<br>  • 1x Dirgesinger<br>    1x Power fist<br>    1x Psychic Tempest<br><br>Custodian Guard (215 points)<br>• Attached as: Bodyguard (Battleline)<br>  • 5x Custodian Guard<br>    • 4x Guardian spear<br>      1x Praesidium Shield<br>      1x Sentinel blade<br><br><br>CHARACTERS<br><br>Shield-Captain in Allarus Terminator Armour (155 points)<br>  • 1x Balistus grenade launcher<br>    1x Guardian spear<br>  • Enhancement: Superior Creation<br><br>Shield-Captain on Dawneagle Jetbike (140 points)<br>  • 1x Interceptor lance<br>    1x Vertus hurricane bolter<br><br><br>OTHER DATASHEETS<br><br>Allarus Custodians (340 points)<br>  • 6x Allarus Custodian<br>    • 6x Balistus grenade launcher<br>      6x Guardian spear<br><br>Allarus Custodians (340 points)<br>  • 6x Allarus Custodian<br>    • 6x Balistus grenade launcher<br>      6x Guardian spear<br><br>Prosecutors (45 points)<br>  • 1x Prosecutor Sister Superior<br>    • 1x Boltgun<br>      1x Close combat weapon<br>  • 3x Prosecutor<br>    • 3x Boltgun<br>      3x Close combat weapon<br><br>Prosecutors (45 points)<br>  • 1x Prosecutor Sister Superior<br>    • 1x Boltgun<br>      1x Close combat weapon<br>  • 3x Prosecutor<br>    • 3x Boltgun<br>      3x Close combat weapon<br><br>Vertus Praetors (145 points)<br>  • 2x Vertus Praetor<br>    • 2x Interceptor lance<br>      2x Vertus hurricane bolter<br><br>Witchseekers (50 points)<br>  • 1x Witchseeker Sister Superior<br>    • 1x Close combat weapon<br>      1x Witchseeker flamer<br>  • 3x Witchseeker<br>    • 3x Close combat weapon<br>      3x Witchseeker flamer<br><br>Witchseekers (50 points)<br>  • 1x Witchseeker Sister Superior<br>    • 1x Close combat weapon<br>      1x Witchseeker flamer<br>  • 3x Witchseeker<br>    • 3x Close combat weapon<br>      3x Witchseeker flamer<br><br>Exported with App Version: v2.6.0 (144), Data Version: v946
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                
+            </div>
+        </section>
+    </div>
+
+    </main>
+
+    <footer class="border-t border-white/10 bg-slate-950">
+        <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-6 py-5 text-center text-sm text-slate-400">
+                <p>
+                    
+                        MiniHeadQuarters - A question? Contact the team at <a class="text-orange-400 transition hover:text-orange-300" href="/cdn-cgi/l/email-protection#ed8084838485888c899c988c9f99889f9ead8a808c8481c38e8280"><span class="__cf_email__" data-cfemail="96fbfff8fffef3f7f2e7e3f7e4e2f3e4e5d6f1fbf7fffab8f5f9fb">[email&#160;protected]</span></a> and we will be happy to answer you!
+                    
+                    <span class="mx-2 text-slate-600">•</span>
+                    <a class="text-slate-300 transition hover:text-white" href="/docs/">Documentation</a>
+                    <span class="mx-2 text-slate-600">•</span>
+                    <a class="text-slate-300 transition hover:text-white" href="/tcu">Terms and Conditions of Use</a>
+                </p>
+                <p class="mt-2 text-xs text-slate-500">All product names, logos and trademarks are the property of their respective owners. All company, product and service names used on this website are for identification purposes only. The use of these names, logos and trademarks does not imply any approval.</p>
+            </div>
+        </div>
+    </footer>
+
+    
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/javascript">
+        const menuButton = document.getElementById('mobile-menu-button');
+        const menuPanel = document.getElementById('mobile-menu-panel');
+        const menuOverlay = document.getElementById('mobile-menu-overlay');
+        const menuClose = document.getElementById('mobile-menu-close');
+        const desktopUserMenu = document.getElementById('user-menu-desktop');
+        const desktopTournamentMenu = document.getElementById('tournaments-menu-desktop');
+        const desktopMetaMenu = document.getElementById('meta-menu-desktop');
+
+        const openMenu = () => {
+            menuPanel.classList.remove('hidden');
+            menuOverlay.classList.remove('hidden');
+            menuButton.setAttribute('aria-expanded', 'true');
+            document.body.classList.add('overflow-hidden');
+        };
+
+        const closeMenu = () => {
+            console.log("test");
+            menuPanel.classList.add('hidden');
+            menuOverlay.classList.add('hidden');
+            menuButton.setAttribute('aria-expanded', 'false');
+            document.body.classList.remove('overflow-hidden');
+            desktopUserMenu.removeAttribute('open');
+        };
+
+        menuButton.addEventListener('click', () => {
+            const isOpen = !menuPanel.classList.contains('hidden');
+            if (isOpen) {
+                closeMenu();
+            } else {
+                openMenu();
+            }
+        });
+
+        menuOverlay.addEventListener('click', closeMenu);
+
+        if (menuClose) {
+            menuClose.addEventListener('click', closeMenu);
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                if (desktopUserMenu) {
+                    closeMenu();
+                }
+                desktopTournamentMenu.removeAttribute('open');
+                desktopMetaMenu.removeAttribute('open');
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            if (desktopUserMenu && !desktopUserMenu.contains(event.target)) {
+                desktopUserMenu.removeAttribute('open');
+            }
+
+            if (!desktopTournamentMenu.contains(event.target)) {
+                desktopTournamentMenu.removeAttribute('open');
+            }
+
+            if (!desktopMetaMenu.contains(event.target)) {
+                desktopMetaMenu.removeAttribute('open');
+            }
+        });
+    </script>
+
+    
+    <script type="application/javascript">
+        document.querySelectorAll('[data-accordion-button]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const panel = document.getElementById(button.getAttribute('aria-controls'));
+                const icon = button.querySelector('svg');
+                const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+                button.setAttribute('aria-expanded', String(!isExpanded));
+                panel.classList.toggle('hidden');
+
+                if (icon) {
+                    icon.classList.toggle('rotate-180');
+                }
+            });
+        });
+    </script>
+
+
+    
+</body>
+</html>
