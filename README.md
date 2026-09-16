@@ -51,7 +51,7 @@ Chaque objet joueur contient :
 
 - `⚠ points mismatch` signale une divergence entre le total calculé et le total déclaré.
 - `⚠ missing total points` signale l'absence de la clé `TOTAL ARMY POINTS` dans l'en-tête.
-- Les avertissements apparaissent sous l'en-tête du joueur. Sur 280 listes, le taux d'avertissement est de 7,5 %.
+- Les avertissements apparaissent sous l'en-tête du joueur.
 - `+` sépare les unités à l'intérieur d'un groupe attaché.
 - Préfixe `Nx` = N copies identiques regroupées.
 - Préfixe `N` (sans x) = nombre de figurines dans l'unité.
@@ -153,7 +153,7 @@ Each player object has:
 
 - `⚠ points mismatch` warns when the parsed total differs from the declared total.
 - `⚠ missing total points` warns when the header has no `TOTAL ARMY POINTS` key.
-- Warnings appear under the player header. Across 280 lists, the warning ratio is 7.5%.
+- Warnings appear under the player header.
 - `+` separates units inside an attached group.
 - `Nx` prefix = N identical copies collapsed.
 - `N` prefix (no x) = model count within the unit.
