@@ -158,40 +158,62 @@ function stripTags(s) {
 // Header parsing (+++ delimited key-value block)
 // ============================================================
 function findPlusBlock(lines) {
-  // Look for opening delimiter (sequence of + characters)
-  const openIdx = lines.findIndex(l => /^\s*\++\s*$/.test(l) && l.trim().length >= 20);
-  if (openIdx === -1) {
-    // No opening delimiter - look for a block of + KEY: VALUE lines followed by closing delimiter
-    const firstPlusLine = lines.findIndex(l => /^\+\s*[A-ZÉÈÀÂÇÛÖÜ]/i.test(l.trim()));
-    if (firstPlusLine === -1) return null;
-    let closeIdx = -1;
-    for (let i = firstPlusLine; i < lines.length; i++) {
-      if (/^\s*\++\s*$/.test(lines[i]) && lines[i].trim().length >= 20) { closeIdx = i; break; }
+  const DELIM_RE = /^\s*\++\s*$/;
+  const DELIM_MIN = 20;
+  const isDelim = s => DELIM_RE.test(s) && s.trim().length >= DELIM_MIN;
+  const isUnitContent = s => {
+    const t = s.trim();
+    return /\(\s*\d+\s*(?:pts?|points?)\s*\)/.test(t)
+      || /\[\s*\d+\s*pts?\s*\]/.test(t)
+      || /^Char\d+:/.test(t)
+      || /^[.•◦]/.test(t)
+      || /^\|/.test(t);
+  };
+
+  const delimIdx = lines.findIndex(isDelim);
+  if (delimIdx !== -1) {
+    // Delimiter found. Scan forward for a closing delimiter or unit-content break.
+    let closeDelim = -1;
+    let firstUnitIdx = -1;
+    for (let i = delimIdx + 1; i < lines.length; i++) {
+      const t = lines[i].trim();
+      if (isDelim(lines[i])) { closeDelim = i; break; }
+      if (/^\+/.test(t)) continue; // KEY lines are header content
+      if (isUnitContent(lines[i])) { firstUnitIdx = i; break; }
     }
-    if (closeIdx === -1) return null;
-    return { openIdx: firstPlusLine, closeIdx };
+    if (closeDelim !== -1) {
+      // Second delimiter: header is [delimIdx, closeDelim]
+      return { openIdx: delimIdx, closeIdx: closeDelim };
+    }
+    if (firstUnitIdx !== -1) {
+      // No closing delimiter but unit content found. If metadata lines (+ KEY) exist
+      // before the delimiter, the header is [firstPlusLine, delimIdx]; otherwise
+      // treat the delimiter as opening-only and the header extends to firstUnitIdx.
+      const firstPlusLine = lines.findIndex(l => /^\+\s*[A-ZÉÈÀÂÇÛÖÜ]/i.test(l.trim()));
+      if (firstPlusLine !== -1 && firstPlusLine < delimIdx) {
+        return { openIdx: firstPlusLine, closeIdx: delimIdx };
+      }
+      return { openIdx: delimIdx, closeIdx: firstUnitIdx };
+    }
+    // Only one delimiter, no unit content after — it must be closing-only:
+    // header is metadata before the delimiter.
+    const firstPlusLine = lines.findIndex(l => /^\+\s*[A-ZÉÈÀÂÇÛÖÜ]/i.test(l.trim()));
+    if (firstPlusLine !== -1 && firstPlusLine < delimIdx) {
+      return { openIdx: firstPlusLine, closeIdx: delimIdx };
+    }
+    // No metadata before either — the single delimiter is opening-only
+    return { openIdx: delimIdx, closeIdx: lines.length };
   }
-  // Extend through consecutive delimiter-separated sections.
-  // The block ends at the last DELIM before any unit content:
-  //   (N pts), [Npts], Char1:, bullets (• . ◦), newrecruit attachment (|),
-  //   or a category header with no value (e.g. "Détachements :" / "Detachments :")
+
+  // No delimiter anywhere — look for a block of + KEY: VALUE lines.
+  const firstPlusLine = lines.findIndex(l => /^\+\s*[A-ZÉÈÀÂÇÛÖÜ]/i.test(l.trim()));
+  if (firstPlusLine === -1) return null;
   let closeIdx = -1;
-  for (let i = openIdx; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    // DELIM extends the block
-    if (/^\s*\++\s*$/.test(lines[i]) && trimmed.length >= 20) { closeIdx = i; continue; }
-    // KEY lines (starting with +) are part of the header, not unit content
-    if (/^\+/.test(trimmed)) continue;
-    // Unit content stops the scan
-    if (/\(\s*\d+\s*(?:pts?|points?)\s*\)/.test(trimmed)) break;
-    if (/\[\s*\d+\s*pts?\s*\]/.test(trimmed)) break;
-    if (/^Char\d+:/.test(trimmed)) break;
-    if (/^[.•◦]/.test(trimmed)) break;
-    if (/^\|/.test(trimmed)) break;
-    // bare +, empty, category headers — continue
+  for (let i = firstPlusLine; i < lines.length; i++) {
+    if (isDelim(lines[i])) { closeIdx = i; break; }
   }
   if (closeIdx === -1) return null;
-  return { openIdx, closeIdx };
+  return { openIdx: firstPlusLine, closeIdx };
 }
 
 const HEADER_ALIAS = {
@@ -528,6 +550,9 @@ const DET_PATTERNS = [
   [/^(.+?)\s*\(\s*\d+\s+Detachment\s+Points?\s*\)/im, m => m[1]],
   [/^(?:Détachements?|Detachments?)\s*:\s*(.+)$/im, m => m[1]],
   [/^(.+?)\s*\(\s*\d+\s*Points\s+de\s+Detachement\s*\)/im, m => m[1]],
+  // Labeled form "DETACHMENT : X" — may appear in a freeform header without
+  // a surrounding + delimiter block (e.g. kuwanan's + DETACHMENT : ...)
+  [/^\+?\s*DETACHMENT\s*:?\s*(.+)$/im, m => m[1]],
 ];
 
 function findPreambleEnd(lines) {
@@ -553,6 +578,64 @@ function parsePreamble(bodyText) {
   }
   const dispM = preamble.match(FORCE_RE);
   return { detachment, forceDisposition: dispM ? dispM[0] : null };
+}
+
+// ============================================================
+// Known factions (used as a fallback when the h2 title doesn't yield one)
+// ============================================================
+// These are the 40k edition 40K factions. When the h2 title doesn't contain
+// " : Faction", we scan the body text line-by-line for an exact match against
+// this list. Sorted longest-first so "Chaos Space Marines" wins over "Space Marines".
+const KNOWN_FACTIONS = [
+  'Adeptus Astartes',
+  'Adeptus Mechanicus',
+  'Adeptus Titanicus',
+  'Astra Militarum',
+  'Chaos Daemons',
+  'Chaos Knights',
+  'Chaos Space Marines',
+  'Imperial Knights',
+  'Imperial Agents',
+  'Leagues of Votann',
+  'Adepta Sororitas',
+  'Adeptus Custodes',
+  'Space Marines',
+  'Genestealer Cults',
+  'Emperor\u2019s Children',
+  'Thousand Sons',
+  'World Eaters',
+  'Death Guard',
+  'Grey Knights',
+  'Aeldari',
+  'Drukhari',
+  'Necrons',
+  'Orks',
+  'Tyranids',
+  'T\u2019au Empire',
+].sort((a, b) => b.length - a.length);
+
+// Scan body text for a known faction as a whole line. Faction info lives in
+// the top ~6 lines of the preamble; scanning further risks matching unit
+// names that happen to equal a faction keyword. We also skip over a banner
+// line ("<Name> (N points)") before scanning, since freeform headers often
+// put the army name on line 0.
+function scanFaction(text) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length && i < 10; i++) {
+    const t = lines[i].trim();
+    if (!t) continue;
+    const tl = t.toLowerCase();
+    for (const f of KNOWN_FACTIONS) {
+      if (tl === f.toLowerCase() || tl === f.toLowerCase() + 's') return f;
+    }
+    // A single "(N points)" line is likely a team/army banner, not a unit.
+    // Skip it and keep scanning so a faction line that follows is still
+    // picked up. Multiple unit-like lines in a row mark the real unit list.
+    const unitLike = /^.+\(\s*\d+\s*(?:pts?|points?)\s*\)$/.test(t);
+    if (unitLike && i > 0 && lines[i + 1] && /^.+\(\s*\d+\s*(?:pts?|points?)\s*\)$/.test(lines[i + 1].trim())) break;
+  }
+  return null;
 }
 
 // ============================================================
@@ -587,6 +670,13 @@ function buildPlayers(articles) {
       ? a.slice(a.indexOf('</h2>') + 6)
       : a.slice(a.indexOf('>', a.indexOf('whitespace-pre-line')) + 1);
     const bodyText = stripTags(afterH2).split('\n').map(l => l.replace(/\s+$/, '')).join('\n');
+    // Preserve the full body text so parsePreamble (called from getMeta) can find
+    // the detachment / force disposition lines that live in the preamble section,
+    // which is otherwise discarded once the header block is stripped.
+    player.bodyText = bodyText;
+    // Fallback for faction: freeform headers often omit the " : Faction" suffix
+    // in the h2 but still include the faction as a standalone line in the preamble.
+    if (!player.faction) player.faction = scanFaction(bodyText);
     const lines = bodyText.split('\n');
     const block = findPlusBlock(lines);
     if (block) {
@@ -796,7 +886,11 @@ function getMeta(player) {
   let detachment = player.header && player.header.detachment ? cleanDetachment(player.header.detachment) : null;
   let forceDisposition = (player.header && player.header.forceDisposition) || null;
   if (!detachment || !forceDisposition) {
-    const p = parsePreamble(player.bodyRest || '');
+    // Preamble parsing needs the full body text so it can find detachment /
+    // disposition lines that live in the preamble section (before the first
+    // category header). bodyRest only holds what comes AFTER the preamble,
+    // so using it here would silently drop the info.
+    const p = parsePreamble(player.bodyText || player.bodyRest || '');
     if (!detachment) detachment = p.detachment;
     if (!forceDisposition) forceDisposition = p.forceDisposition;
   }
@@ -862,13 +956,17 @@ async function main() {
       let declaredPts = null;
       if (p.header && p.header.totalPoints) {
         declaredPts = parseInt(p.header.totalPoints);
-      } else if (!p.header) {
-        // No header block - try to extract from bodyRest.
-        const m = (p.bodyRest || '').match(/(\d{3,5})\s*pts?\)/);
-        if (m) declaredPts = parseInt(m[1]);
       } else {
-        // Header exists but no totalPoints - warn.
-        warnings.push('> ⚠ missing total points in header');
+        // Header is null or lacks totalPoints — try to extract from bodyRest.
+        // Prefer an explicit total label ("Strike Force (N points)", "TOTAL ARMY POINTS : Npts")
+        // over a bare "(N pts)" unit-style match, which can pick up a unit cost.
+        const text = (p.bodyRest || '');
+        const labeled = text.match(/(?:Strike\s+Force|Force\s+de\s+Frappe|TOTAL\s+ARMY\s+POINTS|Total\s+de\s+Points)[^\n]*?\(?\s*(\d{3,5})\s*(?:pts?|points?)\s*\)?/i);
+        if (labeled) declaredPts = parseInt(labeled[1]);
+        else {
+          const m = text.match(/(\d{3,5})\s*pts?\)/);
+          if (m) declaredPts = parseInt(m[1]);
+        }
       }
       if (declaredPts && parsedPts !== declaredPts) {
         const diff = parsedPts - declaredPts;
@@ -876,8 +974,10 @@ async function main() {
       }
       out.push('### ' + p.name + ' — ' + p.faction);
       const meta = getMeta(p);
-      if (meta.detachment) out.push('- Detachment: ' + meta.detachment);
-      if (meta.forceDisposition) out.push('- Disposition: ' + meta.forceDisposition);
+      if (meta.detachment) out.push('- ' + meta.detachment);
+      else warnings.push('> ⚠ detachment not found');
+      if (meta.forceDisposition) out.push('- ' + meta.forceDisposition);
+      else warnings.push('> ⚠ force disposition not found');
       // Emit warnings under the header
       for (const w of warnings) out.push(w);
       out.push('');
