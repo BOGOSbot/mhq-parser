@@ -1,0 +1,76 @@
+{
+  "event": {
+    "name": "BOGOS Team : 6 dés sous terre",
+    "date": "2026-10-10",
+    "url": "https://miniheadquarters.com/tournaments/team/army-lists/bogos-team-6-des-sous-terre-2026-10-10"
+  },
+  "count": 6,
+  "players": [
+    {
+      "name": "BOGOS Reloaded",
+      "faction": null,
+      "teamName": null,
+      "bodyText": "\n\n\n                                BOGOS Reloaded\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists\n\n\n\n\n",
+      "header": null,
+      "units": [],
+      "format": "bullets",
+      "bodyRest": "BOGOS Reloaded\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists",
+      "title": "BOGOS Reloaded"
+    },
+    {
+      "name": "GWC Le retour de la vengeance",
+      "faction": null,
+      "teamName": null,
+      "bodyText": "\n\n\n                                GWC Le retour de la vengeance\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists\n\n\n\n\n",
+      "header": null,
+      "units": [],
+      "format": "bullets",
+      "bodyRest": "GWC Le retour de la vengeance\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists",
+      "title": "GWC Le retour de la vengeance"
+    },
+    {
+      "name": "Les Ramoneurs",
+      "faction": null,
+      "teamName": null,
+      "bodyText": "\n\n\n                                Les Ramoneurs\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists\n\n\n\n\n",
+      "header": null,
+      "units": [],
+      "format": "bullets",
+      "bodyRest": "Les Ramoneurs\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists",
+      "title": "Les Ramoneurs"
+    },
+    {
+      "name": "Les So6",
+      "faction": null,
+      "teamName": null,
+      "bodyText": "\n\n\n                                Les So6\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists\n\n\n\n\n",
+      "header": null,
+      "units": [],
+      "format": "bullets",
+      "bodyRest": "Les So6\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists",
+      "title": "Les So6"
+    },
+    {
+      "name": "Lyon War Club",
+      "faction": null,
+      "teamName": null,
+      "bodyText": "\n\n\n                                Lyon War Club\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists\n\n\n\n\n",
+      "header": null,
+      "units": [],
+      "format": "bullets",
+      "bodyRest": "Lyon War Club\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists",
+      "title": "Lyon War Club"
+    },
+    {
+      "name": "Random Wargame Club",
+      "faction": null,
+      "teamName": null,
+      "bodyText": "\n\n\n                                Random Wargame Club\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists\n\n\n\n\n",
+      "header": null,
+      "units": [],
+      "format": "bullets",
+      "bodyRest": "Random Wargame Club\n\n\n\n\n\n\n\n\n\n\n\n\n                                        No lists",
+      "title": "Random Wargame Club"
+    }
+  ]
+}
