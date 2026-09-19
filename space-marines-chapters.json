@@ -1,0 +1,19 @@
+{
+  "faction": "Imperium - Adeptus Astartes",
+  "source": "https://wahapedia.ru/wh40k11ed/factions/space-marines/",
+  "edition": "11",
+  "chapters": [
+    "Black Templars",
+    "Blood Angels",
+    "Blood Ravens",
+    "Dark Angels",
+    "Deathwatch",
+    "Imperial Fists",
+    "Iron Hands",
+    "Raven Guard",
+    "Salamanders",
+    "Space Wolves",
+    "Ultramarines",
+    "White Scars"
+  ]
+}
