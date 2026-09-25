@@ -603,7 +603,7 @@ function loadEvents() {
   var mine = $('#evadmin').checked;
   var req = mine
     ? fetch('/my-events', { headers: { 'X-MHQ-Cookie': cookieOf() || '' } })
-    : fetch('/events?limit=250' + ($('#evshowall').checked ? '' : '&filter=1'));
+    : fetch('/events?limit=250' + ($('#evshowall').checked ? '&filter=1' : ''));
   req.then(function (r) { return r.json(); })
     .then(function (j) {
       if (reqId !== evReqId) return;
