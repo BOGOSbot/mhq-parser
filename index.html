@@ -249,11 +249,13 @@ function render() {
 
   var q = el('input');
   q.type = 'search';
+  q.id = 'army-search';
   q.placeholder = 'Filter armies, models, equipment…';
   q.addEventListener('input', applyFilters);
   bar.appendChild(q);
 
   var sel = el('select');
+  sel.id = 'faction-filter';
   var factions = Array.from(new Set(data.players.map(function (p) { return p.faction; })
     .filter(Boolean))).sort();
   var all = el('option', null, 'All factions');
@@ -270,6 +272,7 @@ function render() {
   var lbl = el('label', 'chk');
   var cb = el('input');
   cb.type = 'checkbox';
+  cb.id = 'warnings-only';
   cb.addEventListener('change', applyFilters);
   lbl.appendChild(cb);
   lbl.appendChild(document.createTextNode(' warnings only'));
@@ -405,9 +408,9 @@ function card(p) {
 }
 
 function applyFilters() {
-  var qEl = document.querySelector('input[type=search]');
-  var sEl = document.querySelector('select');
-  var cEl = document.querySelector('label.chk input');
+  var sEl = document.getElementById('faction-filter');
+  var qEl = document.getElementById('army-search');
+  var cEl = document.getElementById('warnings-only');
   if (!qEl || !sEl || !cEl) return;
   var q = qEl.value.trim().toLowerCase();
   var fac = sEl.value;
