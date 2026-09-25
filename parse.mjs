@@ -254,7 +254,9 @@ function parseHeaderLines(lines) {
     if (!line) continue;
     // continuation: line starts with "& " (multi-tweak warlord)
     if (/^&\s+/i.test(line) && lastKey) {
-      out[lastKey] = (out[lastKey] ? out[lastKey] + ' & ' : '') + line.replace(/^&\s*/, '');
+      // Enhancements are a list: keep one per line. Other keys keep " & ".
+      const sep = lastKey === 'enhancements' ? '\n' : ' & ';
+      out[lastKey] = [out[lastKey], line.replace(/^&\s*/, '')].filter(Boolean).join(sep);
       continue;
     }
     const colon = line.indexOf(':');
@@ -263,7 +265,7 @@ function parseHeaderLines(lines) {
     const val = line.slice(colon + 1).trim();
     const mapped = HEADER_ALIAS[key] || key.replace(/\s+/g, '').toLowerCase();
     if (mapped === 'enhancements') {
-      out.enhancements = (out.enhancements ? out.enhancements + ' & ' : '') + val;
+      out.enhancements = [out.enhancements, val].filter(Boolean).join('\n');
     } else {
       out[mapped] = val;
     }
