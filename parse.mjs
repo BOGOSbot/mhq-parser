@@ -566,7 +566,12 @@ function findPreambleEnd(lines) {
     if (CAT_HDR.test(t)) { end = i; break; }
     if (/^•/.test(t) || /^◦/.test(t)) { end = i; break; }
     if (/^Char\d+:/i.test(t)) { end = i; break; }
-
+    // Any unit declaration, not just CharN-prefixed ones. Without this a
+    // preamble immediately followed by a unit line swallows that unit into
+    // the stripped preamble. A bare "(N pts)" is not enough: freeform
+    // headers carry detachment and force-disposition lines that look
+    // similar, so require the "1x Name" or "CharN: Name" shape.
+    if (/^(?:\d+x|Char\d+:)\s*\S.*\(\s*\d+\s*(?:pts?|points?)\s*\)/i.test(t)) { end = i; break; }
   }
   return end;
 }
