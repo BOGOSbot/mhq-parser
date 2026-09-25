@@ -1066,7 +1066,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists };
 }
 
-export { URL_RE, parseArgs, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent };
+export { URL_RE, parseArgs, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is
@@ -1086,6 +1086,15 @@ function daysFromToday(d) {
 function prettify(slug) {
   const noDate = slug.replace(/\d{4}-\d{2}-\d{2}(?:-.*)?$/, '');
   return noDate.replace(/-/g, ' ').replace(/\s+/g, ' ').trim() || slug;
+}
+
+function detectFormat(slug, type) {
+  const s = slug.toLowerCase();
+  if (type === 'team' || /\bteams?\b/.test(s)) return 'teams';
+  if (/2v2|side[-\s]?by[-\s]?side/.test(s)) return '2v2 (side-by-side)';
+  if (/1v1|1vs1|\bsolo\b/.test(s)) return '1v1';
+  if (type === 'individual') return '1v1';
+  return 'unknown';
 }
 
 async function listEvents(opts) {
@@ -1129,6 +1138,7 @@ async function listEvents(opts) {
         lastmod,
         future: !!date && date > new Date().toISOString().slice(0, 10),
         name: prettify(slug),
+        format: detectFormat(slug, type),
       });
     }
     // Newest dates first would bury recent, parseable events under next-year

@@ -77,14 +77,14 @@ function scanProgress(events) {
   for (const e of events) {
     if (filterCache.has(e.detailsUrl)) scanned++;
   }
-  return { scanned, total: events.length, done: scanned >= events.length && !filterScan };
+  return { scanned, total: events.length, done: scanned >= events.length };
 }
 
 function filteredList(events, limit) {
   const out = [];
   for (const e of events) {
     const c = filterCache.get(e.detailsUrl);
-    if (c && is40k(c.game) && c.hasLists) out.push(e);
+    if (c && is40k(c.game)) out.push({ ...e, hasLists: c.hasLists });
     if (out.length >= limit) break;
   }
   return out;

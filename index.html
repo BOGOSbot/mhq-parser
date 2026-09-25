@@ -94,17 +94,24 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 .evpanel{background:var(--bg);border-bottom:1px solid var(--line);padding:0 18px}
 .evhead{display:flex;gap:8px;align-items:center;padding:10px 0;flex-wrap:wrap}
 .evlist{max-height:330px;overflow-y:auto;margin:0 -4px 12px;padding:0 4px}
-.evitem{display:flex;gap:10px;align-items:baseline;padding:7px 8px;border-radius:7px;
-  cursor:pointer;margin-bottom:1px}
+.evitem{display:grid;grid-template-columns:auto 1fr auto auto auto;gap:8px;
+  align-items:center;padding:6px 8px;border-radius:7px;cursor:pointer;margin-bottom:1px}
 .evitem:hover{background:var(--panel2)}
-.evname{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap}
-.evdate{font:11.5px var(--mono);color:var(--dim);white-space:nowrap}
+.evdate{font:11.5px var(--mono);color:var(--dim);white-space:nowrap;min-width:40px}
+.evname{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .evtag{font:10.5px var(--mono);color:var(--dim);border:1px solid var(--line);
   border-radius:10px;padding:1px 7px;text-transform:uppercase;letter-spacing:.4px;
   white-space:nowrap}
-.evtag.team{color:var(--acc);border-color:rgba(110,168,254,.4)}
-.evtag.individual{color:var(--ok);border-color:rgba(95,191,127,.4)}
+.evtag.fmt-1v1{color:var(--acc);border-color:rgba(110,168,254,.4)}
+.evtag.fmt-2v2{color:var(--ok);border-color:rgba(95,191,127,.4)}
+.evtag.fmt-teams{color:var(--warn);border-color:rgba(232,180,74,.4)}
+.evtag.fmt-unknown{color:var(--dim);border-color:var(--line)}
+.evlists{font:11.5px var(--mono);color:var(--dim);white-space:nowrap;text-align:center}
+.evlists.yes{color:var(--ok)}
+.evlists.no{color:var(--err);opacity:.7}
+.evlists.pending{color:var(--warn)}
+.evlink{font:11.5px var(--mono);color:var(--acc);text-decoration:none;white-space:nowrap}
+.evlink:hover{text-decoration:underline}
 .hidden{display:none}
 </style>
 </head>
@@ -125,10 +132,11 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 <div id="evpanel" class="evpanel hidden">
   <div class="evhead">
     <input id="evq" type="search" placeholder="Filter events…">
-    <select id="evtype">
-      <option value="">All types</option>
-      <option value="team">Team</option>
-      <option value="individual">Individual</option>
+    <select id="evfmt">
+      <option value="">All formats</option>
+      <option value="1v1">1v1</option>
+      <option value="2v2 (side-by-side)">2v2 (side-by-side)</option>
+      <option value="teams">Teams</option>
     </select>
     <label class="chk"><input id="evshowall" type="checkbox"> all games</label>
     <span id="evinfo" class="shown"></span>
@@ -510,19 +518,29 @@ function loadEvents() {
     .finally(function () { if (reqId === evReqId) { evLoading = false; $('#browse').disabled = false; } });
 }
 
+function fmtDate(d) {
+  if (!d) return '';
+  var m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? m[2] + '/' + m[3] : d;
+}
+
+function fmtClass(fmt) {
+  return fmt === '1v1' ? 'fmt-1v1' : fmt === '2v2 (side-by-side)' ? 'fmt-2v2' :
+    fmt === 'teams' ? 'fmt-teams' : 'fmt-unknown';
+}
+
 function renderEvList() {
   var list = $('#evlist');
   var q = ($('#evq').value || '').toLowerCase();
-  var type = $('#evtype').value || '';
+  var fmt = $('#evfmt').value || '';
   list.textContent = '';
   var n = 0;
   for (var i = 0; i < evCache.length; i++) {
     var e = evCache[i];
-    if (type && e.type !== type) continue;
+    if (fmt && e.format !== fmt) continue;
     if (q && (e.name + ' ' + e.slug).toLowerCase().indexOf(q) < 0) continue;
     n++;
     var row = el('div', 'evitem');
-    row.title = e.url;
     row.addEventListener('click', (function (ev) {
       return function () {
         $('#url').value = ev.url;
@@ -531,11 +549,19 @@ function renderEvList() {
         parse();
       };
     })(e));
-    var name = el('div', 'evname', e.name);
-    if (e.future) name.appendChild(document.createTextNode('  (not yet)'));
+    row.appendChild(el('span', 'evdate', fmtDate(e.date)));
+    var name = el('span', 'evname', e.name);
+    if (e.future) name.appendChild(document.createTextNode(' (not yet)'));
     row.appendChild(name);
-    row.appendChild(el('span', 'evtag ' + e.type, e.type));
-    row.appendChild(el('span', 'evdate', e.date || ''));
+    row.appendChild(el('span', 'evtag ' + fmtClass(e.format), e.format || '?'));
+    var lc = e.hasLists === true ? 'yes' : e.hasLists === false ? 'no' : 'pending';
+    var li = e.hasLists === true ? '\u2713' : e.hasLists === false ? '\u2717' : '\u2026';
+    row.appendChild(el('span', 'evlists ' + lc, li));
+    var link = el('a', 'evlink', '\u2197');
+    link.href = e.detailsUrl;
+    link.target = '_blank';
+    link.addEventListener('click', function (ev) { ev.stopPropagation(); });
+    row.appendChild(link);
     list.appendChild(row);
   }
   if (!n) list.appendChild(el('div', 'shown', 'no matching events'));
@@ -545,7 +571,7 @@ function renderEvList() {
 $('#browse').addEventListener('click', showEvents);
 $('#evclose').addEventListener('click', function () { $('#evpanel').classList.add('hidden'); stopPolling(); });
 $('#evq').addEventListener('input', renderEvList);
-$('#evtype').addEventListener('change', renderEvList);
+$('#evfmt').addEventListener('change', renderEvList);
 $('#evshowall').addEventListener('change', function () { evCache = []; loadEvents(); });
 
 $('#f').addEventListener('submit', function (e) {
