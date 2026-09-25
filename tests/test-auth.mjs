@@ -40,6 +40,26 @@ t('slug admin',  extractEventSlug('https://miniheadquarters.com/tournaments/team
 t('slug details',extractEventSlug('https://miniheadquarters.com/tournaments/individual/details/x-1'), 'x-1');
 t('slug query',  extractEventSlug('https://miniheadquarters.com/tournaments/team/army-lists/slug?tab=2'), 'slug');
 
+// --- The UI's admin URL builder must produce URLs the parser accepts ------
+// index.html builds it as /tournaments/<type>/administrate/<slug>/army-lists
+// for the Browse "organiser view" checkbox. Mirror it here so a change to
+// URL_RE cannot silently break that checkbox - the failure would be a bare 400.
+function adminUrlOf(ev) {
+  return 'https://miniheadquarters.com/tournaments/' + ev.type +
+    '/administrate/' + ev.slug + '/army-lists';
+}
+for (const ev of [
+  { type: 'team', slug: 'bogos-team-6-des-sous-terre-2026-10-10' },
+  { type: 'individual', slug: 'fluffpoesie-solo-40k-decembre-2021-12-19' },
+  { type: '2v2', slug: 'some-2v2-slug' },
+  { type: 'side-by-side', slug: 'some-sbs-slug' },
+]) {
+  const u = adminUrlOf(ev);
+  t('admin url accepted: ' + ev.type, URL_RE.test(u), true);
+  t('admin slug recovered: ' + ev.type, extractEventSlug(u), ev.slug);
+  t('admin url flagged: ' + ev.type, isAdminUrl(u), true);
+}
+
 // --- isAdminUrl ----------------------------------------------------------
 t('admin true',  isAdminUrl('https://miniheadquarters.com/tournaments/team/administrate/slug/army-lists'), true);
 t('admin false', isAdminUrl('https://miniheadquarters.com/tournaments/team/army-lists/slug'), false);

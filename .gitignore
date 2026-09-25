@@ -1,0 +1,4 @@
+# Credentials, cookies, session tokens — never commit these.
+.secrets/
+.env
+*.env

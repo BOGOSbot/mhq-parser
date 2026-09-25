@@ -68,6 +68,8 @@ Le cookie se copie dans DevTools -> Network (en-tête `Cookie` d'une requête au
 
 L'interface web offre un champ « Session cookie » mémorisé dans le navigateur ; s'il manque, l'analyse échoue en 401 et ouvre ce champ.
 
+Dans le panneau Browse, la case « organiser view » remplit l'URL admin plutôt que publique. Le sitemap ne contient que des URLs publiques (zéro occurrence de `administrate`), donc l'URL admin est reconstruite à partir du type et du slug de l'événement.
+
 ## Sortie
 
 ### JSON
@@ -188,6 +190,8 @@ node parse.mjs "https://miniheadquarters.com/tournaments/team/administrate/<slug
 Copy the cookie from DevTools -> Network (the `Cookie` request header of any authenticated request) or DevTools -> Application -> Cookies -> miniheadquarters.com. The `MHQ_COOKIE` environment variable works too.
 
 The web UI has a 'Session cookie' field remembered in the browser; when it is missing the parse fails with 401 and opens that field.
+
+In the Browse panel, the 'organiser view' checkbox fills the admin URL instead of the public one. The sitemap only ever carries public URLs (zero occurrences of `administrate`), so the admin path is rebuilt from the event's type and slug.
 
 ## Output
 

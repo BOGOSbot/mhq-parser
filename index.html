@@ -159,6 +159,7 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
       <option value="teams">Teams</option>
     </select>
     <label class="chk"><input id="evshowall" type="checkbox"> all games</label>
+    <label class="chk" title="Fill the organiser/admin URL instead of the public one. Needs a session cookie."><input id="evadmin" type="checkbox"> organiser view</label>
     <span id="evinfo" class="shown"></span>
     <span class="spacer"></span>
     <button id="evclose" type="button" class="ghost">Close</button>
@@ -549,6 +550,11 @@ function loadEvents() {
     .finally(function () { if (reqId === evReqId) { evLoading = false; $('#browse').disabled = false; } });
 }
 
+function adminUrlOf(ev) {
+  return 'https://miniheadquarters.com/tournaments/' + ev.type +
+    '/administrate/' + ev.slug + '/army-lists';
+}
+
 function fmtDate(d) {
   if (!d) return '';
   var m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -574,7 +580,10 @@ function renderEvList() {
     var row = el('div', 'evitem');
     row.addEventListener('click', (function (ev) {
       return function () {
-        $('#url').value = ev.url;
+        // With "organiser view" on, fill the admin URL instead of the public one.
+        // The sitemap only ever carries the public form, so the admin path has to
+        // be rebuilt from <type> and <slug>.
+        $('#url').value = $('#evadmin').checked ? adminUrlOf(ev) : ev.url;
         $('#evpanel').classList.add('hidden');
         stopPolling();
         parse();

@@ -54,6 +54,8 @@ So the wall is detected explicitly:
 - `fetchHTML(url, { cookie })` adds the `Cookie` header. The second argument is now an options bag but a bare `hops` number is still accepted so older callers keep working.
 - `URL_RE` now has one arm per shape and each arm requires its own slug, so a bare `/tournaments/team/army-lists` is rejected instead of falling back to an `output/` directory. `extractEventSlug()` pulls the slug from either shape: public form has it after `/army-lists/`, admin form has it after `/administrate/`.
 
+**Where the admin URL comes from.** The sitemap contains no admin entries at all — zero occurrences of `administrate` across ~2 MB — so Browse cannot surface one from its index. Every event does carry `type` and `slug`, so `adminUrlOf()` in index.html rebuilds the path as `/tournaments/<type>/administrate/<slug>/army-lists`, and the Browse 'organiser view' checkbox switches a row click between the public `e.url` and that rebuilt form. `tests/test-auth.mjs` mirrors the builder and asserts the result passes `URL_RE`, recovers the slug through `extractEventSlug()`, and is flagged by `isAdminUrl()`. Without that pin, a change to `URL_RE` would break the checkbox and the only symptom would be a bare `400`.
+
 Pitfall on cookie plumbing: a browser **cannot** attach `miniheadquarters.com` cookies to a fetch of the local server (different origin), so the cookie has to be forwarded as text. That is why the UI keeps it in `localStorage` and posts it in the `/parse` body, and why the CLI takes `--cookie` / `MHQ_COOKIE`. The value is a Django session and expires (default two weeks), so it is not a permanent solution — it is the cheapest one, because it stores no password and adds no dependency.
 
 ### 3. Split the page into player blocks
