@@ -19,7 +19,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { URL_RE, getMeta, listEvents, playerWarnings, parseUrl, totals } from './parse.mjs';
+import { URL_RE, checkEvent, getAllEvents, getMeta, listEvents, playerWarnings, parseUrl, totals } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -27,6 +27,67 @@ const INDEX_PATH = path.join(__dirname, 'index.html');
 // require a server restart. It is a single small file and the response is no-store.
 function readIndex() {
   return fs.readFileSync(INDEX_PATH, 'utf8');
+}
+
+// --- event filtering ---------------------------------------------------
+// The sitemap lists every tournament regardless of game or whether its army
+// lists are published. The details page carries both facts, so we check each
+// one in the background and hand the UI only what is both Warhammer 40,000 and
+// has lists out. Results are cached for an hour.
+const FILTER_TTL_MS = 60 * 60 * 1000;
+const FILTER_CONCURRENCY = 8;
+let filterCache = new Map(); // detailsUrl -> { game, hasLists, at }
+let filterScan = null;       // running scan promise, or null
+
+function is40k(game) {
+  return /warhammer\s*40/i.test(game || '');
+}
+
+async function runScan(events) {
+  if (filterScan) return filterScan;
+  filterScan = (async () => {
+    const toCheck = events.filter(e => {
+      const c = filterCache.get(e.detailsUrl);
+      return !c || Date.now() - c.at > FILTER_TTL_MS;
+    });
+    const queue = toCheck.slice();
+    const workers = [];
+    const n = Math.min(FILTER_CONCURRENCY, queue.length || 1);
+    for (let i = 0; i < n; i++) {
+      workers.push((async () => {
+        while (queue.length) {
+          const e = queue.shift();
+          try {
+            const r = await checkEvent(e.detailsUrl);
+            filterCache.set(e.detailsUrl, { ...r, at: Date.now() });
+          } catch {
+            filterCache.set(e.detailsUrl, { game: null, hasLists: false, at: Date.now() });
+          }
+        }
+      })());
+    }
+    await Promise.all(workers);
+    filterScan = null;
+  })();
+  return filterScan;
+}
+
+function scanProgress(events) {
+  let scanned = 0;
+  for (const e of events) {
+    if (filterCache.has(e.detailsUrl)) scanned++;
+  }
+  return { scanned, total: events.length, done: scanned >= events.length && !filterScan };
+}
+
+function filteredList(events, limit) {
+  const out = [];
+  for (const e of events) {
+    const c = filterCache.get(e.detailsUrl);
+    if (c && is40k(c.game) && c.hasLists) out.push(e);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 // --port / --host, with PORT / HOST env vars as fallback.
@@ -115,7 +176,20 @@ async function handleEvents(req, res, u) {
     const n = parseInt(lm, 10);
     if (Number.isFinite(n)) limit = n;
   }
+  const wantFilter = u.searchParams.get('filter') === '1';
   try {
+    if (wantFilter) {
+      const all = await getAllEvents();
+      runScan(all); // fire and forget: the scan fills the cache in the background
+      const fl = filteredList(all, limit);
+      return json(res, 200, {
+        events: fl,
+        count: fl.length,
+        scanned: scanProgress(all).scanned,
+        total: all.length,
+        done: scanProgress(all).done,
+      });
+    }
     return json(res, 200, await listEvents({ limit, type: u.searchParams.get('type') || null }));
   } catch (e) {
     return json(res, 502, { error: String((e && e.message) || e) });

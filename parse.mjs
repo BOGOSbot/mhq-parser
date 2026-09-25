@@ -1045,7 +1045,28 @@ async function main() {
   console.error('Wrote ' + miniPath + ' (' + miniText.length + ' bytes)');
 }
 
-export { URL_RE, parseArgs, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers, listEvents };
+// Load the sitemap cache (if needed) and return every event, not just a page.
+async function getAllEvents() {
+  await listEvents({ limit: 1 });
+  return eventCache.list;
+}
+
+// Check whether a tournament is Warhammer 40,000 and whether its army lists are
+// published. The details page carries both facts: a "Game" label in the quick
+// info grid, and an "Army lists" section that says either "Click to see army
+// lists" or "Army lists are not available at this time."
+async function checkEvent(detailsUrl) {
+  const r = await fetchHTML(detailsUrl);
+  if (r.status !== 200) return { game: null, hasLists: false };
+  const h = r.html;
+  const gm = h.match(/text-xs uppercase tracking-wide text-slate-400">\s*Game\s*<\/div>\s*<div class="text-sm text-white">\s*([^<]+)<\/div>/i);
+  const game = gm ? gm[1].trim() : null;
+  const am = h.match(/Army lists\s*<\/h2>\s*<div[^>]*>\s*<p>([^<]{0,150})/i);
+  const hasLists = !!am && !/not available/i.test(am[1]);
+  return { game, hasLists };
+}
+
+export { URL_RE, parseArgs, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is
@@ -1082,7 +1103,8 @@ async function listEvents(opts) {
     while ((m = re.exec(r.html)) !== null) {
       // The sitemap gives the /details/ info page, which never carries list data.
       // The /army-lists/ form does - and 302s back to /details/ when not yet out.
-      const url = m[1].replace(/\/(details)\//, '/army-lists/');
+      const detailsUrl = m[1];
+      const url = detailsUrl.replace(/\/(details)\//, '/army-lists/');
       // The sitemap repeats some entries; keep one of each.
       if (seen.has(url)) continue;
       seen.add(url);
@@ -1102,6 +1124,7 @@ async function listEvents(opts) {
         slug,
         type,
         url,
+        detailsUrl,
         date: date || lastmod,
         lastmod,
         future: !!date && date > new Date().toISOString().slice(0, 10),

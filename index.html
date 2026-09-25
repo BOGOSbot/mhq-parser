@@ -130,6 +130,7 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
       <option value="team">Team</option>
       <option value="individual">Individual</option>
     </select>
+    <label class="chk"><input id="evshowall" type="checkbox"> all games</label>
     <span id="evinfo" class="shown"></span>
     <span class="spacer"></span>
     <button id="evclose" type="button" class="ghost">Close</button>
@@ -472,24 +473,41 @@ function downloadJson() {
 var evCache = [];
 var evLoading = false;
 
+var evPollTimer = null;
+var evReqId = 0;
+
 function showEvents() {
   $('#evpanel').classList.remove('hidden');
   if (!evCache.length && !evLoading) loadEvents();
   else renderEvList();
 }
 
+function stopPolling() {
+  if (evPollTimer) { clearTimeout(evPollTimer); evPollTimer = null; }
+}
+
 function loadEvents() {
+  stopPolling();
+  var reqId = ++evReqId;
   evLoading = true;
   $('#browse').disabled = true;
   $('#evinfo').textContent = 'loading…';
-  fetch('/events?limit=250').then(function (r) { return r.json(); })
+  var url = '/events?limit=250' + ($('#evshowall').checked ? '' : '&filter=1');
+  fetch(url).then(function (r) { return r.json(); })
     .then(function (j) {
+      if (reqId !== evReqId) return;
       if (j.error) throw new Error(j.error);
       evCache = j.events || [];
       renderEvList();
+      if (j.done === true) {
+        $('#evinfo').textContent = j.count + ' events (' + j.scanned + ' checked)';
+      } else if (j.total != null) {
+        $('#evinfo').textContent = j.count + ' found · checking ' + j.scanned + ' of ' + j.total + '…';
+        evPollTimer = setTimeout(loadEvents, 3000);
+      }
     })
-    .catch(function (e) { $('#evinfo').textContent = 'error: ' + e.message; })
-    .finally(function () { evLoading = false; $('#browse').disabled = false; });
+    .catch(function (e) { if (reqId === evReqId) $('#evinfo').textContent = 'error: ' + e.message; })
+    .finally(function () { if (reqId === evReqId) { evLoading = false; $('#browse').disabled = false; } });
 }
 
 function renderEvList() {
@@ -509,6 +527,7 @@ function renderEvList() {
       return function () {
         $('#url').value = ev.url;
         $('#evpanel').classList.add('hidden');
+        stopPolling();
         parse();
       };
     })(e));
@@ -524,9 +543,10 @@ function renderEvList() {
 }
 
 $('#browse').addEventListener('click', showEvents);
-$('#evclose').addEventListener('click', function () { $('#evpanel').classList.add('hidden'); });
+$('#evclose').addEventListener('click', function () { $('#evpanel').classList.add('hidden'); stopPolling(); });
 $('#evq').addEventListener('input', renderEvList);
 $('#evtype').addEventListener('change', renderEvList);
+$('#evshowall').addEventListener('change', function () { evCache = []; loadEvents(); });
 
 $('#f').addEventListener('submit', function (e) {
   e.preventDefault();
