@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MHQ Army Lists</title>
+<style>
+:root{
+  --bg:#0f1116; --panel:#161a22; --panel2:#1c212b; --line:#2a3040;
+  --txt:#e7eaf0; --dim:#8d96a8; --acc:#6ea8fe; --warn:#e8b44a; --err:#ef6b6b; --ok:#5fbf7f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:10;background:rgba(15,17,22,.94);
+  border-bottom:1px solid var(--line);padding:12px 18px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+h1{font-size:15px;margin:0;letter-spacing:.2px;white-space:nowrap}
+h1 span{color:var(--dim);font-weight:400}
+form{display:flex;gap:8px;flex:1;min-width:300px;align-items:center}
+input[type=url],input[type=search]{background:var(--panel2);color:var(--txt);
+  border:1px solid var(--line);border-radius:7px;padding:8px 10px}
+input[type=url]{flex:1;min-width:200px;font:13px var(--mono)}
+input[type=url]:focus,input[type=search]:focus{outline:none;border-color:var(--acc)}
+button{background:var(--acc);color:#0b1020;border:0;border-radius:7px;padding:8px 16px;
+  font:600 13px system-ui;cursor:pointer}
+button:hover{filter:brightness(1.1)}
+button:disabled{opacity:.55;cursor:default}
+button.ghost{background:transparent;color:var(--dim);border:1px solid var(--line);
+  padding:6px 11px;font-weight:500}
+button.ghost:hover{color:var(--txt);border-color:var(--acc);filter:none}
+.status{font:12px var(--mono);color:var(--dim);min-height:16px;margin-top:9px}
+.status.err{color:var(--err)}
+.status.busy{color:var(--acc)}
+.status.ok{color:var(--ok)}
+main{padding:16px 18px 70px;max-width:1240px;margin:0 auto}
+.empty{color:var(--dim);text-align:center;padding:80px 12px;font-size:14px}
+.empty code{font:12.5px var(--mono);color:var(--txt);background:var(--panel2);
+  border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+.ev{font-weight:600;font-size:14.5px}
+.bar .meta{color:var(--dim);font:12px var(--mono);margin-top:2px}
+.spacer{flex:1}
+input[type=search]{width:230px;font:13px system-ui}
+select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+  border-radius:7px;padding:7px 8px;font:13px system-ui;max-width:250px}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--dim);font-size:13px;
+  cursor:pointer;user-select:none;white-space:nowrap}
+label.chk input{accent-color:var(--acc)}
+.shown{color:var(--dim);font:12px var(--mono);white-space:nowrap}
+.tblock{margin:20px 0 4px}
+.team{display:flex;align-items:baseline;gap:8px;margin:0 0 8px;padding-bottom:5px;
+  border-bottom:1px solid var(--line);font:12px var(--mono);color:var(--dim);
+  text-transform:uppercase;letter-spacing:.8px;overflow-wrap:anywhere}
+.team b{color:var(--txt);font-weight:600;text-transform:none;letter-spacing:0;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(345px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;min-width:0}
+.card.has-warn{border-color:rgba(232,180,74,.55)}
+.card h3{margin:0 0 2px;font-size:14.5px;overflow-wrap:anywhere}
+.faction{color:var(--dim);font-size:12px;margin-bottom:9px;overflow-wrap:anywhere}
+.points{display:flex;align-items:baseline;gap:8px;margin-bottom:9px}
+.points .big{font:600 18px var(--mono)}
+.points .cmp{font:12px var(--mono);color:var(--dim)}
+.points .cmp.bad{color:var(--err)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+.chip{font:11.5px var(--mono);color:var(--warn);background:rgba(232,180,74,.1);
+  border:1px solid rgba(232,180,74,.35);border-radius:20px;padding:2px 9px}
+.meta-grid{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px;
+  margin:0 0 9px}
+.meta-grid dt{color:var(--dim)}
+.meta-grid dd{margin:0;overflow-wrap:anywhere}
+.units{display:flex;flex-direction:column;gap:1px}
+.unit{display:flex;gap:8px;align-items:baseline;padding:4px 0;
+  border-top:1px solid rgba(42,48,64,.55)}
+.unit:first-child{border-top:0}
+.unit .m{flex:1;font-size:13px;min-width:0}
+.unit .m b{font-weight:600}
+.unit .m small{display:block;color:var(--dim);font-size:11.5px;line-height:1.4;
+  margin-top:1px;overflow-wrap:anywhere}
+.unit .p{font:600 12.5px var(--mono);white-space:nowrap}
+.unit .p.zero{color:var(--dim);font-weight:400}
+details{margin-top:11px}
+details summary{color:var(--dim);font:12px var(--mono);cursor:pointer}
+details summary:hover{color:var(--txt)}
+pre{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  padding:10px;overflow:auto;font:11.5px/1.55 var(--mono);max-height:300px;margin:8px 0 0}
+details.mini pre{max-height:360px;white-space:pre-wrap}
+.hidden{display:none}
+footer{color:var(--dim);font:11.5px var(--mono);text-align:center;padding:24px 16px}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>MHQ Army Lists <span>parser</span></h1>
+    <form id="f">
+      <input id="url" type="url" spellcheck="false" autocomplete="off"
+             placeholder="https://miniheadquarters.com/tournaments/team/army-lists/&lt;slug&gt;">
+      <button id="go" type="submit">Parse</button>
+    </form>
+  </div>
+  <div id="status" class="status"></div>
+</header>
+<main id="main">
+  <div class="empty">
+    Paste a MiniHeadQuarters army-lists URL and press <b>Parse</b>.<br>
+    Running this page needs <code>node server.mjs</code>
+  </div>
+</main>
+<footer>stdlib only &middot; no build step &middot; parses locally via parse.mjs</footer>
+<script>
+'use strict';
+var $ = function (s) { return document.querySelector(s); };
+var NL = String.fromCharCode(10);
+var WB = '> ' + String.fromCharCode(9888) + ' ';
+// Header keys already shown elsewhere on the card, or that add no information.
+var SKIP = {
+  totalPoints: 1, detachment: 1, forceDisposition: 1,
+  playerName: 1, teamName: 1, factionKeyword: 1
+};
+var data = null;
+var view = { blocks: [], total: 0 };
+
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+function setStatus(msg, cls) {
+  var s = $('#status');
+  s.className = 'status' + (cls ? ' ' + cls : '');
+  s.textContent = msg || '';
+}
+function isRealUnit(u) {
+  return u.points && u.points < 1000 &&
+    !/^(?:Strike Force|Force de Frappe|Force of|DA Recon)/i.test(u.model || '');
+}
+function blobOf(p) {
+  var parts = [p.name, p.faction, p.teamName, p.format];
+  if (p.meta) parts.push(p.meta.detachment, p.meta.forceDisposition);
+  for (var i = 0; i < p.warnings.length; i++) parts.push(p.warnings[i].text);
+  if (p.header) for (var k in p.header) parts.push(String(p.header[k]));
+  for (var j = 0; j < (p.units || []).length; j++) {
+    var u = p.units[j];
+    parts.push(u.model, u.label, u.role, u.enhancements, u.attachedUnit, u.category);
+    if (u.equipment) parts.push(u.equipment.join(' '));
+    for (var m = 0; m < (u.models || []).length; m++) {
+      parts.push(u.models[m].name);
+      if (u.models[m].subs) parts.push(u.models[m].subs.join(' '));
+    }
+  }
+  return parts.filter(function (x) { return x != null; }).join(' ').toLowerCase();
+}
+
+async function parse() {
+  var url = $('#url').value.trim();
+  if (!url) return;
+  var btn = $('#go');
+  btn.disabled = true;
+  setStatus('fetching + parsing…', 'busy');
+  var t0 = performance.now();
+  try {
+    var r = await fetch('/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: url })
+    });
+    var j = await r.json().catch(function () { return { error: 'non-JSON response' }; });
+    if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status);
+    data = j;
+    render();
+    setStatus(j.count + ' armies parsed in ' + Math.round(performance.now() - t0) + ' ms', 'ok');
+  } catch (e) {
+    setStatus(String(e.message || e), 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function render() {
+  var main = $('#main');
+  main.textContent = '';
+  view = { blocks: [], total: 0 };
+
+  var ev = data.event;
+  var teams = new Map();
+  for (var i = 0; i < data.players.length; i++) {
+    var p = data.players[i];
+    var key = p.teamName || 'Unknown';
+    if (!teams.has(key)) teams.set(key, []);
+    teams.get(key).push(p);
+  }
+
+  var bar = el('div', 'bar');
+  var left = el('div');
+  left.appendChild(el('div', 'ev', ev.name));
+  var bits = [];
+  if (ev.date) bits.push(ev.date);
+  bits.push(teams.size + ' team' + (teams.size === 1 ? '' : 's'));
+  bits.push(data.count + ' arm' + (data.count === 1 ? 'y' : 'ies'));
+  left.appendChild(el('div', 'meta', bits.join(' · ')));
+  bar.appendChild(left);
+  bar.appendChild(el('span', 'spacer'));
+
+  var q = el('input');
+  q.type = 'search';
+  q.placeholder = 'Filter armies, models, equipment…';
+  q.addEventListener('input', applyFilters);
+  bar.appendChild(q);
+
+  var sel = el('select');
+  var factions = Array.from(new Set(data.players.map(function (p) { return p.faction; })
+    .filter(Boolean))).sort();
+  var all = el('option', null, 'All factions');
+  all.value = '';
+  sel.appendChild(all);
+  for (var f = 0; f < factions.length; f++) {
+    var o = el('option', null, factions[f]);
+    o.value = factions[f];
+    sel.appendChild(o);
+  }
+  sel.addEventListener('change', applyFilters);
+  bar.appendChild(sel);
+
+  var lbl = el('label', 'chk');
+  var cb = el('input');
+  cb.type = 'checkbox';
+  cb.addEventListener('change', applyFilters);
+  lbl.appendChild(cb);
+  lbl.appendChild(document.createTextNode(' warnings only'));
+  bar.appendChild(lbl);
+
+  bar.appendChild(el('span', 'shown', data.count + ' / ' + data.count));
+  var copy = el('button', 'ghost', 'Copy mini');
+  copy.addEventListener('click', copyMini);
+  bar.appendChild(copy);
+  var dl = el('button', 'ghost', 'Download JSON');
+  dl.addEventListener('click', downloadJson);
+  bar.appendChild(dl);
+  main.appendChild(bar);
+
+  for (var team of Array.from(teams.keys())) {
+    var players = teams.get(team);
+    var block = el('section', 'tblock');
+    var head = el('div', 'team');
+    head.appendChild(el('b', null, team));
+    head.appendChild(document.createTextNode(players.length + (players.length === 1 ? ' army' : ' armies')));
+    block.appendChild(head);
+    var grid = el('div', 'cards');
+    var cards = [];
+    for (var n = 0; n < players.length; n++) {
+      var c = card(players[n]);
+      cards.push({ node: c, p: players[n], blob: blobOf(players[n]) });
+      grid.appendChild(c);
+    }
+    block.appendChild(grid);
+    view.blocks.push({ node: block, cards: cards });
+    view.total += players.length;
+    main.appendChild(block);
+  }
+  if (view.total === 0) main.appendChild(el('div', 'empty', 'No armies found on this page.'));
+
+  var mini = el('details', 'mini');
+  mini.appendChild(el('summary', null, 'mini view (markdown)'));
+  var pre = el('pre');
+  pre.textContent = data.miniText || '';
+  mini.appendChild(pre);
+  main.appendChild(mini);
+
+  applyFilters();
+}
+
+function card(p) {
+  var c = el('article', 'card');
+
+  c.appendChild(el('h3', null, p.name));
+  var fbits = [p.faction, p.teamName, p.format ? 'format: ' + p.format : null].filter(Boolean);
+  if (fbits.length) c.appendChild(el('div', 'faction', fbits.join(' · ')));
+
+  var pts = el('div', 'points');
+  pts.appendChild(el('span', 'big', p.totals.parsedPts));
+  if (p.totals.declaredPts == null) {
+    pts.appendChild(el('span', 'cmp', 'no total declared'));
+  } else if (p.totals.declaredPts === p.totals.parsedPts) {
+    pts.appendChild(el('span', 'cmp', '= declared ' + p.totals.declaredPts));
+  } else {
+    var d = p.totals.parsedPts - p.totals.declaredPts;
+    pts.appendChild(el('span', 'cmp bad', 'declared ' + p.totals.declaredPts +
+      ' (' + (d > 0 ? '+' : '') + d + ')'));
+  }
+  c.appendChild(pts);
+
+  if (p.warnings.length) {
+    c.classList.add('has-warn');
+    var chips = el('div', 'chips');
+    for (var i = 0; i < p.warnings.length; i++) {
+      var t = p.warnings[i].text;
+      chips.appendChild(el('span', 'chip', t.indexOf(WB) === 0 ? t.slice(WB.length) : t));
+    }
+    c.appendChild(chips);
+  }
+
+  var dg = el('dl', 'meta-grid');
+  if (p.meta.detachment) {
+    dg.appendChild(el('dt', null, 'Detachment'));
+    dg.appendChild(el('dd', null, p.meta.detachment));
+  }
+  if (p.meta.forceDisposition) {
+    dg.appendChild(el('dt', null, 'Force disp.'));
+    dg.appendChild(el('dd', null, p.meta.forceDisposition));
+  }
+  if (p.header) {
+    for (var k in p.header) {
+      if (SKIP[k]) continue;
+      dg.appendChild(el('dt', null, k));
+      dg.appendChild(el('dd', null, String(p.header[k])));
+    }
+  }
+  if (dg.childNodes.length) c.appendChild(dg);
+
+  var units = (p.units || []).filter(isRealUnit);
+  if (units.length) {
+    var ul = el('div', 'units');
+    for (var n = 0; n < units.length; n++) {
+      var u = units[n];
+      var row = el('div', 'unit');
+      var m = el('span', 'm');
+      m.appendChild(el('b', null, u.model || '(unnamed)'));
+      var ub = [];
+      if (u.label) ub.push(u.label);
+      if (u.role) ub.push(u.role);
+      if (u.enhancements) ub.push(u.enhancements);
+      if (u.equipment && u.equipment.length) ub.push(u.equipment.join(', '));
+      if (u.models && u.models.length) {
+        ub.push(u.models.map(function (mm) {
+          var s = (mm.count && mm.count > 1 ? mm.count + 'x ' : '') + mm.name;
+          if (mm.subs && mm.subs.length) s += ' [' + mm.subs.join(', ') + ']';
+          return s;
+        }).join(', '));
+      }
+      if (u.attachedUnit) ub.push('attached: ' + u.attachedUnit);
+      if (u.category) ub.push(u.category);
+      if (ub.length) m.appendChild(el('small', null, ub.join(' · ')));
+      row.appendChild(m);
+      row.appendChild(el('span', 'p' + (u.points < 20 ? ' zero' : ''), String(u.points)));
+      ul.appendChild(row);
+    }
+    c.appendChild(ul);
+  }
+
+  var raw = el('details');
+  raw.appendChild(el('summary', null, 'raw list text'));
+  var pre = el('pre');
+  pre.textContent = p.bodyRest || p.bodyText || '';
+  raw.appendChild(pre);
+  c.appendChild(raw);
+
+  return c;
+}
+
+function applyFilters() {
+  var qEl = document.querySelector('input[type=search]');
+  var sEl = document.querySelector('select');
+  var cEl = document.querySelector('label.chk input');
+  if (!qEl || !sEl || !cEl) return;
+  var q = qEl.value.trim().toLowerCase();
+  var fac = sEl.value;
+  var wonly = cEl.checked;
+  var shown = 0;
+  for (var i = 0; i < view.blocks.length; i++) {
+    var block = view.blocks[i];
+    var any = false;
+    for (var j = 0; j < block.cards.length; j++) {
+      var cd = block.cards[j];
+      var ok = (!q || cd.blob.indexOf(q) >= 0) &&
+        (!fac || cd.p.faction === fac) &&
+        (!wonly || cd.p.warnings.length > 0);
+      cd.node.classList.toggle('hidden', !ok);
+      if (ok) { any = true; shown++; }
+    }
+    block.node.classList.toggle('hidden', !any);
+  }
+  var s = document.querySelector('.shown');
+  if (s) s.textContent = shown + ' / ' + view.total;
+}
+
+function copyMini() {
+  var text = (data && data.miniText) || '';
+  var done = function (ok) {
+    var s = document.querySelector('.shown');
+    if (s) {
+      var old = s.textContent;
+      s.textContent = ok ? 'copied' : 'copy failed';
+      setTimeout(function () { s.textContent = old; }, 1200);
+    }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    return;
+  }
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  ta.remove();
+  done(ok);
+}
+
+function downloadJson() {
+  var clean = {
+    event: data.event,
+    count: data.count,
+    players: data.players.map(function (p) {
+      var rest = {};
+      for (var k in p) {
+        if (k === 'meta' || k === 'totals' || k === 'warnings') continue;
+        rest[k] = p[k];
+      }
+      return rest;
+    })
+  };
+  var blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (data.event.slug || 'mhq') + '_army_lists.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+}
+
+$('#f').addEventListener('submit', function (e) {
+  e.preventDefault();
+  parse();
+});
+var prefill = new URLSearchParams(location.search).get('url');
+if (prefill) {
+  $('#url').value = prefill;
+  parse();
+}
+</script>
+</body>
+</html>

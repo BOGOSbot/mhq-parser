@@ -17,50 +17,51 @@
 import fs from 'fs';
 import https from 'https';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 // ============================================================
-// CLI
+// CLI wiring (skipped when this file is imported as a module)
 // ============================================================
-const argv = process.argv.slice(2);
-const args = {
-  url: null,
-  outDir: null,
-  jsonName: 'mhq_army_lists.json',
-  miniName: 'mhq_army_lists.mini.md',
-};
-for (let i = 0; i < argv.length; i++) {
-  const a = argv[i];
-  if (/^https?:\/\//.test(a)) args.url = a;
-  else if (a === '--out-dir') args.outDir = argv[++i];
-  else if (a === '--json') args.jsonName = argv[++i];
-  else if (a === '--mini') args.miniName = argv[++i];
-}
-
-// Validate the URL
-if (!args.url) {
-  console.error('Error: provide a link to an MHQ army list');
-  console.error('  Usage: node parse.mjs <army-lists-url> [--out-dir <dir>] [--json <name>] [--mini <name>]');
-  console.error('  Example: node parse.mjs https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>');
-  process.exit(1);
-}
-
-// Validate the URL format
 const URL_RE = /^https:\/\/miniheadquarters\.com\/tournaments\/(?:team|individual|2v2|side-by-side)\/army-lists\/.+/;
-if (!URL_RE.test(args.url)) {
-  console.error('Error: provide a valid link');
-  console.error('  Expected format: https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>');
-  console.error('  Got: ' + args.url);
-  process.exit(1);
-}
 
-// Extract the event slug for the default output directory
-const slugMatch = args.url.match(/\/army-lists\/(.+)$/);
-const eventSlug = slugMatch ? slugMatch[1] : 'output';
-// Default output dir: <event-slug>/ relative to this script's directory
-if (!args.outDir) {
-  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-  args.outDir = path.join(scriptDir, eventSlug);
+// True only when run as the main script: node parse.mjs <url> [options].
+const IS_MAIN = (() => {
+  try { return import.meta.url === pathToFileURL(process.argv[1] || '').href; }
+  catch { return false; }
+})();
+
+let args = null;
+
+// Parse + validate the CLI args. Throws on bad input; the caller prints it.
+function parseArgs(argv) {
+  const a = {
+    url: null,
+    outDir: null,
+    jsonName: 'mhq_army_lists.json',
+    miniName: 'mhq_army_lists.mini.md',
+  };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (/^https?:\/\//.test(arg)) a.url = arg;
+    else if (arg === '--out-dir') a.outDir = argv[++i];
+    else if (arg === '--json') a.jsonName = argv[++i];
+    else if (arg === '--mini') a.miniName = argv[++i];
+  }
+  if (!a.url) {
+    throw new Error('provide a link to an MHQ army list\n' +
+      '  Usage: node parse.mjs <army-lists-url> [--out-dir <dir>] [--json <name>] [--mini <name>]\n' +
+      '  Example: node parse.mjs https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>');
+  }
+  if (!URL_RE.test(a.url)) {
+    throw new Error('provide a valid link\n' +
+      '  Expected format: https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>\n' +
+      '  Got: ' + a.url);
+  }
+  // Default output dir: <event-slug>/ relative to this script's directory.
+  const slugMatch = a.url.match(/\/army-lists\/(.+)$/);
+  const eventSlug = slugMatch ? slugMatch[1] : 'output';
+  if (!a.outDir) a.outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), eventSlug);
+  return a;
 }
 
 // ============================================================
@@ -898,38 +899,71 @@ function getMeta(player) {
 }
 
 // ============================================================
-// Main
+// Programmatic entry points (used by server.mjs)
 // ============================================================
-async function main() {
-  const { status, html } = await fetchHTML(args.url);
-  if (status !== 200) throw new Error('HTTP ' + status + ' fetching ' + args.url);
-  console.error('Fetched ' + html.length + ' bytes');
-  const articles = splitArticles(html);
-  console.error('Found ' + articles.length + ' articles');
-  const players = buildPlayers(articles);
-  console.error('Parsed ' + players.length + ' players');
+function extractEvent(url, html) {
   // Prefer the page <title> for the canonical event name; fall back to the URL slug.
   const titleM = html.match(/<title>([^<]+)<\/title>/);
   let eventName = null;
   if (titleM) {
     // "La Croisade des Canuts 2 | MiniHeadQuarters" -> "La Croisade des Canuts 2"
-    eventName = titleM[1].split('|')[0].trim();
+    // The <title> is not entity-decoded elsewhere, so an apostrophe lands as &#x27;.
+    eventName = decodeEntities(titleM[1].split('|')[0].trim());
   }
-  const urlPath = new URL(args.url).pathname;
+  const urlPath = new URL(url).pathname;
   const slug = urlPath.split('/').filter(Boolean).pop();
   const m = slug.match(/^(.*)-(\d{4})-(\d{2})-(\d{2})$/);
   if (!eventName) eventName = m ? m[1].replace(/-/g, ' ') : slug;
-  const eventDate = m ? `${m[2]}-${m[3]}-${m[4]}` : null;
-  const output = {
-    event: { name: eventName, date: eventDate, url: args.url },
-    count: players.length,
-    players,
-  };
-  fs.mkdirSync(args.outDir, { recursive: true });
-  const jsonPath = path.join(args.outDir, args.jsonName);
-  const miniPath = path.join(args.outDir, args.miniName);
-  fs.writeFileSync(jsonPath, JSON.stringify(output, null, 2));
-  console.error('Wrote ' + jsonPath);
+  const eventDate = m ? m[2] + '-' + m[3] + '-' + m[4] : null;
+  return { name: eventName, date: eventDate, url };
+}
+
+// Sum of real unit points and the total the list declares. declaredPts is
+// null when no readable total exists. "Real" excludes the Strike Force /
+// Force de Frappe summary lines, which are not units.
+function totals(player) {
+  const realUnits = (player.units || []).filter(u => u.points && u.points < 1000 &&
+    !/^(?:Strike Force|Force de Frappe|Force of|DA Recon)/i.test(u.model || ''));
+  const parsedPts = realUnits.reduce((s, u) => s + (u.points || 0), 0);
+  let declaredPts = null;
+  if (player.header && player.header.totalPoints) {
+    declaredPts = parseInt(player.header.totalPoints);
+  } else {
+    // Header is null or lacks totalPoints -- try to extract from bodyRest.
+    // Prefer an explicit total label ("Strike Force (N points)", "TOTAL ARMY POINTS : Npts")
+    // over a bare "(N pts)" unit-style match, which can pick up a unit cost.
+    const text = player.bodyRest || '';
+    const labeled = text.match(/(?:Strike\s+Force|Force\s+de\s+Frappe|TOTAL\s+ARMY\s+POINTS|Total\s+de\s+Points)[^\n]*?\(?\s*(\d{3,5})\s*(?:pts?|points?)\s*\)?/i);
+    if (labeled) declaredPts = parseInt(labeled[1]);
+    else {
+      const m = text.match(/(\d{3,5})\s*pts?\)/);
+      if (m) declaredPts = parseInt(m[1]);
+    }
+  }
+  // A NaN total means the header had a totalPoints key that could not be read as
+  // a number; treat that as missing rather than emitting "declared NaN".
+  if (declaredPts == null || Number.isNaN(declaredPts)) declaredPts = null;
+  return { parsedPts: parsedPts, declaredPts: declaredPts };
+}
+
+// Warnings the mini formatter emits for one army, in mini order
+// (points first, then detachment, then force disposition).
+function playerWarnings(player, meta) {
+  const warnings = [];
+  const t = totals(player);
+  if (t.declaredPts == null) {
+    warnings.push({ type: 'missing-total', text: '> ⚠ missing total points' });
+  } else if (t.parsedPts !== t.declaredPts) {
+    const diff = t.parsedPts - t.declaredPts;
+    warnings.push({ type: 'mismatch', text: '> ⚠ points mismatch: declared ' + t.declaredPts + ', parsed ' + t.parsedPts + ' (' + (diff > 0 ? '+' : '') + diff + ')' });
+  }
+  if (!meta.detachment) warnings.push({ type: 'detachment', text: '> ⚠ detachment not found' });
+  if (!meta.forceDisposition) warnings.push({ type: 'disposition', text: '> ⚠ force disposition not found' });
+  return warnings;
+}
+
+function renderMini(output) {
+  const { event, count, players } = output;
   // Group players by team
   const teams = new Map();
   for (const p of players) {
@@ -937,57 +971,64 @@ async function main() {
     if (!teams.has(teamName)) teams.set(teamName, []);
     teams.get(teamName).push(p);
   }
-
   const out = [];
-  out.push('# ' + output.event.name + ' — ' + (output.event.date || ''));
+  out.push('# ' + event.name + ' — ' + (event.date || ''));
   out.push('');
-  out.push(teams.size + ' teams, ' + output.count + ' armies');
+  out.push(teams.size + ' teams, ' + count + ' armies');
   out.push('');
-
   for (const [teamName, teamPlayers] of teams) {
     out.push('## ' + teamName);
     out.push('');
     for (const p of teamPlayers) {
-      // Compute warnings (emitted after the player header).
-      const warnings = [];
-      const realUnits = (p.units || []).filter(u => u.points && u.points < 1000 &&
-        !/^(?:Strike Force|Force de Frappe|Force of|DA Recon)/i.test(u.model || ''));
-      const parsedPts = realUnits.reduce((s, u) => s + (u.points || 0), 0);
-      let declaredPts = null;
-      if (p.header && p.header.totalPoints) {
-        declaredPts = parseInt(p.header.totalPoints);
-      } else {
-        // Header is null or lacks totalPoints — try to extract from bodyRest.
-        // Prefer an explicit total label ("Strike Force (N points)", "TOTAL ARMY POINTS : Npts")
-        // over a bare "(N pts)" unit-style match, which can pick up a unit cost.
-        const text = (p.bodyRest || '');
-        const labeled = text.match(/(?:Strike\s+Force|Force\s+de\s+Frappe|TOTAL\s+ARMY\s+POINTS|Total\s+de\s+Points)[^\n]*?\(?\s*(\d{3,5})\s*(?:pts?|points?)\s*\)?/i);
-        if (labeled) declaredPts = parseInt(labeled[1]);
-        else {
-          const m = text.match(/(\d{3,5})\s*pts?\)/);
-          if (m) declaredPts = parseInt(m[1]);
-        }
-      }
-      if (declaredPts && parsedPts !== declaredPts) {
-        const diff = parsedPts - declaredPts;
-        warnings.push('> ⚠ points mismatch: declared ' + declaredPts + ', parsed ' + parsedPts + ' (' + (diff > 0 ? '+' : '') + diff + ')');
-      }
-      out.push('### ' + p.name + ' — ' + p.faction);
       const meta = getMeta(p);
+      out.push('### ' + p.name + ' — ' + p.faction);
       if (meta.detachment) out.push('- ' + meta.detachment);
-      else warnings.push('> ⚠ detachment not found');
       if (meta.forceDisposition) out.push('- ' + meta.forceDisposition);
-      else warnings.push('> ⚠ force disposition not found');
       // Emit warnings under the header
-      for (const w of warnings) out.push(w);
+      for (const w of playerWarnings(p, meta)) out.push(w.text);
       out.push('');
       out.push(...renderPlayer(p));
       out.push('');
     }
   }
-  const text = out.join('\n');
-  fs.writeFileSync(miniPath, text);
-  console.error('Wrote ' + miniPath + ' (' + text.length + ' bytes)');
+  return out.join('\n');
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+async function parseUrl(url, { log = false } = {}) {
+  const { status, html } = await fetchHTML(url);
+  if (status !== 200) throw new Error('HTTP ' + status + ' fetching ' + url);
+  if (log) console.error('Fetched ' + html.length + ' bytes');
+  const articles = splitArticles(html);
+  if (log) console.error('Found ' + articles.length + ' articles');
+  const players = buildPlayers(articles);
+  if (log) console.error('Parsed ' + players.length + ' players');
+  const output = { event: extractEvent(url, html), count: players.length, players };
+  return { output, miniText: renderMini(output) };
+}
+
+// ============================================================
+// Main
+// ============================================================
+async function main() {
+  const { output, miniText } = await parseUrl(args.url, { log: true });
+  fs.mkdirSync(args.outDir, { recursive: true });
+  const jsonPath = path.join(args.outDir, args.jsonName);
+  const miniPath = path.join(args.outDir, args.miniName);
+  fs.writeFileSync(jsonPath, JSON.stringify(output, null, 2));
+  console.error('Wrote ' + jsonPath);
+  fs.writeFileSync(miniPath, miniText);
+  console.error('Wrote ' + miniPath + ' (' + miniText.length + ' bytes)');
+}
+
+export { URL_RE, parseArgs, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers };
+
+if (IS_MAIN) {
+  try {
+    args = parseArgs(process.argv.slice(2));
+  } catch (e) {
+    console.error('Error: ' + e.message);
+    process.exit(1);
+  }
+  main().catch(e => { console.error(e); process.exit(1); });
+}
+

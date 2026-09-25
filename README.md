@@ -19,6 +19,27 @@ Remplacer le répertoire de sortie par défaut :
 node tools\\mhq-parser\\parse.mjs "https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>" --out-dir data\\mhq\\<slug>
 ```
 
+## Interface web
+
+Un petit serveur local, sans aucune dependance, sert une page unique qui appelle le parseur :
+
+```powershell
+node tools\\mhq-parser\\server.mjs
+```
+
+Coller ensuite l'URL de l'evenement dans la page http://127.0.0.1:8787 puis lancer l'analyse. Les listes s'affichent groupees par equipe ; chaque armee indique son total de points (calcule vs declare), son detachement, ses dispositions de force et ses avertissements, suivis du tableau des unites. La recherche texte, le filtre par faction et l'affichage restreint aux avertissements filtrent a la volee ; `Copy mini` copie la vue Markdown et `Download JSON` telecharge l'equivalent du fichier du parseur.
+
+L'analyse passe toujours par le serveur : le navigateur ne peut pas interroger miniheadquarters.com directement faute d'en-tete CORS. La page est relue a chaque requete, modifier index.html ne demande pas de redemarrage.
+
+Options du serveur :
+
+| Option | Valeur par defaut | Role |
+|------|---------|---------|
+| **--port <n>** | 8787 | Port d'ecoute (variable `PORT`) |
+| **--host <h>** | 127.0.0.1 | Interface d'ecoute (variable `HOST`) |
+
+Points de terminaison : `GET /` (la page), `GET /health` et `POST /parse` avec un corps JSON "{"url":"..."}".
+
 ## Options
 
 | Option | Valeur par défaut | Rôle |

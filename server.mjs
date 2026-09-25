@@ -1,0 +1,125 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * MHQ Army Lists - local web UI for parse.mjs.
+ *
+ *   node server.mjs [--port 8787] [--host 127.0.0.1]
+ *
+ * Endpoints:
+ *   GET  /          serves index.html
+ *   GET  /health    { ok: true }
+ *   POST /parse     { url } -> { event, count, players, miniText, elapsedMs }
+ *
+ * The browser cannot fetch miniheadquarters.com directly (no CORS headers), so
+ * every parse happens here and the UI only renders. Stdlib only, no deps.
+ */
+
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { URL_RE, getMeta, playerWarnings, parseUrl, totals } from './parse.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const INDEX_PATH = path.join(__dirname, 'index.html');
+// Read per request rather than at startup, so editing index.html does not
+// require a server restart. It is a single small file and the response is no-store.
+function readIndex() {
+  return fs.readFileSync(INDEX_PATH, 'utf8');
+}
+
+// --port / --host, with PORT / HOST env vars as fallback.
+const argv = process.argv.slice(2);
+let port = Number(process.env.PORT) || 8787;
+let host = process.env.HOST || '127.0.0.1';
+for (let i = 0; i < argv.length; i++) {
+  if (argv[i] === '--port') port = Number(argv[++i]);
+  else if (argv[i] === '--host') host = argv[++i];
+  else if (argv[i].startsWith('--port=')) port = Number(argv[i].slice(7));
+  else if (argv[i].startsWith('--host=')) host = argv[i].slice(7);
+}
+if (!Number.isFinite(port) || port <= 0) {
+  console.error('Error: --port must be a positive integer');
+  process.exit(1);
+}
+
+const MAX_BODY = 64 * 1024;
+
+function send(res, status, body, type) {
+  res.writeHead(status, {
+    'Content-Type': type || 'application/json; charset=utf-8',
+    'Content-Length': Buffer.byteLength(body),
+    'Cache-Control': 'no-store',
+  });
+  res.end(body);
+}
+const json = (res, status, obj) => send(res, status, JSON.stringify(obj));
+const fail = (res, status, message) => json(res, status, { error: message });
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let n = 0;
+    const chunks = [];
+    req.on('data', c => {
+      n += c.length;
+      if (n > MAX_BODY) { reject(new Error('body too large')); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
+// One army, enriched with the derived fields the UI displays.
+function viewPlayer(p) {
+  const meta = getMeta(p);
+  return { ...p, meta: meta, totals: totals(p), warnings: playerWarnings(p, meta) };
+}
+
+async function handleParse(req, res) {
+  let target;
+  try { target = JSON.parse((await readBody(req)) || '{}').url; }
+  catch (e) { return fail(res, 400, 'invalid JSON body: ' + e.message); }
+  if (typeof target !== 'string' || !target) return fail(res, 400, 'missing "url"');
+  if (!URL_RE.test(target)) {
+    return fail(res, 400, 'not a MiniHeadQuarters army-lists URL ' +
+      '(expected https://miniheadquarters.com/tournaments/<type>/army-lists/<slug>)');
+  }
+  const t0 = Date.now();
+  try {
+    const { output, miniText } = await parseUrl(target);
+    return json(res, 200, {
+      event: output.event,
+      count: output.count,
+      players: output.players.map(viewPlayer),
+      miniText: miniText,
+      elapsedMs: Date.now() - t0,
+    });
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    // A non-200 answer from MHQ is upstream, not a bug here.
+    return json(res, /HTTP \d{3}/.test(msg) ? 502 : 500, { error: msg });
+  }
+}
+
+const server = http.createServer(async (req, res) => {
+  let u;
+  try { u = new URL(req.url, 'http://localhost'); }
+  catch { return fail(res, 400, 'bad request line'); }
+
+  if (req.method === 'GET' && (u.pathname === '/' || u.pathname === '/index.html')) {
+    return send(res, 200, readIndex(), 'text/html; charset=utf-8');
+  }
+  if (req.method === 'GET' && u.pathname === '/health') return json(res, 200, { ok: true });
+  if (req.method === 'POST' && u.pathname === '/parse') return handleParse(req, res);
+  return fail(res, 404, 'not found: ' + u.pathname);
+});
+
+server.on('clientError', (err, socket) => {
+  socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+});
+
+server.listen(port, host, () => {
+  console.log('MHQ army-lists UI   http://' + host + ':' + port);
+  console.log('POST /parse {"url":"<army-lists url>"}');
+});
