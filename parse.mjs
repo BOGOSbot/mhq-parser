@@ -689,7 +689,7 @@ function buildPlayers(articles) {
     const afterH2 = a.includes('</h2>')
       ? a.slice(a.indexOf('</h2>') + 6)
       : a.slice(a.indexOf('>', a.indexOf('whitespace-pre-line')) + 1);
-    const bodyText = stripTags(afterH2).split('\n').map(l => l.replace(/\s+$/, '')).join('\n');
+    const bodyText = stripTags(afterH2).replace(/^[\s\S]*?(?=[\S])/, '').split('\n').map(l => l.trim()).join('\n');
     // Preserve the full body text so parsePreamble (called from getMeta) can find
     // the detachment / force disposition lines that live in the preamble section,
     // which is otherwise discarded once the header block is stripped.
