@@ -182,7 +182,7 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
       <option value="2v2 (side-by-side)">2v2 (side-by-side)</option>
       <option value="teams">Teams</option>
     </select>
-    <label class="chk" title="Keep only 40,000 events whose army lists are already out. Each event costs an upstream fetch, so on a cold serverless instance only the first batch makes it back - the rest arrive as the list refills. Uncheck for the whole catalogue with no filtering, which is faster."><input id="evshowall" type="checkbox"> lists published</label>
+    <label class="chk" title="Keep only 40,000 events from the last year whose army lists are already out. Each event costs an upstream fetch, so on a cold serverless instance only the first batch makes it back - the rest arrive as the list refills. Older events are not scanned at all; an organiser&#x27;s own history is under «organiser view». Uncheck for the whole catalogue with no filtering, which is faster."><input id="evshowall" type="checkbox"> lists published</label>
     <label class="chk" title="List only the events you organise. Replaces the sitemap scan, which cannot see private or not-yet-published events. Needs a login."><input id="evadmin" type="checkbox"> organiser view</label>
     <span id="evinfo" class="shown"></span>
     <span class="spacer"></span>
@@ -616,14 +616,26 @@ function loadEvents() {
           ? 'log in above to list your organised events'
           : evCache.length + ' event' + (evCache.length === 1 ? '' : 's') + ' you organise';
       } else if (j.done === true) {
-        $('#evinfo').textContent = j.count + ' events (' + j.scanned + ' checked)';
+        $('#evinfo').textContent = j.count + ' events in the last ' + windowLabel(j.windowDays) +
+          ' (' + j.scanned + ' checked)';
       } else if (j.total != null) {
-        $('#evinfo').textContent = j.count + ' found · checking ' + j.scanned + ' of ' + j.total + '…';
+        $('#evinfo').textContent = j.count + ' found · checking ' + j.scanned + ' of ' + j.total +
+          ' in the last ' + windowLabel(j.windowDays) + '…';
         evPollTimer = setTimeout(loadEvents, 3000);
       }
     })
     .catch(function (e) { if (reqId === evReqId) $('#evinfo').textContent = 'error: ' + e.message; })
     .finally(function () { if (reqId === evReqId) { evLoading = false; $('#browse').disabled = false; } });
+}
+
+// 365 -> "year", 730 -> "2 years", 90 -> "90 days"; used in "in the last ...".
+function windowLabel(days) {
+  if (!days) return '';
+  if (days >= 365 && days % 365 === 0) {
+    var y = days / 365;
+    return y + (y === 1 ? ' year' : ' years');
+  }
+  return days + ' days';
 }
 
 function fmtDate(d) {

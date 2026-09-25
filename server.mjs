@@ -105,8 +105,26 @@ async function handleMyEvents(req, res) {
 const FILTER_TTL_MS = 60 * 60 * 1000;
 const FILTER_CONCURRENCY = 16;
 const FILTER_BATCH = 40;
+const FILTER_WINDOW_DAYS = 365;
 let filterCache = new Map(); // detailsUrl -> { game, hasLists, at }
 let filterScan = null;       // running scan promise, or null
+
+// First day the filter will look at, in the ISO form the sitemap uses.
+function windowStart() {
+  return new Date(Date.now() - FILTER_WINDOW_DAYS * 86400000).toISOString().slice(0, 10);
+}
+
+// The catalogue is about two thirds tournaments more than a year old, and those
+// are archaeology: nobody browses them, and an organiser's own history comes
+// from /my-events, which never touches the sitemap. Restricting the window cuts
+// the scan roughly in half with no infrastructure, which is what makes it
+// tractable on a serverless instance. Dates are ISO strings, so the comparison
+// is lexicographic. An event with no date cannot be placed in a window and is
+// left out; the sitemap dates every tournament it lists.
+function withinWindow(events) {
+  const start = windowStart();
+  return events.filter(e => typeof e.date === 'string' && e.date >= start);
+}
 
 function is40k(game) {
   return /warhammer\s*40/i.test(game || '');
@@ -268,15 +286,22 @@ async function handleEvents(req, res, u) {
   const wantFilter = u.searchParams.get('filter') === '1';
   try {
     if (wantFilter) {
+      // The window is applied once, here, and the subset is what the scan, the
+      // progress report and the result list all see. That keeps "done" reachable:
+      // out-of-window events are never scanned, so counting them against a target
+      // would mean the scan can never finish.
       const all = await getAllEvents();
-      runScan(all); // fire and forget: the scan fills the cache in the background
-      const fl = filteredList(all, limit);
+      const windowed = withinWindow(all);
+      runScan(windowed); // fire and forget: the scan fills the cache in the background
+      const progress = scanProgress(windowed);
+      const fl = filteredList(windowed, limit);
       return json(res, 200, {
         events: fl,
         count: fl.length,
-        scanned: scanProgress(all).scanned,
-        total: all.length,
-        done: scanProgress(all).done,
+        scanned: progress.scanned,
+        total: progress.total,
+        done: progress.done,
+        windowDays: FILTER_WINDOW_DAYS,
       });
     }
     return json(res, 200, await listEvents({ limit, type: u.searchParams.get('type') || null }));
