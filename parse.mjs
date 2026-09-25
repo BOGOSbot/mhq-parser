@@ -1062,13 +1062,15 @@ async function checkEvent(detailsUrl) {
   const gm = h.match(/text-xs uppercase tracking-wide text-slate-400">\s*Game\s*<\/div>\s*<div class="text-sm text-white">\s*([^<]+)<\/div>/i);
   const game = gm ? gm[1].trim() : null;
   const am = h.match(/Army lists\s*<\/h2>\s*<div[^>]*>\s*<p>([^<]{0,150})/i);
-  const hasLists = !!am && !/not available/i.test(am[1]);
+  let hasLists = !!am && !/not available/i.test(am[1]);
   let listCount = 0;
   if (hasLists) {
     const listsUrl = detailsUrl.replace(/\/details\//, '/army-lists/');
     const lr = await fetchHTML(listsUrl);
     if (lr.status === 200) {
       listCount = (lr.html.match(/data-accordion-button/g) || []).length;
+      // Some events say "Click to see army lists" but the lists page is empty
+      if (listCount === 0 && /No lists/i.test(lr.html)) hasLists = false;
     }
   }
   return { game, hasLists, listCount };
