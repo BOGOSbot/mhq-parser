@@ -84,7 +84,7 @@ function filteredList(events, limit) {
   const out = [];
   for (const e of events) {
     const c = filterCache.get(e.detailsUrl);
-    if (c && is40k(c.game)) out.push({ ...e, hasLists: c.hasLists });
+    if (c && is40k(c.game) && c.hasLists) out.push({ ...e, listCount: c.listCount || 0 });
     if (out.length >= limit) break;
   }
   return out;

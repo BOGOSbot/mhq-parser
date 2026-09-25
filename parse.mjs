@@ -1057,13 +1057,21 @@ async function getAllEvents() {
 // lists" or "Army lists are not available at this time."
 async function checkEvent(detailsUrl) {
   const r = await fetchHTML(detailsUrl);
-  if (r.status !== 200) return { game: null, hasLists: false };
+  if (r.status !== 200) return { game: null, hasLists: false, listCount: 0 };
   const h = r.html;
   const gm = h.match(/text-xs uppercase tracking-wide text-slate-400">\s*Game\s*<\/div>\s*<div class="text-sm text-white">\s*([^<]+)<\/div>/i);
   const game = gm ? gm[1].trim() : null;
   const am = h.match(/Army lists\s*<\/h2>\s*<div[^>]*>\s*<p>([^<]{0,150})/i);
   const hasLists = !!am && !/not available/i.test(am[1]);
-  return { game, hasLists };
+  let listCount = 0;
+  if (hasLists) {
+    const listsUrl = detailsUrl.replace(/\/details\//, '/army-lists/');
+    const lr = await fetchHTML(listsUrl);
+    if (lr.status === 200) {
+      listCount = (lr.html.match(/data-accordion-button/g) || []).length;
+    }
+  }
+  return { game, hasLists, listCount };
 }
 
 export { URL_RE, parseArgs, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat };

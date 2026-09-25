@@ -557,8 +557,8 @@ function renderEvList() {
     if (e.future) name.appendChild(document.createTextNode(' (not yet)'));
     row.appendChild(name);
     row.appendChild(el('span', 'evtag ' + fmtClass(e.format), e.format || '?'));
-    var lc = e.hasLists === true ? 'yes' : e.hasLists === false ? 'no' : 'pending';
-    var li = e.hasLists === true ? '\u2713' : e.hasLists === false ? '\u2717' : '\u2026';
+    var lc = e.listCount > 0 ? 'yes' : 'pending';
+    var li = e.listCount > 0 ? e.listCount + ' lists' : '\u2026';
     row.appendChild(el('span', 'evlists ' + lc, li));
     var link = el('a', 'evlink', '\u2197');
     link.href = e.detailsUrl;
