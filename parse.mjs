@@ -1382,7 +1382,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists, listCount };
 }
 
-export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin };
+export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is
@@ -1473,6 +1473,79 @@ async function listEvents(opts) {
   };
 }
 
+
+// ============================================================
+// Organiser events. The sitemap only ever carries the public catalogue, so an
+// organiser's own events are invisible there when they are private, unlisted,
+// or not yet published. /users/my-organized-tournaments is the authenticated
+// list of tournaments the caller organises, and it is the only place MHQ
+// exposes it. The admin army-lists path is rebuilt from <type> and <slug> -
+// the same trick the UI applies to sitemap entries.
+// ============================================================
+const ORGANIZED_URL = 'https://miniheadquarters.com/users/my-organized-tournaments';
+
+const MONTH_ABBR = {
+  jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
+  may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9,
+  september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
+};
+
+// "Oct. 10, 2026" / "October 10, 2026" -> "2026-10-10", null when not a date.
+// The row uses the site's display form, not ISO, so it needs translating to
+// match the dates listEvents extracts out of slugs.
+function formatDateOf(s) {
+  const m = String(s || '').trim().match(/^([A-Za-z.]+)\.?\s+(\d{1,2}),\s+(\d{4})$/);
+  if (!m) return null;
+  const mo = MONTH_ABBR[m[1].toLowerCase().replace(/\./g, '')];
+  if (!mo) return null;
+  return m[3] + '-' + String(mo).padStart(2, '0') + '-' + String(+m[2]).padStart(2, '0');
+}
+
+function typeToFormat(type, slug) {
+  if (type === 'team') return 'teams';
+  if (type === 'side-by-side') return '2v2 (side-by-side)';
+  return detectFormat(slug, type);
+}
+
+// One <tr> per row. Finished events get Tailwind's opacity-60 on the <tr>,
+// which is the only signal the site gives for a past tournament.
+function parseOrganizedRows(html) {
+  const out = [];
+  for (const row of html.match(/<tr class="transition[^"]*">[\s\S]*?<\/tr>/g) || []) {
+    const href = row.match(/href="\/tournaments\/([a-z-]+)\/details\/([^"?#\/\s]+)/);
+    if (!href) continue;
+    const type = href[1];
+    const slug = href[2];
+    // The row also contains a <td> with a class, so the two <div>s must be
+    // picked out of the anchor alone, not the whole row: the first match in the
+    // row would otherwise pair the <td> with the name div and drop the date.
+    const a = row.match(/<a\b[^>]*>([\s\S]*?)<\/a>/);
+    const dv = a ? a[1].match(/<div[^>]*>([^<]*?)<\/div>\s*<div[^>]*>([^<]*?)<\/div>/) : null;
+    const date = formatDateOf(dv ? dv[2] : '');
+    out.push({
+      slug,
+      type,
+      name: dv ? dv[1].trim() : prettify(slug),
+      date,
+      future: !!date && date > new Date().toISOString().slice(0, 10),
+      past: /opacity-60/.test(row),
+      url: 'https://miniheadquarters.com/tournaments/' + type + '/administrate/' + slug + '/army-lists',
+      detailsUrl: 'https://miniheadquarters.com/tournaments/' + type + '/details/' + slug,
+      format: typeToFormat(type, slug),
+      // Unknown here: whether lists are out is only knowable from the lists
+      // page itself, which the UI fetches on parse.
+      listCount: null,
+    });
+  }
+  return out;
+}
+
+async function listOrganizedTournaments(cookie) {
+  const { status, html } = await fetchHTML(ORGANIZED_URL, { cookie });
+  if (status !== 200) return { ok: false, status, organized: [] };
+  if (isLoginPage(html)) return { ok: false, auth: true, organized: [] };
+  return { ok: true, organized: parseOrganizedRows(html) };
+}
 
 if (IS_MAIN) {
   try {

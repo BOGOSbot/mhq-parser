@@ -10,6 +10,7 @@
  *   GET  /health    { ok: true }
  *   GET  /events    recent tournaments, for the picker in index.html
  *   POST /login     { username, password } -> { cookie }  obtain a session
+ *   GET  /my-events tournaments the caller organises (X-MHQ-Cookie header)
  *   POST /parse     { url } -> { event, count, players, miniText, elapsedMs }
  *
  * The browser cannot fetch miniheadquarters.com directly (no CORS headers), so
@@ -20,7 +21,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { URL_RE, checkEvent, getAllEvents, getMeta, listEvents, playerWarnings, parseUrl, totals, loginSession } from './parse.mjs';
+import { URL_RE, checkEvent, getAllEvents, getMeta, listEvents, playerWarnings, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -56,6 +57,34 @@ async function handleLogin(req, res) {
     return json(res, 200, { cookie: r.cookie, redirect: r.redirect });
   } catch (e) {
     return json(res, 502, { error: 'login request failed: ' + String((e && e.message) || e) });
+  }
+}
+
+// The caller's session arrives in a header, not the query string: a URL ends up
+// in access logs, browser history and Referer headers, and this value is a live
+// session. /parse already takes it in the JSON body, which is likewise never
+// logged.
+function headerCookie(req) {
+  const v = req.headers['x-mhq-cookie'];
+  return Array.isArray(v) ? v[0] : v;
+}
+
+// The events the caller organises, from MHQ's authenticated list. The sitemap
+// carries only public events, so this is the only way an organiser can find
+// their own from the picker - a private or not-yet-published event never shows
+// up in the sitemap scan at all.
+async function handleMyEvents(req, res) {
+  const cookie = (typeof headerCookie(req) === 'string' && headerCookie(req).trim())
+    || (typeof process.env.MHQ_COOKIE === 'string' && process.env.MHQ_COOKIE)
+    || null;
+  if (!cookie) return json(res, 200, { ok: false, auth: true, organized: [] });
+  try {
+    const r = await listOrganizedTournaments(cookie);
+    if (r.auth) return json(res, 200, { ok: false, auth: true, organized: [] });
+    if (!r.ok) return json(res, 502, { error: 'my-events returned HTTP ' + r.status, organized: [] });
+    return json(res, 200, { ok: true, organized: r.organized });
+  } catch (e) {
+    return json(res, 502, { error: 'my-events request failed: ' + String((e && e.message) || e), organized: [] });
   }
 }
 
@@ -256,6 +285,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === 'GET' && u.pathname === '/health') return json(res, 200, { ok: true });
   if (req.method === 'GET' && u.pathname === '/events') return handleEvents(req, res, u);
+  if (req.method === 'GET' && u.pathname === '/my-events') return handleMyEvents(req, res);
   if (req.method === 'POST' && u.pathname === '/login') return handleLogin(req, res);
   if (req.method === 'POST' && u.pathname === '/parse') return handleParse(req, res);
   return fail(res, 404, 'not found: ' + u.pathname);

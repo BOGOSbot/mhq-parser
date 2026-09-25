@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { URL_RE, ADMIN_LIST_RE, extractEventSlug, isAdminUrl, isLoginPage, authError, splitArticles, buildPlayers, loginFormError, setCookieOf, splitAdminRows, adminListContent, adminStatusOf, adminArticle, getMeta, totals } from '../parse.mjs';
+import { URL_RE, ADMIN_LIST_RE, extractEventSlug, isAdminUrl, isLoginPage, authError, splitArticles, buildPlayers, loginFormError, setCookieOf, splitAdminRows, adminListContent, adminStatusOf, adminArticle, getMeta, totals, parseOrganizedRows, formatDateOf } from '../parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -159,5 +159,38 @@ t('admin detachment', getMeta(players[0]).detachment, 'Houndpack Lance, Hunting 
 const empty = buildPlayers([adminArticle({ id: '99', username: 'Nobody', faction: 'Undeclared', team: '' }, '')]);
 t('empty body still yields a player', empty.length, 1);
 t('empty body player name', empty[0].name, 'Nobody');
+// --- organizer events: the events the caller runs -------------------------------
+// The sitemap cannot see private or unpublished events, so the picker reads
+// MHQ's authenticated list instead. One <tr> per event: public details href,
+// name, a display-form date, and opacity-60 on the <tr> for past tournaments.
+const organized = fs.readFileSync(new URL('./fixtures/organized.html', import.meta.url), 'utf8');
+const org = parseOrganizedRows(organized);
+t('organized row count', org.length, 4);
+t('organized name', org[0].name, 'BOGOS Team : 6 dés sous terre');
+t('organized slug', org[0].slug, 'bogos-team-6-des-sous-terre-2026-10-10');
+t('organized type', org[0].type, 'team');
+t('organized date parsed', org[0].date, '2026-10-10');
+t('organized admin url', org[0].url, 'https://miniheadquarters.com/tournaments/team/administrate/bogos-team-6-des-sous-terre-2026-10-10/army-lists');
+t('organized public url', org[0].detailsUrl, 'https://miniheadquarters.com/tournaments/team/details/bogos-team-6-des-sous-terre-2026-10-10');
+t('organized format from type', org[0].format, 'teams');
+t('organized past flag off', org[0].past, false);
+t('organized listCount unknown', org[0].listCount, null);
+// Finished events carry opacity-60 on the <tr>; that is the site's only signal.
+const past = org.filter(e => e.past);
+t('past rows found', past.length, 3);
+t('past row date', past[0].date, '2026-05-16');
+// Each type maps to the label the format filter in the UI matches.
+t('2v2 format from type', org.find(e => e.type === 'side-by-side').format, '2v2 (side-by-side)');
+t('1v1 format from type', org.find(e => e.type === 'individual').format, '1v1');
+// The site uses a display form; listEvents uses ISO, so it needs translating.
+t('formatDateOf oct', formatDateOf('Oct. 10, 2026'), '2026-10-10');
+t('formatDateOf no dot', formatDateOf('Sept 5, 2027'), '2027-09-05');
+t('formatDateOf single digit', formatDateOf('Mar 4, 2026'), '2026-03-04');
+t('formatDateOf not a date', formatDateOf('Pending validation'), null);
+t('formatDateOf empty', formatDateOf(''), null);
+t('formatDateOf unknown month', formatDateOf('Foo 3, 2026'), null);
+// Nothing to parse on a page that is not the list.
+t('login page yields no rows', parseOrganizedRows(login).length, 0);
+t('public page yields no rows', parseOrganizedRows(pub).length, 0);
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);
