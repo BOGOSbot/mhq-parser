@@ -1374,9 +1374,14 @@ async function checkEvent(detailsUrl) {
     const listsUrl = detailsUrl.replace(/\/details\//, '/army-lists/');
     const lr = await fetchHTML(listsUrl);
     if (lr.status === 200) {
-      listCount = (lr.html.match(/data-accordion-button/g) || []).length;
-      // Some events say "Click to see army lists" but the lists page is empty
-      if (listCount === 0 && /No lists/i.test(lr.html)) hasLists = false;
+      // The page's own bootstrap script contains the literal
+      // querySelectorAll('[data-accordion-button]'), which counted as one
+      // phantom list on every empty page. Count markup only, then trust the
+      // count - an empty page may not say "no lists" at all, so that phrase
+      // can't be our only signal.
+      const markup = lr.html.replace(/<script[\s\S]*?<\/script>/gi, '');
+      listCount = (markup.match(/data-accordion-button/g) || []).length;
+      hasLists = listCount > 0;
     }
   }
   return { game, hasLists, listCount };
