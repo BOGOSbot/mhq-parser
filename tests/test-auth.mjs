@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { URL_RE, extractEventSlug, isAdminUrl, isLoginPage, authError, splitArticles, buildPlayers } from '../parse.mjs';
+import { URL_RE, extractEventSlug, isAdminUrl, isLoginPage, authError, splitArticles, buildPlayers, loginFormError, setCookieOf } from '../parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -73,6 +73,24 @@ const login = fs.readFileSync(new URL('./fixtures/login.html', import.meta.url),
 t('login fixture detected', isLoginPage(login), true);
 t('authError mentions cookie', /--cookie/.test(authError('https://miniheadquarters.com/tournaments/team/administrate/s/army-lists')), true);
 t('authError mentions url', /\barmy-lists\b/.test(authError('https://miniheadquarters.com/tournaments/team/administrate/s/army-lists')), true);
+
+// --- login failure parsing ----------------------------------------------
+// loginSession POSTs credentials and tells success from a sessionid in
+// Set-Cookie; anything else is a failure whose reason is Django's own text.
+// That text lives inside a red panel, not a <p class="error">, so the panel is
+// matched by its tint. Verified against a real failed-login response.
+const loginFailed = fs.readFileSync(new URL('./fixtures/login-failed.html', import.meta.url), 'utf8');
+t('failed login error extracted', loginFormError(loginFailed), 'Please enter a correct username and password. Note that both fields may be case-sensitive.');
+t('login page has no error', loginFormError(login), null);
+// The red panel is the only red block on the page, so nothing else can match.
+t('no false positive on slate text', loginFormError('<p class="text-slate-400">Some neutral text here</p>'), null);
+
+// Set-Cookie parsing: node reports this header as an array.
+t('setCookieOf array', setCookieOf({ 'set-cookie': ['csrftoken=abc123; Path=/', 'sessionid=sess999; HttpOnly'] }, 'sessionid'), 'sess999');
+t('setCookieOf single string', setCookieOf({ 'set-cookie': 'sessionid=onlyone; Path=/' }, 'sessionid'), 'onlyone');
+t('setCookieOf absent', setCookieOf({ 'set-cookie': ['other=x; Path=/'] }, 'sessionid'), null);
+t('setCookieOf no header', setCookieOf({}, 'sessionid'), null);
+t('setCookieOf value with slash', setCookieOf({ 'set-cookie': ['sessionid=abc/def123; Path=/'] }, 'sessionid'), 'abc/def123');
 
 // Without the login-wall check, a logged-out admin fetch yields zero armies
 // and the misleading "lists not published yet" error. Prove the wall hides

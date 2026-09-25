@@ -66,7 +66,9 @@ node parse.mjs "https://miniheadquarters.com/tournaments/team/administrate/<slug
 
 Le cookie se copie dans DevTools -> Network (en-tête `Cookie` d'une requête authentifiée) ou DevTools -> Application -> Cookies -> miniheadquarters.com. La variable `MHQ_COOKIE` fonctionne aussi.
 
-L'interface web offre un champ « Session cookie » mémorisé dans le navigateur ; s'il manque, l'analyse échoue en 401 et ouvre ce champ.
+**Connexion depuis l'interface web (recommandé).** Il n'existe pas de voie anonyme pour obtenir une session, donc l'interface se connecte à votre place : déplier le panneau **Account**, saisir votre nom d'utilisateur et votre mot de passe MHQ, puis **Log in**. Le serveur effectue la connexion Django et conserve la session lui-même, inutile de copier un cookie depuis DevTools. Avec « remember » coché, le mot de passe est conservé aussi et une session expirée est rafraîchie automatiquement à l'analyse suivante. Session et mot de passe sont écrits dans `.secrets/mhq-auth.json` sur cette machine, ignoré par git ; le navigateur n'y est pas impliqué. **Log out** les efface.
+
+Un cookie brut reste accepté en secours : « or paste a session cookie instead » dans le panneau Account. Il prime sur un compte connecté et est mémorisé dans le navigateur. Sans l'un ni l'autre, une analyse admin échoue en 401 et ouvre le panneau, focus sur le champ mot de passe.
 
 Dans le panneau Browse, la case « organiser view » remplit l'URL admin plutôt que publique. Le sitemap ne contient que des URLs publiques (zéro occurrence de `administrate`), donc l'URL admin est reconstruite à partir du type et du slug de l'événement.
 
@@ -189,7 +191,9 @@ node parse.mjs "https://miniheadquarters.com/tournaments/team/administrate/<slug
 
 Copy the cookie from DevTools -> Network (the `Cookie` request header of any authenticated request) or DevTools -> Application -> Cookies -> miniheadquarters.com. The `MHQ_COOKIE` environment variable works too.
 
-The web UI has a 'Session cookie' field remembered in the browser; when it is missing the parse fails with 401 and opens that field.
+**Logging in from the web UI (recommended).** There is no anonymous way to obtain a session, so the UI can log in for you: expand the **Account** panel, enter your MHQ username and password, and press **Log in**. The server performs the Django login and keeps the session itself, so you never have to copy a cookie out of DevTools. With **remember** ticked the password is kept too and an expired session is refreshed automatically on the next parse. Session and password are stored in `.secrets/mhq-auth.json` on this machine, which is gitignored; the browser is not involved. **Log out** clears them.
+
+A raw cookie is still accepted as an override: expand *or paste a session cookie instead* in the Account panel. It wins over a logged-in account and is remembered in the browser. Without either, an admin parse fails with 401 and the panel opens itself, focused on the password field.
 
 In the Browse panel, the 'organiser view' checkbox fills the admin URL instead of the public one. The sitemap only ever carries public URLs (zero occurrences of `administrate`), so the admin path is rebuilt from the event's type and slug.
 

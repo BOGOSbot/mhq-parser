@@ -2,3 +2,7 @@
 .secrets/
 .env
 *.env
+
+# scratch: commit messages staged to a file, probe scripts
+_msg*.txt
+_*.ps1

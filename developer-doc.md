@@ -56,6 +56,18 @@ So the wall is detected explicitly:
 
 **Where the admin URL comes from.** The sitemap contains no admin entries at all — zero occurrences of `administrate` across ~2 MB — so Browse cannot surface one from its index. Every event does carry `type` and `slug`, so `adminUrlOf()` in index.html rebuilds the path as `/tournaments/<type>/administrate/<slug>/army-lists`, and the Browse 'organiser view' checkbox switches a row click between the public `e.url` and that rebuilt form. `tests/test-auth.mjs` mirrors the builder and asserts the result passes `URL_RE`, recovers the slug through `extractEventSlug()`, and is flagged by `isAdminUrl()`. Without that pin, a change to `URL_RE` would break the checkbox and the only symptom would be a bare `400`.
 
+#### Logging in programmatically (`loginSession`)
+
+There is no anonymous route to an admin page, so the only way to obtain a session is to authenticate. `loginSession(username, password)` in parse.mjs does exactly what a browser does:
+
+1. `GET /users/login` — takes the `csrftoken` from `Set-Cookie` and the matching `csrfmiddlewaretoken` out of the form.
+2. `POST /users/login` with `csrfmiddlewaretoken` + `username` + `password` and `Cookie: csrftoken=...`. The cookie has to be echoed back; without it Django answers 403 CSRF Failed.
+3. **Success** is a `sessionid` cookie in the response. **Failure** is the form re-rendered with no `sessionid` and Django's stock message inside a red panel.
+
+The red panel is the only red block on the login page and it is not a `<p class="error">` — it carries `border-red-500/20 bg-red-500/10 ... text-red-200` — so `loginFormError()` matches it by tint. The text is surfaced verbatim, so a wrong password reads as Django's own "Please enter a correct username and password. Note that both fields may be case-sensitive." rather than a generic failure.
+
+The server keeps the result in memory and in `.secrets/mhq-auth.json` (gitignored), never in the browser: a miniheadquarters.com cookie is cross-origin junk to the UI anyway, and the browser would otherwise hold the session in localStorage. Passwords are written only when the user ticks "remember", and `parseWithSession()` re-authenticates transparently once when a stored session hits the login wall. `authGitIgnored()` runs `git check-ignore` before saving so the UI can warn if `.secrets` is not excluded — the alternative, committing credentials, is precisely what the cookie route existed to avoid.
+
 Pitfall on cookie plumbing: a browser **cannot** attach `miniheadquarters.com` cookies to a fetch of the local server (different origin), so the cookie has to be forwarded as text. That is why the UI keeps it in `localStorage` and posts it in the `/parse` body, and why the CLI takes `--cookie` / `MHQ_COOKIE`. The value is a Django session and expires (default two weeks), so it is not a permanent solution — it is the cheapest one, because it stores no password and adds no dependency.
 
 ### 3. Split the page into player blocks

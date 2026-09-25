@@ -119,10 +119,19 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 .sessum .flag{color:var(--ok)}
 .sessum .flag.off{color:var(--dim)}
 .sesbody{margin-top:8px}
-#cookie{width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
-  border-radius:7px;padding:8px 10px;font:13px var(--mono)}
-#cookie:focus{outline:none;border-color:var(--acc)}
+#cookie,#user,#pass{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+  border-radius:7px;padding:7px 10px;font:13px var(--mono)}
+#cookie{width:100%;font-size:12.5px}
+#user{width:190px}
+#pass{width:230px}
+#cookie:focus,#user:focus,#pass:focus{outline:none;border-color:var(--acc)}
+.authrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rawck{margin-top:9px;border-top:1px solid var(--line);padding-top:9px}
+.rawck summary{cursor:pointer;font:11.5px var(--mono);color:var(--dim)}
+.rawck input{margin-top:7px}
+.ses.warn .sessum{background:rgba(248,113,113,.14);border-radius:6px;padding:1px 5px}
 .seshint{margin-top:6px;font:11.5px var(--mono);color:var(--dim)}
+.seshint code{font:11.5px var(--mono);color:var(--txt)}
 </style>
 </head>
 <body>
@@ -140,13 +149,26 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
   <div id="status" class="status"></div>
 </header>
 <details id="ses" class="ses">
-  <summary class="sessum">Session cookie <span id="sesstate" class="flag off">not set</span></summary>
+  <summary class="sessum">Account <span id="sesstate" class="flag off">not signed in</span></summary>
   <div class="sesbody">
-    <input id="cookie" type="text" spellcheck="false" autocomplete="off"
-           placeholder="sessionid=...; csrftoken=...">
-    <p class="seshint">Only needed for organiser/admin URLs (/administrate/). DevTools -> Network ->
-       reload the page -> copy the <b>Cookie</b> request header, or DevTools -> Application ->
-       Cookies -> miniheadquarters.com. Stored in this browser only.</p>
+    <div class="authrow">
+      <input id="user" type="text" autocomplete="username" placeholder="MHQ username">
+      <input id="pass" type="password" autocomplete="current-password" placeholder="password">
+      <button id="login" type="button">Log in</button>
+      <label class="chk"><input id="remember" type="checkbox" checked> remember</label>
+      <button id="logout" type="button" class="ghost">Log out</button>
+    </div>
+    <p class="seshint" id="seshint">Needed for organiser/admin URLs (<code>/administrate/</code>).
+       The session lives on this server, not in your browser, so you do not have to copy a cookie
+       out of DevTools. With "remember" on, an expired session is refreshed automatically.
+       Stored in <code>.secrets/</code> on this machine &mdash; gitignored.</p>
+    <details class="rawck">
+      <summary>or paste a session cookie instead</summary>
+      <input id="cookie" type="text" spellcheck="false" autocomplete="off"
+             placeholder="sessionid=...; csrftoken=...">
+      <p class="seshint">DevTools -> Network -> reload -> copy the <b>Cookie</b> request header.
+         Overrides a logged-in account and is kept in this browser only.</p>
+    </details>
   </div>
 </details>
 <div id="evpanel" class="evpanel hidden">
@@ -243,7 +265,11 @@ async function parse() {
   } catch (e) {
     if (e.auth) {
       var d = $('#ses');
-      if (d) { d.open = true; var ci = $('#cookie'); if (ci) ci.focus(); }
+      if (d) {
+        d.open = true;
+        var ci = $('#pass') || $('#cookie');
+        if (ci) ci.focus();
+      }
     }
     setStatus(String(e.message || e), 'err');
   } finally {
@@ -614,27 +640,59 @@ $('#evq').addEventListener('input', renderEvList);
 $('#evfmt').addEventListener('change', renderEvList);
 $('#evshowall').addEventListener('change', function () { evCache = []; loadEvents(); });
 
-// Session cookie for organiser/admin URLs. Kept in localStorage so a long
-// session does not need re-pasting it; it never leaves this browser.
+// Account for organiser/admin URLs. The server holds the session, so the browser
+// never has to keep a miniheadquarters.com cookie. A raw cookie is still accepted
+// as an override and stays in localStorage.
 var COOKIE_KEY = 'mhq_cookie';
 function cookieOf() {
   var c = $('#cookie');
   return c && c.value.trim() ? c.value.trim() : null;
 }
-function sesState() {
+function stateLabel(label, on) {
   var s = $('#sesstate');
   if (!s) return;
-  var on = !!cookieOf();
-  s.textContent = on ? 'set' : 'not set';
+  s.textContent = on ? label : 'not signed in';
   s.className = 'flag' + (on ? '' : ' off');
+}
+function loadSession() {
+  fetch('/session').then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j) return;
+      if (j.loggedIn) stateLabel(j.username || 'logged in', true);
+      else stateLabel('', false);
+      $('#ses').classList.toggle('warn', j.gitIgnored === false);
+    }).catch(function () {});
+}
+function doLogin() {
+  var b = $('#login');
+  b.disabled = true;
+  fetch('/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: $('#user').value.trim(),
+      password: $('#pass').value,
+      remember: $('#remember').checked,
+    }),
+  }).then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j || !j.loggedIn) throw new Error((j && j.error) || 'login failed');
+      stateLabel(j.username || 'logged in', true);
+      $('#pass').value = '';
+    })
+    .catch(function (e) { setStatus(String(e.message || e), 'err'); })
+    .finally(function () { b.disabled = false; loadSession(); });
 }
 (function initSes() {
   try { $('#cookie').value = localStorage.getItem(COOKIE_KEY) || ''; } catch (e) {}
   $('#cookie').addEventListener('input', function () {
     try { localStorage.setItem(COOKIE_KEY, this.value.trim()); } catch (e) {}
-    sesState();
   });
-  sesState();
+  $('#login').addEventListener('click', doLogin);
+  $('#logout').addEventListener('click', function () {
+    fetch('/logout', { method: 'POST' }).catch(function () {}).finally(loadSession);
+  });
+  loadSession();
 })();
 
 $('#f').addEventListener('submit', function (e) {

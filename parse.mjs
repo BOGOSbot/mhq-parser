@@ -94,16 +94,24 @@ function parseArgs(argv) {
 // ============================================================
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
-function fetchOnce(url, cookie) {
+function httpRequest(method, url, { headers = {}, body = null } = {}) {
   return new Promise((resolve, reject) => {
-    const headers = { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml' };
-    if (cookie) headers['Cookie'] = cookie;
-    https.get(url, { headers }, r => {
+    const u = new URL(url);
+    const h = { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', ...headers };
+    const req = https.request({ method, hostname: u.hostname, path: u.pathname + u.search, headers: h }, r => {
       const chunks = [];
       r.on('data', c => chunks.push(c));
       r.on('end', () => resolve({ status: r.statusCode, headers: r.headers, html: Buffer.concat(chunks).toString('utf8') }));
-    }).on('error', reject);
+    });
+    req.on('error', reject);
+    if (body) req.write(body);
+    req.end();
   });
+}
+
+// fetchOnce keeps its (url, cookie) signature for the many existing callers.
+function fetchOnce(url, cookie) {
+  return httpRequest('GET', url, cookie ? { headers: { Cookie: cookie } } : {});
 }
 
 // MHQ answers 302 for legacy /army-lists/ URLs, pointing at /details/. Follow
@@ -150,6 +158,68 @@ function authError(url) {
     '       node parse.mjs <url> --cookie "sessionid=...; csrftoken=..."',
     '       or set MHQ_COOKIE in the environment.',
   ].join('\n');
+}
+
+// ============================================================
+// Session login
+// ============================================================
+// The site is Django. GET /users/login sets a csrftoken cookie and renders a
+// matching csrfmiddlewaretoken input. POSTing username + password + that token
+// answers with a sessionid cookie on success, or re-renders the form with
+// Django's stock "Please enter a correct username and password." error and no
+// sessionid on failure. There is no anonymous route to an admin page, so this
+// is the only way to obtain a session programmatically.
+const LOGIN_URL = 'https://miniheadquarters.com/users/login';
+
+// First Set-Cookie named <name>, or null. Node may report it as an array.
+function setCookieOf(headers, name) {
+  const sc = headers && headers['set-cookie'];
+  if (!sc) return null;
+  for (const c of Array.isArray(sc) ? sc : [sc]) {
+    const m = c.match(new RegExp('^' + name + '=([^;]*)'));
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// The login box renders its error inside a red panel rather than as a
+// <p class="error">, so match the panel by its background tint.
+function loginFormError(html) {
+  const m = html.match(/class="[^"]*text-red-[0-9]+[^"]*"[^>]*>([^<]{5,300})</i);
+  return m ? m[1].replace(/\s+/g, ' ').trim() : null;
+}
+
+async function loginSession(username, password) {
+  const g = await httpRequest('GET', LOGIN_URL);
+  if (g.status !== 200) return { ok: false, error: 'login page answered HTTP ' + g.status };
+  const tok = (g.html.match(/name="csrfmiddlewaretoken" value="([^"]+)"/) || [])[1];
+  const csrftoken = setCookieOf(g.headers, 'csrftoken') || '';
+  if (!tok) return { ok: false, error: 'no CSRF token on the login page - the site has probably changed' };
+  const body = 'csrfmiddlewaretoken=' + encodeURIComponent(tok)
+    + '&username=' + encodeURIComponent(username || '')
+    + '&password=' + encodeURIComponent(password || '');
+  const p = await httpRequest('POST', LOGIN_URL, {
+    headers: {
+      'Cookie': 'csrftoken=' + csrftoken,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Referer': LOGIN_URL,
+      'Origin': 'https://miniheadquarters.com',
+    },
+    body,
+  });
+  const sessionid = setCookieOf(p.headers, 'sessionid');
+  if (sessionid) {
+    return {
+      ok: true,
+      cookie: 'sessionid=' + sessionid + '; csrftoken=' + (setCookieOf(p.headers, 'csrftoken') || csrftoken),
+      redirect: p.headers.location || null,
+    };
+  }
+  return {
+    ok: false,
+    status: p.status,
+    error: loginFormError(p.html) || 'login failed - no session cookie was issued',
+  };
 }
 
 // ============================================================
@@ -1136,7 +1206,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists, listCount };
 }
 
-export { URL_RE, parseArgs, isAdminUrl, extractEventSlug, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError };
+export { URL_RE, parseArgs, isAdminUrl, extractEventSlug, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is
