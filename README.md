@@ -66,11 +66,11 @@ node parse.mjs "https://miniheadquarters.com/tournaments/team/administrate/<slug
 
 Le cookie se copie dans DevTools -> Network (en-tête `Cookie` d'une requête authentifiée) ou DevTools -> Application -> Cookies -> miniheadquarters.com. La variable `MHQ_COOKIE` fonctionne aussi.
 
-**Connexion depuis l'interface web (recommandé).** Il n'existe pas de voie anonyme pour obtenir une session, donc l'interface se connecte à votre place : déplier le panneau **Account**, saisir votre nom d'utilisateur et votre mot de passe MHQ, puis **Log in**. Le serveur effectue la connexion Django et conserve la session lui-même, inutile de copier un cookie depuis DevTools. Avec « remember » coché, le mot de passe est conservé aussi et une session expirée est rafraîchie automatiquement à l'analyse suivante. Session et mot de passe sont écrits dans `.secrets/mhq-auth.json` sur cette machine, ignoré par git ; le navigateur n'y est pas impliqué. **Log out** les efface.
+**Connexion depuis l'interface web (recommandé).** Il n'existe pas de voie anonyme pour obtenir une session, donc l'interface se connecte à votre place : déplier le panneau **Account**, saisir votre nom d'utilisateur et votre mot de passe MHQ, puis **Log in**. Le serveur n'est qu'un intermédiaire : il effectue la connexion Django une fois et renvoie la session au navigateur, où elle est conservée dans `localStorage` et envoyée à chaque analyse. Le mot de passe n'est utilisé qu'une fois puis jeté ; il n'est jamais écrit sur le disque du serveur, et il n'y a pas de session commune, donc deux navigateurs ne peuvent pas se retrouver sur le même compte. Une session expirée renvoie une 401 et demande une nouvelle connexion (durée de vie d'environ deux semaines).
 
-Un cookie brut reste accepté en secours : « or paste a session cookie instead » dans le panneau Account. Il prime sur un compte connecté et est mémorisé dans le navigateur. Sans l'un ni l'autre, une analyse admin échoue en 401 et ouvre le panneau, focus sur le champ mot de passe.
+Un cookie brut reste accepté en secours : « or paste a session cookie instead » dans le panneau Account. Il remplit la même case que le bouton **Log in**, donc les deux sont interchangeables, et la session est mémorisée dans le navigateur. Sans session, une analyse admin échoue en 401 et ouvre le panneau, focus sur le champ mot de passe.
 
-Dans le panneau Browse, la case « organiser view » remplit l'URL admin plutôt que publique. Le sitemap ne contient que des URLs publiques (zéro occurrence de `administrate`), donc l'URL admin est reconstruite à partir du type et du slug de l'événement.
+Dans le panneau Browse, la case « organiser view » liste uniquement les événements que vous organisez, lus sur `/users/my-organized-tournaments` (connexion requise). Le sitemap ne contient que des événements publics : un événement privé, ou dont les listes ne sont pas encore publiées, n'y figure tout simplement pas, et aucun filtrage ne pouvait le faire apparaître. Chaque ligne rapporte l'URL admin directement.
 
 ### Mise en page admin et statut
 
@@ -199,11 +199,11 @@ node parse.mjs "https://miniheadquarters.com/tournaments/team/administrate/<slug
 
 Copy the cookie from DevTools -> Network (the `Cookie` request header of any authenticated request) or DevTools -> Application -> Cookies -> miniheadquarters.com. The `MHQ_COOKIE` environment variable works too.
 
-**Logging in from the web UI (recommended).** There is no anonymous way to obtain a session, so the UI can log in for you: expand the **Account** panel, enter your MHQ username and password, and press **Log in**. The server performs the Django login and keeps the session itself, so you never have to copy a cookie out of DevTools. With **remember** ticked the password is kept too and an expired session is refreshed automatically on the next parse. Session and password are stored in `.secrets/mhq-auth.json` on this machine, which is gitignored; the browser is not involved. **Log out** clears them.
+**Logging in from the web UI (recommended).** There is no anonymous way to obtain a session, so the UI logs in for you: expand the **Account** panel, enter your MHQ username and password, and press **Log in**. The server is only a proxy — it performs the Django login once and hands the session back to your browser, where it is kept in `localStorage` and sent with every parse. Your password is used once and then discarded; it is never written to the server's disk, and there is no shared session, so two browsers cannot end up on the same account. An expired session is a 401 and a re-login prompt (about two weeks of life).
 
-A raw cookie is still accepted as an override: expand *or paste a session cookie instead* in the Account panel. It wins over a logged-in account and is remembered in the browser. Without either, an admin parse fails with 401 and the panel opens itself, focused on the password field.
+A raw cookie is still accepted as a fallback: expand *or paste a session cookie instead* in the Account panel. It fills the same field **Log in** does, so the two are interchangeable, and the session is remembered in the browser. Without a session, an admin parse fails with 401 and the panel opens itself, focused on the password field.
 
-In the Browse panel, the 'organiser view' checkbox fills the admin URL instead of the public one. The sitemap only ever carries public URLs (zero occurrences of `administrate`), so the admin path is rebuilt from the event's type and slug.
+In the Browse panel, the 'organiser view' checkbox lists only the events you organise, read from `/users/my-organized-tournaments` (requires a login). The sitemap carries public events only, so a private event, or one whose lists are not published yet, is not in it at all — no filter could ever surface it. Each row carries the admin URL directly.
 
 ### Admin layout and status
 

@@ -93,8 +93,18 @@ async function handleMyEvents(req, res) {
 // lists are published. The details page carries both facts, so we check each
 // one in the background and hand the UI only what is both Warhammer 40,000 and
 // has lists out. Results are cached for an hour.
+//
+// The scan is a fan-out: one fetch per event, two when lists are out, over
+// ~2,000 tournaments. That cannot fit in a single serverless request at any
+// concurrency - miniheadquarters.com alone takes about 9s to return the
+// sitemap, and there is nothing left of the function's budget for the rest.
+// FILTER_BATCH bounds each invocation so a request always terminates with the
+// results it managed to fetch instead of being killed mid-scan and returning
+// nothing. Warm instances (sitemap and filter both cached) finish much more
+// than that, which is where the real headroom is.
 const FILTER_TTL_MS = 60 * 60 * 1000;
-const FILTER_CONCURRENCY = 8;
+const FILTER_CONCURRENCY = 16;
+const FILTER_BATCH = 40;
 let filterCache = new Map(); // detailsUrl -> { game, hasLists, at }
 let filterScan = null;       // running scan promise, or null
 
@@ -109,7 +119,7 @@ async function runScan(events) {
       const c = filterCache.get(e.detailsUrl);
       return !c || Date.now() - c.at > FILTER_TTL_MS;
     });
-    const queue = toCheck.slice();
+    const queue = toCheck.slice(0, FILTER_BATCH);
     const workers = [];
     const n = Math.min(FILTER_CONCURRENCY, queue.length || 1);
     for (let i = 0; i < n; i++) {
