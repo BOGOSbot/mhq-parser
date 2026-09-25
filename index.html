@@ -89,7 +89,6 @@ pre{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
   padding:10px;overflow:auto;font:11.5px/1.55 var(--mono);max-height:300px;margin:8px 0 0}
 details.mini pre{max-height:360px;white-space:pre-wrap}
 .hidden{display:none}
-footer{color:var(--dim);font:11.5px var(--mono);text-align:center;padding:24px 16px}
 </style>
 </head>
 <body>
@@ -110,7 +109,6 @@ footer{color:var(--dim);font:11.5px var(--mono);text-align:center;padding:24px 1
     Running this page needs <code>node server.mjs</code>
   </div>
 </main>
-<footer>stdlib only &middot; no build step &middot; parses locally via parse.mjs</footer>
 <script>
 'use strict';
 var $ = function (s) { return document.querySelector(s); };
@@ -355,7 +353,8 @@ function card(p) {
   var raw = el('details');
   raw.appendChild(el('summary', null, 'raw list text'));
   var pre = el('pre');
-  pre.textContent = p.bodyRest || p.bodyText || '';
+  // bodyText carries the whole block including the +++ header; bodyRest stops after it.
+  pre.textContent = p.bodyText || p.bodyRest || '';
   raw.appendChild(pre);
   c.appendChild(raw);
 
