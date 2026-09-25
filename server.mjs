@@ -9,9 +9,7 @@
  *   GET  /          serves index.html
  *   GET  /health    { ok: true }
  *   GET  /events    recent tournaments, for the picker in index.html
- *   GET  /session   { loggedIn, username, remember }  current stored session
- *   POST /login     { username, password, remember }  log in to miniheadquarters.com
- *   POST /logout    clear the stored session and credentials
+ *   POST /login     { username, password } -> { cookie }  obtain a session
  *   POST /parse     { url } -> { event, count, players, miniText, elapsedMs }
  *
  * The browser cannot fetch miniheadquarters.com directly (no CORS headers), so
@@ -33,55 +31,15 @@ function readIndex() {
 }
 
 // --- session auth ------------------------------------------------------
-// The browser never holds a miniheadquarters.com session: it would be cross-origin
-// junk and it would mean the cookie sits in localStorage. The server logs in
-// itself and keeps the result here, plus in .secrets/ (gitignored) so a restart
-// does not log you out. Passwords are only kept when the user ticks "remember".
-import { spawnSync } from 'child_process';
-const AUTH_FILE = path.join(__dirname, '.secrets', 'mhq-auth.json');
-const auth = { cookie: null, username: null, password: null, remember: false };
-
-function loadAuth() {
-  try {
-    const a = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
-    if (typeof a.cookie === 'string' && a.cookie) auth.cookie = a.cookie;
-    if (a.remember && typeof a.username === 'string' && typeof a.password === 'string') {
-      auth.username = a.username; auth.password = a.password; auth.remember = true;
-    }
-  } catch {}
-}
-
-function saveAuth() {
-  const out = { cookie: auth.cookie, remember: !!auth.remember };
-  if (auth.remember) { out.username = auth.username; out.password = auth.password; }
-  try {
-    fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
-    fs.writeFileSync(AUTH_FILE, JSON.stringify(out, null, 2));
-    return true;
-  } catch { return false; }
-}
-
-// True when .gitignore keeps .secrets out of the repository, null when this is
-// not a git checkout so nothing can be verified. A false here is worth a warning.
-function authGitIgnored() {
-  try {
-    return spawnSync('git', ['check-ignore', '-q', AUTH_FILE], { cwd: __dirname }).status === 0;
-  } catch { return null; }
-}
-
-function sessionInfo() {
-  return {
-    loggedIn: !!auth.cookie,
-    username: auth.remember ? auth.username : null,
-    remember: !!auth.remember,
-    gitIgnored: authGitIgnored(),
-  };
-}
-
-function logout() {
-  auth.cookie = null; auth.username = null; auth.password = null; auth.remember = false;
-  try { fs.unlinkSync(AUTH_FILE); } catch {}
-}
+// The server is a login *proxy*, not a credential store. A password is accepted
+// here, used exactly once to obtain a Django session, and discarded: it is never
+// written to disk and is not held in memory past the request. The resulting
+// session cookie goes back to the browser, which keeps it in its own localStorage
+// and sends it with every /parse.
+//
+// This keeps two properties the old disk store did not have: no plaintext
+// credential ever touches a file, and there is no single shared session, so two
+// browsers on the same server cannot end up on one account.
 
 async function handleLogin(req, res) {
   let body;
@@ -93,11 +51,9 @@ async function handleLogin(req, res) {
   try {
     const r = await loginSession(u, p);
     if (!r.ok) return json(res, 401, { error: r.error, auth: true });
-    auth.cookie = r.cookie; auth.username = u;
-    auth.password = body.remember ? p : null;
-    auth.remember = !!body.remember;
-    saveAuth();
-    return json(res, 200, { ...sessionInfo(), gitIgnored: authGitIgnored(), redirect: r.redirect });
+    // The session goes straight back to the caller and the password is dropped.
+    // Nothing is persisted, so there is no session to clear on logout.
+    return json(res, 200, { cookie: r.cookie, redirect: r.redirect });
   } catch (e) {
     return json(res, 502, { error: 'login request failed: ' + String((e && e.message) || e) });
   }
@@ -212,36 +168,24 @@ function viewPlayer(p) {
   return { ...p, meta: meta, totals: totals(p), warnings: playerWarnings(p, meta) };
 }
 
-// Fetch an event, attaching whatever session is available, and refreshing it
-// once if the stored one has gone stale. A cookie pasted by hand always wins
-// and is never refreshed over, since that is an explicit override.
+// A session is always supplied by the caller: either pasted by hand, or obtained
+// through /login and kept in that browser's localStorage. The server holds none
+// of its own, so there is nothing to refresh here - an expired cookie is simply a
+// 401, which the UI turns into a re-login prompt. Honesty beats magic: we cannot
+// silently re-authenticate without a stored password, and storing one is exactly
+// the privacy problem this module is meant to avoid.
 async function parseWithSession(target, explicitCookie) {
-  let cookie = explicitCookie
-    || (typeof auth.cookie === 'string' && auth.cookie)
+  const cookie = explicitCookie
     || (typeof process.env.MHQ_COOKIE === 'string' && process.env.MHQ_COOKIE)
     || null;
-  let refreshed = false;
-  for (;;) {
-    try {
-      const { output, miniText } = await parseUrl(target, { cookie });
-      return { ok: true, output, miniText, refreshed };
-    } catch (e) {
-      const msg = String((e && e.message) || e);
-      if (/authentication required/.test(msg)) {
-        if (!explicitCookie && auth.username && auth.password) {
-          const r = await loginSession(auth.username, auth.password);
-          if (r.ok) {
-            auth.cookie = r.cookie; saveAuth(); cookie = r.cookie;
-            refreshed = true; continue;
-          }
-          // Cached password no longer works; drop it so the UI asks for a login.
-          auth.cookie = null; auth.password = null; auth.remember = false; saveAuth();
-        }
-        return { ok: false, status: 401, error: msg, auth: true };
-      }
-      if (/no army lists found/.test(msg)) return { ok: false, status: 404, error: msg };
-      return { ok: false, status: /HTTP \d{3}/.test(msg) ? 502 : 500, error: msg };
-    }
+  try {
+    const { output, miniText } = await parseUrl(target, { cookie });
+    return { ok: true, output, miniText, refreshed: false };
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    if (/authentication required/.test(msg)) return { ok: false, status: 401, error: msg, auth: true };
+    if (/no army lists found/.test(msg)) return { ok: false, status: 404, error: msg };
+    return { ok: false, status: /HTTP \d{3}/.test(msg) ? 502 : 500, error: msg };
   }
 }
 
@@ -312,9 +256,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === 'GET' && u.pathname === '/health') return json(res, 200, { ok: true });
   if (req.method === 'GET' && u.pathname === '/events') return handleEvents(req, res, u);
-  if (req.method === 'GET' && u.pathname === '/session') return json(res, 200, sessionInfo());
   if (req.method === 'POST' && u.pathname === '/login') return handleLogin(req, res);
-  if (req.method === 'POST' && u.pathname === '/logout') { logout(); return json(res, 200, { ok: true }); }
   if (req.method === 'POST' && u.pathname === '/parse') return handleParse(req, res);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
@@ -323,7 +265,6 @@ server.on('clientError', (err, socket) => {
   socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
 });
 
-loadAuth();
 server.listen(port, host, () => {
   console.log('MHQ army-lists UI   http://' + host + ':' + port);
   console.log('POST /parse {"url":"<army-lists url>"}');

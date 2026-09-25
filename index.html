@@ -160,19 +160,21 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
       <input id="user" type="text" autocomplete="username" placeholder="MHQ username">
       <input id="pass" type="password" autocomplete="current-password" placeholder="password">
       <button id="login" type="button">Log in</button>
-      <label class="chk"><input id="remember" type="checkbox" checked> remember</label>
       <button id="logout" type="button" class="ghost">Log out</button>
     </div>
     <p class="seshint" id="seshint">Needed for organiser/admin URLs (<code>/administrate/</code>).
-       The session lives on this server, not in your browser, so you do not have to copy a cookie
-       out of DevTools. With "remember" on, an expired session is refreshed automatically.
-       Stored in <code>.secrets/</code> on this machine &mdash; gitignored.</p>
+       The server only brokers the login and keeps nothing: your password is used once and then
+       discarded, and the session comes back here, where it is kept in <code>localStorage</code>
+       and sent with each request. Nothing is written to the server&#x27;s disk, and two browsers
+       can never end up on the same account. A session lasts about two weeks; when it expires you
+       are asked to log in again.</p>
     <details class="rawck">
       <summary>or paste a session cookie instead</summary>
       <input id="cookie" type="text" spellcheck="false" autocomplete="off"
              placeholder="sessionid=...; csrftoken=...">
-      <p class="seshint">DevTools -> Network -> reload -> copy the <b>Cookie</b> request header.
-         Overrides a logged-in account and is kept in this browser only.</p>
+      <p class="seshint">Paste a cookie directly if you would rather not log in through here:
+         DevTools -> Network -> reload -> copy the <b>Cookie</b> request header. Kept in this
+         browser only.</p>
     </details>
   </div>
 </details>
@@ -677,13 +679,17 @@ $('#evq').addEventListener('input', renderEvList);
 $('#evfmt').addEventListener('change', renderEvList);
 $('#evshowall').addEventListener('change', function () { evCache = []; loadEvents(); });
 
-// Account for organiser/admin URLs. The server holds the session, so the browser
-// never has to keep a miniheadquarters.com cookie. A raw cookie is still accepted
-// as an override and stays in localStorage.
+// Account for organiser/admin URLs. The server only brokers the login: it never
+// keeps a credential, so the session cookie comes back here and lives in
+// localStorage, sent with every /parse. That is also why login and logout are
+// local operations - there is nothing on the server to clear.
 var COOKIE_KEY = 'mhq_cookie';
 function cookieOf() {
   var c = $('#cookie');
   return c && c.value.trim() ? c.value.trim() : null;
+}
+function storeCookie() {
+  try { localStorage.setItem(COOKIE_KEY, cookieOf() || ''); } catch (e) {}
 }
 function stateLabel(label, on) {
   var s = $('#sesstate');
@@ -691,14 +697,9 @@ function stateLabel(label, on) {
   s.textContent = on ? label : 'not signed in';
   s.className = 'flag' + (on ? '' : ' off');
 }
-function loadSession() {
-  fetch('/session').then(function (r) { return r.json(); })
-    .then(function (j) {
-      if (!j) return;
-      if (j.loggedIn) stateLabel(j.username || 'logged in', true);
-      else stateLabel('', false);
-      $('#ses').classList.toggle('warn', j.gitIgnored === false);
-    }).catch(function () {});
+function setState() {
+  var u = $('#user').value.trim();
+  stateLabel(cookieOf() ? (u ? 'signed in as ' + u : 'signed in') : '', !!cookieOf());
 }
 function doLogin() {
   var b = $('#login');
@@ -709,27 +710,29 @@ function doLogin() {
     body: JSON.stringify({
       username: $('#user').value.trim(),
       password: $('#pass').value,
-      remember: $('#remember').checked,
     }),
   }).then(function (r) { return r.json(); })
     .then(function (j) {
-      if (!j || !j.loggedIn) throw new Error((j && j.error) || 'login failed');
-      stateLabel(j.username || 'logged in', true);
+      if (!j || !j.cookie) throw new Error((j && j.error) || 'login failed');
+      $('#cookie').value = j.cookie;
+      storeCookie();
       $('#pass').value = '';
+      setState();
     })
     .catch(function (e) { setStatus(String(e.message || e), 'err'); })
-    .finally(function () { b.disabled = false; loadSession(); });
+    .finally(function () { b.disabled = false; });
 }
 (function initSes() {
   try { $('#cookie').value = localStorage.getItem(COOKIE_KEY) || ''; } catch (e) {}
-  $('#cookie').addEventListener('input', function () {
-    try { localStorage.setItem(COOKIE_KEY, this.value.trim()); } catch (e) {}
-  });
+  $('#cookie').addEventListener('input', function () { storeCookie(); setState(); });
   $('#login').addEventListener('click', doLogin);
   $('#logout').addEventListener('click', function () {
-    fetch('/logout', { method: 'POST' }).catch(function () {}).finally(loadSession);
+    $('#cookie').value = '';
+    $('#pass').value = '';
+    storeCookie();
+    setState();
   });
-  loadSession();
+  setState();
 })();
 
 $('#f').addEventListener('submit', function (e) {
