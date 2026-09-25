@@ -8,6 +8,7 @@
  * Endpoints:
  *   GET  /          serves index.html
  *   GET  /health    { ok: true }
+ *   GET  /events    recent tournaments, for the picker in index.html
  *   POST /parse     { url } -> { event, count, players, miniText, elapsedMs }
  *
  * The browser cannot fetch miniheadquarters.com directly (no CORS headers), so
@@ -18,7 +19,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { URL_RE, getMeta, playerWarnings, parseUrl, totals } from './parse.mjs';
+import { URL_RE, getMeta, listEvents, playerWarnings, parseUrl, totals } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -97,8 +98,27 @@ async function handleParse(req, res) {
     });
   } catch (e) {
     const msg = String((e && e.message) || e);
-    // A non-200 answer from MHQ is upstream, not a bug here.
+    // An event with no published lists is a 404, not a server fault. A non-200
+    // answer from MHQ is upstream. Anything else is ours.
+    if (/no army lists found/.test(msg)) return json(res, 404, { error: msg });
     return json(res, /HTTP \d{3}/.test(msg) ? 502 : 500, { error: msg });
+  }
+}
+
+// Recent tournaments for the picker. The browser cannot read the sitemap
+// directly (no CORS), so the page asks us. The sitemap is heavy (~2 MB) and is
+// cached for a few hours inside listEvents, so this stays cheap.
+async function handleEvents(req, res, u) {
+  let limit = 80;
+  const lm = u.searchParams.get('limit');
+  if (lm) {
+    const n = parseInt(lm, 10);
+    if (Number.isFinite(n)) limit = n;
+  }
+  try {
+    return json(res, 200, await listEvents({ limit, type: u.searchParams.get('type') || null }));
+  } catch (e) {
+    return json(res, 502, { error: String((e && e.message) || e) });
   }
 }
 
@@ -111,6 +131,7 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, readIndex(), 'text/html; charset=utf-8');
   }
   if (req.method === 'GET' && u.pathname === '/health') return json(res, 200, { ok: true });
+  if (req.method === 'GET' && u.pathname === '/events') return handleEvents(req, res, u);
   if (req.method === 'POST' && u.pathname === '/parse') return handleParse(req, res);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
@@ -122,4 +143,5 @@ server.on('clientError', (err, socket) => {
 server.listen(port, host, () => {
   console.log('MHQ army-lists UI   http://' + host + ':' + port);
   console.log('POST /parse {"url":"<army-lists url>"}');
+  console.log('GET  /events?limit=80&type=team');
 });

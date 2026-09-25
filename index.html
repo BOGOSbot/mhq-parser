@@ -88,6 +88,23 @@ details summary:hover{color:var(--txt)}
 pre{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
   padding:10px;overflow:auto;font:11.5px/1.55 var(--mono);max-height:300px;margin:8px 0 0}
 details.mini pre{max-height:360px;white-space:pre-wrap}
+a.ext{color:var(--acc);font:12px system-ui;text-decoration:none;white-space:nowrap;
+  margin-left:4px;padding:2px 5px;border-radius:5px}
+a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
+.evpanel{background:var(--bg);border-bottom:1px solid var(--line);padding:0 18px}
+.evhead{display:flex;gap:8px;align-items:center;padding:10px 0;flex-wrap:wrap}
+.evlist{max-height:330px;overflow-y:auto;margin:0 -4px 12px;padding:0 4px}
+.evitem{display:flex;gap:10px;align-items:baseline;padding:7px 8px;border-radius:7px;
+  cursor:pointer;margin-bottom:1px}
+.evitem:hover{background:var(--panel2)}
+.evname{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.evdate{font:11.5px var(--mono);color:var(--dim);white-space:nowrap}
+.evtag{font:10.5px var(--mono);color:var(--dim);border:1px solid var(--line);
+  border-radius:10px;padding:1px 7px;text-transform:uppercase;letter-spacing:.4px;
+  white-space:nowrap}
+.evtag.team{color:var(--acc);border-color:rgba(110,168,254,.4)}
+.evtag.individual{color:var(--ok);border-color:rgba(95,191,127,.4)}
 .hidden{display:none}
 </style>
 </head>
@@ -95,17 +112,34 @@ details.mini pre{max-height:360px;white-space:pre-wrap}
 <header>
   <div class="row">
     <h1>MHQ Army Lists <span>parser</span></h1>
+    <a class="ext" href="https://miniheadquarters.com/tournaments/team">MHQ</a>
     <form id="f">
       <input id="url" type="url" spellcheck="false" autocomplete="off"
              placeholder="https://miniheadquarters.com/tournaments/team/army-lists/&lt;slug&gt;">
       <button id="go" type="submit">Parse</button>
+      <button id="browse" type="button" class="ghost">Browse</button>
     </form>
   </div>
   <div id="status" class="status"></div>
 </header>
+<div id="evpanel" class="evpanel hidden">
+  <div class="evhead">
+    <input id="evq" type="search" placeholder="Filter events…">
+    <select id="evtype">
+      <option value="">All types</option>
+      <option value="team">Team</option>
+      <option value="individual">Individual</option>
+    </select>
+    <span id="evinfo" class="shown"></span>
+    <span class="spacer"></span>
+    <button id="evclose" type="button" class="ghost">Close</button>
+  </div>
+  <div id="evlist" class="evlist"></div>
+</div>
 <main id="main">
   <div class="empty">
-    Paste a MiniHeadQuarters army-lists URL and press <b>Parse</b>.<br>
+    Paste a MiniHeadQuarters army-lists URL and press <b>Parse</b>, or use <b>Browse</b>
+    to pick a tournament.<br>
     Running this page needs <code>node server.mjs</code>
   </div>
 </main>
@@ -433,6 +467,66 @@ function downloadJson() {
   a.remove();
   setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
 }
+
+// ---- event picker: pulls MHQ's tournament catalogue from its sitemap ---------
+var evCache = [];
+var evLoading = false;
+
+function showEvents() {
+  $('#evpanel').classList.remove('hidden');
+  if (!evCache.length && !evLoading) loadEvents();
+  else renderEvList();
+}
+
+function loadEvents() {
+  evLoading = true;
+  $('#browse').disabled = true;
+  $('#evinfo').textContent = 'loading…';
+  fetch('/events?limit=250').then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (j.error) throw new Error(j.error);
+      evCache = j.events || [];
+      renderEvList();
+    })
+    .catch(function (e) { $('#evinfo').textContent = 'error: ' + e.message; })
+    .finally(function () { evLoading = false; $('#browse').disabled = false; });
+}
+
+function renderEvList() {
+  var list = $('#evlist');
+  var q = ($('#evq').value || '').toLowerCase();
+  var type = $('#evtype').value || '';
+  list.textContent = '';
+  var n = 0;
+  for (var i = 0; i < evCache.length; i++) {
+    var e = evCache[i];
+    if (type && e.type !== type) continue;
+    if (q && (e.name + ' ' + e.slug).toLowerCase().indexOf(q) < 0) continue;
+    n++;
+    var row = el('div', 'evitem');
+    row.title = e.url;
+    row.addEventListener('click', (function (ev) {
+      return function () {
+        $('#url').value = ev.url;
+        $('#evpanel').classList.add('hidden');
+        parse();
+      };
+    })(e));
+    var name = el('div', 'evname', e.name);
+    if (e.future) name.appendChild(document.createTextNode('  (not yet)'));
+    row.appendChild(name);
+    row.appendChild(el('span', 'evtag ' + e.type, e.type));
+    row.appendChild(el('span', 'evdate', e.date || ''));
+    list.appendChild(row);
+  }
+  if (!n) list.appendChild(el('div', 'shown', 'no matching events'));
+  $('#evinfo').textContent = n + ' of ' + evCache.length + ' events';
+}
+
+$('#browse').addEventListener('click', showEvents);
+$('#evclose').addEventListener('click', function () { $('#evpanel').classList.add('hidden'); });
+$('#evq').addEventListener('input', renderEvList);
+$('#evtype').addEventListener('change', renderEvList);
 
 $('#f').addEventListener('submit', function (e) {
   e.preventDefault();

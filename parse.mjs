@@ -22,7 +22,9 @@ import { fileURLToPath, pathToFileURL } from 'url';
 // ============================================================
 // CLI wiring (skipped when this file is imported as a module)
 // ============================================================
-const URL_RE = /^https:\/\/miniheadquarters\.com\/tournaments\/(?:team|individual|2v2|side-by-side)\/army-lists\/.+/;
+// MHQ now canonicalises event pages to /details/ and 302s many /army-lists/
+// URLs across to it. Both forms serve identical content, so accept both.
+const URL_RE = /^https:\/\/miniheadquarters\.com\/tournaments\/(?:team|individual|2v2|side-by-side)\/(?:army-lists|details)\/.+/;
 
 // True only when run as the main script: node parse.mjs <url> [options].
 const IS_MAIN = (() => {
@@ -54,11 +56,11 @@ function parseArgs(argv) {
   }
   if (!URL_RE.test(a.url)) {
     throw new Error('provide a valid link\n' +
-      '  Expected format: https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>\n' +
+      '  Expected format: https://miniheadquarters.com/tournaments/team/(army-lists|details)/<event-slug>\n' +
       '  Got: ' + a.url);
   }
   // Default output dir: <event-slug>/ relative to this script's directory.
-  const slugMatch = a.url.match(/\/army-lists\/(.+)$/);
+  const slugMatch = a.url.match(/\/(?:army-lists|details)\/(.+)$/);
   const eventSlug = slugMatch ? slugMatch[1] : 'output';
   if (!a.outDir) a.outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), eventSlug);
   return a;
@@ -67,19 +69,29 @@ function parseArgs(argv) {
 // ============================================================
 // Fetch
 // ============================================================
-function fetchHTML(url) {
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+
+function fetchOnce(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-      },
-    }, r => {
-      let d = '';
-      r.on('data', c => { d += c; });
-      r.on('end', () => resolve({ status: r.statusCode, html: d }));
+    https.get(url, { headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml' } }, r => {
+      const chunks = [];
+      r.on('data', c => chunks.push(c));
+      r.on('end', () => resolve({ status: r.statusCode, headers: r.headers, html: Buffer.concat(chunks).toString('utf8') }));
     }).on('error', reject);
   });
+}
+
+// MHQ answers 302 for legacy /army-lists/ URLs, pointing at /details/. Follow
+// those or the page comes back empty. Capped so a redirect loop cannot hang.
+const MAX_REDIRECTS = 4;
+async function fetchHTML(url, hops) {
+  hops = hops || 0;
+  if (hops > MAX_REDIRECTS) throw new Error('too many redirects for ' + url);
+  const r = await fetchOnce(url);
+  if (r.status >= 300 && r.status < 400 && r.headers && r.headers.location) {
+    return fetchHTML(new URL(r.headers.location, url).toString(), hops + 1);
+  }
+  return r;
 }
 
 // ============================================================
@@ -1009,6 +1021,12 @@ async function parseUrl(url, { log = false } = {}) {
   if (log) console.error('Found ' + articles.length + ' articles');
   const players = buildPlayers(articles);
   if (log) console.error('Parsed ' + players.length + ' players');
+  // A tournament page with no armies means the lists are not out yet: either the
+  // URL was a /details/ info page, or the /army-lists/ URL redirected to one.
+  // Say so instead of handing back an empty result.
+  if (players.length === 0) {
+    throw new Error('no army lists found - this event has probably not published its lists yet');
+  }
   const output = { event: extractEvent(url, html), count: players.length, players };
   return { output, miniText: renderMini(output) };
 }
@@ -1027,7 +1045,85 @@ async function main() {
   console.error('Wrote ' + miniPath + ' (' + miniText.length + ' bytes)');
 }
 
-export { URL_RE, parseArgs, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers };
+export { URL_RE, parseArgs, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers, listEvents };
+
+// ============================================================
+// Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is
+// the only real index the site offers - the homepage and /tournaments/ both
+// return nothing usable. The sitemap carries <lastmod> dates, so events can be
+// sorted newest-first. Every entry there uses the canonical /details/ form.
+// ============================================================
+const SITEMAP_URL = 'https://miniheadquarters.com/sitemap.xml';
+const EVENT_TTL_MS = 6 * 60 * 60 * 1000;
+let eventCache = null;
+
+function daysFromToday(d) {
+  if (!d) return 1e9;
+  return Math.abs(Math.round((Date.now() - new Date(d + 'T00:00:00Z')) / 86400000));
+}
+
+function prettify(slug) {
+  const noDate = slug.replace(/\d{4}-\d{2}-\d{2}(?:-.*)?$/, '');
+  return noDate.replace(/-/g, ' ').replace(/\s+/g, ' ').trim() || slug;
+}
+
+async function listEvents(opts) {
+  opts = opts || {};
+  const limit = Math.min(Math.max(opts.limit || 80, 1), 400);
+  const only = opts.type || null;
+  const fresh = eventCache && (Date.now() - eventCache.at) < EVENT_TTL_MS;
+  if (!fresh) {
+    const r = await fetchOnce(SITEMAP_URL);
+    if (r.status !== 200) throw new Error('sitemap returned HTTP ' + r.status);
+    const out = [];
+    const seen = new Set();
+    let m;
+    const re = new RegExp('<loc>([^<]*\/tournaments\/[^<]*)</loc>', 'g');
+    while ((m = re.exec(r.html)) !== null) {
+      // The sitemap gives the /details/ info page, which never carries list data.
+      // The /army-lists/ form does - and 302s back to /details/ when not yet out.
+      const url = m[1].replace(/\/(details)\//, '/army-lists/');
+      // The sitemap repeats some entries; keep one of each.
+      if (seen.has(url)) continue;
+      seen.add(url);
+      const parts = url.split('/');
+      const i = parts.indexOf('tournaments');
+      if (i < 0) continue;
+      const type = parts[i + 1] || '';
+      const slug = parts[parts.length - 1] || '';
+      if (!slug) continue;
+      let date = null;
+      const dm = slug.match(/(\d{4}-\d{2}-\d{2})(?:-.*)?$/);
+      if (dm) date = dm[1];
+      const j = r.html.indexOf(m[1]);
+      const k = j >= 0 ? r.html.indexOf('<lastmod>', j) : -1;
+      const lastmod = k >= 0 ? r.html.slice(k + 9, k + 19) || null : null;
+      out.push({
+        slug,
+        type,
+        url,
+        date: date || lastmod,
+        lastmod,
+        future: !!date && date > new Date().toISOString().slice(0, 10),
+        name: prettify(slug),
+      });
+    }
+    // Newest dates first would bury recent, parseable events under next-year
+    // league registrations. Sort by distance from today instead: tournaments
+    // around now are the ones whose lists are actually published.
+    out.sort((a, b) => daysFromToday(a.date) - daysFromToday(b.date));
+    eventCache = { list: out, at: Date.now() };
+  }
+  const all = only ? eventCache.list.filter(e => e.type === only) : eventCache.list;
+  return {
+    events: all.slice(0, limit),
+    count: all.length,
+    total: eventCache.list.length,
+    cached: !!fresh,
+    fetchedAt: new Date(eventCache.at).toISOString(),
+  };
+}
+
 
 if (IS_MAIN) {
   try {
