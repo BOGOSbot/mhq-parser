@@ -60,6 +60,11 @@ label.chk input{accent-color:var(--acc)}
   padding:12px 14px;min-width:0}
 .card.has-warn{border-color:rgba(232,180,74,.55)}
 .card h3{margin:0 0 2px;font-size:14.5px;overflow-wrap:anywhere}
+.badge{display:inline-block;font:11px/1 var(--mono);padding:4px 9px;border-radius:999px;
+  border:1px solid var(--line);color:var(--dim);margin:6px 0 0}
+.badge.ok{color:var(--ok);border-color:rgba(95,191,127,.55)}
+.badge.bad{color:var(--err);border-color:rgba(239,107,107,.55)}
+.badge.warn{color:var(--warn);border-color:rgba(232,180,74,.55)}
 .faction{color:var(--dim);font-size:12px;margin-bottom:9px;overflow-wrap:anywhere}
 .points{display:flex;align-items:baseline;gap:8px;margin-bottom:9px}
 .points .big{font:600 18px var(--mono)}
@@ -224,7 +229,7 @@ function isRealUnit(u) {
     !/^(?:Strike Force|Force de Frappe|Force of|DA Recon)/i.test(u.model || '');
 }
 function blobOf(p) {
-  var parts = [p.name, p.faction, p.teamName, p.format];
+  var parts = [p.name, p.faction, p.teamName, p.format, p.status, p.adminId];
   if (p.meta) parts.push(p.meta.detachment, p.meta.forceDisposition);
   for (var i = 0; i < p.warnings.length; i++) parts.push(p.warnings[i].text);
   if (p.header) for (var k in p.header) parts.push(String(p.header[k]));
@@ -324,6 +329,24 @@ function render() {
   sel.addEventListener('change', applyFilters);
   bar.appendChild(sel);
 
+  // Only admin parses carry a status; a public event shows no such control.
+  var sts = Array.from(new Set(data.players.map(function (p) { return p.status; })
+    .filter(Boolean))).sort();
+  if (sts.length) {
+    var ssel = el('select');
+    ssel.id = 'status-filter';
+    var sall = el('option', null, 'All statuses');
+    sall.value = '';
+    ssel.appendChild(sall);
+    for (var k = 0; k < sts.length; k++) {
+      var so = el('option', null, sts[k]);
+      so.value = sts[k];
+      ssel.appendChild(so);
+    }
+    ssel.addEventListener('change', applyFilters);
+    bar.appendChild(ssel);
+  }
+
   var lbl = el('label', 'chk');
   var cb = el('input');
   cb.type = 'checkbox';
@@ -373,10 +396,21 @@ function render() {
   applyFilters();
 }
 
+// Accepted reads green, rejected red, pending amber. Unknown statuses stay
+// neutral so a new MHQ status still shows rather than disappearing.
+function statusClass(s) {
+  var v = String(s || '').toLowerCase();
+  if (v.indexOf('accepted') === 0 || v.indexOf('validat') === 0) return ' ok';
+  if (v.indexOf('reject') === 0) return ' bad';
+  if (v.indexOf('pending') === 0) return ' warn';
+  return '';
+}
+
 function card(p) {
   var c = el('article', 'card');
 
   c.appendChild(el('h3', null, p.name));
+  if (p.status) c.appendChild(el('span', 'badge' + statusClass(p.status), p.status));
   var fbits = [p.faction, p.teamName, p.format ? 'format: ' + p.format : null].filter(Boolean);
   if (fbits.length) c.appendChild(el('div', 'faction', fbits.join(' · ')));
 
@@ -464,11 +498,13 @@ function card(p) {
 
 function applyFilters() {
   var sEl = document.getElementById('faction-filter');
+  var tEl = document.getElementById('status-filter');
   var qEl = document.getElementById('army-search');
   var cEl = document.getElementById('warnings-only');
   if (!qEl || !sEl || !cEl) return;
   var q = qEl.value.trim().toLowerCase();
   var fac = sEl.value;
+  var st = tEl ? tEl.value : '';
   var wonly = cEl.checked;
   var shown = 0;
   for (var i = 0; i < view.blocks.length; i++) {
@@ -478,6 +514,7 @@ function applyFilters() {
       var cd = block.cards[j];
       var ok = (!q || cd.blob.indexOf(q) >= 0) &&
         (!fac || cd.p.faction === fac) &&
+        (!st || cd.p.status === st) &&
         (!wonly || cd.p.warnings.length > 0);
       cd.node.classList.toggle('hidden', !ok);
       if (ok) { any = true; shown++; }

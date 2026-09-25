@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { URL_RE, extractEventSlug, isAdminUrl, isLoginPage, authError, splitArticles, buildPlayers, loginFormError, setCookieOf } from '../parse.mjs';
+import { URL_RE, ADMIN_LIST_RE, extractEventSlug, isAdminUrl, isLoginPage, authError, splitArticles, buildPlayers, loginFormError, setCookieOf, splitAdminRows, adminListContent, adminStatusOf, adminArticle, getMeta, totals } from '../parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -102,5 +102,62 @@ t('login page yields 0 articles', splitArticles(login).length, 0);
 const pub = fs.readFileSync(new URL('./fixtures/public.html', import.meta.url), 'utf8');
 t('public page NOT login', isLoginPage(pub), false);
 
+
+// --- Admin (organiser) pages -------------------------------------------
+// The admin event page is a <table> of submitted armies; each army's body
+// lives on its own /administrate/army-lists/<id> page, so a full admin parse
+// fetches one page per army. The fixtures are a real event and its armies.
+
+// The per-army route is not under the event slug, so it is its own URL arm.
+t('accept admin per-army', URL_RE.test('https://miniheadquarters.com/tournaments/team/administrate/army-lists/47377'), true);
+t('accept admin per-army individual', URL_RE.test('https://miniheadquarters.com/tournaments/individual/administrate/army-lists/12345'), true);
+t('detail id extracted', ADMIN_LIST_RE.exec('https://miniheadquarters.com/tournaments/team/administrate/army-lists/47377')[1], '47377');
+// The index URL ends in /army-lists with nothing after it, so it must NOT be
+// mistaken for a per-army URL - a false match would silently parse one army.
+t('index is not per-army', ADMIN_LIST_RE.exec('https://miniheadquarters.com/tournaments/team/administrate/slug-2026-01-01/army-lists'), null);
+t('detail url flagged admin', isAdminUrl('https://miniheadquarters.com/tournaments/team/administrate/army-lists/47377'), true);
+// The admin index puts the slug BEFORE /army-lists, so it is recovered the
+// other way round and the event date still parses from it.
+t('index slug recovered', extractEventSlug('https://miniheadquarters.com/tournaments/team/administrate/bogos-team-6-des-sous-terre-2026-10-10/army-lists'), 'bogos-team-6-des-sous-terre-2026-10-10');
+
+const adminIdx = fs.readFileSync(new URL('./fixtures/admin/index.html', import.meta.url), 'utf8');
+const rows = splitAdminRows(adminIdx);
+t('admin row count', rows.length, 6);
+t('rows have unique ids', new Set(rows.map(r => r.id)).size, 6);
+t('row id', rows[0].id, '47377');
+t('row username', rows[0].username, 'Blork');
+t('row team', rows[0].team, 'Random Wargame Club');
+t('row faction', rows[0].faction, 'Chaos - Chaos Knights');
+t('row status', rows[0].status, 'Pending validation');
+t('row lastModified', rows[0].lastModified, '09/21/2026 10:41 a.m.');
+t('row url', rows[0].url, 'https://miniheadquarters.com/tournaments/team/administrate/army-lists/47377');
+// A non-admin page has no such table, so the splitter must not invent rows.
+t('public page has no admin rows', splitAdminRows(pub).length, 0);
+t('login page has no admin rows', splitAdminRows(login).length, 0);
+
+const listHtml = fs.readFileSync(new URL('./fixtures/admin/list-47377.html', import.meta.url), 'utf8');
+const content = adminListContent(listHtml);
+t('admin content found', content !== null, true);
+t('admin content names the player', /Blork/.test(content), true);
+t('admin content has points', /(\s*135\s*pts)/.test(content), true);
+t('admin status on detail page', adminStatusOf(listHtml), 'Pending');
+t('admin status absent from index', adminStatusOf(adminIdx), null);
+
+// The table row becomes a synthetic <h2> "Name : Faction" plus the body, so
+// the public parsing pipeline is reused unchanged. This is the round trip.
+const players = buildPlayers([adminArticle(rows[0], content)]);
+t('admin player count', players.length, 1);
+t('admin player name', players[0].name, 'Blork');
+t('admin player faction', players[0].faction, 'Chaos - Chaos Knights');
+t('admin player team', players[0].teamName, 'Random Wargame Club');
+t('admin unit count', (players[0].units || []).length, 14);
+t('admin parsed points', totals(players[0]).parsedPts, 2000);
+t('admin declared points', totals(players[0]).declaredPts, 2000);
+t('admin detachment', getMeta(players[0]).detachment, 'Houndpack Lance, Hunting Warpack (Marked Prey)');
+
+// A submitted list can be empty; that must yield a player, not a crash.
+const empty = buildPlayers([adminArticle({ id: '99', username: 'Nobody', faction: 'Undeclared', team: '' }, '')]);
+t('empty body still yields a player', empty.length, 1);
+t('empty body player name', empty[0].name, 'Nobody');
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

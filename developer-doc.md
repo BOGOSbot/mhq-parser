@@ -118,6 +118,37 @@ Pitfall: a naive split on <article> picks up both outer and inner tags. The firs
 
 The parser detects the format by checking for `<article class="rounded-2xl` (team) vs. `<article class="overflow-hidden` (individual). For individual events, the player name comes from the button span instead of an <h2> tag, and is split on " - " to extract the faction. The body is extracted from the <div class="whitespace-pre-line"> element rather than after </h2>, since individual cards have no <h2>.
 
+### 3b. Organiser/admin pages: a table, not articles
+
+An admin URL (`/administrate/...`) does not use the article layout at all, and it does not contain the list bodies. The event page is a `<table>` with one `<tr class="transition hover:bg-white/5">` per submitted army and a fixed cell order: subscription checkbox, username, team, faction, last modified, first submission, last review by, status badge, link.
+
+```html
+<tr class="transition hover:bg-white/5">
+  <td><input type="checkbox" name="subscription_47377" ...></td>
+  <td>...<span>Blork</span></td>
+  <td>Random Wargame Club</td>
+  <td>Chaos - Chaos Knights</td>
+  <td>09/21/2026 10:41 a.m.</td>
+  <td>09/21/2026 10:41 a.m.</td>
+  <td>-</td>
+  <td><span class="... bg-amber-500/10 text-amber-300">
+        <em class="fas fa-clock"></em>
+        <span>Pending validation</span></span></td>
+  <td><a href="/tournaments/team/administrate/army-lists/47377" ...></td>
+</tr>
+```
+
+The body lives on a separate per-army page. That route is **not** under the event slug - it is `/tournaments/<type>/administrate/army-lists/<id>`, so it is its own arm of `URL_RE` and is detected by `ADMIN_LIST_RE`. It costs a second fetch per army, so an admin parse makes `1 + N` requests for `N` armies.
+
+The two routes are told apart safely: the index ends in `/army-lists` with nothing after it, while the per-army route requires digits after it. `tests/test-auth.mjs` pins this, because a false match would silently parse a single army instead of the whole event.
+
+The status is matched on the badge **text** (`Pending validation`, `Accepted`, `Rejected`), never on the colour class (`bg-amber-*`, ...), so a recolor by the site does not break it. `adminStatusOf()` reads the short form ("Pending") off the per-army page as a fallback for a bare army URL, which has no table.
+
+To reuse the whole public pipeline, `adminArticle()` turns a row into a fake article: an `<h2>Name : Faction</h2>` - which `buildPlayers()` already reads - plus the raw body. `parseNewRecruit`, `parseBullets` and `findPlusBlock` therefore need no changes, which the fixture round-trip test (`82` checks) proves on a real submitted list. `parseAdmin()` is dispatched from `parseUrl()` on `isAdminUrl()`.
+
+An empty submission is a legitimate state, so `fetchAdminList()` never throws and `adminArticle()` tolerates a null body: the army still appears, with zero units, instead of failing the whole event.
+
+Pitfall found here: the site emits a literal non-breaking space (U+00A0) inside fields such as "Houndpack&nbsp;Lance". `decodeEntities()` only handled the `&nbsp;` entity, so a literal NBSP survived into the output and made substring search for "Houndpack Lance" fail. It is now normalised to a plain space in `decodeEntities()`, which fixes public and admin parsing alike.
 ### 4. Recognise which list format each player used
 
 MHQ is a free-text upload. Every player pastes their own list in whatever format their list-builder produced. Two primary formats appear, with several sub-variants:

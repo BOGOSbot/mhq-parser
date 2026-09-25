@@ -31,10 +31,15 @@ import { fileURLToPath, pathToFileURL } from 'url';
 // are published, so accept it as well.
 // Each arm of the alternation requires its own slug, so a bare /army-lists
 // (no event) is rejected rather than silently defaulting to an "output" dir.
-const URL_RE = /^https:\/\/miniheadquarters\.com\/tournaments\/(?:team|individual|2v2|side-by-side)\/(?:administrate\/[^\/\?#]+\/(?:army-lists|details)(?:\/|$)|(?:army-lists|details)\/[^\/\?#]+\/?)(?:[?#].*)?$/;
+const URL_RE = /^https:\/\/miniheadquarters\.com\/tournaments\/(?:team|individual|2v2|side-by-side)\/(?:administrate\/army-lists\/\d+|administrate\/[^[\/\?#]+\/(?:army-lists|details)(?:\/|$)|(?:army-lists|details)\/[^\/\?#]+\/?)(?:[?#].*)?$/;
 
 // Admin routes need a logged-in session; public routes do not.
 function isAdminUrl(url) { return /\/administrate\//.test(url); }
+
+// /administrate/army-lists/<id> is a single submitted army. It sits directly
+// under /administrate/, not under the event slug, so it gets its own arm of
+// URL_RE rather than being treated as a slug-bearing route.
+const ADMIN_LIST_RE = /\/administrate\/army-lists\/(\d+)/;
 
 // Pull <event-slug> from either shape, for the default output directory.
 function extractEventSlug(url) {
@@ -81,6 +86,7 @@ function parseArgs(argv) {
     throw new Error('provide a valid link\n' +
       '  Expected format: https://miniheadquarters.com/tournaments/<type>/(army-lists|details)/<event-slug>\n' +
       '  or the organiser admin form: https://miniheadquarters.com/tournaments/<type>/administrate/<event-slug>/(army-lists|details)\n' +
+      '  or one submitted army: https://miniheadquarters.com/tournaments/<type>/administrate/army-lists/<id>\n' +
       '  Got: ' + a.url);
   }
   // Default output dir: <event-slug>/ relative to this script's directory.
@@ -222,11 +228,178 @@ async function loginSession(username, password) {
   };
 }
 
+
+// ============================================================
+// Organiser / admin pages
+// ============================================================
+// The admin view is a completely different layout from the public one. The
+// event page is a <table> of rows - one per submitted army - holding username,
+// team, faction, dates, a status badge and a link. The list body is not on that
+// page at all: it lives on a per-army page at
+// /tournaments/<type>/administrate/army-lists/<id>, so each row costs a second
+// fetch. The status is the badge text in the table ("Pending validation",
+// "Accepted", "Rejected") and is carried onto the player for the UI.
+
+// Fixed cell order in a row: subscription checkbox, username, team, faction,
+// last modified, first submission, last review by, status, link.
+function splitAdminRows(html) {
+  const rows = [];
+  let p = 0;
+  while (true) {
+    const s = html.indexOf("<tr class=\"transition hover:bg-white/5\">", p);
+    if (s === -1) break;
+    const e = html.indexOf("</tr>", s);
+    if (e === -1) break;
+    const row = html.substring(s, e + "</tr>".length);
+    const cells = [];
+    let c = 0;
+    while (true) {
+      const cs = row.indexOf("<td", c);
+      if (cs === -1) break;
+      const ce = row.indexOf("</td>", cs);
+      if (ce === -1) break;
+      cells.push(row.substring(cs, ce + "</td>".length));
+      c = ce + 1;
+    }
+    if (cells.length >= 8) {
+      const idM = row.match(/army-lists\/(\d+)/);
+      if (idM) {
+        const hrefM = cells[8].match(/href="([^"]+)"/);
+        rows.push({
+          id: idM[1],
+          username: cellText(cells[1]),
+          team: cellText(cells[2]),
+          faction: cellText(cells[3]),
+          lastModified: cellText(cells[4]),
+          firstSubmission: cellText(cells[5]),
+          lastReviewBy: cellText(cells[6]),
+          status: cellText(cells[7]),
+          url: hrefM ? "https://miniheadquarters.com" + hrefM[1] : null,
+        });
+      }
+    }
+    p = e + 1;
+  }
+  return rows;
+}
+
+// Plain text of a table cell: tags become spaces, entities decoded.
+function cellText(cell) {
+  if (!cell) return "";
+  return decodeEntities(cell.replace(/<br\s*\/?>/g, " ").replace(/<[^>]+>/g, " "))
+    .replace(/\s+/g, " ").trim();
+}
+
+// The submitted list body: the single whitespace-pre-line paragraph on the
+// per-army page, as HTML. It is handed to buildPlayers unchanged.
+function adminListContent(html) {
+  const m = html.match(/<p class="whitespace-pre-line[^"]*">([\s\S]*?)<\/p>/);
+  return m ? m[1] : null;
+}
+
+// The per-army page repeats the status in a "Status:" info block. It is the
+// short form ("Pending") rather than the table badge ("Pending validation"),
+// so it is a fallback for a URL pasted on its own.
+function adminStatusOf(html) {
+  const m = html.match(/Status:[\s\S]{0,500}?text-white">\s*([^<]+?)\s*</);
+  return m ? decodeEntities(m[1]).trim() : null;
+}
+
+// A submitted army as an article for buildPlayers. The name and faction come
+// from the table row; buildPlayers reads them out of an <h2> "Name : Faction".
+function adminArticle(row, body) {
+  return {
+    html: "<h2>" + escapeHtml(row.username || "(unnamed)") + " : " + escapeHtml(row.faction || "") + "</h2>" + (body || ""),
+    teamName: row.team || null,
+    playerName: null,
+    admin: {
+      id: row.id,
+      url: row.url || null,
+      status: row.status || null,
+      lastModified: row.lastModified || null,
+      firstSubmission: row.firstSubmission || null,
+      lastReviewBy: row.lastReviewBy || null,
+    },
+  };
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// Fetch a per-army page, or null. Never throws: one bad list must not kill the
+// whole event, and an empty submission is a legitimate state.
+async function fetchAdminList(url, { cookie = null, log = false } = {}) {
+  if (!url) return null;
+  try {
+    const { status, html } = await fetchHTML(url, { cookie });
+    if (status !== 200 || isLoginPage(html)) {
+      if (log) console.error("  " + url + ": HTTP " + status);
+      return null;
+    }
+    return adminListContent(html);
+  } catch (e) {
+    if (log) console.error("  " + url + ": " + e.message);
+    return null;
+  }
+}
+
+// An <id> in the URL means a single submitted army, not an event index.
+function oneAdminArticle(id, html) {
+  const nameM = html.match(/\+\s*PLAYER\s*NAME\s*:\s*(.+)/i);
+  const facM = html.match(/\+\s*FACTION\s*KEYWORD\s*:\s*(.+)/i);
+  const teamM = html.match(/\+\s*TEAM\s*NAME\s*:\s*(.+)/i);
+  return adminArticle({
+    id: id,
+    username: nameM ? nameM[1].trim() : "(unnamed)",
+    faction: facM ? facM[1].trim() : "",
+    team: teamM ? teamM[1].trim() : "",
+    status: adminStatusOf(html),
+  }, adminListContent(html) || "");
+}
+
+async function parseAdmin(url, { log = false, cookie = null } = {}) {
+  const idM = url.match(ADMIN_LIST_RE);
+  const { status, html } = await fetchHTML(url, { cookie });
+  if (status !== 200) throw new Error("HTTP " + status + " fetching " + url);
+  if (isLoginPage(html)) throw new Error(authError(url));
+  if (log) console.error("Fetched " + html.length + " bytes");
+
+  let articles;
+  if (idM) {
+    // A single army: the event name comes from the page <title>.
+    articles = [oneAdminArticle(idM[1], html)];
+  } else {
+    const rows = splitAdminRows(html);
+    if (log) console.error("Found " + rows.length + " submitted armies");
+    if (!rows.length) {
+      throw new Error("no army lists found - this event has probably not published its lists yet");
+    }
+    articles = [];
+    for (const row of rows) articles.push(adminArticle(row, await fetchAdminList(row.url, { cookie, log })));
+  }
+
+  const players = buildPlayers(articles);
+  players.forEach((p, i) => {
+    const a = articles[i] && articles[i].admin;
+    if (!a) return;
+    p.status = a.status || null;
+    p.adminId = a.id;
+    p.adminUrl = a.url || null;
+    p.lastModified = a.lastModified || null;
+    p.firstSubmission = a.firstSubmission || null;
+    p.lastReviewBy = a.lastReviewBy || null;
+  });
+  const output = { event: extractEvent(url, html), count: players.length, players };
+  return { output, miniText: renderMini(output) };
+}
 // ============================================================
 // HTML decoding & article splitting
 // ============================================================
 function decodeEntities(s) {
-  return s
+  // The site emits a literal non-breaking space (U+00A0) where it means an
+  // ordinary one; left alone it would break search for "Houndpack Lance".
+  return s.replace(/\u00a0/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
@@ -1057,8 +1230,9 @@ function extractEvent(url, html) {
     // The <title> is not entity-decoded elsewhere, so an apostrophe lands as &#x27;.
     eventName = decodeEntities(titleM[1].split('|')[0].trim());
   }
-  const urlPath = new URL(url).pathname;
-  const slug = urlPath.split('/').filter(Boolean).pop();
+  // The admin index URL puts the event slug BEFORE /army-lists, so popping
+  // the last segment would yield the view name rather than the slug.
+  const slug = extractEventSlug(url) || '';
   const m = slug.match(/^(.*)-(\d{4})-(\d{2})-(\d{2})$/);
   if (!eventName) eventName = m ? m[1].replace(/-/g, ' ') : slug;
   const eventDate = m ? m[2] + '-' + m[3] + '-' + m[4] : null;
@@ -1128,7 +1302,7 @@ function renderMini(output) {
     out.push('');
     for (const p of teamPlayers) {
       const meta = getMeta(p);
-      out.push('### ' + p.name + ' — ' + p.faction);
+      out.push('### ' + p.name + ' — ' + p.faction + (p.status ? ' [' + p.status + ']' : ''));
       if (meta.detachment) out.push('- ' + meta.detachment);
       if (meta.forceDisposition) out.push('- ' + meta.forceDisposition);
       // Emit warnings under the header
@@ -1145,7 +1319,9 @@ async function parseUrl(url, { log = false, cookie = null } = {}) {
   const { status, html } = await fetchHTML(url, { cookie });
   if (status !== 200) throw new Error('HTTP ' + status + ' fetching ' + url);
   // An authenticated-only route returns the login form with HTTP 200.
-  if (isLoginPage(html)) throw new Error(authError(url));
+  // Admin views use a different layout and fetch one page per army, so they go
+  // through their own path.
+  if (isAdminUrl(url)) return parseAdmin(url, { log, cookie });
   if (log) console.error('Fetched ' + html.length + ' bytes');
   const articles = splitArticles(html);
   if (log) console.error('Found ' + articles.length + ' articles');
@@ -1206,7 +1382,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists, listCount };
 }
 
-export { URL_RE, parseArgs, isAdminUrl, extractEventSlug, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError };
+export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is

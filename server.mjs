@@ -254,7 +254,8 @@ async function handleParse(req, res) {
   if (!URL_RE.test(target)) {
     return fail(res, 400, 'not a MiniHeadQuarters army-lists URL ' +
       '(expected https://miniheadquarters.com/tournaments/<type>/(army-lists|details)/<slug>, ' +
-      'or the organiser form https://miniheadquarters.com/tournaments/<type>/administrate/<slug>/(army-lists|details))');
+      'the organiser form https://miniheadquarters.com/tournaments/<type>/administrate/<slug>/(army-lists|details), ' +
+      'or one submitted army https://miniheadquarters.com/tournaments/<type>/administrate/army-lists/<id>)');
   }
   const t0 = Date.now();
   const r = await parseWithSession(target, typeof body.cookie === 'string' ? body.cookie : null);

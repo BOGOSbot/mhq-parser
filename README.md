@@ -72,6 +72,14 @@ Un cookie brut reste accepté en secours : « or paste a session cookie instead 
 
 Dans le panneau Browse, la case « organiser view » remplit l'URL admin plutôt que publique. Le sitemap ne contient que des URLs publiques (zéro occurrence de `administrate`), donc l'URL admin est reconstruite à partir du type et du slug de l'événement.
 
+### Mise en page admin et statut
+
+La vue admin n'est pas la vue publique. La page d'événement est un **tableau** d'une ligne par armée soumise (utilisateur, équipe, faction, dates, statut, lien) ; le texte de la liste n'y figure pas, il est sur une page propre à chaque armée. L'analyse passe donc par l'index puis par chaque page d'armée, soit un appel HTTP par armée. Une URL d'armée seule fonctionne aussi :
+
+`https://miniheadquarters.com/tournaments/<type>/administrate/army-lists/<id>`
+
+Chaque armée porte le statut de sa ligne — `Pending validation`, `Accepted` ou `Rejected` — en pastille sur la carte (ambre, vert, rouge) et filtrable via « All statuses » dans la barre. Le mini Markdown l'inscrit entre crochets après la faction. Le JSON embarque aussi `adminId`, `adminUrl`, `lastModified`, `firstSubmission` et `lastReviewBy`.
+
 ## Sortie
 
 ### JSON
@@ -196,6 +204,14 @@ Copy the cookie from DevTools -> Network (the `Cookie` request header of any aut
 A raw cookie is still accepted as an override: expand *or paste a session cookie instead* in the Account panel. It wins over a logged-in account and is remembered in the browser. Without either, an admin parse fails with 401 and the panel opens itself, focused on the password field.
 
 In the Browse panel, the 'organiser view' checkbox fills the admin URL instead of the public one. The sitemap only ever carries public URLs (zero occurrences of `administrate`), so the admin path is rebuilt from the event's type and slug.
+
+### Admin layout and status
+
+The admin view is not the public view. The event page is a **table** with one row per submitted army (user, team, faction, dates, status, link); the list body is not on it, it lives on a per-army page. A parse therefore walks the index and then each army page, one HTTP request per army. A single army's URL also works on its own:
+
+`https://miniheadquarters.com/tournaments/<type>/administrate/army-lists/<id>`
+
+Each army carries the status of its row — `Pending validation`, `Accepted` or `Rejected` — as a badge on the card (amber, green, red) and filterable via "All statuses" in the bar. The mini Markdown appends it in brackets after the faction. The JSON also carries `adminId`, `adminUrl`, `lastModified`, `firstSubmission` and `lastReviewBy`.
 
 ## Output
 
