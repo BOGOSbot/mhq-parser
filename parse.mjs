@@ -24,7 +24,25 @@ import { fileURLToPath, pathToFileURL } from 'url';
 // ============================================================
 // MHQ now canonicalises event pages to /details/ and 302s many /army-lists/
 // URLs across to it. Both forms serve identical content, so accept both.
-const URL_RE = /^https:\/\/miniheadquarters\.com\/tournaments\/(?:team|individual|2v2|side-by-side)\/(?:army-lists|details)\/.+/;
+// Two URL shapes exist per event:
+//   public : /tournaments/<type>/{army-lists|details}/<slug>
+//   admin  : /tournaments/<type>/administrate/<slug>/{army-lists|details}
+// The admin route is the organiser's view. Its lists show up there before they
+// are published, so accept it as well.
+// Each arm of the alternation requires its own slug, so a bare /army-lists
+// (no event) is rejected rather than silently defaulting to an "output" dir.
+const URL_RE = /^https:\/\/miniheadquarters\.com\/tournaments\/(?:team|individual|2v2|side-by-side)\/(?:administrate\/[^\/\?#]+\/(?:army-lists|details)(?:\/|$)|(?:army-lists|details)\/[^\/\?#]+\/?)(?:[?#].*)?$/;
+
+// Admin routes need a logged-in session; public routes do not.
+function isAdminUrl(url) { return /\/administrate\//.test(url); }
+
+// Pull <event-slug> from either shape, for the default output directory.
+function extractEventSlug(url) {
+  let m = url.match(/\/(?:army-lists|details)\/([^\/\?#]+)/);
+  if (m) return m[1];
+  m = url.match(/\/administrate\/([^\/\?#]+)/);
+  return m ? m[1] : null;
+}
 
 // True only when run as the main script: node parse.mjs <url> [options].
 const IS_MAIN = (() => {
@@ -41,6 +59,7 @@ function parseArgs(argv) {
     outDir: null,
     jsonName: 'mhq_army_lists.json',
     miniName: 'mhq_army_lists.mini.md',
+    cookie: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -48,20 +67,24 @@ function parseArgs(argv) {
     else if (arg === '--out-dir') a.outDir = argv[++i];
     else if (arg === '--json') a.jsonName = argv[++i];
     else if (arg === '--mini') a.miniName = argv[++i];
+    else if (arg === '--cookie') a.cookie = argv[++i];
   }
+  // A cookie can also come from the environment: handy when the value is long
+  // or comes from a secret store rather than the command line.
+  if (!a.cookie && process.env.MHQ_COOKIE) a.cookie = process.env.MHQ_COOKIE;
   if (!a.url) {
     throw new Error('provide a link to an MHQ army list\n' +
-      '  Usage: node parse.mjs <army-lists-url> [--out-dir <dir>] [--json <name>] [--mini <name>]\n' +
+      '  Usage: node parse.mjs <army-lists-url> [--out-dir <dir>] [--json <name>] [--mini <name>] [--cookie <header>]\n' +
       '  Example: node parse.mjs https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>');
   }
   if (!URL_RE.test(a.url)) {
     throw new Error('provide a valid link\n' +
-      '  Expected format: https://miniheadquarters.com/tournaments/team/(army-lists|details)/<event-slug>\n' +
+      '  Expected format: https://miniheadquarters.com/tournaments/<type>/(army-lists|details)/<event-slug>\n' +
+      '  or the organiser admin form: https://miniheadquarters.com/tournaments/<type>/administrate/<event-slug>/(army-lists|details)\n' +
       '  Got: ' + a.url);
   }
   // Default output dir: <event-slug>/ relative to this script's directory.
-  const slugMatch = a.url.match(/\/(?:army-lists|details)\/(.+)$/);
-  const eventSlug = slugMatch ? slugMatch[1] : 'output';
+  const eventSlug = extractEventSlug(a.url) || 'output';
   if (!a.outDir) a.outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), eventSlug);
   return a;
 }
@@ -71,9 +94,11 @@ function parseArgs(argv) {
 // ============================================================
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
-function fetchOnce(url) {
+function fetchOnce(url, cookie) {
   return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml' } }, r => {
+    const headers = { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml' };
+    if (cookie) headers['Cookie'] = cookie;
+    https.get(url, { headers }, r => {
       const chunks = [];
       r.on('data', c => chunks.push(c));
       r.on('end', () => resolve({ status: r.statusCode, headers: r.headers, html: Buffer.concat(chunks).toString('utf8') }));
@@ -84,14 +109,47 @@ function fetchOnce(url) {
 // MHQ answers 302 for legacy /army-lists/ URLs, pointing at /details/. Follow
 // those or the page comes back empty. Capped so a redirect loop cannot hang.
 const MAX_REDIRECTS = 4;
-async function fetchHTML(url, hops) {
-  hops = hops || 0;
+// Second argument is an options bag { cookie, hops }; a bare number is still
+// accepted as hops so existing callers keep working.
+async function fetchHTML(url, opts) {
+  const o = typeof opts === 'number' ? { hops: opts } : (opts || {});
+  const hops = o.hops || 0;
   if (hops > MAX_REDIRECTS) throw new Error('too many redirects for ' + url);
-  const r = await fetchOnce(url);
+  const r = await fetchOnce(url, o.cookie);
   if (r.status >= 300 && r.status < 400 && r.headers && r.headers.location) {
-    return fetchHTML(new URL(r.headers.location, url).toString(), hops + 1);
+    return fetchHTML(new URL(r.headers.location, url).toString(), { cookie: o.cookie, hops: hops + 1 });
   }
   return r;
+}
+
+// ============================================================
+// Auth wall
+// ============================================================
+// An authenticated-only route answers 200 with the login form instead of a
+// 302 redirect, so a plain fetch looks successful and then finds zero armies.
+// Without this check the caller is told "lists not published yet", which is
+// the wrong diagnosis. Detect the login page explicitly.
+function isLoginPage(html) {
+  return /action="\/users\/login"/.test(html) && /name="csrfmiddlewaretoken"/.test(html);
+}
+
+function authError(url) {
+  return [
+    'authentication required - miniheadquarters.com returned the login page',
+    '  for ' + url,
+    '',
+    '  The site is Django: it sets a csrftoken cookie on the first GET and',
+    '  expects a sessionid cookie after POSTing csrfmiddlewaretoken +',
+    '  username + password to /users/login.',
+    '',
+    '  Quickest way to unblock this without storing credentials:',
+    '    1. Log in at https://miniheadquarters.com/users/login in a browser.',
+    '    2. DevTools -> Network, reload, copy the Cookie request header',
+    '       (or DevTools -> Application -> Cookies -> miniheadquarters.com).',
+    '    3. Re-run with the session attached:',
+    '       node parse.mjs <url> --cookie "sessionid=...; csrftoken=..."',
+    '       or set MHQ_COOKIE in the environment.',
+  ].join('\n');
 }
 
 // ============================================================
@@ -1013,9 +1071,11 @@ function renderMini(output) {
   return out.join('\n');
 }
 
-async function parseUrl(url, { log = false } = {}) {
-  const { status, html } = await fetchHTML(url);
+async function parseUrl(url, { log = false, cookie = null } = {}) {
+  const { status, html } = await fetchHTML(url, { cookie });
   if (status !== 200) throw new Error('HTTP ' + status + ' fetching ' + url);
+  // An authenticated-only route returns the login form with HTTP 200.
+  if (isLoginPage(html)) throw new Error(authError(url));
   if (log) console.error('Fetched ' + html.length + ' bytes');
   const articles = splitArticles(html);
   if (log) console.error('Found ' + articles.length + ' articles');
@@ -1035,7 +1095,7 @@ async function parseUrl(url, { log = false } = {}) {
 // Main
 // ============================================================
 async function main() {
-  const { output, miniText } = await parseUrl(args.url, { log: true });
+  const { output, miniText } = await parseUrl(args.url, { log: true, cookie: args.cookie });
   fs.mkdirSync(args.outDir, { recursive: true });
   const jsonPath = path.join(args.outDir, args.jsonName);
   const miniPath = path.join(args.outDir, args.miniName);
@@ -1076,7 +1136,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists, listCount };
 }
 
-export { URL_RE, parseArgs, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat };
+export { URL_RE, parseArgs, isAdminUrl, extractEventSlug, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is

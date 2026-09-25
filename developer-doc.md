@@ -35,6 +35,27 @@ The page is server-rendered. A plain GET with a browser User-Agent returns the f
 
 Pitfall on Windows: [Net.HttpWebRequest] and curl.exe both fail against this site with "The underlying connection was closed" / "SEC_E_NO_CREDENTIALS". Node's .get() works out of the box. That is why the script uses Node.
 
+
+#### The auth wall (organiser/admin URLs)
+
+A third URL shape exists: `/tournaments/<type>/administrate/<slug>/army-lists`. It is the organiser's view and shows lists before they are published. It requires a logged-in session.
+
+Two facts about the site's auth:
+
+- It is **Django**. Evidence: `csrfmiddlewaretoken` hidden input, `id_username` / `id_password` id prefixes, `gunicorn` origin header. The first `GET` returns `Set-Cookie: csrftoken=...` (no `HttpOnly`, `SameSite=Lax`), and the value equals the form's hidden `csrfmiddlewaretoken` (Django's double-submit).
+- Login is a plain `POST /users/login` with `csrfmiddlewaretoken` + `username` + `password`. No SSO button, no captcha, no MFA. Password reset lives at `/users/reset-password`.
+
+**Why this needed code and not just docs.** An unauthenticated GET on an admin URL returns the login page with **HTTP 200**, not a 302. `splitArticles` then finds zero articles and `parseUrl` threw `no army lists found - this event has probably not published its lists yet` — the wrong diagnosis, and a misleading one because the real cause (no session) is invisible. That is exactly the state of `bogos-team-6-des-sous-terre-2026-10-10/mhq_army_lists.json` in the repo: six teams, all `bodyRest: "No lists"`, because the public page really has nothing published yet.
+
+So the wall is detected explicitly:
+
+- `isLoginPage(html)` matches `action="/users/login"` **and** `name="csrfmiddlewaretoken"`. Both together are distinctive and cheap; no `<title>` parsing.
+- `parseUrl` checks it before `splitArticles` and throws `authError(url)`, which names the site, the endpoint, and the exact steps to get a cookie. server.mjs keys off the phrase `authentication required` to answer `401` with `{ auth: true }`, which is what makes the UI open the cookie field.
+- `fetchHTML(url, { cookie })` adds the `Cookie` header. The second argument is now an options bag but a bare `hops` number is still accepted so older callers keep working.
+- `URL_RE` now has one arm per shape and each arm requires its own slug, so a bare `/tournaments/team/army-lists` is rejected instead of falling back to an `output/` directory. `extractEventSlug()` pulls the slug from either shape: public form has it after `/army-lists/`, admin form has it after `/administrate/`.
+
+Pitfall on cookie plumbing: a browser **cannot** attach `miniheadquarters.com` cookies to a fetch of the local server (different origin), so the cookie has to be forwarded as text. That is why the UI keeps it in `localStorage` and posts it in the `/parse` body, and why the CLI takes `--cookie` / `MHQ_COOKIE`. The value is a Django session and expires (default two weeks), so it is not a permanent solution — it is the cheapest one, because it stores no password and adds no dependency.
+
 ### 3. Split the page into player blocks
 
 The page has two formats depending on the event type:

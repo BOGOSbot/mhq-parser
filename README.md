@@ -38,16 +38,35 @@ Options du serveur :
 | **--port <n>** | 8787 | Port d'ecoute (variable `PORT`) |
 | **--host <h>** | 127.0.0.1 | Interface d'ecoute (variable `HOST`) |
 
-Points de terminaison : `GET /` (la page), `GET /health` et `POST /parse` avec un corps JSON "{"url":"..."}".
+Points de terminaison : `GET /` (la page), `GET /health` et `POST /parse` avec un corps JSON "{"url":"...", "cookie":"..."}" — le champ `cookie` (ou la variable `MHQ_COOKIE`) est nécessaire pour les vues organisateur/admin.
 
 ## Options
 
 | Option | Valeur par défaut | Rôle |
 |------|---------|---------|
-| \ <url> | obligatoire | URL de la page de listes d'armées (doit correspondre à `https://miniheadquarters.com/tournaments/{team|individual|side-by-side}/army-lists/<slug>`) |
+| \ <url> | obligatoire | URL de listes d'armées : `…/tournaments/{team\|individual\|side-by-side}/{army-lists\|details}/<slug>`, ou la vue organisateur `…/administrate/<slug>/{army-lists\|details}` |
 | **--out-dir <dir>** | `<event-slug>/` | Où écrire les deux fichiers |
 | **--json <name>** | mhq_army_lists.json | Nom du fichier JSON |
 | **--mini <name>** | mhq_army_lists.mini.md | Nom du fichier mini |
+| **--cookie <val>** | `MHQ_COOKIE` (env.) | En-tête `Cookie` pour les vues organisateur/admin |
+
+## Vues organisateur/admin
+
+Les URLs `…/tournaments/<type>/administrate/<slug>/army-lists` sont la vue organisateur : elles affichent les listes avant publication. Elles demandent une session connectée.
+
+Interrogées sans connexion, elles renvoient la page de connexion avec le code **200** (pas de redirection 302). Sans gestion explicite l'analyseur ne trouve aucune armée et affiche l'erreur trompeuse « listes pas encore publiées ». Il détecte maintenant la page de connexion et renvoie un message explicite avec la marche à suivre.
+
+Le site tourne sous Django : une `GET` pose un cookie `csrftoken`, et la connexion est un `POST /users/login` avec `csrfmiddlewaretoken` + `username` + `password` (pas de SSO, pas de captcha).
+
+Sans stocker de mot de passe :
+
+```powershell
+node parse.mjs "https://miniheadquarters.com/tournaments/team/administrate/<slug>/army-lists" --cookie "sessionid=...; csrftoken=..."
+```
+
+Le cookie se copie dans DevTools -> Network (en-tête `Cookie` d'une requête authentifiée) ou DevTools -> Application -> Cookies -> miniheadquarters.com. La variable `MHQ_COOKIE` fonctionne aussi.
+
+L'interface web offre un champ « Session cookie » mémorisé dans le navigateur ; s'il manque, l'analyse échoue en 401 et ouvre ce champ.
 
 ## Sortie
 
@@ -146,10 +165,29 @@ node tools\\mhq-parser\\parse.mjs "https://miniheadquarters.com/tournaments/team
 
 | Flag | Default | Purpose |
 |------|---------|---------|
-| \ <url> | required | Army-lists page URL (must match `https://miniheadquarters.com/tournaments/{team|individual|side-by-side}/army-lists/<slug>`) |
+| \ <url> | required | Army-lists URL: `…/tournaments/{team\|individual\|side-by-side}/{army-lists\|details}/<slug>`, or the organiser view `…/administrate/<slug>/{army-lists\|details}` |
 | **--out-dir <dir>** | `<event-slug>/` | Where to write both files |
 | **--json <name>** | mhq_army_lists.json | JSON filename |
 | **--mini <name>** | mhq_army_lists.mini.md | Mini filename |
+| **--cookie <val>** | `MHQ_COOKIE` (env.) | `Cookie` header for organiser/admin views |
+
+## Organiser / admin views
+
+The `…/tournaments/<type>/administrate/<slug>/army-lists` URL is the organiser's view: it shows lists before they are published, and it requires a logged-in session.
+
+Fetched unauthenticated it returns the login page with status **200** (not a 302). Left unhandled the parser finds no armies and reports the misleading 'lists not published yet'. It now detects the login page and says so, with the steps to unblock.
+
+The site is Django: a `GET` sets a `csrftoken` cookie and login is a `POST /users/login` with `csrfmiddlewaretoken` + `username` + `password` (no SSO, no captcha).
+
+The simplest option, storing no password:
+
+```powershell
+node parse.mjs "https://miniheadquarters.com/tournaments/team/administrate/<slug>/army-lists" --cookie "sessionid=...; csrftoken=..."
+```
+
+Copy the cookie from DevTools -> Network (the `Cookie` request header of any authenticated request) or DevTools -> Application -> Cookies -> miniheadquarters.com. The `MHQ_COOKIE` environment variable works too.
+
+The web UI has a 'Session cookie' field remembered in the browser; when it is missing the parse fails with 401 and opens that field.
 
 ## Output
 

@@ -113,6 +113,16 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 .evlink{font:11.5px var(--mono);color:var(--acc);text-decoration:none;white-space:nowrap}
 .evlink:hover{text-decoration:underline}
 .hidden{display:none}
+.ses{padding:8px 18px 0;max-width:1240px;margin:0 auto}
+.sessum{font:12px var(--mono);color:var(--dim);cursor:pointer;user-select:none}
+.sessum:hover{color:var(--txt)}
+.sessum .flag{color:var(--ok)}
+.sessum .flag.off{color:var(--dim)}
+.sesbody{margin-top:8px}
+#cookie{width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+  border-radius:7px;padding:8px 10px;font:13px var(--mono)}
+#cookie:focus{outline:none;border-color:var(--acc)}
+.seshint{margin-top:6px;font:11.5px var(--mono);color:var(--dim)}
 </style>
 </head>
 <body>
@@ -129,6 +139,16 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
   </div>
   <div id="status" class="status"></div>
 </header>
+<details id="ses" class="ses">
+  <summary class="sessum">Session cookie <span id="sesstate" class="flag off">not set</span></summary>
+  <div class="sesbody">
+    <input id="cookie" type="text" spellcheck="false" autocomplete="off"
+           placeholder="sessionid=...; csrftoken=...">
+    <p class="seshint">Only needed for organiser/admin URLs (/administrate/). DevTools -> Network ->
+       reload the page -> copy the <b>Cookie</b> request header, or DevTools -> Application ->
+       Cookies -> miniheadquarters.com. Stored in this browser only.</p>
+  </div>
+</details>
 <div id="evpanel" class="evpanel hidden">
   <div class="evhead">
     <input id="evq" type="search" placeholder="Filter events…">
@@ -208,14 +228,22 @@ async function parse() {
     var r = await fetch('/parse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: url })
+      body: JSON.stringify({ url: url, cookie: cookieOf() })
     });
     var j = await r.json().catch(function () { return { error: 'non-JSON response' }; });
-    if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status);
+    if (!r.ok || j.error) {
+      var e2 = new Error(j.error || 'HTTP ' + r.status);
+      if (j.auth) e2.auth = true;
+      throw e2;
+    }
     data = j;
     render();
     setStatus(j.count + ' armies parsed in ' + Math.round(performance.now() - t0) + ' ms', 'ok');
   } catch (e) {
+    if (e.auth) {
+      var d = $('#ses');
+      if (d) { d.open = true; var ci = $('#cookie'); if (ci) ci.focus(); }
+    }
     setStatus(String(e.message || e), 'err');
   } finally {
     btn.disabled = false;
@@ -576,6 +604,29 @@ $('#evclose').addEventListener('click', function () { $('#evpanel').classList.ad
 $('#evq').addEventListener('input', renderEvList);
 $('#evfmt').addEventListener('change', renderEvList);
 $('#evshowall').addEventListener('change', function () { evCache = []; loadEvents(); });
+
+// Session cookie for organiser/admin URLs. Kept in localStorage so a long
+// session does not need re-pasting it; it never leaves this browser.
+var COOKIE_KEY = 'mhq_cookie';
+function cookieOf() {
+  var c = $('#cookie');
+  return c && c.value.trim() ? c.value.trim() : null;
+}
+function sesState() {
+  var s = $('#sesstate');
+  if (!s) return;
+  var on = !!cookieOf();
+  s.textContent = on ? 'set' : 'not set';
+  s.className = 'flag' + (on ? '' : ' off');
+}
+(function initSes() {
+  try { $('#cookie').value = localStorage.getItem(COOKIE_KEY) || ''; } catch (e) {}
+  $('#cookie').addEventListener('input', function () {
+    try { localStorage.setItem(COOKIE_KEY, this.value.trim()); } catch (e) {}
+    sesState();
+  });
+  sesState();
+})();
 
 $('#f').addEventListener('submit', function (e) {
   e.preventDefault();

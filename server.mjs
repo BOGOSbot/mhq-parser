@@ -139,17 +139,25 @@ function viewPlayer(p) {
 }
 
 async function handleParse(req, res) {
-  let target;
-  try { target = JSON.parse((await readBody(req)) || '{}').url; }
+  let body;
+  try { body = JSON.parse((await readBody(req)) || '{}'); }
   catch (e) { return fail(res, 400, 'invalid JSON body: ' + e.message); }
+  const target = body.url;
   if (typeof target !== 'string' || !target) return fail(res, 400, 'missing "url"');
   if (!URL_RE.test(target)) {
     return fail(res, 400, 'not a MiniHeadQuarters army-lists URL ' +
-      '(expected https://miniheadquarters.com/tournaments/<type>/army-lists/<slug>)');
+      '(expected https://miniheadquarters.com/tournaments/<type>/(army-lists|details)/<slug>, ' +
+      'or the organiser form https://miniheadquarters.com/tournaments/<type>/administrate/<slug>/(army-lists|details))');
   }
+  // Organiser/admin routes need a logged-in session. The browser cannot attach
+  // miniheadquarters.com cookies cross-origin, so the UI sends the Cookie header
+  // text explicitly and we forward it. MHQ_COOKIE is a default for repeat use.
+  const cookie = (typeof body.cookie === 'string' && body.cookie)
+    || (typeof process.env.MHQ_COOKIE === 'string' && process.env.MHQ_COOKIE)
+    || null;
   const t0 = Date.now();
   try {
-    const { output, miniText } = await parseUrl(target);
+    const { output, miniText } = await parseUrl(target, { cookie });
     return json(res, 200, {
       event: output.event,
       count: output.count,
@@ -162,6 +170,8 @@ async function handleParse(req, res) {
     // An event with no published lists is a 404, not a server fault. A non-200
     // answer from MHQ is upstream. Anything else is ours.
     if (/no army lists found/.test(msg)) return json(res, 404, { error: msg });
+    // An auth wall is a 401: the UI then asks for the Cookie header.
+    if (/authentication required/.test(msg)) return json(res, 401, { error: msg, auth: true });
     return json(res, /HTTP \d{3}/.test(msg) ? 502 : 500, { error: msg });
   }
 }
