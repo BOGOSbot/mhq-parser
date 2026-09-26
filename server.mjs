@@ -232,7 +232,7 @@ function plainEnvelope(r, cache) {
 // --port / --host, with PORT / HOST env vars as fallback.
 const argv = process.argv.slice(2);
 let port = Number(process.env.PORT) || 8787;
-let host = process.env.HOST || '127.0.0.1';
+let host = process.env.HOST || '0.0.0.0';
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === '--port') port = Number(argv[++i]);
   else if (argv[i] === '--host') host = argv[++i];
@@ -240,8 +240,8 @@ for (let i = 0; i < argv.length; i++) {
   else if (argv[i].startsWith('--host=')) host = argv[i].slice(7);
 }
 if (!Number.isFinite(port) || port <= 0) {
-  console.error('Error: --port must be a positive integer');
-  process.exit(1);
+  console.warn('Warning: invalid port, falling back to 8787');
+  port = 8787;
 }
 
 const MAX_BODY = 64 * 1024;
