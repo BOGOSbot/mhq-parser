@@ -182,7 +182,6 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
       <option value="2v2 (side-by-side)">2v2 (side-by-side)</option>
       <option value="teams">Teams</option>
     </select>
-    <label class="chk" title="Keep only 40,000 events from the last year whose army lists are already out. Each event costs an upstream fetch, so on a cold serverless instance only the first batch makes it back - the rest arrive as the list refills. Older events are not scanned at all; an organiser&#x27;s own history is under «organiser view». Uncheck for the whole catalogue with no filtering, which is faster."><input id="evshowall" type="checkbox"> lists published</label>
     <label class="chk" title="List only the events you organise. Replaces the sitemap scan, which cannot see private or not-yet-published events. Needs a login."><input id="evadmin" type="checkbox"> organiser view</label>
     <span id="evinfo" class="shown"></span>
     <span class="spacer"></span>
@@ -603,7 +602,7 @@ function loadEvents() {
   var mine = $('#evadmin').checked;
   var req = mine
     ? fetch('/my-events', { headers: { 'X-MHQ-Cookie': cookieOf() || '' } })
-    : fetch('/events?limit=250' + ($('#evshowall').checked ? '&filter=1' : ''));
+    : fetch('/events?limit=250&filter=1');
   req.then(function (r) { return r.json(); })
     .then(function (j) {
       if (reqId !== evReqId) return;
@@ -695,7 +694,6 @@ $('#browse').addEventListener('click', showEvents);
 $('#evclose').addEventListener('click', function () { $('#evpanel').classList.add('hidden'); stopPolling(); });
 $('#evq').addEventListener('input', renderEvList);
 $('#evfmt').addEventListener('change', renderEvList);
-$('#evshowall').addEventListener('change', function () { evCache = []; loadEvents(); });
 $('#evadmin').addEventListener('change', function () { evCache = []; loadEvents(); });
 
 // Account for organiser/admin URLs. The server only brokers the login: it never
