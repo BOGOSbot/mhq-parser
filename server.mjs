@@ -376,12 +376,11 @@ server.on('clientError', (err, socket) => {
   socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
 });
 
-if (IS_MAIN) {
-  server.listen(port, host, () => {
-    console.log('MHQ army-lists UI   http://' + host + ':' + port);
-    console.log('POST /parse {"url":"<army-lists url>"}');
-    console.log('GET  /events?limit=80&type=team');
-  });
-}
+server.listen(port, host, () => {
+  console.log('MHQ army-lists UI   http://' + host + ':' + port);
+  console.log('POST /parse {"url":"<army-lists url>"}');
+  console.log('GET  /events?limit=80&type=team');
+});
 
 export { FILTER_WINDOW_DAYS, verdictOf, decorate, filteredList, scanEnvelope, plainEnvelope };
+export default server;
