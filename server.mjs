@@ -20,19 +20,11 @@
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, getAllEvents, getMeta, listEvents, playerWarnings, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
-
-// True only when run as the main script: node server.mjs [options]. A test
-// imports the module for the envelope builders without wanting a listener.
-const IS_MAIN = (() => {
-  try { return import.meta.url === pathToFileURL(process.argv[1] || '').href; }
-  catch { return false; }
-})();
-
 // Read per request rather than at startup, so editing index.html does not
 // require a server restart. It is a single small file and the response is no-store.
 function readIndex() {
@@ -175,64 +167,20 @@ function scanProgress(events) {
   return { scanned, total: events.length, done: scanned >= events.length };
 }
 
-// The scan's verdict for one event, or null when it has never been checked - or
-// when it has but the answer is now stale. runScan re-checks stale rows; they
-// are not worth showing as current. The cache is injectable so a test can reach
-// either branch without a request to miniheadquarters.com.
-function verdictOf(e, cache) {
-  const c = (cache || filterCache).get(e.detailsUrl);
-  return c && Date.now() - c.at <= FILTER_TTL_MS ? c : null;
-}
-
-// Attach the verdict to a row when we already have one and leave the rest alone.
-// Read-only: this never fetches, so the plain listing stays one sitemap read.
-// Absent, 0 and a real number are three different facts and the picker needs
-// all three, so 0 is not folded into "unknown".
-function decorate(list, cache) {
-  const out = [];
-  for (const e of list) {
-    const c = verdictOf(e, cache);
-    out.push(c ? { ...e, listCount: c.listCount || 0 } : e);
-  }
-  return out;
-}
-
-function filteredList(events, limit, cache) {
+function filteredList(events, limit) {
   const out = [];
   for (const e of events) {
-    const c = verdictOf(e, cache);
+    const c = filterCache.get(e.detailsUrl);
     if (c && is40k(c.game) && c.hasLists) out.push({ ...e, listCount: c.listCount || 0 });
     if (out.length >= limit) break;
   }
   return out;
 }
 
-// The two /events envelopes, and the only place each of their fields is set.
-// Both are pure, so a test can pin the contract the picker reads without a
-// request to miniheadquarters.com. "filtered" is the discriminator: both
-// branches supply a "total", so the UI must not tell them apart on that.
-function scanEnvelope(fl, progress) {
-  return {
-    events: fl,
-    count: fl.length,
-    scanned: progress.scanned,
-    total: progress.total,
-    done: progress.done,
-    windowDays: FILTER_WINDOW_DAYS,
-    filtered: true,
-  };
-}
-
-function plainEnvelope(r, cache) {
-  // No scan ran, so there is no progress to report and nothing to poll for.
-  // Rows the last scan did cover keep whatever it already knows.
-  return { ...r, events: decorate(r.events, cache), filtered: false, done: true, windowDays: null };
-}
-
 // --port / --host, with PORT / HOST env vars as fallback.
 const argv = process.argv.slice(2);
 let port = Number(process.env.PORT) || 8787;
-let host = process.env.HOST || '0.0.0.0';
+let host = process.env.HOST || '127.0.0.1';
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === '--port') port = Number(argv[++i]);
   else if (argv[i] === '--host') host = argv[++i];
@@ -240,8 +188,8 @@ for (let i = 0; i < argv.length; i++) {
   else if (argv[i].startsWith('--host=')) host = argv[i].slice(7);
 }
 if (!Number.isFinite(port) || port <= 0) {
-  console.warn('Warning: invalid port, falling back to 8787');
-  port = 8787;
+  console.error('Error: --port must be a positive integer');
+  process.exit(1);
 }
 
 const MAX_BODY = 64 * 1024;
@@ -347,10 +295,16 @@ async function handleEvents(req, res, u) {
       runScan(windowed); // fire and forget: the scan fills the cache in the background
       const progress = scanProgress(windowed);
       const fl = filteredList(windowed, limit);
-      return json(res, 200, scanEnvelope(fl, progress));
+      return json(res, 200, {
+        events: fl,
+        count: fl.length,
+        scanned: progress.scanned,
+        total: progress.total,
+        done: progress.done,
+        windowDays: FILTER_WINDOW_DAYS,
+      });
     }
-    // The plain catalogue: every game, no lists check, and no scan in flight.
-    return json(res, 200, plainEnvelope(await listEvents({ limit, type: u.searchParams.get('type') || null })));
+    return json(res, 200, await listEvents({ limit, type: u.searchParams.get('type') || null }));
   } catch (e) {
     return json(res, 502, { error: String((e && e.message) || e) });
   }
@@ -381,6 +335,3 @@ server.listen(port, host, () => {
   console.log('POST /parse {"url":"<army-lists url>"}');
   console.log('GET  /events?limit=80&type=team');
 });
-
-export { FILTER_WINDOW_DAYS, verdictOf, decorate, filteredList, scanEnvelope, plainEnvelope };
-export default server;
