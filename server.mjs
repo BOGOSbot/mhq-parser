@@ -21,7 +21,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { URL_RE, checkEvent, getAllEvents, getMeta, listEvents, playerWarnings, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
+import { URL_RE, checkEvent, getAllEvents, getMeta, playerWarnings, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -283,28 +283,24 @@ async function handleEvents(req, res, u) {
     const n = parseInt(lm, 10);
     if (Number.isFinite(n)) limit = n;
   }
-  const wantFilter = u.searchParams.get('filter') === '1';
   try {
-    if (wantFilter) {
-      // The window is applied once, here, and the subset is what the scan, the
-      // progress report and the result list all see. That keeps "done" reachable:
-      // out-of-window events are never scanned, so counting them against a target
-      // would mean the scan can never finish.
-      const all = await getAllEvents();
-      const windowed = withinWindow(all);
-      runScan(windowed); // fire and forget: the scan fills the cache in the background
-      const progress = scanProgress(windowed);
-      const fl = filteredList(windowed, limit);
-      return json(res, 200, {
-        events: fl,
-        count: fl.length,
-        scanned: progress.scanned,
-        total: progress.total,
-        done: progress.done,
-        windowDays: FILTER_WINDOW_DAYS,
-      });
-    }
-    return json(res, 200, await listEvents({ limit, type: u.searchParams.get('type') || null }));
+    // The window is applied once, here, and the subset is what the scan, the
+    // progress report and the result list all see. That keeps "done" reachable:
+    // out-of-window events are never scanned, so counting them against a target
+    // would mean the scan can never finish.
+    const all = await getAllEvents();
+    const windowed = withinWindow(all);
+    runScan(windowed); // fire and forget: the scan fills the cache in the background
+    const progress = scanProgress(windowed);
+    const fl = filteredList(windowed, limit);
+    return json(res, 200, {
+      events: fl,
+      count: fl.length,
+      scanned: progress.scanned,
+      total: progress.total,
+      done: progress.done,
+      windowDays: FILTER_WINDOW_DAYS,
+    });
   } catch (e) {
     return json(res, 502, { error: String((e && e.message) || e) });
   }
