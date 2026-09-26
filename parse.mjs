@@ -1174,6 +1174,84 @@ function cleanDetachment(s) {
     .replace(/\s*\(\s*\d+\s*Points\s+de\s+Détachement\s*\)/ig, '')
     .trim() || null;
 }
+// ============================================================
+// Army total
+// ============================================================
+// Thousands separators used in a points figure: ",", ".", an apostrophe
+// (Swiss: "2'000"), a narrow no-break space (French), a non-breaking space, a
+// thin space, a zero-width space, or a plain space.
+const SEP = "[.,'\u2019\u202f\u00a0\u2009\u200b ]";
+// "2000", "1,995", "1.995", "2 000" and "2\u202f000" are all the same number.
+const PTS_NUM = String.raw`\d{1,3}(?:` + SEP + String.raw`\d{3})+|\d+`;
+const PTS_NUM_G = '(' + PTS_NUM + ')';
+const PTS_NUM_RE = new RegExp(PTS_NUM);
+// "points", "point", "pts", "pt" - either language, singular or plural.
+const PTS_WORD = String.raw`(?:points?|pts?)`;
+// Armies in these tournaments run 1000-3000 points. A number outside that
+// range in a "(N points)" shape is a unit cost or a detachment-point total,
+// never an army total.
+const ARMY_PTS_MIN = 1000;
+const ARMY_PTS_MAX = 3000;
+
+// "<list name> (1995 points)", a bare "(1995 points)", or "[2000 pts]" - the
+// army banner. The MHQ app export always prints the army total here, next to
+// the list name, as the first line of the body.
+const BANNER_RE = new RegExp(
+  String.raw`^\s*([^\[\]()]*?)\s*[([]\s*` + PTS_NUM_G + String.raw`\s*` + PTS_WORD + String.raw`\s*[)\]]`, 'i'
+);
+// A whole line that is a unit entry rather than a banner: it starts with a
+// count ("1x ..."), a character label ("Char1: ..."), a bullet, or a pipe.
+const UNIT_SHAPED_RE = /^(?:\d+\s*[x\u00d7]\b|Char\d+:|[\u2022\u25e6|])/i;
+// Labels that introduce a total in a freeform list.
+const TOTAL_LABELS = String.raw`(?:Strike\s+Force|Force\s+de\s+Frappe|Total\s+Army\s+Points|Total\s+Army|Total\s+de\s+Points|Points\s+d['\u2019]?\s*arm(?:\u00e9e|ee)|Total\s+de\s+l['\u2019]?\s*arm(?:\u00e9e|ee)|Taille\s+de\s+la\s+force|Battle\s+Size|Size\s+of\s+the\s+Force)`;
+// "Points d'armée : 2000", "Total Army Points: 1995" - a total printed
+// directly after the label, with no word following the number.
+const TOTAL_BARE_RE = new RegExp(TOTAL_LABELS + String.raw`\s*[:\-]\s*` + PTS_NUM_G + String.raw`\s*(?:` + PTS_WORD + String.raw`)?\b`, 'i');
+// "2000 / 2000 pts" - the force total printed against its budget.
+const TOTAL_RATIO_RE = new RegExp(String.raw`\b` + PTS_NUM_G + String.raw`\s*/\s*\d{3,5}\s*` + PTS_WORD + String.raw`\b`, 'i');
+// "Strike Force (2000 Point limit)", "Force de Frappe (2 000 Points)".
+const TOTAL_PTS_RE = new RegExp(TOTAL_LABELS + String.raw`[^()\n]*?\(\s*` + PTS_NUM_G + String.raw`\s*` + PTS_WORD + String.raw`\b`, 'i');
+
+// Read a point value out of a fragment already known to hold a number,
+// tolerating thousands separators. Returns null when there is no digit run.
+function toPoints(s) {
+  const m = String(s == null ? '' : s).match(PTS_NUM_RE);
+  return m ? parseInt(m[0].replace(/[^\d]/g, ''), 10) : null;
+}
+
+// The total the list declares, read from its body text. Priority order:
+//   1. The army banner in the preamble - "<name> (N points)" or "(N points)".
+//      The MHQ app export always prints the army total here.
+//   2. A labelled total - "Points d'armée : N", then "Strike Force (N points)".
+// Returns null when nothing readable is present.
+function declaredTotalFromText(text) {
+  const body = String(text || '');
+  // The banner lives in the preamble: stop at the first unit declaration.
+  const lines = body.split('\n');
+  const end = findPreambleEnd(lines);
+  for (const raw of lines.slice(0, end)) {
+    const t = raw.trim();
+    if (!t) continue;
+    const m = t.match(BANNER_RE);
+    if (m) {
+      const n = toPoints(m[2]);
+      if (n != null && n >= ARMY_PTS_MIN && n <= ARMY_PTS_MAX) return n;
+      // A "<unit> (N points)" shape with an out-of-range number is the start of
+      // the unit list, not a banner. Stop looking for one.
+      break;
+    }
+    if (UNIT_SHAPED_RE.test(t)) break;
+  }
+  for (const re of [TOTAL_BARE_RE, TOTAL_PTS_RE, TOTAL_RATIO_RE]) {
+    const m = body.match(re);
+    if (m) {
+      const n = toPoints(m[1]);
+      if (n != null && n >= ARMY_PTS_MIN && n <= ARMY_PTS_MAX) return n;
+    }
+  }
+  return null;
+}
+
 // Extract the team name. Priority order:
 //   1. The outer <article> card's <button><span> — the canonical team
 //      name shown on the MHQ page (always present for team tournaments).
@@ -1192,9 +1270,12 @@ function getTeamName(player) {
     if (!t) continue;
     if (/^(?:PERSONNAGES?|CHARACTERS?|CHARACTER|LIGNE|LINE|BATTLELINE|OTHER|AUTRES|VEHICULES?|VEHICLES?|TERRAIN|INDUSTRIALS?|BUILDINGS?|UNIQUE|ATTACHED UNITS|UNITÉS? ATTACH|TRANSFERTS?|TRANSPORTS?|TRANSFERTS? ASSIGNÉ|TRANSFERTS? ASSIGNEE|TRANSFERTS? ASSIGN|CHAR\d+:|Char\d+:|Unit\s+\d|UNIT\s+\d)/i.test(t)) break;
     if (/^•/.test(t) || /^◦/.test(t) || /^\|/.test(t)) break;
-    // Army banner: "<Name> (N points)" where N is roughly the army total.
-    const m = t.match(/^(.+?)\s*\(\s*(\d+)\s*points?\s*\)$/i);
-    if (m && +m[2] >= 1500 && +m[2] <= 2500) return m[1].trim();
+    // Army banner: "<Name> (N points)" - the first line carries the army total.
+    const m = t.match(BANNER_RE);
+    if (m && m[1].trim()) {
+      const n = toPoints(m[2]);
+      if (n != null && n >= ARMY_PTS_MIN && n <= ARMY_PTS_MAX) return m[1].trim();
+    }
     // If the first non-empty line has no "(N points)" pattern, it's likely a
     // player name or a unit line — not a team banner. Stop looking.
     break;
@@ -1248,17 +1329,23 @@ function totals(player) {
   const parsedPts = realUnits.reduce((s, u) => s + (u.points || 0), 0);
   let declaredPts = null;
   if (player.header && player.header.totalPoints) {
-    declaredPts = parseInt(player.header.totalPoints);
+    declaredPts = toPoints(player.header.totalPoints);
   } else {
-    // Header is null or lacks totalPoints -- try to extract from bodyRest.
-    // Prefer an explicit total label ("Strike Force (N points)", "TOTAL ARMY POINTS : Npts")
-    // over a bare "(N pts)" unit-style match, which can pick up a unit cost.
-    const text = player.bodyRest || '';
-    const labeled = text.match(/(?:Strike\s+Force|Force\s+de\s+Frappe|TOTAL\s+ARMY\s+POINTS|Total\s+de\s+Points)[^\n]*?\(?\s*(\d{3,5})\s*(?:pts?|points?)\s*\)?/i);
-    if (labeled) declaredPts = parseInt(labeled[1]);
-    else {
-      const m = text.match(/(\d{3,5})\s*pts?\)/);
-      if (m) declaredPts = parseInt(m[1]);
+    // No readable total in a +++ header block: read the list body itself. Use
+    // bodyText, not bodyRest - the banner and the labelled totals sit in the
+    // preamble, which bodyRest already strips away.
+    const text = player.bodyText || player.bodyRest || '';
+    declaredPts = declaredTotalFromText(text);
+    if (declaredPts == null) {
+      // Last resort: a bare "(N pts)" total printed in a shape the labelled
+      // search does not recognise. Only army-sized numbers qualify, so a unit
+      // cost cannot be mistaken for a total.
+      const m = text.match(new RegExp(
+        String.raw`\(\s*` + PTS_NUM_G + String.raw`\s*` + PTS_WORD));
+      if (m) {
+        const n = toPoints(m[1]);
+        if (n != null && n >= ARMY_PTS_MIN && n <= ARMY_PTS_MAX) declaredPts = n;
+      }
     }
   }
   // A NaN total means the header had a totalPoints key that could not be read as
@@ -1387,7 +1474,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists, listCount };
 }
 
-export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
+export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is

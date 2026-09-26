@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { URL_RE, ADMIN_LIST_RE, extractEventSlug, isAdminUrl, isLoginPage, authError, splitArticles, buildPlayers, loginFormError, setCookieOf, splitAdminRows, adminListContent, adminStatusOf, adminArticle, getMeta, totals, parseOrganizedRows, formatDateOf } from '../parse.mjs';
+import { URL_RE, ADMIN_LIST_RE, extractEventSlug, isAdminUrl, isLoginPage, authError, splitArticles, buildPlayers, loginFormError, setCookieOf, splitAdminRows, adminListContent, adminStatusOf, adminArticle, getMeta, getTeamName, totals, playerWarnings, parseOrganizedRows, formatDateOf } from '../parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -192,5 +192,77 @@ t('formatDateOf unknown month', formatDateOf('Foo 3, 2026'), null);
 // Nothing to parse on a page that is not the list.
 t('login page yields no rows', parseOrganizedRows(login).length, 0);
 t('public page yields no rows', parseOrganizedRows(pub).length, 0);
+
+
+// --- Declared total: the banner the app export prints on its first line -----
+// The MHQ app export writes the army total next to the list name as the very
+// first line of the body. Such a list has neither a "+++ TOTAL ARMY POINTS"
+// header block nor a "Strike Force (N points)" line, so totals() must read the
+// banner itself.
+const NL = '\n';
+const DELIM = '+++++++++++++++++++++++++++++++' + NL;
+function army(body) {
+  return buildPlayers([adminArticle(
+    { id: '1', username: 'Player', faction: 'Chaos', team: 'Testers' }, NL + body)]);
+}
+const BANNER_TOTALS = [
+  ['fr app export', 'liste tournoi 26 09 (1995 points)' + NL + 'Necrons' + NL, 1995],
+  ['en app export', 'Termi (2000 points)' + NL + 'Space Marines' + NL, 2000],
+  ['bare banner', '(1995 points)' + NL + 'World Eaters' + NL, 1995],
+  ['comma separator', 'Unnamed list (1,995 Points)' + NL, 1995],
+  ['dot separator', 'Mindmax (1.995 Points)' + NL, 1995],
+  ['narrow no-break space', 'Croisade des canuts 2026 (2\u202f000 Points)' + NL, 2000],
+  ['non-breaking space', 'Liste (2\u00a0000 Points)' + NL, 2000],
+  ['apostrophe separator', "ABC (2'000 Points)" + NL, 2000],
+  ['bracket total', 'Player - Imperium - Astra Militarum - [2000 pts]' + NL, 2000],
+];
+for (const [label, body, want] of BANNER_TOTALS) {
+  t('declared total, banner ' + label, totals(army(body)[0]).declaredPts, want);
+}
+
+// A labelled total covers the freeform lists that print no banner at all.
+t('declared total, Points d\u2019armee label', totals(army("Points d'arm\u00e9e : 2000" + NL + 'Detachment : Lions of the Emperor' + NL)[0]).declaredPts, 2000);
+t('declared total, Force de Frappe label', totals(army('Force de Frappe (2000 points)' + NL + 'LIGNE' + NL + 'Flots (100 points)' + NL)[0]).declaredPts, 2000);
+t('declared total, Battle Size limit', totals(army('Battle Size: Strike Force (2000 Point limit)' + NL)[0]).declaredPts, 2000);
+t('declared total, force ratio line', totals(army('2000 / 2000 pts \u00b7 20 units' + NL)[0]).declaredPts, 2000);
+
+// Priority: a readable +++ header beats the body, and the banner beats the
+// strike force line, which is the force's budget rather than the army total.
+t('declared total, header wins over banner', totals(army(DELIM + '+ TOTAL ARMY POINTS : 1995' + NL + '+ WARLORD : Foo' + NL + DELIM + 'Liste (2000 points)' + NL)[0]).declaredPts, 1995);
+t('declared total, banner wins over strike force', totals(army('Liste (1995 points)' + NL + 'Strike Force (2000 points)' + NL)[0]).declaredPts, 1995);
+
+// A mangled banner still yields the total the list prints later.
+t('declared total, mangled banner falls through', totals(army('Pew Pew points)' + NL + 'Necrons' + NL + 'Strike Force (2000 points)' + NL)[0]).declaredPts, 2000);
+
+// Nothing readable at all: report it, do not invent a number.
+const unitCostsOnly = army(
+  'Detachment [3 Detachment Points]: Houndpack Lance [2 Detachment Points], Hunting Warpack [1 Detachment Points]' + NL +
+  'Force Disposition: Reconnaissance' + NL +
+  'Char1: 1x War Dog Brigand (155 pts): Houndpack Lance Character, Diabolus heavy stubber' + NL +
+  'Char2: 1x War Dog Karnivore (160 pts): Diabolus heavy stubber' + NL);
+t('declared total, unit costs are not a total', totals(unitCostsOnly[0]).declaredPts, null);
+const noTotal = army(
+  'Adeptus Custodes' + NL +
+  'Lions of the Emperor (3 Detachment Points)' + NL +
+  'Take and Hold' + NL +
+  'ATTACHED UNITS' + NL +
+  'Shield-Captain in Allarus Terminator Armour (150 Points)' + NL +
+  '\u2022 Attached as: Leader (Character)' + NL +
+  'LIGNE' + NL +
+  'Custodians (220 Points)' + NL +
+  '\u2022 9x Custodian' + NL);
+t('declared total, none present is null', totals(noTotal[0]).declaredPts, null);
+t('declared total, none present warns', playerWarnings(noTotal[0], getMeta(noTotal[0]))[0].type, 'missing-total');
+
+// The banner line is metadata, never a unit.
+const bannerWithUnit = army('Liste (1995 points)' + NL + 'Necrons' + NL + 'LIGNE' + NL + 'Custodians (220 Points)' + NL + '\u2022 9x Custodian' + NL);
+t('banner is not a unit', (bannerWithUnit[0].units || []).length, 1);
+t('banner is not counted in parsed points', totals(bannerWithUnit[0]).parsedPts, 220);
+
+// getTeamName shares the banner regex, so a thousands separator must not break
+// the team-name fallback either.
+t('team name from banner, separator', getTeamName({ bodyRest: 'Croisade des canuts 2026 (2\u202f000 Points)' + NL }), 'Croisade des canuts 2026');
+t('team name from banner, plain', getTeamName({ bodyRest: 'Mon arm\u00e9e (1995 points)' + NL }), 'Mon arm\u00e9e');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

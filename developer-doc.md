@@ -291,9 +291,11 @@ Rules, in order:
 2. **Player header** - each player gets a `### <name> — <faction>` header. Meta lines (Detachment, Disposition) appear as bullet points under the header.
 3. **Warning blockquote** - printed under the player header when:
    - **Points mismatch** — parsed total ≠ declared total: `> ⚠ points mismatch: declared N, parsed M (±diff)`
-   - **Missing total points** — header exists but no `totalPoints` key: `> ⚠ missing total points in header`
+   - **Missing total points** — no declared total anywhere: not a `totalPoints` key in the `+++` header and nothing readable in the body: `> ⚠ missing total points`
    
-   Across 280 lists (11 events), the warning ratio is 7.5% (21 warnings). Most mismatches are small (≤100 pts) and indicate player-side data issues or enhancement points not included in unit points.
+   The declared total is read from the `+++` header when it has a `totalPoints` key (any alias in `HEADER_ALIAS`). Otherwise the body is searched: first the banner line the app export prints — `<list name> (1995 points)`, `(1995 points)`, `[2000 pts]` — then a labelled total (`Strike Force (2000 Point limit)`, `Force de Frappe (2 000 Points)`, `Points d'armée : 2000`, `2000 / 2000 pts`). Only values between 1000 and 3000 qualify, so a unit cost can never be mistaken for a total. Thousands separators are accepted: comma, period, apostrophe, narrow and non-breaking spaces.
+
+   Across the 240 lists with units in this repository (11 events), the warning ratio is 14.6% (35 warnings: 24 points mismatch, 17 force disposition not found, 2 detachment not found, 2 missing total points). Most mismatches are small (≤100 pts) and indicate player-side data issues or enhancement points not included in unit points.
 4. **Skip preamble "units"** - anything with 1000+ pts (army banner, force line) or a name matching Strike Force / Force de Frappe / Reconnaissance / Take and Hold / Priority Assets / Purge the Foe / Disruption / etc.
 5. **Model count** - take the largest "Nx Name" bullet count for the unit. Characters (single model) get no prefix.
 6. **Attached grouping** - units sharing an attachedUnit id are joined with " + ". For newrecruit.eu, a |-prefixed line attaches to the line above.

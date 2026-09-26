@@ -102,7 +102,7 @@ Chaque objet joueur contient :
 ### Mini Markdown
 
 - `⚠ points mismatch` signale une divergence entre le total calculé et le total déclaré.
-- `⚠ missing total points` signale l'absence de la clé `TOTAL ARMY POINTS` dans l'en-tête.
+- `⚠ missing total points` signale qu'aucun total déclaré n'est lisible, ni dans l'en-tête `+++`, ni dans le corps de la liste (bannière `<nom> (1995 points)` comprise).
 - Les avertissements apparaissent sous l'en-tête du joueur.
 - `+` sépare les unités à l'intérieur d'un groupe attaché.
 - Préfixe `Nx` = N copies identiques regroupées.
@@ -131,12 +131,14 @@ Les en-têtes peuvent s'étendre sur plusieurs sections délimitées par `+++`. 
 
 ## Taux d'avertissements
 
-Sur 280 listes issues de 11 événements (août–septembre 2026), l'analyseur produit 21 avertissements (7,5 %).
+Sur les 240 listes avec unités présentes dans ce dépôt (11 événements), l'analyseur produit 35 avertissements (14,6 %).
 
 | Avertissement | Nombre | Cause |
 |---------|-------|-------|
-| Points mismatch | 18 | Total déclaré ≠ total calculé |
-| Missing total points | 3 | Aucune clé `TOTAL ARMY POINTS` dans l'en-tête |
+| Points mismatch | 24 | Total déclaré ≠ total calculé |
+| Force disposition not found | 17 | Disposition de la force introuvable |
+| Detachment not found | 2 | Détachement introuvable |
+| Missing total points | 2 | Aucun total déclaré lisible dans l'en-tête ni dans le corps |
 
 ## Prérequis
 
@@ -235,7 +237,7 @@ Each player object has:
 ### Mini Markdown
 
 - `⚠ points mismatch` warns when the parsed total differs from the declared total.
-- `⚠ missing total points` warns when the header has no `TOTAL ARMY POINTS` key.
+- `⚠ missing total points` warns when no declared total is readable, neither in the `+++` header nor in the body (banner `<name> (1995 points)` included).
 - Warnings appear under the player header.
 - `+` separates units inside an attached group.
 - `Nx` prefix = N identical copies collapsed.
@@ -264,12 +266,14 @@ Headers may span multiple `+++`-delimited sections. The parser merges consecutiv
 
 ## Warning ratio
 
-Across 280 lists from 11 events (Aug–Sep 2026), the parser produces 21 warnings (7.5%).
+Across the 240 lists with units in this repository (11 events), the parser produces 35 warnings (14.6%).
 
 | Warning | Count | Cause |
 |---------|-------|-------|
-| Points mismatch | 18 | Declared total ≠ parsed total |
-| Missing total points | 3 | No `TOTAL ARMY POINTS` key in header |
+| Points mismatch | 24 | Declared total ≠ parsed total |
+| Force disposition not found | 17 | Force disposition not found in the preamble |
+| Detachment not found | 2 | Detachment not found in the preamble |
+| Missing total points | 2 | No declared total in the header or anywhere in the body |
 
 ## Requirements
 
