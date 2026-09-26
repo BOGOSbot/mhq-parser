@@ -182,7 +182,7 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
       <option value="2v2 (side-by-side)">2v2 (side-by-side)</option>
       <option value="teams">Teams</option>
     </select>
-    <label class="chk" title="Keep only 40,000 events from the last year whose army lists are already out. Each event costs an upstream fetch, so on a cold serverless instance only the first batch makes it back - the rest arrive as the list refills. Older events are not scanned at all; an organiser&#x27;s own history is under «organiser view». Uncheck for the whole catalogue with no filtering, which is faster."><input id="evshowall" type="checkbox"> lists published</label>
+    <label class="chk" title="Keep only 40,000 events from the last year whose army lists are already out. Each event costs an upstream fetch, so on a cold serverless instance only the first batch makes it back - the rest arrive as the list refills. Older events are not scanned at all; an organiser&#x27;s own history is under «organiser view». Uncheck for the whole catalogue with no filtering, which is faster - rows a scan has already covered still show their count, and … means that one was never asked about."><input id="evshowall" type="checkbox"> lists published</label>
     <label class="chk" title="List only the events you organise. Replaces the sitemap scan, which cannot see private or not-yet-published events. Needs a login."><input id="evadmin" type="checkbox"> organiser view</label>
     <span id="evinfo" class="shown"></span>
     <span class="spacer"></span>
@@ -615,10 +615,20 @@ function loadEvents() {
         $('#evinfo').textContent = j.auth
           ? 'log in above to list your organised events'
           : evCache.length + ' event' + (evCache.length === 1 ? '' : 's') + ' you organise';
+      } else if (j.filtered === false) {
+        // No scan ran: the sitemap alone, every game, no lists check. There is
+        // no progress to report and nothing to wait for - the branch used to key
+        // on "total", which this response also carries, and printed "checking
+        // undefined of 1328" while refetching every three seconds forever. Rows
+        // a previous scan did cover already carry a count, so say how many do.
+        var checked = 0;
+        for (var i = 0; i < evCache.length; i++) if (evCache[i].listCount != null) checked++;
+        $('#evinfo').textContent = j.count + ' of ' + j.total + ' events ·' +
+          (checked ? ' ' + checked + ' checked ·' : '') + ' all games, lists not checked';
       } else if (j.done === true) {
         $('#evinfo').textContent = j.count + ' events in the last ' + windowLabel(j.windowDays) +
           ' (' + j.scanned + ' checked)';
-      } else if (j.total != null) {
+      } else if (j.scanned != null) {
         $('#evinfo').textContent = j.count + ' found · checking ' + j.scanned + ' of ' + j.total +
           ' in the last ' + windowLabel(j.windowDays) + '…';
         evPollTimer = setTimeout(loadEvents, 3000);
@@ -677,8 +687,10 @@ function renderEvList() {
     else if (e.past) name.appendChild(document.createTextNode(' (done)'));
     row.appendChild(name);
     row.appendChild(el('span', 'evtag ' + fmtClass(e.format), e.format || '?'));
-    var lc = e.listCount ? 'yes' : 'pending';
-    var li = e.listCount ? e.listCount + ' lists' : '\u2026';
+    // Three states, because the last one is a real answer: a checked event with
+    // no published lists is not the same fact as one we never asked about.
+    var lc = e.listCount == null ? 'pending' : (e.listCount > 0 ? 'yes' : 'no');
+    var li = e.listCount == null ? '\u2026' : e.listCount + ' list' + (e.listCount === 1 ? '' : 's');
     row.appendChild(el('span', 'evlists ' + lc, li));
     var link = el('a', 'evlink', '\u2197');
     link.href = e.detailsUrl;

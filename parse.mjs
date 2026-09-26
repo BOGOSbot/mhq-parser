@@ -1505,6 +1505,14 @@ function detectFormat(slug, type) {
   return 'unknown';
 }
 
+// Cut a catalogue into one page. "count" is what the caller actually receives
+// and "total" the pool it was cut from: the picker used to get both as the pool
+// and printed "1328 found" for a 250-row list.
+export function pageEvents(list, limit) {
+  const events = list.slice(0, limit);
+  return { events, count: events.length, total: list.length };
+}
+
 async function listEvents(opts) {
   opts = opts || {};
   const limit = Math.min(Math.max(opts.limit || 80, 1), 400);
@@ -1556,13 +1564,7 @@ async function listEvents(opts) {
     eventCache = { list: out, at: Date.now() };
   }
   const all = only ? eventCache.list.filter(e => e.type === only) : eventCache.list;
-  return {
-    events: all.slice(0, limit),
-    count: all.length,
-    total: eventCache.list.length,
-    cached: !!fresh,
-    fetchedAt: new Date(eventCache.at).toISOString(),
-  };
+  return { ...pageEvents(all, limit), cached: !!fresh, fetchedAt: new Date(eventCache.at).toISOString() };
 }
 
 
