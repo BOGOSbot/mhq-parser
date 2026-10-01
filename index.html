@@ -117,7 +117,10 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 .evlists.pending{color:var(--warn)}
 .evlink{font:11.5px var(--mono);color:var(--acc);text-decoration:none;white-space:nowrap}
 .evlink:hover{text-decoration:underline}
-.hidden{display:none}
+/* !important on purpose: this utility has to beat any class that sets a
+   display (.authbox, .authrow, .evpanel). Without it the class list says
+   "hidden" while the element still renders. */
+.hidden{display:none!important}
 #user,#pass{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
   border-radius:7px;padding:7px 10px;font:13px var(--mono)}
 #user{width:170px}
@@ -157,11 +160,18 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
       <option value="2v2 (side-by-side)">2v2 (side-by-side)</option>
       <option value="teams">Teams</option>
     </select>
-    <label class="chk" title="List only the events you organise. Replaces the sitemap scan, which cannot see private or not-yet-published events. Needs a login."><input id="evadmin" type="checkbox"> organiser view</label>
-    <!-- Sign-in sits next to organiser view, not at the top of the page: the
-         public sitemap needs no session, so this is the one place an ask is
-         ever warranted. Shown on organiser view, on an organiser URL in the
-         box, or after a parse that came back 401. -->
+    <!-- Hidden in the shipped page. The markup stays so the organiser view
+         still works for whoever flips ORGANISER_VIEW below; it is a personal
+         tool, not something a public instance should advertise. -->
+    <span id="adminwrap" class="hidden">
+      <label class="chk" title="List only the events you organise. Replaces the sitemap scan, which cannot see private or not-yet-published events. Needs a login."><input id="evadmin" type="checkbox"> organiser view</label>
+    </span>
+    <!-- Sign-in lives in the Browse panel rather than at the top of the page:
+         the public sitemap needs no session, so this is the only place an ask
+         belongs. Shown on an organiser URL in the box, or after a parse that
+         came back 401. -->
+     <!-- Its organiser-view neighbour is hidden unless ORGANISER_VIEW says
+          otherwise, so in the shipped page the sign-in appears on its own. -->
     <span id="authbox" class="authbox hidden">
       <span id="signed" class="authin hidden"></span>
       <button id="logout" type="button" class="ghost hidden">Sign out</button>
@@ -177,6 +187,8 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
   </div>
   <div id="evlist" class="evlist"></div>
 </div>
+<main id="main"></main>
+<a class="ext" href="https://github.com/BOGOSbot/mhq-parser" target="_blank" rel="noopener">GitHub</a>
 <script>
 'use strict';
 var $ = function (s) { return document.querySelector(s); };
@@ -189,6 +201,17 @@ var SKIP = {
 };
 var data = null;
 var view = { blocks: [], total: 0 };
+
+// Organiser view lists the events you organise, which the public sitemap
+// cannot reach: a private event, or one whose lists are not out yet, is not in
+// the sitemap at all. That makes it a personal tool rather than a public
+// feature, so the shipped page hides the control and never mentions it. Flip
+// this to true in your own copy to get it back; nothing else has to change,
+// because the markup and the /my-events path stay exactly as they were.
+var ORGANISER_VIEW = false;
+(function applyOrganiserView() {
+  if (ORGANISER_VIEW) document.querySelector('#adminwrap').classList.remove('hidden');
+})();
 
 function el(tag, cls, text) {
   var n = document.createElement(tag);
