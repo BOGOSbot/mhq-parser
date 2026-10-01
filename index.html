@@ -122,6 +122,8 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
    "hidden" while the element still renders. */
 .hidden{display:none!important}
 .foot{text-align:center;padding:4px 0 20px}
+.count{font:12px var(--mono);color:var(--dim);white-space:nowrap}
+.hint{font:12px var(--mono);color:var(--dim);min-width:52px}
 .gh{display:inline-flex;color:var(--dim)}
 .gh:hover{color:var(--txt)}
 .gh svg{display:block;width:18px;height:18px;fill:currentColor}
@@ -161,7 +163,7 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
     <select id="evfmt">
       <option value="">All formats</option>
       <option value="1v1">1v1</option>
-      <option value="2v2 (side-by-side)">2v2 (side-by-side)</option>
+      <option value="2v2 (side-by-side)">2v2</option>
       <option value="teams">Teams</option>
     </select>
     <!-- Hidden in the shipped page. The markup stays so the organiser view
@@ -186,7 +188,10 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
       </form>
     </span>
     <span id="evinfo" class="shown"></span>
+    <span id="evcount" class="count"></span>
     <span class="spacer"></span>
+    <button id="evrefresh" type="button" class="ghost" title="Drop the cached catalogue and read it again from the sitemap">Refresh</button>
+    <button id="evclear" type="button" class="ghost" title="Drop the cached catalogue and the per-event checks, without reading anything">Clear cache</button>
     <button id="evclose" type="button" class="ghost">Close</button>
   </div>
   <div id="evlist" class="evlist"></div>
@@ -259,8 +264,9 @@ function blobOf(p) {
 function showResult(j, ms, via) {
   data = j;
   render();
-  setStatus(j.count + ' arm' + (j.count === 1 ? 'y' : 'ies') + ' parsed ' + via +
-    'in ' + Math.round(ms) + ' ms', 'ok');
+  // Nothing on the status line: the event bar carries the name and the count,
+  // and repeating it there was noise. Clear whatever an earlier run left.
+  setStatus('');
 }
 
 async function parse() {
@@ -378,7 +384,7 @@ function render() {
   lbl.appendChild(document.createTextNode(' warnings only'));
   bar.appendChild(lbl);
 
-  bar.appendChild(el('span', 'shown', data.count + ' / ' + data.count));
+  bar.appendChild(el('span', 'hint'));
   var copy = el('button', 'ghost', 'Copy mini');
   copy.addEventListener('click', copyMini);
   bar.appendChild(copy);
@@ -387,13 +393,24 @@ function render() {
   bar.appendChild(dl);
   main.appendChild(bar);
 
+  // A 1v1 event has no teams, so every player lands in the same 'Unknown' group
+  // and the header says nothing useful. Drop it there; teams and 2v2 keep it,
+  // where the group is real information.
+  //
+  // The tournament type comes from the URL, not from the players: p.format is
+  // the list format ('bullets', 'newrecruit'), which says nothing about teams.
+  var tType = (String((data.event && data.event.url) || '').match(/\/tournaments\/([^/]+)\//) || [])[1];
+  var solo = tType === 'individual';
+
   for (var team of Array.from(teams.keys())) {
     var players = teams.get(team);
     var block = el('section', 'tblock');
-    var head = el('div', 'team');
-    head.appendChild(el('b', null, team));
-    head.appendChild(document.createTextNode(players.length + (players.length === 1 ? ' army' : ' armies')));
-    block.appendChild(head);
+    if (!solo) {
+      var head = el('div', 'team');
+      head.appendChild(el('b', null, team));
+      head.appendChild(document.createTextNode(players.length + (players.length === 1 ? ' army' : ' armies')));
+      block.appendChild(head);
+    }
     var grid = el('div', 'cards');
     var cards = [];
     for (var n = 0; n < players.length; n++) {
@@ -550,7 +567,7 @@ function applyFilters() {
 function copyMini() {
   var text = (data && data.miniText) || '';
   var done = function (ok) {
-    var s = document.querySelector('.shown');
+    var s = document.querySelector('.hint');
     if (s) {
       var old = s.textContent;
       s.textContent = ok ? 'copied' : 'copy failed';
@@ -622,19 +639,19 @@ function stopPolling() {
   if (evPollTimer) { clearTimeout(evPollTimer); evPollTimer = null; }
 }
 
-function loadEvents() {
+function loadEvents(opts) {
+  opts = opts || {};
   stopPolling();
   var reqId = ++evReqId;
   evLoading = true;
   $('#browse').disabled = true;
-  $('#evinfo').textContent = 'loading…';
   // "organiser view" switches the data source, not just the URL shape: the
   // sitemap carries only public events, so a private or not-yet-published one
   // never appears in the scan at all. Ask MHQ for the caller's own list instead.
   var mine = $('#evadmin').checked;
   var req = mine
     ? fetch('/my-events', { headers: { 'X-MHQ-Cookie': cookieOf() || '' } })
-    : fetch('/events?limit=250&filter=1');
+    : fetch('/events?limit=250&filter=1' + (opts.refresh ? '&refresh=1' : '') + (opts.clear ? '&clear=1' : ''));
   req.then(function (r) { return r.json(); })
     .then(function (j) {
       if (reqId !== evReqId) return;
@@ -645,16 +662,15 @@ function loadEvents() {
       if (mine) evAuthPrompt = !!j.auth;
       renderEvList();
       if (mine) {
+        $('#evcount').textContent = '';
         $('#evinfo').textContent = j.auth
           ? 'sign in to list the events you organise'
           : evCache.length + ' event' + (evCache.length === 1 ? '' : 's') + ' you organise';
-      } else if (j.done === true) {
-        $('#evinfo').textContent = j.count + ' events in the last ' + windowLabel(j.windowDays) +
-          ' (' + j.scanned + ' checked)';
       } else if (j.total != null) {
-        $('#evinfo').textContent = j.count + ' found · checking ' + j.scanned + ' of ' + j.total +
-          ' in the last ' + windowLabel(j.windowDays) + '…';
-        evPollTimer = setTimeout(loadEvents, 3000);
+        // A counter, not a sentence. It used to rewrite itself with a new
+        // progress line every three seconds, which read as a blinking label.
+        $('#evcount').textContent = j.count + ' found · ' + j.scanned + '/' + j.total + ' checked';
+        if (!j.done) evPollTimer = setTimeout(loadEvents, 3000);
       }
     })
     .catch(function (e) { if (reqId === evReqId) $('#evinfo').textContent = 'error: ' + e.message; })
@@ -768,6 +784,22 @@ $('#evclose').addEventListener('click', function () {
 });
 $('#evq').addEventListener('input', renderEvList);
 $('#evfmt').addEventListener('change', renderEvList);
+$('#evrefresh').addEventListener('click', function () {
+  evCache = [];
+  $('#evinfo').textContent = '';
+  loadEvents({ refresh: true });
+});
+$('#evclear').addEventListener('click', function () {
+  stopPolling();
+  evCache = [];
+  evLoading = false;
+  $('#browse').disabled = false;
+  $('#evcount').textContent = '';
+  renderEvList();
+  // After renderEvList, which writes its own count into #evinfo.
+  $('#evinfo').textContent = 'catalogue and checks cleared';
+  fetch('/events?limit=250&clear=1');
+});
 $('#evadmin').addEventListener('change', function () {
   evCache = [];
   loadEvents();
