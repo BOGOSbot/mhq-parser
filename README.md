@@ -27,7 +27,7 @@ Un petit serveur local, sans aucune dependance, sert une page unique qui appelle
 node tools\\mhq-parser\\server.mjs
 ```
 
-Coller ensuite l'URL de l'evenement dans la page http://127.0.0.1:8787 puis lancer l'analyse. Les listes s'affichent groupees par equipe ; chaque armee indique son total de points (calcule vs declare), son detachement, ses dispositions de force et ses avertissements, suivis du tableau des unites. La recherche texte, le filtre par faction et l'affichage restreint aux avertissements filtrent a la volee ; `Copy mini` copie la vue Markdown et `Download JSON` telecharge l'equivalent du fichier du parseur.
+Coller ensuite l'URL de l'evenement dans la page http://127.0.0.1:8787 puis lancer l'analyse. Le bouton **From file** ouvre l'explorateur et analyse directement une page MiniHeadQuarters deja enregistree sur le disque (Ctrl+S dans le navigateur) : aucune requete vers le site et aucune session, donc une page privee, non publiee ou hors ligne s'analyse comme les autres. **Browse** reste la facon de choisir un tournoi. Les listes s'affichent groupees par equipe ; chaque armee indique son total de points (calcule vs declare), son detachement, ses dispositions de force et ses avertissements, suivis du tableau des unites. La recherche texte, le filtre par faction et l'affichage restreint aux avertissements filtrent a la volee ; `Copy mini` copie la vue Markdown et `Download JSON` telecharge l'equivalent du fichier du parseur.
 
 L'analyse passe toujours par le serveur : le navigateur ne peut pas interroger miniheadquarters.com directement faute d'en-tete CORS. La page est relue a chaque requete, modifier index.html ne demande pas de redemarrage.
 
@@ -38,7 +38,7 @@ Options du serveur :
 | **--port <n>** | 8787 | Port d'ecoute (variable `PORT`) |
 | **--host <h>** | 127.0.0.1 | Interface d'ecoute (variable `HOST`) |
 
-Points de terminaison : `GET /` (la page), `GET /health` et `POST /parse` avec un corps JSON "{"url":"...", "cookie":"..."}" — le champ `cookie` (ou la variable `MHQ_COOKIE`) est nécessaire pour les vues organisateur/admin.
+Points de terminaison : `GET /` (la page), `GET /health`, `POST /parse` avec un corps JSON "{"url":"...", "cookie":"..."}" — le champ `cookie` (ou la variable `MHQ_COOKIE`) est nécessaire pour les vues organisateur/admin — et `POST /parse-file?name=<fichier>`, dont le corps est la page HTML brute (32 Mo maximum) et qui repond comme `/parse`.
 
 ## Options
 
@@ -174,6 +174,25 @@ Override the output directory:
 ```powershell
 node tools\\mhq-parser\\parse.mjs "https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>" --out-dir data\\mhq\\<slug>
 ```
+
+## Web UI
+
+A small local server, with no dependencies at all, serves a single page that calls the parser:
+
+```powershell
+node tools\\mhq-parser\\server.mjs
+```
+
+Paste the event URL into http://127.0.0.1:8787 and press **Parse**. **Browse** opens a picker of recent tournaments, and **From file** opens the file explorer to parse a MiniHeadQuarters page you already saved (Ctrl+S in your browser): the markup is the whole input, so no request goes to the site and no session is used — a private, unpublished or offline page parses like any other. The lists are grouped by team; each army shows its points total (parsed vs declared), its detachment, its force dispositions and its warnings, followed by the unit table. Text search, the faction filter and the warnings-only view filter as you type; `Copy mini` copies the Markdown view and `Download JSON` downloads what the parser would have written.
+
+Parsing always goes through the server: the browser cannot fetch miniheadquarters.com directly, there being no CORS header. The page is re-read on every request, so editing index.html needs no restart.
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| **--port <n>** | 8787 | Listening port (`PORT`) |
+| **--host <h>** | 127.0.0.1 | Listening interface (`HOST`) |
+
+Endpoints: `GET /` (the page), `GET /health`, `POST /parse` with a JSON body "{"url":"...", "cookie":"..."}" — `cookie` (or the `MHQ_COOKIE` variable) is needed for organiser/admin views — and `POST /parse-file?name=<file>`, whose body is the raw HTML page (32 MB limit) and which answers like `/parse`.
 
 ## Flags
 

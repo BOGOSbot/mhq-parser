@@ -149,6 +149,12 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
              placeholder="https://miniheadquarters.com/tournaments/team/army-lists/&lt;slug&gt;">
       <button id="go" type="submit">Parse</button>
       <button id="browse" type="button" class="ghost">Browse</button>
+      <!-- Opens the file picker. A real file input behind the button, so the OS
+           dialog is the browser's own; kept out of sight and out of the tab
+           order, since the button is what you reach for. -->
+      <button id="filebtn" type="button" class="ghost" title="Parse a MiniHeadQuarters page you already saved (Ctrl+S in your browser) instead of fetching one">From file</button>
+      <input id="file" type="file" accept=".html,.htm,text/html" class="hidden"
+             aria-label="Saved MiniHeadQuarters page" tabindex="-1">
     </form>
   </div>
   <div id="status" class="status"></div>
@@ -191,8 +197,8 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 </div>
 <main id="main">
   <div class="empty">
-    Paste a MiniHeadQuarters army-lists URL and press <b>Parse</b>, or use <b>Browse</b>
-    to pick a tournament.<br>
+    Paste a MiniHeadQuarters army-lists URL and press <b>Parse</b>, use <b>Browse</b>
+    to pick a tournament, or <b>From file</b> to parse a page you saved earlier.<br>
     Running this page needs <code>node server.mjs</code>
   </div>
 </main>
@@ -241,6 +247,15 @@ function blobOf(p) {
   return parts.filter(function (x) { return x != null; }).join(' ').toLowerCase();
 }
 
+// One parse result, whichever way it arrived. The bar, the cards and the
+// mini view are identical for a fetched URL and for a file, so they meet here;
+// only the status line names the source.
+function showResult(j, ms, via) {
+  data = j;
+  render();
+  setStatus(j.count + ' armies parsed ' + via + 'in ' + Math.round(ms) + ' ms', 'ok');
+}
+
 async function parse() {
   var url = $('#url').value.trim();
   if (!url) return;
@@ -260,9 +275,7 @@ async function parse() {
       if (j.auth) e2.auth = true;
       throw e2;
     }
-    data = j;
-    render();
-    setStatus(j.count + ' armies parsed in ' + Math.round(performance.now() - t0) + ' ms', 'ok');
+    showResult(j, performance.now() - t0, '');
   } catch (e) {
     if (e.auth) {
       var d = $('#ses');
@@ -689,6 +702,40 @@ function renderEvList() {
   if (!n) list.appendChild(el('div', 'shown', 'no matching events'));
   $('#evinfo').textContent = n + ' of ' + evCache.length + ' events';
 }
+
+// "From file": the caller points at a MiniHeadQuarters page already saved on
+// disk. The browser reads it and posts the bytes to /parse-file, which parses
+// them with the same code a fetched URL goes through - no network round trip, no
+// session. That is what makes a private, unpublished or offline page work.
+async function parseFile(file) {
+  var btn = $('#filebtn');
+  btn.disabled = true;
+  var t0 = performance.now();
+  try {
+    setStatus('reading ' + file.name + '…', 'busy');
+    var text = await file.text();
+    setStatus('parsing ' + file.name + '…', 'busy');
+    var r = await fetch('/parse-file?name=' + encodeURIComponent(file.name), {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      body: text
+    });
+    var j = await r.json().catch(function () { return { error: 'non-JSON response' }; });
+    if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status);
+    showResult(j, performance.now() - t0, 'from ' + file.name + ' ');
+  } catch (e) {
+    setStatus(String(e.message || e), 'err');
+  } finally {
+    btn.disabled = false;
+    // Clear the input: picking the same file twice in a row has to fire again.
+    $('#file').value = '';
+  }
+}
+$('#filebtn').addEventListener('click', function () { $('#file').click(); });
+$('#file').addEventListener('change', function () {
+  var f = $('#file').files[0];
+  if (f) parseFile(f);
+});
 
 $('#browse').addEventListener('click', showEvents);
 $('#evclose').addEventListener('click', function () { $('#evpanel').classList.add('hidden'); stopPolling(); });

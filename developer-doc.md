@@ -70,6 +70,18 @@ The server is a login *proxy*, not a store. It performs the login, hands the res
 
 Pitfall on cookie plumbing: a browser **cannot** attach `miniheadquarters.com` cookies to a fetch of the local server (different origin), so the cookie has to be forwarded as text. That is why the UI keeps it in `localStorage` and posts it in the `/parse` body, and why the CLI takes `--cookie` / `MHQ_COOKIE`. The value is a Django session and expires (default two weeks), so it is not a permanent solution — it is the cheapest one, because it stores no password and adds no dependency.
 
+### 2b. Parsing a page that is already on disk
+
+The web UI can parse a page the user saved with Ctrl+S instead of fetching one. The browser reads the file and posts its bytes to `POST /parse-file`; the markup is the only input, so no session is involved and a private, unpublished or unreachable page parses exactly like a live one.
+
+Everything after the fetch is shared through `articlesToOutput()`, so the file path and the URL path cannot drift: `parseUrl()` and `parseAdmin()` both end there, and `parseHtml()` is the file entry point. `tests/test-parse-file.mjs` pins that equivalence by parsing the same fixture both ways and comparing the players and the mini view.
+
+A file has no URL, so two things degrade: the event **date** (read from the slug) is absent, and `event.url` is empty. The name still comes from the page `<title>`; when a saved page has none, `nameFromFile()` prettifies the file name in its place — stripping the extension first, otherwise `prettify()` cannot see the `-YYYY-MM-DD` tail it drops.
+
+A saved **per-army admin page** has no article cards at all — its body is a single `whitespace-pre-line` paragraph — so `parseHtml()` falls through to `adminListContent()`/`oneAdminArticle()` when `splitArticles()` finds nothing. Without that, a saved organiser page would report "no army lists found" and look broken.
+
+The endpoint is not JSON: the markup is the raw request body and the file name rides in the query string. An MHQ page is about a megabyte of quotes and backslashes, and a JSON envelope would inflate it for nothing. Its limit is 32 MB, separate from the 64 KB one the JSON control messages keep.
+
 ### 3. Split the page into player blocks
 
 The page has two formats depending on the event type:

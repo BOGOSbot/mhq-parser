@@ -6,3 +6,6 @@
 # scratch: commit messages staged to a file, probe scripts
 _msg*.txt
 _*.ps1
+
+# browser snapshots from playwright-cli runs
+.playwright-cli/

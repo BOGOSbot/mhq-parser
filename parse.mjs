@@ -380,18 +380,8 @@ async function parseAdmin(url, { log = false, cookie = null } = {}) {
   }
 
   const players = buildPlayers(articles);
-  players.forEach((p, i) => {
-    const a = articles[i] && articles[i].admin;
-    if (!a) return;
-    p.status = a.status || null;
-    p.adminId = a.id;
-    p.adminUrl = a.url || null;
-    p.lastModified = a.lastModified || null;
-    p.firstSubmission = a.firstSubmission || null;
-    p.lastReviewBy = a.lastReviewBy || null;
-  });
-  const output = { event: extractEvent(url, html), count: players.length, players };
-  return { output, miniText: renderMini(output) };
+  if (log) console.error('Parsed ' + players.length + ' players');
+  return articlesToOutput(articles, html, { url, admin: true });
 }
 // ============================================================
 // HTML decoding & article splitting
@@ -1302,7 +1292,10 @@ function getMeta(player) {
 // ============================================================
 // Programmatic entry points (used by server.mjs)
 // ============================================================
-function extractEvent(url, html) {
+// fallbackName covers the case where there is no URL to read a slug out of: a
+// page handed over from disk has a <title> like a fetched one, but a bare saved
+// snippet may not, and the file's own name is then the only thing to call it.
+function extractEvent(url, html, fallbackName = null) {
   // Prefer the page <title> for the canonical event name; fall back to the URL slug.
   const titleM = html.match(/<title>([^<]+)<\/title>/);
   let eventName = null;
@@ -1315,7 +1308,12 @@ function extractEvent(url, html) {
   // the last segment would yield the view name rather than the slug.
   const slug = extractEventSlug(url) || '';
   const m = slug.match(/^(.*)-(\d{4})-(\d{2})-(\d{2})$/);
-  if (!eventName) eventName = m ? m[1].replace(/-/g, ' ') : slug;
+  if (!eventName) {
+    // prettify rather than a bare dash-to-space, so the -YYYY-MM-DD tail a slug
+    // carries is dropped here as well; a file name is prettified upstream, by
+    // nameFromFile, which first removes the extension it would swallow.
+    eventName = m ? prettify(m[1]) : (fallbackName || prettify(slug) || 'army lists');
+  }
   const eventDate = m ? m[2] + '-' + m[3] + '-' + m[4] : null;
   return { name: eventName, date: eventDate, url };
 }
@@ -1402,6 +1400,67 @@ function renderMini(output) {
   return out.join('\n');
 }
 
+// Articles -> output + mini view. The shared tail of every entry point, so a
+// URL, an admin page and a file all run the exact same structuring and
+// formatting and cannot drift apart.
+function articlesToOutput(articles, html, { url = '', name = null, admin = false } = {}) {
+  const players = buildPlayers(articles);
+  if (admin) {
+    // Admin pages carry per-army bookkeeping (status, review dates) that lives
+    // on the article, not on the parsed list; lift it onto the player.
+    players.forEach((p, i) => {
+      const a = articles[i] && articles[i].admin;
+      if (!a) return;
+      p.status = a.status || null;
+      p.adminId = a.id;
+      p.adminUrl = a.url || null;
+      p.lastModified = a.lastModified || null;
+      p.firstSubmission = a.firstSubmission || null;
+      p.lastReviewBy = a.lastReviewBy || null;
+    });
+  }
+  const output = { event: extractEvent(url, html, name), count: players.length, players };
+  return { output, miniText: renderMini(output) };
+}
+
+// A file name standing in for an event slug:
+// "tournoi-des-choins-2026-09-19.html" -> "tournoi des choins". The extension
+// goes first, otherwise prettify cannot see the -YYYY-MM-DD tail it strips and
+// the name ends up as "... 2026 09 19.html". Any directory part is dropped too,
+// so a full path from the picker still yields just a name.
+function nameFromFile(raw) {
+  if (typeof raw !== 'string') return null;
+  const base = raw.replace(/\\/g, '/').split('/').pop().replace(/\.[a-z0-9]+$/i, '');
+  return prettify(base) || null;
+}
+
+// Parse markup that is already in hand: the page the browser read from disk
+// rather than one we fetched. Same pipeline as parseUrl, minus the network - so
+// a saved page parses identically to the live one, and needs no session, which
+// is what makes private or offline pages work at all.
+//
+// The public event page is the expected shape. A saved per-army admin page has
+// no article cards at all (its body is one whitespace-pre-line paragraph), so it
+// falls through to the admin reader instead of reporting "no lists found".
+function parseHtml(html, { url = '', name = null } = {}) {
+  if (typeof html !== 'string' || !html.trim()) {
+    throw new Error('the page is empty - nothing to parse');
+  }
+  let articles = splitArticles(html);
+  let admin = false;
+  if (!articles.length) {
+    const body = adminListContent(html);
+    if (body) { articles = [oneAdminArticle(null, html)]; admin = true; }
+  }
+  // No articles at all means the file is not a list page. An empty submission is
+  // a different thing: it still has a body, so it reaches the UI as an empty
+  // result rather than an error.
+  if (!articles.length) {
+    throw new Error('no army lists found - is this a MiniHeadQuarters army-lists page?');
+  }
+  return articlesToOutput(articles, html, { url, name: nameFromFile(name), admin });
+}
+
 async function parseUrl(url, { log = false, cookie = null } = {}) {
   const { status, html } = await fetchHTML(url, { cookie });
   if (status !== 200) throw new Error('HTTP ' + status + ' fetching ' + url);
@@ -1412,16 +1471,15 @@ async function parseUrl(url, { log = false, cookie = null } = {}) {
   if (log) console.error('Fetched ' + html.length + ' bytes');
   const articles = splitArticles(html);
   if (log) console.error('Found ' + articles.length + ' articles');
-  const players = buildPlayers(articles);
-  if (log) console.error('Parsed ' + players.length + ' players');
+  const { output, miniText } = articlesToOutput(articles, html, { url });
+  if (log) console.error('Parsed ' + output.count + ' players');
   // A tournament page with no armies means the lists are not out yet: either the
   // URL was a /details/ info page, or the /army-lists/ URL redirected to one.
   // Say so instead of handing back an empty result.
-  if (players.length === 0) {
+  if (output.count === 0) {
     throw new Error('no army lists found - this event has probably not published its lists yet');
   }
-  const output = { event: extractEvent(url, html), count: players.length, players };
-  return { output, miniText: renderMini(output) };
+  return { output, miniText };
 }
 
 // ============================================================
@@ -1474,7 +1532,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists, listCount };
 }
 
-export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, renderMini, parseUrl, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
+export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, renderMini, parseUrl, parseHtml, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is

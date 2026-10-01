@@ -12,6 +12,7 @@
  *   POST /login     { username, password } -> { cookie }  obtain a session
  *   GET  /my-events tournaments the caller organises (X-MHQ-Cookie header)
  *   POST /parse     { url } -> { event, count, players, miniText, elapsedMs }
+ *   POST /parse-file?name=<file>  body: a saved page -> same shape as /parse
  *
  * The browser cannot fetch miniheadquarters.com directly (no CORS headers), so
  * every parse happens here and the UI only renders. Stdlib only, no deps.
@@ -21,7 +22,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { URL_RE, checkEvent, getAllEvents, getMeta, playerWarnings, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
+import { URL_RE, checkEvent, getAllEvents, getMeta, playerWarnings, parseHtml, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -192,7 +193,11 @@ if (!Number.isFinite(port) || port <= 0) {
   process.exit(1);
 }
 
+// A JSON control message is small; a saved army-lists page is not - a 40k team
+// event is around a megabyte of markup, and the admin pages are heavier. The two
+// limits are separate so raising one cannot loosen the other.
 const MAX_BODY = 64 * 1024;
+const MAX_FILE_BODY = 32 * 1024 * 1024;
 
 function send(res, status, body, type) {
   res.writeHead(status, {
@@ -205,13 +210,13 @@ function send(res, status, body, type) {
 const json = (res, status, obj) => send(res, status, JSON.stringify(obj));
 const fail = (res, status, message) => json(res, status, { error: message });
 
-function readBody(req) {
+function readBody(req, max = MAX_BODY) {
   return new Promise((resolve, reject) => {
     let n = 0;
     const chunks = [];
     req.on('data', c => {
       n += c.length;
-      if (n > MAX_BODY) { reject(new Error('body too large')); req.destroy(); return; }
+      if (n > max) { reject(new Error('body too large')); req.destroy(); return; }
       chunks.push(c);
     });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
@@ -273,6 +278,48 @@ async function handleParse(req, res) {
   return json(res, r.status, { error: r.error, auth: !!r.auth });
 }
 
+// A page the caller already has on disk, posted by the UI's file picker. The
+// file *is* the input: nothing is fetched and no session is used, so a page that
+// is private, unpublished or simply not reachable any more parses exactly like a
+// fetched one.
+//
+// The markup travels as the raw request body rather than inside a JSON envelope.
+// An MHQ page is a megabyte of quotes and backslashes, and JSON-escaping it would
+// inflate that for nothing; the file's name rides in the query string instead.
+// It is untrusted input that ends up in the page title, so it is reduced to a
+// basename here rather than taken whole.
+function displayName(raw) {
+  if (typeof raw !== 'string') return null;
+  const base = raw.replace(/\\/g, '/').split('/').pop() || '';
+  // Drop control characters: a newline would run through into the heading.
+  const clean = base.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 120);
+  return clean || null;
+}
+
+async function handleParseFile(req, res, u) {
+  let html;
+  try { html = await readBody(req, MAX_FILE_BODY); }
+  catch (e) {
+    return fail(res, 413, 'file too large - the limit is ' +
+      Math.round(MAX_FILE_BODY / (1024 * 1024)) + ' MB');
+  }
+  const t0 = Date.now();
+  try {
+    const { output, miniText } = parseHtml(html, { name: displayName(u.searchParams.get('name')) });
+    return json(res, 200, {
+      event: output.event,
+      count: output.count,
+      players: output.players.map(viewPlayer),
+      miniText: miniText,
+      elapsedMs: Date.now() - t0,
+      source: 'file',
+    });
+  } catch (e) {
+    // Nothing here is a remote failure - the file simply did not parse.
+    return fail(res, 400, String((e && e.message) || e));
+  }
+}
+
 // Recent tournaments for the picker. The browser cannot read the sitemap
 // directly (no CORS), so the page asks us. The sitemap is heavy (~2 MB) and is
 // cached for a few hours inside listEvents, so this stays cheap.
@@ -319,6 +366,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && u.pathname === '/my-events') return handleMyEvents(req, res);
   if (req.method === 'POST' && u.pathname === '/login') return handleLogin(req, res);
   if (req.method === 'POST' && u.pathname === '/parse') return handleParse(req, res);
+  if (req.method === 'POST' && u.pathname === '/parse-file') return handleParseFile(req, res, u);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 
@@ -329,5 +377,6 @@ server.on('clientError', (err, socket) => {
 server.listen(port, host, () => {
   console.log('MHQ army-lists UI   http://' + host + ':' + port);
   console.log('POST /parse {"url":"<army-lists url>"}');
+  console.log('POST /parse-file?name=<file>   (body: a saved page)');
   console.log('GET  /events?limit=80&type=team');
 });
