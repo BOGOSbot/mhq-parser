@@ -118,19 +118,14 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 .evlink{font:11.5px var(--mono);color:var(--acc);text-decoration:none;white-space:nowrap}
 .evlink:hover{text-decoration:underline}
 .hidden{display:none}
-#cookie,#user,#pass{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+#user,#pass{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
   border-radius:7px;padding:7px 10px;font:13px var(--mono)}
-#cookie{width:min(420px,60vw);font-size:12.5px}
 #user{width:170px}
 #pass{width:200px}
-#cookie:focus,#user:focus,#pass:focus{outline:none;border-color:var(--acc)}
+#user:focus,#pass:focus{outline:none;border-color:var(--acc)}
 .authbox{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .authin{color:var(--ok);font:12px var(--mono);white-space:nowrap}
 .authrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0}
-.rawck summary{cursor:pointer;font:11.5px var(--mono);color:var(--dim);white-space:nowrap}
-.rawck input{margin-top:7px}
-.seshint{margin:6px 0 0;font:11.5px var(--mono);color:var(--dim);max-width:420px}
-.seshint code{font:11.5px var(--mono);color:var(--txt)}
 </style>
 </head>
 <body>
@@ -175,13 +170,6 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
         <input id="pass" type="password" autocomplete="current-password" placeholder="password" aria-label="MHQ password">
         <button id="login" type="submit">Sign in</button>
       </form>
-      <details id="rawck" class="rawck hidden">
-        <summary>or paste a session cookie instead</summary>
-        <input id="cookie" type="text" spellcheck="false" autocomplete="off"
-               placeholder="sessionid=...; csrftoken=..." aria-label="MHQ session cookie">
-        <p class="seshint">DevTools -> Network -> reload -> copy the <b>Cookie</b> request header.
-           Kept in this browser only.</p>
-      </details>
     </span>
     <span id="evinfo" class="shown"></span>
     <span class="spacer"></span>
@@ -279,8 +267,14 @@ async function parse() {
       $('#evpanel').classList.remove('hidden');
       setState();
       focusLogin();
+      // The parser's own message explains how to obtain a session, which is
+      // advice for the command line. Here the next step is the form that just
+      // opened, so say that instead of repeating instructions the page cannot
+      // act on.
+      setStatus('this page is organiser-only - sign in to parse it', 'err');
+    } else {
+      setStatus(String(e.message || e), 'err');
     }
-    setStatus(String(e.message || e), 'err');
   } finally {
     btn.disabled = false;
   }
@@ -763,20 +757,22 @@ $('#evadmin').addEventListener('change', function () {
 $('#url').addEventListener('input', setState);
 
 // Session for organiser/admin URLs. The server only brokers the login: it
-// never keeps a credential, so the session cookie comes back here and lives in
-// localStorage, sent with every /parse. That is also why login and logout are
+// never keeps a credential, so the session comes back here, is kept in this
+// browser and is sent with every /parse. That is also why login and logout are
 // local operations - there is nothing on the server to clear.
-var COOKIE_KEY = 'mhq_cookie';
+//
+// Signing in is the only way in: there is no field for pasting a session by
+// hand, so the value is written by /login and cleared by Sign out, never typed.
+var SESSION_KEY = 'mhq_session';
 var USER_KEY = 'mhq_user';
+var session = null;
 // The URL that came back 401, kept so signing in can finish what was started
 // instead of leaving the user to press Parse a second time.
 var retryUrl = null;
-function cookieOf() {
-  var c = $('#cookie');
-  return c && c.value.trim() ? c.value.trim() : null;
-}
-function storeCookie() {
-  try { localStorage.setItem(COOKIE_KEY, cookieOf() || ''); } catch (e) {}
+function cookieOf() { return session; }
+function storeSession(v) {
+  session = v || null;
+  try { localStorage.setItem(SESSION_KEY, session || ''); } catch (e) {}
 }
 // The username is not a secret and a session lives about two weeks, so keeping
 // it means an expired session costs one field rather than both.
@@ -798,7 +794,6 @@ function setState() {
   // worth showing (it explains why an admin URL works) and costs no space.
   $('#authbox').classList.toggle('hidden', !open || (!needsAuth() && !c));
   $('#authform').classList.toggle('hidden', !!c);
-  $('#rawck').classList.toggle('hidden', !!c);
   $('#signed').classList.toggle('hidden', !c);
   $('#logout').classList.toggle('hidden', !c);
   $('#signed').textContent = c ? (u ? 'signed in as ' + u : 'signed in') : '';
@@ -831,8 +826,7 @@ function doLogin(e) {
   }).then(function (r) { return r.json(); })
     .then(function (j) {
       if (!j || !j.cookie) throw new Error((j && j.error) || 'login failed');
-      $('#cookie').value = j.cookie;
-      storeCookie();
+      storeSession(j.cookie);
       storeUser();
       $('#pass').value = '';
       setState();
@@ -851,17 +845,16 @@ function doLogin(e) {
     .finally(function () { b.disabled = false; });
 }
 (function initSes() {
-  try { $('#cookie').value = localStorage.getItem(COOKIE_KEY) || ''; } catch (e) {}
+  try { storeSession(localStorage.getItem(SESSION_KEY) || null); } catch (e) {}
   try { $('#user').value = localStorage.getItem(USER_KEY) || ''; } catch (e) {}
-  $('#cookie').addEventListener('input', function () { storeCookie(); setState(); });
-  // 'change' rather than 'input': a pasted cookie should fetch the organiser
-  // list once it is finished, not on every keystroke.
-  $('#cookie').addEventListener('change', function () { storeCookie(); setState(); refreshAfterAuth(); });
+  // The value written by an earlier version of this page, when a session could
+  // be pasted by hand. Nothing reads it now; drop it so it does not outlive the
+  // field it belonged to.
+  try { localStorage.removeItem('mhq_cookie'); } catch (e) {}
   $('#authform').addEventListener('submit', doLogin);
   $('#logout').addEventListener('click', function () {
-    $('#cookie').value = '';
+    storeSession(null);
     $('#pass').value = '';
-    storeCookie();
     setState();
     setStatus('signed out');
     refreshAfterAuth();
