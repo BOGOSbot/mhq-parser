@@ -5,7 +5,7 @@ How the parser works and why. Read this before modifying parse.mjs.
 ## CLI behavior
 
 - **URL is required.** No default URL. If none is provided, the script exits with `Error: provide a link to an MHQ army list`.
-- **URL validation.** The URL must match one of: `https://miniheadquarters.com/tournaments/team/army-lists/<slug>`, `https://miniheadquarters.com/tournaments/individual/army-lists/<slug>`, or `https://miniheadquarters.com/tournaments/side-by-side/army-lists/<slug>`. Invalid URLs exit with `Error: provide a valid link`.
+- **URL validation.** The URL must match `URL_RE`: host `miniheadquarters.com`, path `/tournaments/<type>/...`, where `<type>` is `team`, `individual`, `2v2` or `side-by-side`, and the rest is one of `army-lists/<slug>`, `details/<slug>`, `administrate/<slug>/{army-lists,details}` or `administrate/army-lists/<id>`. Every arm requires its own slug, so a bare `/tournaments/team/army-lists` is rejected rather than defaulting to an `output/` directory. Invalid URLs exit with `Error: provide a valid link`.
 - **Default output dir.** `<event-slug>/` relative to the script's directory (`tools/mhq-parser/`). Both files (`mhq_army_lists.json`, `mhq_army_lists.mini.md`) go there. Override with `--out-dir <dir>`.
 - **Path resolution.** Uses `fileURLToPath(import.meta.url)` from the `url` module to get the script's directory. This handles Windows paths correctly (unlike `new URL(import.meta.url).pathname`, which produces a leading-slash path that breaks `path.join`).
 
@@ -45,16 +45,16 @@ Two facts about the site's auth:
 - It is **Django**. Evidence: `csrfmiddlewaretoken` hidden input, `id_username` / `id_password` id prefixes, `gunicorn` origin header. The first `GET` returns `Set-Cookie: csrftoken=...` (no `HttpOnly`, `SameSite=Lax`), and the value equals the form's hidden `csrfmiddlewaretoken` (Django's double-submit).
 - Login is a plain `POST /users/login` with `csrfmiddlewaretoken` + `username` + `password`. No SSO button, no captcha, no MFA. Password reset lives at `/users/reset-password`.
 
-**Why this needed code and not just docs.** An unauthenticated GET on an admin URL returns the login page with **HTTP 200**, not a 302. `splitArticles` then finds zero articles and `parseUrl` threw `no army lists found - this event has probably not published its lists yet` — the wrong diagnosis, and a misleading one because the real cause (no session) is invisible. That is exactly the state of `bogos-team-6-des-sous-terre-2026-10-10/mhq_army_lists.json` in the repo: six teams, all `bodyRest: "No lists"`, because the public page really has nothing published yet.
+**Why this needed code and not just docs.** An unauthenticated GET on an admin URL returns the login page with **HTTP 200**, not a 302. Left alone, `splitArticles` finds zero articles and the caller reports `no army lists found - this event has probably not published its lists yet`, which is the wrong diagnosis: the real cause, a missing session, is invisible. The same event parsed as six teams with `bodyRest: "No lists"` before the check existed. That output is not in the tree any more (the `cleanup` commit dropped the generated event folders), only in git history.
 
 So the wall is detected explicitly:
 
 - `isLoginPage(html)` matches `action="/users/login"` **and** `name="csrfmiddlewaretoken"`. Both together are distinctive and cheap; no `<title>` parsing.
-- `parseUrl` checks it before `splitArticles` and throws `authError(url)`, which names the site, the endpoint, and the exact steps to get a cookie. server.mjs keys off the phrase `authentication required` to answer `401` with `{ auth: true }`, which is what makes the UI open the cookie field.
+- `parseAdmin()` checks it right after the fetch and throws `authError(url)`, which names the site, the endpoint, and the exact steps to get a cookie. server.mjs keys off the phrase `authentication required` to answer `401`. The check lives on the admin path only now: a public URL that returns the login form has no articles either way, and it fails as unpublished lists, which is what it is. with `{ auth: true }`, which is what makes the UI open the cookie field.
 - `fetchHTML(url, { cookie })` adds the `Cookie` header. The second argument is now an options bag but a bare `hops` number is still accepted so older callers keep working.
 - `URL_RE` now has one arm per shape and each arm requires its own slug, so a bare `/tournaments/team/army-lists` is rejected instead of falling back to an `output/` directory. `extractEventSlug()` pulls the slug from either shape: public form has it after `/army-lists/`, admin form has it after `/administrate/`.
 
-**Where the admin URL comes from.** The sitemap contains no admin entries at all — zero occurrences of `administrate` across ~2 MB — so Browse cannot surface one from its index. Every event does carry `type` and `slug`, so `adminUrlOf()` in index.html rebuilds the path as `/tournaments/<type>/administrate/<slug>/army-lists`, and the Browse 'organiser view' checkbox switches a row click between the public `e.url` and that rebuilt form. `tests/test-auth.mjs` mirrors the builder and asserts the result passes `URL_RE`, recovers the slug through `extractEventSlug()`, and is flagged by `isAdminUrl()`. Without that pin, a change to `URL_RE` would break the checkbox and the only symptom would be a bare `400`.
+**Where the admin URL comes from.** The sitemap contains no admin entries, so Browse cannot surface one from its index. Each row of `/users/my-organized-tournaments` carries a details link, and `parseOrganizedRows()` rebuilds the organiser form from it as `/tournaments/<type>/administrate/<slug>/army-lists`, putting that on the row's `url`. index.html never builds it; a row click just takes whichever `url` the source supplied, public or admin. `tests/test-auth.mjs` mirrors that builder and asserts the result passes `URL_RE`, recovers the slug through `extractEventSlug()` and is flagged by `isAdminUrl()`. Without that pin, a change to `URL_RE` would break the organiser view and the only symptom would be a bare `400`.
 
 #### Logging in programmatically (`loginSession`)
 
@@ -156,7 +156,7 @@ The two routes are told apart safely: the index ends in `/army-lists` with nothi
 
 The status is matched on the badge **text** (`Pending validation`, `Accepted`, `Rejected`), never on the colour class (`bg-amber-*`, ...), so a recolor by the site does not break it. `adminStatusOf()` reads the short form ("Pending") off the per-army page as a fallback for a bare army URL, which has no table.
 
-To reuse the whole public pipeline, `adminArticle()` turns a row into a fake article: an `<h2>Name : Faction</h2>` - which `buildPlayers()` already reads - plus the raw body. `parseNewRecruit`, `parseBullets` and `findPlusBlock` therefore need no changes, which the fixture round-trip test (`82` checks) proves on a real submitted list. `parseAdmin()` is dispatched from `parseUrl()` on `isAdminUrl()`.
+To reuse the whole public pipeline, `adminArticle()` turns a row into a fake article: an `<h2>Name : Faction</h2>` - which `buildPlayers()` already reads - plus the raw body. `parseNewRecruit`, `parseBullets` and `findPlusBlock` therefore need no changes, which the fixture round-trip test in `tests/test-auth.mjs` proves on a real submitted list. `parseAdmin()` is dispatched from `parseUrl()` on `isAdminUrl()`.
 
 An empty submission is a legitimate state, so `fetchAdminList()` never throws and `adminArticle()` tolerates a null body: the army still appears, with zero units, instead of failing the whole event.
 
@@ -307,7 +307,7 @@ Rules, in order:
    
    The declared total is read from the `+++` header when it has a `totalPoints` key (any alias in `HEADER_ALIAS`). Otherwise the body is searched: first the banner line the app export prints — `<list name> (1995 points)`, `(1995 points)`, `[2000 pts]` — then a labelled total (`Strike Force (2000 Point limit)`, `Force de Frappe (2 000 Points)`, `Points d'armée : 2000`, `2000 / 2000 pts`). Only values between 1000 and 3000 qualify, so a unit cost can never be mistaken for a total. Thousands separators are accepted: comma, period, apostrophe, narrow and non-breaking spaces.
 
-   Across the 240 lists with units in this repository (11 events), the warning ratio is 14.6% (35 warnings: 24 points mismatch, 17 force disposition not found, 2 detachment not found, 2 missing total points). Most mismatches are small (≤100 pts) and indicate player-side data issues or enhancement points not included in unit points.
+   Measured across the 240 lists with units from 11 events, the warning ratio was 14.6% (35 warnings: 24 points mismatch, 17 force disposition not found, 2 detachment not found, 2 missing total points). That was one snapshot of the outputs the parser had produced at the time, not a live measurement: the `cleanup` commit removed the generated event folders, so nothing in the tree can reproduce the number now. Most mismatches are small (≤100 pts) and indicate player-side data issues or enhancement points not included in unit points.
 4. **Skip preamble "units"** - anything with 1000+ pts (army banner, force line) or a name matching Strike Force / Force de Frappe / Reconnaissance / Take and Hold / Priority Assets / Purge the Foe / Disruption / etc.
 5. **Model count** - take the largest "Nx Name" bullet count for the unit. Characters (single model) get no prefix.
 6. **Attached grouping** - units sharing an attachedUnit id are joined with " + ". For newrecruit.eu, a |-prefixed line attaches to the line above.
@@ -322,11 +322,51 @@ Three paths:
 - **Preamble path** — when no header exists, `findPreambleEnd()` finds where units begin (first CAT_HDR, bullet, or `Char1:` line). The text before that point is scanned for:
   - `^<name>\s*\(\d+ Points de Détachement\)\s*$` (French)
   - `^<name>\s*\(\d+ Detachment Points\)\s*$` (English)
+  - the same two without the accent on Détachement, which players type both ways
   - `^Détachements\s*:\s*<name>\s*$` (newrecruit.eu French)
+  - `^DETACHMENT\s*:?\s*<name>$`, for a freeform header with no `+++` block around it
   - `^<Disposition>\s*$` where Disposition is in {Reconnaissance, Take and Hold, Prendre et Tenir, Priority Assets, Atouts Prioritaires, Purge the Foe, Prey in Ambush, Disruption, Perturbation}
 - **Post-header path** — when a `+++` header exists, the remaining text after the header is also checked for preamble content before unit parsing begins.
 
 Pitfall: the army banner "<ArmyName> (2000 points)" matches the naive detachment regex. The parser requires "Points de Détachement" or "Detachment Points" explicitly, so the banner never gets captured.
+
+## Hosting on Vercel
+
+One file is the deployment. `server.mjs` listens at import time and answers every route, including `/`, which it serves by reading `index.html` off disk on each request. No build step, no bundler, no dependencies. Nothing is compiled, so "static" describes `index.html` and nothing else: the function has to stay live for any part of the page to work.
+
+Vercel picks a root entrypoint file and sends every request to it. That fact decided the shape of this deployment, and the project's own history is the record of finding it out.
+
+- `612a374` added `api/index.js`, `vercel.json` and rewrites, and made `server.mjs` stop calling `listen()`. Every route failed.
+- `a650027` put `listen()` back unconditionally after an `IS_MAIN` gate left the module loading without binding a port. Same failure, quieter.
+- `7b5b27f` closed it. The build log said `✓ Build complete — Using app.mjs as the root entrypoint`, so `api/` had never been called at all. `api/`, `serve.mjs` and `vercel.json` were deleted and `app.mjs` went back to being `server.mjs`.
+
+A handler export cannot work in this model, and rewrites cannot rescue one. There is nothing listening for a rewrite to land on.
+
+So the entrypoint has to hold to four rules. Three of them fail silently, as a connection refused that reads like a broken deployment rather than a bug.
+
+1. Call `listen()` unconditionally at module scope.
+2. Bind `0.0.0.0`, not loopback, whenever the platform sets `PORT`. A container bound to `127.0.0.1` answers nothing at all.
+3. Never call `process.exit()`. A non-zero exit is a dead function, so one bad environment variable would take down every request instead of one.
+4. Assume there is no disk. `eventCache` and `filterCache` are process memory: a warm instance keeps the catalogue and every event it has checked, a cold start knows nothing.
+
+Rules 2 and 3 had been in the tree since `678a91c`, and `bea4152` lost them, because that revert took `server.mjs` back further than it meant to. They are back as of the current `server.mjs`.
+
+### Limits that shape the code
+
+- **Request body.** Vercel caps request and response bodies at 4.5 MB and answers `FUNCTION_PAYLOAD_TOO_LARGE` above that. `MAX_FILE_BODY` allows 32 MB, so on a hosted instance the smaller number is the one that bites. A saved MHQ page runs about a megabyte and fits comfortably; the same page saved with every asset inlined does not.
+- **Duration.** 300 s by default on Hobby, which is also the ceiling there, and 800 s on Pro. `/parse` is the slow route, one request per army on the admin views.
+- **The catalogue scan.** `/events` is the expensive one. The sitemap fetch is the single slowest step, which server.mjs puts at about 9 s, and checking every event cannot happen inside one invocation. `FILTER_BATCH` (40) and `FILTER_CONCURRENCY` (16) exist for that reason: a bounded scan returns what it managed to check and the page polls for the rest, while an unbounded one gets killed mid-flight and returns nothing at all.
+
+### Where the checkout stands
+
+There is no `package.json` and no `vercel.json`, and `.vercel/project.json` holds placeholder ids, so this tree is not linked to a real project. `vercel link` is the first step of a deploy. The parser needs Node 18 or newer and nothing else, so Vercel's default runtime is enough.
+
+Tests are plain `node`. There is no runner to install:
+
+```
+node tests/test-auth.mjs
+node tests/test-parse-file.mjs
+```
 
 ## Extending the parser
 
@@ -344,5 +384,5 @@ Enhancement points are already included in unit points for all supported formats
 ## Reproducibility
 
 - Deterministic: same URL gives the same output, modulo upstream page changes.
-- The HTML is not cached. Each run re-fetches. To diff two runs, save the HTML separately.
-- To cache the HTML for debugging, replace fetchHTML() with a function that reads a local .html file. The rest of the pipeline is pure.
+- Army-list HTML is not cached. Every parse re-fetches, so two runs of the same URL can differ if the organiser edits a list in between. The catalogue behind `/events` is the exception: `listEvents()` holds the sitemap in memory for hours and the per-event check results in `filterCache` for an hour.
+- To diff two runs, save the HTML and feed both copies to `parseHtml()`. Do not patch `fetchHTML()` to read a file: `parseHtml()` already takes markup you have, and the **From file** button in the page calls it through `POST /parse-file`.

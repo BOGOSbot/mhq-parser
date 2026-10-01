@@ -40,10 +40,11 @@ t('slug admin',  extractEventSlug('https://miniheadquarters.com/tournaments/team
 t('slug details',extractEventSlug('https://miniheadquarters.com/tournaments/individual/details/x-1'), 'x-1');
 t('slug query',  extractEventSlug('https://miniheadquarters.com/tournaments/team/army-lists/slug?tab=2'), 'slug');
 
-// --- The UI's admin URL builder must produce URLs the parser accepts ------
-// index.html builds it as /tournaments/<type>/administrate/<slug>/army-lists
-// for the Browse "organiser view" checkbox. Mirror it here so a change to
-// URL_RE cannot silently break that checkbox - the failure would be a bare 400.
+// --- The organiser URL builder must produce URLs the parser accepts --------
+// parseOrganizedRows() builds /tournaments/<type>/administrate/<slug>/army-lists
+// for the rows behind the Browse "organiser view" checkbox. Mirror it here so a
+// change to URL_RE cannot silently break that view - the failure would be a
+// bare 400.
 function adminUrlOf(ev) {
   return 'https://miniheadquarters.com/tournaments/' + ev.type +
     '/administrate/' + ev.slug + '/army-lists';
