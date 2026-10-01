@@ -1543,6 +1543,9 @@ export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals,
 const SITEMAP_URL = 'https://miniheadquarters.com/sitemap.xml';
 const EVENT_TTL_MS = 6 * 60 * 60 * 1000;
 let eventCache = null;
+// The in-flight sitemap fetch, shared by every caller that arrives while it
+// runs. Cleared once it settles, so a later miss starts a fresh one.
+let eventFetch = null;
 
 function daysFromToday(d) {
   if (!d) return 1e9;
@@ -1568,50 +1571,15 @@ async function listEvents(opts) {
   const limit = Math.min(Math.max(opts.limit || 80, 1), 400);
   const only = opts.type || null;
   const fresh = eventCache && (Date.now() - eventCache.at) < EVENT_TTL_MS;
+  // Share one in-flight fetch. The sitemap is 2 MB and can take tens of
+  // seconds, and the server warms the catalogue at boot while the first
+  // request may arrive mid-fetch: without this both would pull it and halve
+  // the throughput of the one connection we care about.
   if (!fresh) {
-    const r = await fetchOnce(SITEMAP_URL);
-    if (r.status !== 200) throw new Error('sitemap returned HTTP ' + r.status);
-    const out = [];
-    const seen = new Set();
-    let m;
-    const re = new RegExp('<loc>([^<]*\/tournaments\/[^<]*)</loc>', 'g');
-    while ((m = re.exec(r.html)) !== null) {
-      // The sitemap gives the /details/ info page, which never carries list data.
-      // The /army-lists/ form does - and 302s back to /details/ when not yet out.
-      const detailsUrl = m[1];
-      const url = detailsUrl.replace(/\/(details)\//, '/army-lists/');
-      // The sitemap repeats some entries; keep one of each.
-      if (seen.has(url)) continue;
-      seen.add(url);
-      const parts = url.split('/');
-      const i = parts.indexOf('tournaments');
-      if (i < 0) continue;
-      const type = parts[i + 1] || '';
-      const slug = parts[parts.length - 1] || '';
-      if (!slug) continue;
-      let date = null;
-      const dm = slug.match(/(\d{4}-\d{2}-\d{2})(?:-.*)?$/);
-      if (dm) date = dm[1];
-      const j = r.html.indexOf(m[1]);
-      const k = j >= 0 ? r.html.indexOf('<lastmod>', j) : -1;
-      const lastmod = k >= 0 ? r.html.slice(k + 9, k + 19) || null : null;
-      out.push({
-        slug,
-        type,
-        url,
-        detailsUrl,
-        date: date || lastmod,
-        lastmod,
-        future: !!date && date > new Date().toISOString().slice(0, 10),
-        name: prettify(slug),
-        format: detectFormat(slug, type),
-      });
+    if (!eventFetch) {
+      eventFetch = fetchCatalogue().finally(() => { eventFetch = null; });
     }
-    // Newest dates first would bury recent, parseable events under next-year
-    // league registrations. Sort by distance from today instead: tournaments
-    // around now are the ones whose lists are actually published.
-    out.sort((a, b) => daysFromToday(a.date) - daysFromToday(b.date));
-    eventCache = { list: out, at: Date.now() };
+    await eventFetch;
   }
   const all = only ? eventCache.list.filter(e => e.type === only) : eventCache.list;
   return {
@@ -1621,6 +1589,54 @@ async function listEvents(opts) {
     cached: !!fresh,
     fetchedAt: new Date(eventCache.at).toISOString(),
   };
+}
+
+// Pull the sitemap and cache it. Split out of listEvents so the fetch can be
+// shared: whoever asks first does the work and the rest wait on it.
+async function fetchCatalogue() {
+  const r = await fetchOnce(SITEMAP_URL);
+  if (r.status !== 200) throw new Error('sitemap returned HTTP ' + r.status);
+  const out = [];
+  const seen = new Set();
+  let m;
+  const re = new RegExp('<loc>([^<]*\/tournaments\/[^<]*)</loc>', 'g');
+  while ((m = re.exec(r.html)) !== null) {
+    // The sitemap gives the /details/ info page, which never carries list data.
+    // The /army-lists/ form does - and 302s back to /details/ when not yet out.
+    const detailsUrl = m[1];
+    const url = detailsUrl.replace(/\/(details)\//, '/army-lists/');
+    // The sitemap repeats some entries; keep one of each.
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const parts = url.split('/');
+    const i = parts.indexOf('tournaments');
+    if (i < 0) continue;
+    const type = parts[i + 1] || '';
+    const slug = parts[parts.length - 1] || '';
+    if (!slug) continue;
+    let date = null;
+    const dm = slug.match(/(\d{4}-\d{2}-\d{2})(?:-.*)?$/);
+    if (dm) date = dm[1];
+    const j = r.html.indexOf(m[1]);
+    const k = j >= 0 ? r.html.indexOf('<lastmod>', j) : -1;
+    const lastmod = k >= 0 ? r.html.slice(k + 9, k + 19) || null : null;
+    out.push({
+     slug,
+     type,
+     url,
+     detailsUrl,
+     date: date || lastmod,
+     lastmod,
+     future: !!date && date > new Date().toISOString().slice(0, 10),
+     name: prettify(slug),
+     format: detectFormat(slug, type),
+    });
+  }
+  // Newest dates first would bury recent, parseable events under next-year
+  // league registrations. Sort by distance from today instead: tournaments
+  // around now are the ones whose lists are actually published.
+  out.sort((a, b) => daysFromToday(a.date) - daysFromToday(b.date));
+  eventCache = { list: out, at: Date.now() };
 }
 
 

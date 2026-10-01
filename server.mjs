@@ -168,11 +168,21 @@ function scanProgress(events) {
   return { scanned, total: events.length, done: scanned >= events.length };
 }
 
+// The catalogue the picker draws. Every event in the window is listed, not
+// only the ones already checked, because that is the whole cost of the first
+// paint: waiting for the checks to trickle in means an empty list for minutes.
+//
+// So a row is listed when it is unknown or a confirmed match, and dropped only
+// once a check has disproved it (another game, or no lists out). The list
+// converges to the verified set as the scan runs, and starts as everything
+// instead of nothing. An unchecked row carries no listCount, which the page
+// already renders as the pending state.
 function filteredList(events, limit) {
   const out = [];
   for (const e of events) {
     const c = filterCache.get(e.detailsUrl);
-    if (c && is40k(c.game) && c.hasLists) out.push({ ...e, listCount: c.listCount || 0 });
+    if (c && !(is40k(c.game) && c.hasLists)) continue;
+    out.push({ ...e, listCount: c ? (c.listCount || 0) : null, checked: !!c });
     if (out.length >= limit) break;
   }
   return out;
@@ -379,6 +389,14 @@ const server = http.createServer(async (req, res) => {
 server.on('clientError', (err, socket) => {
   socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
 });
+
+// Fill the catalogue before anyone asks for it. The sitemap costs about 9s and
+// the checks behind it cost far more, so starting at boot means the first click
+// on Browse reads a cache instead of waiting on a cold scan. Fire and forget:
+// a failure here costs the scan, not the server.
+getAllEvents()
+  .then((all) => runScan(withinWindow(all)))
+  .catch(() => {});
 
 server.listen(port, host, () => {
   console.log('MHQ army-lists UI   http://' + host + ':' + port);
