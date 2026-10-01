@@ -9,3 +9,8 @@ _*.ps1
 
 # browser snapshots from playwright-cli runs
 .playwright-cli/
+
+# screenshots taken while checking the UI, and the local Vercel link.
+# Neither belongs in the repo: both are per-machine.
+*.png
+.vercel/
