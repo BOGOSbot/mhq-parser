@@ -22,7 +22,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { URL_RE, checkEvent, getAllEvents, getMeta, playerWarnings, parseHtml, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
+import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, parseHtml, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -345,6 +345,19 @@ async function handleEvents(req, res, u) {
   if (lm) {
     const n = parseInt(lm, 10);
     if (Number.isFinite(n)) limit = n;
+  }
+  // Two cache controls from the page. ?clear=1 throws the catalogue away and
+  // answers with nothing, so the picker empties and the next open refetches.
+  // ?refresh=1 throws it away and refetches in the same call, which is the one
+  // to reach for when the page looks stale rather than when it is.
+  const wipe = u.searchParams.get('clear') === '1' || u.searchParams.get('refresh') === '1';
+  if (wipe) {
+    clearEventCache();
+    filterCache = new Map();
+    filterScan = null;
+  }
+  if (u.searchParams.get('clear') === '1') {
+    return json(res, 200, { events: [], count: 0, scanned: 0, total: 0, done: true, cleared: true, windowDays: FILTER_WINDOW_DAYS });
   }
   try {
     // The window is applied once, here, and the subset is what the scan, the

@@ -1532,7 +1532,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists, listCount };
 }
 
-export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, renderMini, parseUrl, parseHtml, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
+export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, renderMini, parseUrl, parseHtml, clearEventCache, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is
@@ -1659,6 +1659,13 @@ const MONTH_ABBR = {
 // "Oct. 10, 2026" / "October 10, 2026" -> "2026-10-10", null when not a date.
 // The row uses the site's display form, not ISO, so it needs translating to
 // match the dates listEvents extracts out of slugs.
+// Drop the cached catalogue. The page has a clear-cache control, and a stale
+// 6-hour sitemap is exactly the thing a person wants to throw away when they
+// suspect it. The next listEvents refetches.
+function clearEventCache() {
+  eventCache = null;
+}
+
 function formatDateOf(s) {
   const m = String(s || '').trim().match(/^([A-Za-z.]+)\.?\s+(\d{1,2}),\s+(\d{4})$/);
   if (!m) return null;
