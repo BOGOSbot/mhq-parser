@@ -118,24 +118,18 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 .evlink{font:11.5px var(--mono);color:var(--acc);text-decoration:none;white-space:nowrap}
 .evlink:hover{text-decoration:underline}
 .hidden{display:none}
-.ses{padding:8px 18px 0;max-width:1240px;margin:0 auto}
-.sessum{font:12px var(--mono);color:var(--dim);cursor:pointer;user-select:none}
-.sessum:hover{color:var(--txt)}
-.sessum .flag{color:var(--ok)}
-.sessum .flag.off{color:var(--dim)}
-.sesbody{margin-top:8px}
 #cookie,#user,#pass{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
   border-radius:7px;padding:7px 10px;font:13px var(--mono)}
-#cookie{width:100%;font-size:12.5px}
-#user{width:190px}
-#pass{width:230px}
+#cookie{width:min(420px,60vw);font-size:12.5px}
+#user{width:170px}
+#pass{width:200px}
 #cookie:focus,#user:focus,#pass:focus{outline:none;border-color:var(--acc)}
-.authrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.rawck{margin-top:9px;border-top:1px solid var(--line);padding-top:9px}
-.rawck summary{cursor:pointer;font:11.5px var(--mono);color:var(--dim)}
+.authbox{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.authin{color:var(--ok);font:12px var(--mono);white-space:nowrap}
+.authrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0}
+.rawck summary{cursor:pointer;font:11.5px var(--mono);color:var(--dim);white-space:nowrap}
 .rawck input{margin-top:7px}
-.ses.warn .sessum{background:rgba(248,113,113,.14);border-radius:6px;padding:1px 5px}
-.seshint{margin-top:6px;font:11.5px var(--mono);color:var(--dim)}
+.seshint{margin:6px 0 0;font:11.5px var(--mono);color:var(--dim);max-width:420px}
 .seshint code{font:11.5px var(--mono);color:var(--txt)}
 </style>
 </head>
@@ -159,26 +153,6 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
   </div>
   <div id="status" class="status"></div>
 </header>
-<details id="ses" class="ses">
-  <summary class="sessum">Account <span id="sesstate" class="flag off">not signed in</span></summary>
-  <div class="sesbody">
-    <div class="authrow">
-      <input id="user" type="text" autocomplete="username" placeholder="MHQ username">
-      <input id="pass" type="password" autocomplete="current-password" placeholder="password">
-      <button id="login" type="button">Log in</button>
-      <button id="logout" type="button" class="ghost">Log out</button>
-    </div>
-    <p class="seshint" id="seshint">MHQ account, needed for organiser/admin URLs.</p>
-    <details class="rawck">
-      <summary>or paste a session cookie instead</summary>
-      <input id="cookie" type="text" spellcheck="false" autocomplete="off"
-             placeholder="sessionid=...; csrftoken=...">
-      <p class="seshint">Paste a cookie directly if you would rather not log in through here:
-         DevTools -> Network -> reload -> copy the <b>Cookie</b> request header. Kept in this
-         browser only.</p>
-    </details>
-  </div>
-</details>
 <div id="evpanel" class="evpanel hidden">
   <div class="evhead">
     <input id="evq" type="search" placeholder="Filter events…">
@@ -189,6 +163,26 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
       <option value="teams">Teams</option>
     </select>
     <label class="chk" title="List only the events you organise. Replaces the sitemap scan, which cannot see private or not-yet-published events. Needs a login."><input id="evadmin" type="checkbox"> organiser view</label>
+    <!-- Sign-in sits next to organiser view, not at the top of the page: the
+         public sitemap needs no session, so this is the one place an ask is
+         ever warranted. Shown on organiser view, on an organiser URL in the
+         box, or after a parse that came back 401. -->
+    <span id="authbox" class="authbox hidden">
+      <span id="signed" class="authin hidden"></span>
+      <button id="logout" type="button" class="ghost hidden">Sign out</button>
+      <form id="authform" class="authrow hidden" autocomplete="on">
+        <input id="user" type="text" autocomplete="username" placeholder="MHQ username" aria-label="MHQ username">
+        <input id="pass" type="password" autocomplete="current-password" placeholder="password" aria-label="MHQ password">
+        <button id="login" type="submit">Sign in</button>
+      </form>
+      <details id="rawck" class="rawck hidden">
+        <summary>or paste a session cookie instead</summary>
+        <input id="cookie" type="text" spellcheck="false" autocomplete="off"
+               placeholder="sessionid=...; csrftoken=..." aria-label="MHQ session cookie">
+        <p class="seshint">DevTools -> Network -> reload -> copy the <b>Cookie</b> request header.
+           Kept in this browser only.</p>
+      </details>
+    </span>
     <span id="evinfo" class="shown"></span>
     <span class="spacer"></span>
     <button id="evclose" type="button" class="ghost">Close</button>
@@ -253,7 +247,8 @@ function blobOf(p) {
 function showResult(j, ms, via) {
   data = j;
   render();
-  setStatus(j.count + ' armies parsed ' + via + 'in ' + Math.round(ms) + ' ms', 'ok');
+  setStatus(j.count + ' arm' + (j.count === 1 ? 'y' : 'ies') + ' parsed ' + via +
+    'in ' + Math.round(ms) + ' ms', 'ok');
 }
 
 async function parse() {
@@ -278,12 +273,12 @@ async function parse() {
     showResult(j, performance.now() - t0, '');
   } catch (e) {
     if (e.auth) {
-      var d = $('#ses');
-      if (d) {
-        d.open = true;
-        var ci = $('#pass') || $('#cookie');
-        if (ci) ci.focus();
-      }
+      // An organiser URL with no session. Open the one place that can fix it
+      // and remember the URL: signing in from there re-runs this parse.
+      retryUrl = url;
+      $('#evpanel').classList.remove('hidden');
+      setState();
+      focusLogin();
     }
     setStatus(String(e.message || e), 'err');
   } finally {
@@ -588,6 +583,9 @@ var evLoading = false;
 // the caller's own organised events. Reopening the picker with a different
 // mode must refetch, not render a stale list.
 var evMode = null;
+// True when the organiser list came back empty because there is no session,
+// rather than because nothing matched: it decides what the empty list says.
+var evAuthPrompt = false;
 
 var evPollTimer = null;
 var evReqId = 0;
@@ -597,6 +595,9 @@ function showEvents() {
   var want = $('#evadmin').checked ? 'mine' : 'all';
   if ((!evCache.length || evMode !== want) && !evLoading) loadEvents();
   else renderEvList();
+  // Opening the panel is what makes organiser view reachable at all, so the
+  // sign-in that goes with it is decided here rather than on every keypress.
+  setState();
 }
 
 function stopPolling() {
@@ -622,10 +623,12 @@ function loadEvents() {
       if (j.error) throw new Error(j.error);
       evMode = mine ? 'mine' : 'all';
       evCache = mine ? (j.organized || []) : (j.events || []);
+      // Before renderEvList: it reads the flag to decide what an empty list says.
+      if (mine) evAuthPrompt = !!j.auth;
       renderEvList();
       if (mine) {
         $('#evinfo').textContent = j.auth
-          ? 'log in above to list your organised events'
+          ? 'sign in to list the events you organise'
           : evCache.length + ' event' + (evCache.length === 1 ? '' : 's') + ' you organise';
       } else if (j.done === true) {
         $('#evinfo').textContent = j.count + ' events in the last ' + windowLabel(j.windowDays) +
@@ -699,7 +702,9 @@ function renderEvList() {
     row.appendChild(link);
     list.appendChild(row);
   }
-  if (!n) list.appendChild(el('div', 'shown', 'no matching events'));
+  // With no session the organiser list is empty for want of one, not for want
+  // of a match: the info line above says so, so do not also claim none exists.
+  if (!n && !evAuthPrompt) list.appendChild(el('div', 'shown', 'no matching events'));
   $('#evinfo').textContent = n + ' of ' + evCache.length + ' events';
 }
 
@@ -738,16 +743,34 @@ $('#file').addEventListener('change', function () {
 });
 
 $('#browse').addEventListener('click', showEvents);
-$('#evclose').addEventListener('click', function () { $('#evpanel').classList.add('hidden'); stopPolling(); });
+$('#evclose').addEventListener('click', function () {
+  $('#evpanel').classList.add('hidden');
+  stopPolling();
+  setState();
+});
 $('#evq').addEventListener('input', renderEvList);
 $('#evfmt').addEventListener('change', renderEvList);
-$('#evadmin').addEventListener('change', function () { evCache = []; loadEvents(); });
+$('#evadmin').addEventListener('change', function () {
+  evCache = [];
+  loadEvents();
+  setState();
+  // Ticking the box is a deliberate move into organiser view: start the form
+  // where it has to be filled in rather than making the user find it.
+  if (needsAuth() && !cookieOf()) focusLogin();
+});
+// An organiser URL pasted by hand needs the session too, so keep the sign-in
+// in step with the box without opening the panel on every keystroke.
+$('#url').addEventListener('input', setState);
 
-// Account for organiser/admin URLs. The server only brokers the login: it never
-// keeps a credential, so the session cookie comes back here and lives in
+// Session for organiser/admin URLs. The server only brokers the login: it
+// never keeps a credential, so the session cookie comes back here and lives in
 // localStorage, sent with every /parse. That is also why login and logout are
 // local operations - there is nothing on the server to clear.
 var COOKIE_KEY = 'mhq_cookie';
+var USER_KEY = 'mhq_user';
+// The URL that came back 401, kept so signing in can finish what was started
+// instead of leaving the user to press Parse a second time.
+var retryUrl = null;
 function cookieOf() {
   var c = $('#cookie');
   return c && c.value.trim() ? c.value.trim() : null;
@@ -755,24 +778,54 @@ function cookieOf() {
 function storeCookie() {
   try { localStorage.setItem(COOKIE_KEY, cookieOf() || ''); } catch (e) {}
 }
-function stateLabel(label, on) {
-  var s = $('#sesstate');
-  if (!s) return;
-  s.textContent = on ? label : 'not signed in';
-  s.className = 'flag' + (on ? '' : ' off');
+// The username is not a secret and a session lives about two weeks, so keeping
+// it means an expired session costs one field rather than both.
+function storeUser() {
+  try { localStorage.setItem(USER_KEY, $('#user').value.trim()); } catch (e) {}
+}
+function isAdminUrl(u) { return /\/administrate\//.test(u || ''); }
+// A session is asked for exactly when the content needs one: organiser view,
+// an organiser URL already in the box, or a parse that just failed on auth.
+// Public events come from the sitemap and need nothing.
+function needsAuth() {
+  return $('#evadmin').checked || isAdminUrl($('#url').value);
 }
 function setState() {
+  var open = !$('#evpanel').classList.contains('hidden');
+  var c = cookieOf();
   var u = $('#user').value.trim();
-  stateLabel(cookieOf() ? (u ? 'signed in as ' + u : 'signed in') : '', !!cookieOf());
+  // Signed in but browsing public events: say so, ask nothing. That state is
+  // worth showing (it explains why an admin URL works) and costs no space.
+  $('#authbox').classList.toggle('hidden', !open || (!needsAuth() && !c));
+  $('#authform').classList.toggle('hidden', !!c);
+  $('#rawck').classList.toggle('hidden', !!c);
+  $('#signed').classList.toggle('hidden', !c);
+  $('#logout').classList.toggle('hidden', !c);
+  $('#signed').textContent = c ? (u ? 'signed in as ' + u : 'signed in') : '';
 }
-function doLogin() {
+// Land on whichever field still needs filling.
+function focusLogin() {
+  var f = $('#user').value.trim() ? $('#pass') : $('#user');
+  if (f) f.focus();
+}
+// The organiser list is behind the session, so it has to be re-read once one
+// exists - and re-read on sign-out too, or the list stays up with no way left
+// to fetch it.
+function refreshAfterAuth() {
+  if (!$('#evadmin').checked) return;
+  evCache = [];
+  loadEvents();
+}
+function doLogin(e) {
+  if (e) e.preventDefault();
   var b = $('#login');
+  var who = $('#user').value.trim();
   b.disabled = true;
   fetch('/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      username: $('#user').value.trim(),
+      username: who,
       password: $('#pass').value,
     }),
   }).then(function (r) { return r.json(); })
@@ -780,21 +833,38 @@ function doLogin() {
       if (!j || !j.cookie) throw new Error((j && j.error) || 'login failed');
       $('#cookie').value = j.cookie;
       storeCookie();
+      storeUser();
       $('#pass').value = '';
       setState();
+      setStatus('signed in as ' + who, 'ok');
+      refreshAfterAuth();
+      // A parse was refused for want of a session a moment ago: run it again
+      // now that there is one, rather than asking the user to press Parse.
+      if (retryUrl) {
+        var url = retryUrl;
+        retryUrl = null;
+        $('#url').value = url;
+        parse();
+      }
     })
     .catch(function (e) { setStatus(String(e.message || e), 'err'); })
     .finally(function () { b.disabled = false; });
 }
 (function initSes() {
   try { $('#cookie').value = localStorage.getItem(COOKIE_KEY) || ''; } catch (e) {}
+  try { $('#user').value = localStorage.getItem(USER_KEY) || ''; } catch (e) {}
   $('#cookie').addEventListener('input', function () { storeCookie(); setState(); });
-  $('#login').addEventListener('click', doLogin);
+  // 'change' rather than 'input': a pasted cookie should fetch the organiser
+  // list once it is finished, not on every keystroke.
+  $('#cookie').addEventListener('change', function () { storeCookie(); setState(); refreshAfterAuth(); });
+  $('#authform').addEventListener('submit', doLogin);
   $('#logout').addEventListener('click', function () {
     $('#cookie').value = '';
     $('#pass').value = '';
     storeCookie();
     setState();
+    setStatus('signed out');
+    refreshAfterAuth();
   });
   setState();
 })();

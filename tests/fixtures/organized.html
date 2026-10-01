@@ -1,0 +1,524 @@
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My organized tournaments | MiniHeadQuarters</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    
+
+<link rel="stylesheet" type="text/css" href="/static/css/dist/styles.27082cd9d5b9.css">
+
+
+    
+    
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/base/img/apple-touch-icon.0b123100bf2d.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/base/img/favicon-32x32.fb83e8eb14ad.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/base/img/favicon-16x16.fc7db748d8a0.png">
+    <link rel="icon" href="/static/base/img/favicon.ac629b028f5d.ico">
+
+    <script src="https://kit.fontawesome.com/9ac22e37d6.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased">
+    <header class="sticky top-0 z-50 border-b border-white/10 bg-slate-950/90 backdrop-blur">
+        <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 items-center justify-between gap-4">
+                <a href="/" class="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <img src="/static/base/img/logo.3e47dcf11ae4.png" alt="" class="h-8 w-8">
+                    <div class="leading-tight">
+                        <div class="text-sm font-semibold tracking-wide text-white">MiniHeadQuarters</div>
+                        <div class="text-xs text-slate-400">Competitive wargaming</div>
+                    </div>
+                </a>
+
+                <div class="hidden items-center gap-2 lg:flex">
+                    <details class="relative group" id="tournaments-menu-desktop">
+                        <summary class="list-none cursor-pointer rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/60">
+                            <span class="inline-flex items-center gap-2">
+                                Tournaments
+                                <i class="fa-solid fa-chevron-down text-xs text-slate-500 transition group-open:rotate-180"></i>
+                            </span>
+                        </summary>
+
+                        <div class="absolute left-0 z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl shadow-black/40">
+                            <div class="border-b border-white/10 px-4 py-3">
+                                <p class="text-xs uppercase tracking-wider text-slate-400">Tournaments</p>
+                                <p class="mt-1 text-sm text-slate-300">Tournament type</p>
+                            </div>
+
+                            <div class="p-2">
+                                <a href="/tournaments/individual/"
+                                   class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Individual</a>
+                                <a href="/tournaments/side-by-side/"
+                                   class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">2v2</a>
+                                <a href="/tournaments/team/"
+                                   class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Team</a>
+
+                                <div class="my-2 border-t border-white/10"></div>
+
+                                <a href="/tournaments/create/select-type"
+                                   class="flex rounded-xl bg-orange-500/10 px-3 py-2 text-sm font-medium text-orange-300 transition hover:bg-orange-500/20 hover:text-orange-200">
+                                    <i class="fa-solid fa-plus mr-2 mt-0.5"></i>
+                                    Create a tournament
+                                </a>
+                            </div>
+                        </div>
+                    </details>
+                    <a href="/elo/seasons/solo"
+                       class="rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                        Rankings
+                    </a>
+                    <details class="relative group" id="meta-menu-desktop">
+                        <summary class="list-none cursor-pointer rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/60">
+                            <span class="inline-flex items-center gap-2">
+                                Meta
+                                <i class="fa-solid fa-chevron-down text-xs text-slate-500 transition group-open:rotate-180"></i>
+                            </span>
+                        </summary>
+
+                        <div class="absolute left-0 z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl shadow-black/40">
+                            <div class="border-b border-white/10 px-4 py-3">
+                                <p class="text-xs uppercase tracking-wider text-slate-400">Meta</p>
+                                <p class="mt-1 text-sm text-slate-300">Choose a game system</p>
+                            </div>
+
+                            <div class="p-2">
+                                
+                                    <a href="/meta/solo/warhammer-40000/stats/"
+                                       class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Warhammer 40000</a>
+                                
+                            </div>
+                        </div>
+                    </details>
+
+                    
+                        <a href="/users/players-map"
+                           class="rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                            Players map
+                        </a>
+
+                        <details class="relative" id="user-menu-desktop">
+                            <summary class="list-none cursor-pointer rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-orange-500/40 hover:bg-orange-500/10">
+                                <span class="inline-flex items-center gap-2">
+                                    <span class="h-2 w-2 rounded-full bg-orange-400"></span>
+                                    Mandal
+                                    <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+                                </span>
+                            </summary>
+
+                            <div class="absolute right-0 mt-3 w-72 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl shadow-black/40">
+                                <div class="border-b border-white/10 px-4 py-3">
+                                    <p class="text-xs uppercase tracking-wider text-slate-400">My account</p>
+                                    <p class="mt-1 truncate text-sm font-semibold text-white">Mandal</p>
+                                </div>
+
+                                <div class="p-2">
+                                    <a class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white"
+                                       href="/users/profile/mandal-1841">My profile</a>
+                                    <a class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white"
+                                       href="/army-lists/my">My lists</a>
+                                    <a class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white"
+                                       href="/users/games-history/mandal-1841/solo">My games</a>
+                                    <a class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white"
+                                       href="/users/elo-rankings/mandal-1841">My rankings</a>
+                                    <a class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white"
+                                       href="/users/my-registered-tournaments">My tournaments</a>
+                                    <a class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white"
+                                       href="/teams/list">Teams</a>
+                                    <a class="flex rounded-xl px-3 py-2 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white"
+                                       href="/users/my-organized-tournaments">My organized tournaments</a>
+                                    
+
+                                    <div class="my-2 border-t border-white/10"></div>
+
+                                    <form method="post" action="/users/logout">
+                                        <input type="hidden" name="csrfmiddlewaretoken" value="bg0GNAj1SoI7txb2gVPcIetIRhwcsnfLPAVS2sT5qCwWA1uFSQtZEDyyiyezscl6">
+                                        <button type="submit"
+                                                class="flex w-full rounded-xl px-3 py-2 text-left text-sm text-red-300 transition hover:bg-red-500/10 hover:text-red-200 cursor-pointer">
+                                            Log out
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </details>
+                    
+                </div>
+
+                <button
+                    type="button"
+                    id="mobile-menu-button"
+                    class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-200 transition hover:border-orange-500/40 hover:bg-orange-500/10 lg:hidden"
+                    aria-expanded="false"
+                    aria-controls="mobile-menu-panel"
+                    aria-label="Ouvrir">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+        </nav>
+
+        <div id="mobile-menu-overlay" class="fixed inset-0 z-[55] hidden bg-black/60 backdrop-blur-sm lg:hidden"></div>
+
+        <aside
+            id="mobile-menu-panel"
+            class="fixed inset-x-0 top-0 z-[60] hidden max-h-[100dvh] overflow-y-auto border-b border-white/10 bg-slate-900 shadow-2xl shadow-black/50 lg:hidden">
+            <div class="sticky top-0 border-b border-white/10 bg-slate-900/95 backdrop-blur">
+                <div class="flex items-center justify-between px-4 py-4">
+                    <div class="flex items-center gap-3">
+                        <img src="/static/base/img/logo.3e47dcf11ae4.png" alt="" class="h-10 w-10">
+                        <div>
+                            <div class="text-sm font-semibold text-white">MiniHeadQuarters</div>
+                            <div class="text-xs text-slate-400">MiniHeadQuarters</div>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        id="mobile-menu-close"
+                        class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-200 transition hover:bg-white/10"
+                        aria-label="Fermer">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-5 px-4 py-4">
+                <section>
+                    <p class="mb-2 text-xs uppercase tracking-wider text-slate-400">Navigation</p>
+                    <div class="space-y-2">
+                        <a href="/"
+                           class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/5 hover:text-white">
+                            Home
+                        </a>
+                        <details class="rounded-2xl border border-white/10 bg-white/5">
+                            <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-2xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/60">
+                                <span>Tournaments</span>
+                                <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
+                            </summary>
+                            <div class="space-y-1 px-2 pb-2">
+                                <a href="/tournaments/individual/"
+                                   class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Individual</a>
+                                <a href="/tournaments/side-by-side/"
+                                   class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">2v2</a>
+                                <a href="/tournaments/team/"
+                                   class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Team</a>
+                                <div class="mx-2 my-2 border-t border-white/10"></div>
+                                <a href="/tournaments/create/select-type"
+                                   class="flex min-h-11 items-center rounded-xl bg-orange-500/10 px-3 py-3 text-sm font-medium text-orange-300 transition hover:bg-orange-500/20 hover:text-orange-200">
+                                    <i class="fa-solid fa-plus mr-2"></i>
+                                    Create a tournament
+                                </a>
+                            </div>
+                        </details>
+                        <a href="/elo/seasons/solo"
+                           class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/5 hover:text-white">
+                            Rankings
+                        </a>
+                        <details class="rounded-2xl border border-white/10 bg-white/5">
+                            <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-2xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/60">
+                                <span>Meta</span>
+                                <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
+                            </summary>
+                            <div class="space-y-1 px-2 pb-2">
+                                
+                                    <a href="/meta/solo/warhammer-40000/stats/"
+                                       class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Warhammer 40000</a>
+                                
+                            </div>
+                        </details>
+                        
+                            <a href="/users/players-map"
+                               class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/5 hover:text-white">
+                                Players map
+                            </a>
+                        
+                    </div>
+                </section>
+
+                <div class="border-t border-white/10"></div>
+
+                
+                    <section>
+                        <p class="mb-2 text-xs uppercase tracking-wider text-slate-400">My account</p>
+
+                        <div class="mb-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                            <p class="text-xs uppercase tracking-wider text-slate-400">Logged in as</p>
+                            <p class="mt-1 truncate text-sm font-semibold text-white">Mandal</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <a href="/users/profile/mandal-1841"
+                               class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">My profile</a>
+                            <a href="/army-lists/my"
+                               class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">My lists</a>
+                            <a href="/users/games-history/mandal-1841/solo"
+                               class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">My games</a>
+                            <a href="/users/elo-rankings/mandal-1841"
+                               class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">My rankings</a>
+                            <a href="/users/my-registered-tournaments"
+                               class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">My tournaments</a>
+                            <a href="/teams/list"
+                               class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">Teams</a>
+                            <a href="/users/my-organized-tournaments"
+                               class="flex min-h-11 items-center rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/5 hover:text-white">My organized tournaments</a>
+                            
+                        </div>
+                    </section>
+
+                    <div class="border-t border-white/10"></div>
+
+                    <form method="post" action="/users/logout">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="bg0GNAj1SoI7txb2gVPcIetIRhwcsnfLPAVS2sT5qCwWA1uFSQtZEDyyiyezscl6">
+                        <button type="submit"
+                                class="flex min-h-11 w-full items-center rounded-xl px-3 py-3 text-left text-sm font-medium text-red-300 transition hover:bg-red-500/10 hover:text-red-200">
+                            Log out
+                        </button>
+                    </form>
+                
+            </div>
+        </aside>
+    </header>
+
+    
+    <div class="border-b border-white/10 bg-slate-900/60">
+        <div class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+            <nav aria-label="breadcrumb">
+                <ol class="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+                    <li>
+                        <a href="/" class="transition hover:text-white">
+                            Home
+                        </a>
+                    </li>
+                    <li class="text-slate-600">/</li>
+                    <li class="font-medium text-slate-200">
+                        My organized tournaments
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+
+    <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        
+    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <section class="rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-lg shadow-black/10 sm:p-8">
+            <div class="flex flex-col gap-6">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p class="text-sm font-semibold uppercase tracking-[0.24em] text-orange-400">
+                            Tournaments
+                        </p>
+                        <h1 class="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                            My organized tournaments
+                        </h1>
+                    </div>
+                </div>
+
+                
+                    <div class="overflow-hidden rounded-2xl border border-white/10">
+                        <table class="min-w-full divide-y divide-white/10">
+                            <thead class="bg-white/5">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 sm:px-6">
+                                        Name
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/10 bg-slate-950/40">
+                                
+                                    <tr class="transition hover:bg-orange-500/10 ">
+                                        <td class="px-4 py-4 sm:px-6">
+                                            <a href="/tournaments/team/details/bogos-team-6-des-sous-terre-2026-10-10"
+                                               class="block rounded-xl transition focus:outline-none focus:ring-2 focus:ring-orange-300">
+                                                <div class="text-sm font-medium text-white transition group-hover:text-orange-300 sm:text-base">
+                                                    BOGOS Team : 6 dés sous terre
+                                                </div>
+                                                <div class="mt-1 text-sm text-slate-300 transition group-hover:text-orange-200">
+                                                    Oct. 10, 2026
+                                                </div>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                
+                                    <tr class="transition hover:bg-orange-500/10 opacity-60">
+                                        <td class="px-4 py-4 sm:px-6">
+                                            <a href="/tournaments/side-by-side/details/bogos-spring-duo-couple-therapy-2026-05-16"
+                                               class="block rounded-xl transition focus:outline-none focus:ring-2 focus:ring-orange-300">
+                                                <div class="text-sm font-medium text-white transition group-hover:text-orange-300 sm:text-base">
+                                                    Annulé - BOGOS Spring Duo : couple therapy
+                                                </div>
+                                                <div class="mt-1 text-sm text-slate-300 transition group-hover:text-orange-200">
+                                                    May 16, 2026
+                                                </div>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                
+                                    <tr class="transition hover:bg-orange-500/10 opacity-60">
+                                        <td class="px-4 py-4 sm:px-6">
+                                            <a href="/tournaments/team/details/bogos-spring-team-6-lances-ca-tourne-2026-03-21"
+                                               class="block rounded-xl transition focus:outline-none focus:ring-2 focus:ring-orange-300">
+                                                <div class="text-sm font-medium text-white transition group-hover:text-orange-300 sm:text-base">
+                                                    BOGOS Spring Team : 6 lances ça tourne !
+                                                </div>
+                                                <div class="mt-1 text-sm text-slate-300 transition group-hover:text-orange-200">
+                                                    March 21, 2026
+                                                </div>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                
+                                    <tr class="transition hover:bg-orange-500/10 opacity-60">
+                                        <td class="px-4 py-4 sm:px-6">
+                                            <a href="/tournaments/individual/details/la-rentree-des-bogos-2025-10-04"
+                                               class="block rounded-xl transition focus:outline-none focus:ring-2 focus:ring-orange-300">
+                                                <div class="text-sm font-medium text-white transition group-hover:text-orange-300 sm:text-base">
+                                                    La rentrée des BOGOS : le retour
+                                                </div>
+                                                <div class="mt-1 text-sm text-slate-300 transition group-hover:text-orange-200">
+                                                    Oct. 4, 2025
+                                                </div>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                
+                            </tbody>
+                        </table>
+                    </div>
+                
+            </div>
+        </section>
+    </div>
+
+    </main>
+
+    <footer class="border-t border-white/10 bg-slate-950">
+        <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-6 py-5 text-center text-sm text-slate-400">
+                <p>
+                    
+                        MiniHeadQuarters - A question? Contact the team at <a class="text-orange-400 transition hover:text-orange-300" href="/cdn-cgi/l/email-protection#b7daded9dedfd2d6d3c6c2d6c5c3d2c5c4f7d0dad6dedb99d4d8da"><span class="__cf_email__" data-cfemail="85e8ecebecede0e4e1f4f0e4f7f1e0f7f6c5e2e8e4ece9abe6eae8">[email&#160;protected]</span></a> and we will be happy to answer you!
+                    
+                    <span class="mx-2 text-slate-600">•</span>
+                    <a class="text-slate-300 transition hover:text-white" href="/docs/">Documentation</a>
+                    <span class="mx-2 text-slate-600">•</span>
+                    <a class="text-slate-300 transition hover:text-white" href="/tcu">Terms and Conditions of Use</a>
+                </p>
+                <p class="mt-2 text-xs text-slate-500">All product names, logos and trademarks are the property of their respective owners. All company, product and service names used on this website are for identification purposes only. The use of these names, logos and trademarks does not imply any approval.</p>
+            </div>
+        </div>
+    </footer>
+
+    
+        <div class="fixed right-4 top-4 z-[70] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3">
+            
+                <div id="message-1"
+                     class="rounded-2xl border border-white/10 bg-slate-900/95 p-4 shadow-xl shadow-black/30 backdrop-blur
+                            ring-1 ring-emerald-500/40"
+                     role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="flex items-start gap-3">
+                        <div class="mt-0.5">
+                            
+                                <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                            
+                        </div>
+                        <div class="min-w-0 flex-1 text-sm text-slate-100">
+                            You are now logged in!
+                        </div>
+                        <button type="button"
+                                class="ml-2 text-slate-400 transition hover:text-white"
+                                aria-label="Fermer"
+                                onclick="this.closest('[role=alert]').remove()">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+            
+        </div>
+    
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/javascript">
+        const menuButton = document.getElementById('mobile-menu-button');
+        const menuPanel = document.getElementById('mobile-menu-panel');
+        const menuOverlay = document.getElementById('mobile-menu-overlay');
+        const menuClose = document.getElementById('mobile-menu-close');
+        const desktopUserMenu = document.getElementById('user-menu-desktop');
+        const desktopTournamentMenu = document.getElementById('tournaments-menu-desktop');
+        const desktopMetaMenu = document.getElementById('meta-menu-desktop');
+
+        const openMenu = () => {
+            menuPanel.classList.remove('hidden');
+            menuOverlay.classList.remove('hidden');
+            menuButton.setAttribute('aria-expanded', 'true');
+            document.body.classList.add('overflow-hidden');
+        };
+
+        const closeMenu = () => {
+            console.log("test");
+            menuPanel.classList.add('hidden');
+            menuOverlay.classList.add('hidden');
+            menuButton.setAttribute('aria-expanded', 'false');
+            document.body.classList.remove('overflow-hidden');
+            desktopUserMenu.removeAttribute('open');
+        };
+
+        menuButton.addEventListener('click', () => {
+            const isOpen = !menuPanel.classList.contains('hidden');
+            if (isOpen) {
+                closeMenu();
+            } else {
+                openMenu();
+            }
+        });
+
+        menuOverlay.addEventListener('click', closeMenu);
+
+        if (menuClose) {
+            menuClose.addEventListener('click', closeMenu);
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                if (desktopUserMenu) {
+                    closeMenu();
+                }
+                desktopTournamentMenu.removeAttribute('open');
+                desktopMetaMenu.removeAttribute('open');
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            if (desktopUserMenu && !desktopUserMenu.contains(event.target)) {
+                desktopUserMenu.removeAttribute('open');
+            }
+
+            if (!desktopTournamentMenu.contains(event.target)) {
+                desktopTournamentMenu.removeAttribute('open');
+            }
+
+            if (!desktopMetaMenu.contains(event.target)) {
+                desktopMetaMenu.removeAttribute('open');
+            }
+        });
+    </script>
+
+    
+    
+
+    
+    <script type="text/javascript">
+        setTimeout(() => {
+            document.querySelectorAll('[role="alert"]').forEach((el) => {
+                el.classList.add('transition', 'duration-300', 'opacity-0', 'translate-y-2');
+                setTimeout(() => el.remove(), 300);
+            });
+        }, 3000);
+    </script>
+    
+</body>
+</html>
