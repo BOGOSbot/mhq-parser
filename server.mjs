@@ -181,7 +181,11 @@ function filteredList(events, limit) {
 // --port / --host, with PORT / HOST env vars as fallback.
 const argv = process.argv.slice(2);
 let port = Number(process.env.PORT) || 8787;
-let host = process.env.HOST || '127.0.0.1';
+// A hosted instance has to bind every interface: loopback inside its own
+// container answers nothing, and the symptom is a connection refused that looks
+// like a broken deployment rather than a bind address. Platforms set PORT, so
+// that is the tell. A plain local run keeps loopback and stays off the network.
+let host = process.env.HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === '--port') port = Number(argv[++i]);
   else if (argv[i] === '--host') host = argv[++i];
@@ -189,8 +193,10 @@ for (let i = 0; i < argv.length; i++) {
   else if (argv[i].startsWith('--host=')) host = argv[i].slice(7);
 }
 if (!Number.isFinite(port) || port <= 0) {
-  console.error('Error: --port must be a positive integer');
-  process.exit(1);
+  // Warn and carry on. A hosted runtime treats a non-zero exit as a dead
+  // function, so a bad port should cost one slow request, not every request.
+  console.warn('Warning: --port must be a positive integer, falling back to 8787');
+  port = 8787;
 }
 
 // A JSON control message is small; a saved army-lists page is not - a 40k team
