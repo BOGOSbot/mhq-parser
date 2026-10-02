@@ -346,12 +346,18 @@ async function handleEvents(req, res, u) {
     const n = parseInt(lm, 10);
     if (Number.isFinite(n)) limit = n;
   }
-  // Two cache controls from the page. ?clear=1 throws the catalogue away and
-  // answers with nothing, so the picker empties and the next open refetches.
-  // ?refresh=1 throws it away and refetches in the same call, which is the one
-  // to reach for when the page looks stale rather than when it is.
-  const wipe = u.searchParams.get('clear') === '1' || u.searchParams.get('refresh') === '1';
-  if (wipe) {
+  // Two controls, and they are not the same thing.
+  //
+  // ?refresh=1 restarts the checking: every event is fetched and judged again,
+  // but the catalogue itself (the 2 MB sitemap) stays, so it costs no re-read.
+  // That is what you want when the scan stalled or a page was half checked.
+  // ?clear=1 throws everything away and answers with nothing, so the picker
+  // empties and the next open rebuilds from scratch.
+  if (u.searchParams.get('refresh') === '1') {
+    filterCache = new Map();
+    filterScan = null;
+  }
+  if (u.searchParams.get('clear') === '1') {
     clearEventCache();
     filterCache = new Map();
     filterScan = null;

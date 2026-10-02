@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MHQ Army Lists</title>
+<title>40k parser</title>
 <style>
 :root{
   --bg:#0f1116; --panel:#161a22; --panel2:#1c212b; --line:#2a3040;
@@ -140,7 +140,7 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 <body>
 <header>
   <div class="row">
-    <h1>MHQ Army Lists <span>parser</span></h1>
+    <h1>40k <span>parser</span></h1>
     <a class="ext" href="https://miniheadquarters.com/tournaments/team">MHQ</a>
     <form id="f">
       <input id="url" type="url" spellcheck="false" autocomplete="off"
@@ -190,8 +190,8 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
     <span id="evinfo" class="shown"></span>
     <span id="evcount" class="count"></span>
     <span class="spacer"></span>
-    <button id="evrefresh" type="button" class="ghost" title="Drop the cached catalogue and read it again from the sitemap">Refresh</button>
-    <button id="evclear" type="button" class="ghost" title="Drop the cached catalogue and the per-event checks, without reading anything">Clear cache</button>
+    <button id="evrefresh" type="button" class="ghost" title="Check every event again. Keeps the catalogue, so it starts immediately.">Refresh</button>
+    <button id="evclear" type="button" class="ghost" title="Drop the catalogue and the checks. The next Browse rebuilds both from scratch.">Clear cache</button>
     <button id="evclose" type="button" class="ghost">Close</button>
   </div>
   <div id="evlist" class="evlist"></div>
@@ -669,7 +669,7 @@ function loadEvents(opts) {
       } else if (j.total != null) {
         // A counter, not a sentence. It used to rewrite itself with a new
         // progress line every three seconds, which read as a blinking label.
-        $('#evcount').textContent = j.count + ' found · ' + j.scanned + '/' + j.total + ' checked';
+        $('#evcount').textContent = j.scanned + ' / ' + j.total + ' checked';
         if (!j.done) evPollTimer = setTimeout(loadEvents, 3000);
       }
     })
@@ -739,7 +739,9 @@ function renderEvList() {
   // With no session the organiser list is empty for want of one, not for want
   // of a match: the info line above says so, so do not also claim none exists.
   if (!n && !evAuthPrompt) list.appendChild(el('div', 'shown', 'no matching events'));
-  $('#evinfo').textContent = n + ' of ' + evCache.length + ' events';
+  // Only while filtering. Standing next to the scan counter it repeated the
+  // same number twice, which read as two different facts.
+  $('#evinfo').textContent = (q || fmt) ? n + ' of ' + evCache.length + ' listed' : '';
 }
 
 // "From file": the caller points at a MiniHeadQuarters page already saved on
