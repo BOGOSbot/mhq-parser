@@ -621,6 +621,8 @@ var evMode = null;
 // True when the organiser list came back empty because there is no session,
 // rather than because nothing matched: it decides what the empty list says.
 var evAuthPrompt = false;
+// What the last drawn list looked like, so an unchanged poll does not redraw.
+var evSig = null;
 
 var evPollTimer = null;
 var evReqId = 0;
@@ -657,10 +659,17 @@ function loadEvents(opts) {
       if (reqId !== evReqId) return;
       if (j.error) throw new Error(j.error);
       evMode = mine ? 'mine' : 'all';
-      evCache = mine ? (j.organized || []) : (j.events || []);
-      // Before renderEvList: it reads the flag to decide what an empty list says.
+      // A signature of what the payload actually says. The poll runs every few
+      // seconds and rebuilt 250 rows each time, which is the blinking: the
+      // list was destroyed and remade for numbers that had not moved.
+      var sig = mine ? 'own' : (j.scanned || 0) + '/' + (j.events || []).length;
       if (mine) evAuthPrompt = !!j.auth;
-      renderEvList();
+      if (sig !== evSig) {
+        evSig = sig;
+        evCache = mine ? (j.organized || []) : (j.events || []);
+        // Before renderEvList: it reads the flag to decide what an empty list says.
+        renderEvList();
+      }
       if (mine) {
         $('#evcount').textContent = '';
         $('#evinfo').textContent = j.auth
@@ -673,7 +682,16 @@ function loadEvents(opts) {
         if (!j.done) evPollTimer = setTimeout(loadEvents, 3000);
       }
     })
-    .catch(function (e) { if (reqId === evReqId) $('#evinfo').textContent = 'error: ' + e.message; })
+    .catch(function (e) {
+      // The list stays. A failed refresh should not empty a picker the user is
+      // reading; the message goes beside it.
+      if (reqId === evReqId) {
+        $('#evinfo').textContent = 'error: ' + e.message;
+        // Keep looking, but not every three seconds: an origin that is down
+        // should not be polled like one that is merely slow.
+        if (!mine) evPollTimer = setTimeout(loadEvents, 10000);
+      }
+    })
     .finally(function () { if (reqId === evReqId) { evLoading = false; $('#browse').disabled = false; } });
 }
 
@@ -700,6 +718,7 @@ function fmtClass(fmt) {
 
 function renderEvList() {
   var list = $('#evlist');
+  var keepScroll = list.scrollTop;
   var q = ($('#evq').value || '').toLowerCase();
   var fmt = $('#evfmt').value || '';
   list.textContent = '';
@@ -739,6 +758,7 @@ function renderEvList() {
   // With no session the organiser list is empty for want of one, not for want
   // of a match: the info line above says so, so do not also claim none exists.
   if (!n && !evAuthPrompt) list.appendChild(el('div', 'shown', 'no matching events'));
+  list.scrollTop = keepScroll;
   // Only while filtering. Standing next to the scan counter it repeated the
   // same number twice, which read as two different facts.
   $('#evinfo').textContent = (q || fmt) ? n + ' of ' + evCache.length + ' listed' : '';
@@ -787,7 +807,9 @@ $('#evclose').addEventListener('click', function () {
 $('#evq').addEventListener('input', renderEvList);
 $('#evfmt').addEventListener('change', renderEvList);
 $('#evrefresh').addEventListener('click', function () {
-  evCache = [];
+  // evSig is cleared so the next response is drawn even if the counts look the
+  // same, but the list itself is left up until something better arrives.
+  evSig = null;
   $('#evinfo').textContent = '';
   loadEvents({ refresh: true });
 });
