@@ -104,11 +104,20 @@ async function handleMyEvents(req, res) {
 // nothing. Warm instances (sitemap and filter both cached) finish much more
 // than that, which is where the real headroom is.
 const FILTER_TTL_MS = 60 * 60 * 1000;
-const FILTER_CONCURRENCY = 16;
-const FILTER_BATCH = 40;
+// Sixteen at once is what got the origin to answer 524: this is someone's
+// hobby site, not a load test. Six with a pause between batches keeps the scan
+// moving without hammering it, and a slower honest scan beats a fast one that
+// trips the throttle.
+const FILTER_CONCURRENCY = 6;
+const FILTER_BATCH = 24;
+// Pause between batches, long enough for the origin to breathe.
+const FILTER_BATCH_PAUSE_MS = 1200;
 const FILTER_WINDOW_DAYS = 365;
 let filterCache = new Map(); // detailsUrl -> { game, hasLists, at }
 let filterScan = null;       // running scan promise, or null
+// The last catalogue we managed to read, so a failed read is a stale list
+// rather than an empty one. Process memory, like the caches beside it.
+let lastWindowed = null;
 
 // First day the filter will look at, in the ISO form the sitemap uses.
 function windowStart() {
@@ -131,35 +140,65 @@ function is40k(game) {
   return /warhammer\s*40/i.test(game || '');
 }
 
+// One event's check, with a retry. A timeout or a 5xx says nothing about the
+// event, so it must not be recorded as one.
+async function checkOne(detailsUrl) {
+  try {
+    return await checkEvent(detailsUrl);
+  } catch (e) {
+    await new Promise(r => setTimeout(r, 800));
+    return await checkEvent(detailsUrl); // a second failure is caught below
+  }
+}
+
+// Drain the queue in the background, one bounded batch at a time.
+//
+// It used to stop after FILTER_BATCH and wait for the next HTTP request to
+// start another. That made progress a function of how often someone looked:
+// open the page, walk away, and the scan sat at 40 until the next click. The
+// request only reads the cache now; the scan runs on its own.
+//
+// An event that fails is left uncached, so the next pass retries it. Caching a
+// failure as "checked, no lists" is the worst of both: the row disappears from
+// the picker and stays gone for the whole TTL.
 async function runScan(events) {
   if (filterScan) return filterScan;
   filterScan = (async () => {
-    const toCheck = events.filter(e => {
-      const c = filterCache.get(e.detailsUrl);
-      return !c || Date.now() - c.at > FILTER_TTL_MS;
-    });
-    const queue = toCheck.slice(0, FILTER_BATCH);
-    const workers = [];
-    const n = Math.min(FILTER_CONCURRENCY, queue.length || 1);
-    for (let i = 0; i < n; i++) {
-      workers.push((async () => {
-        while (queue.length) {
-          const e = queue.shift();
-          try {
-            const r = await checkEvent(e.detailsUrl);
-            filterCache.set(e.detailsUrl, { ...r, at: Date.now() });
-          } catch {
-            filterCache.set(e.detailsUrl, { game: null, hasLists: false, at: Date.now() });
-          }
+    try {
+      while (true) {
+        const queue = events.filter(e => {
+          const c = filterCache.get(e.detailsUrl);
+          return !c || Date.now() - c.at > FILTER_TTL_MS;
+        }).slice(0, FILTER_BATCH);
+        if (!queue.length) break;
+        let checked = 0;
+        const workers = [];
+        const n = Math.min(FILTER_CONCURRENCY, queue.length);
+        for (let i = 0; i < n; i++) {
+          workers.push((async () => {
+            while (queue.length) {
+              const e = queue.shift();
+              try {
+                const r = await checkOne(e.detailsUrl);
+                filterCache.set(e.detailsUrl, { ...r, at: Date.now() });
+                checked++;
+              } catch {
+                // Still failing: leave it uncached and try again next pass.
+              }
+            }
+          })());
         }
-      })());
+        await Promise.all(workers);
+        // Everything in the batch failed. Sleeping longer than a pause is the
+        // difference between backing off and hammering a site that is down.
+        await new Promise(r => setTimeout(r, checked === 0 ? 15000 : FILTER_BATCH_PAUSE_MS));
+      }
+    } finally {
+      filterScan = null;
     }
-    await Promise.all(workers);
-    filterScan = null;
   })();
   return filterScan;
 }
-
 function scanProgress(events) {
   let scanned = 0;
   for (const e of events) {
@@ -372,7 +411,8 @@ async function handleEvents(req, res, u) {
     // would mean the scan can never finish.
     const all = await getAllEvents();
     const windowed = withinWindow(all);
-    runScan(windowed); // fire and forget: the scan fills the cache in the background
+    lastWindowed = windowed;
+    runScan(windowed); // fire and forget: the scan drains the queue on its own
     const progress = scanProgress(windowed);
     const fl = filteredList(windowed, limit);
     return json(res, 200, {
@@ -384,6 +424,22 @@ async function handleEvents(req, res, u) {
       windowDays: FILTER_WINDOW_DAYS,
     });
   } catch (e) {
+    // The catalogue could not be read. If we have one from a moment ago, hand
+    // it back with the error attached rather than emptying the picker: a
+    // throttled origin should cost a stale list, not a blank panel and an
+    // error where the numbers should be.
+    if (lastWindowed && lastWindowed.length) {
+      return json(res, 200, {
+        events: filteredList(lastWindowed, limit),
+        count: filteredList(lastWindowed, limit).length,
+        scanned: scanProgress(lastWindowed).scanned,
+        total: scanProgress(lastWindowed).total,
+        done: false,
+        stale: true,
+        error: String((e && e.message) || e),
+        windowDays: FILTER_WINDOW_DAYS,
+      });
+    }
     return json(res, 502, { error: String((e && e.message) || e) });
   }
 }
