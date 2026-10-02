@@ -100,16 +100,31 @@ function parseArgs(argv) {
 // ============================================================
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
-function httpRequest(method, url, { headers = {}, body = null } = {}) {
+// Every request gets a deadline. The origin is a small site behind a CDN and
+// it does stall: without a timeout a single hung connection holds the request
+// open forever, and with it the /events request and the function budget that
+// was serving it. Twenty seconds is well above the ~10s the sitemap takes;
+// MHQ_TIMEOUT_MS raises it when the site is merely slow.
+const REQUEST_TIMEOUT_MS = Number(process.env.MHQ_TIMEOUT_MS) || 20000;
+
+function httpRequest(method, url, { headers = {}, body = null, timeout = REQUEST_TIMEOUT_MS } = {}) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     const h = { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', ...headers };
+    // A late error after the timeout fired must not settle the promise twice.
+    let settled = false;
+    const done = (fn, arg) => { if (settled) return; settled = true; fn(arg); };
     const req = https.request({ method, hostname: u.hostname, path: u.pathname + u.search, headers: h }, r => {
       const chunks = [];
       r.on('data', c => chunks.push(c));
-      r.on('end', () => resolve({ status: r.statusCode, headers: r.headers, html: Buffer.concat(chunks).toString('utf8') }));
+      r.on('end', () => done(resolve, { status: r.statusCode, headers: r.headers, html: Buffer.concat(chunks).toString('utf8') }));
+      r.on('error', e => done(reject, e));
     });
-    req.on('error', reject);
+    req.setTimeout(timeout, () => {
+      req.destroy();
+      done(reject, new Error('request timed out after ' + timeout + 'ms: ' + url));
+    });
+    req.on('error', e => done(reject, e));
     if (body) req.write(body);
     req.end();
   });
