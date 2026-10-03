@@ -1,0 +1,72 @@
++++++++++++++++++++++++++++++++++++++++++++++++
++ FACTION KEYWORD: Xenos - Aeldari
++ DETACHMENT: Fateful Performance, Seer Council (Acrobatic Onslaught)
++ FORCE DISPOSITION: Disruption
++ TOTAL ARMY POINTS: 2000pts
++
++ WARLORD: Char2: Eldrad Ulthran
++ ENHANCEMENT: Torc of Morai-Heg (on Char6: Farseer)
+& Stone of Eldritch Fury (on Char7: Farseer Skyrunner)
++ NUMBER OF UNITS: 21
++ SECONDARY: - Bring It Down: (3x2) - Assassination: 9 Characters
++++++++++++++++++++++++++++++++++++++++++++++++
+
+Char1: 1x Asurmen (135 pts)
+Leading Dire Avengers
+Char2: 1x Eldrad Ulthran (120 pts): Warlord
+Leading Storm Guardians[2]
+Char6: 1x Farseer (80 pts): Singing Spear
+Enhancement: Torc of Morai-Heg (+20 pts)
+Leading Storm Guardians[1]
+Char7: 1x Farseer Skyrunner (75 pts): Singing Spear
+Enhancement: Stone of Eldritch Fury (+15 pts)
+Char8: 1x Farseer Skyrunner (60 pts): Singing Spear
+Char9: 1x Farseer Skyrunner (60 pts): Singing Spear
+Char3: 1x Fuegan (130 pts)
+Leading Fire Dragons
+Char4: 1x Jain Zar (105 pts)
+Leading Howling Banshees
+Char5: 1x Solitaire (105 pts)
+
+11x Storm Guardians (100 pts)
+• 6x Storm Guardian: 6 with Close Combat Weapon, Shuriken Pistol
+• 2x Storm Guardian with Flamer: 2 with Close Combat Weapon, Flamer
+• 2x Storm Guardian with Fusion Gun & Power Sword: 2 with Fusion gun, Power sword
+• 1x Serpent's Scale Platform
+  Attached to Farseer
+  Attached to Warlock Conclave[1]
+11x Storm Guardians (100 pts)
+• 6x Storm Guardian: 6 with Close Combat Weapon, Shuriken Pistol
+• 2x Storm Guardian with Flamer: 2 with Close Combat Weapon, Flamer
+• 2x Storm Guardian with Fusion Gun & Power Sword: 2 with Fusion gun, Power sword
+• 1x Serpent's Scale Platform
+  Attached to Eldrad Ulthran
+  Attached to Warlock Conclave[2]
+
+10x Dire Avengers (140 pts): 2x Aspect Shrine Token
+• 1x Dire Avenger Exarch: Two Avenger Shuriken Catapults
+• 9x Dire Avenger
+  Attached to Asurmen
+5x Fire Dragons (110 pts): Aspect Shrine Token
+• 1x Fire Dragon Exarch: Exarch's Dragon Fusion Gun
+• 4x Fire Dragon
+  Attached to Fuegan
+5x Howling Banshees (85 pts): Aspect Shrine Token
+• 1x Howling Banshee Exarch: Executioner and Shuriken Pistol
+• 4x Howling Banshee
+  Attached to Jain Zar
+5x Rangers (60 pts)
+1x Starweaver (70 pts)
+5x Troupe (85 pts)
+• 1x Lead Player: Power sword, Fusion Pistol
+• 1x Player with Harlequin's Blade: Harlequin's Blade, Shuriken Pistol
+• 2x Player with Neuro Disruptor: 2 with Neuro Disruptor, Harlequin's Blade
+• 1x Player with Fusion Pistol: Fusion Pistol, Harlequin's Blade
+1x War Walkers (80 pts): Bright Lance, Shuriken Cannon
+1x War Walkers (80 pts): Bright Lance, Shuriken Cannon
+4x Warlock Conclave (110 pts)
+  Supporting Storm Guardians[1]
+4x Warlock Conclave (110 pts)
+  Supporting Storm Guardians[2]
+
+Created with newrecruit.eu v36.29

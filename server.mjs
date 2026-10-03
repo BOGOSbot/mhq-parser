@@ -13,6 +13,7 @@
  *   GET  /my-events tournaments the caller organises (X-MHQ-Cookie header)
  *   POST /parse     { url } -> { event, count, players, miniText, elapsedMs }
  *   POST /parse-file?name=<file>  body: a saved page -> same shape as /parse
+ *   POST /parse-list?name=<file>  body: pasted/dropped list text -> same shape
  *
  * The browser cannot fetch miniheadquarters.com directly (no CORS headers), so
  * every parse happens here and the UI only renders. Stdlib only, no deps.
@@ -22,7 +23,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, parseHtml, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
+import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, parseHtml, parseListText, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -375,6 +376,36 @@ async function handleParseFile(req, res, u) {
   }
 }
 
+// A pasted or dropped army list: text, not markup. The browser already holds it, so
+// it arrives as the raw body with the file name in the query string, exactly as
+// /parse-file takes a saved page. No session is involved and nothing is fetched - a
+// list is the whole input.
+//
+// The answer is the same shape /parse gives, so a paste, a drop and a fetched event
+// all render through one code path in the page.
+async function handleParseList(req, res, u) {
+  let text;
+  try { text = await readBody(req, MAX_FILE_BODY); }
+  catch (e) {
+    return fail(res, 413, 'text too large - the limit is ' +
+      Math.round(MAX_FILE_BODY / (1024 * 1024)) + ' MB');
+  }
+  const t0 = Date.now();
+  try {
+    const { output, miniText } = parseListText(text, { name: displayName(u.searchParams.get('name')) });
+    return json(res, 200, {
+      event: output.event,
+      count: output.count,
+      players: output.players.map(viewPlayer),
+      miniText: miniText,
+      elapsedMs: Date.now() - t0,
+      source: 'list',
+    });
+  } catch (e) {
+    // Nothing here is a remote failure - the text simply did not parse.
+    return fail(res, 400, String((e && e.message) || e));
+  }
+}
 // Recent tournaments for the picker. The browser cannot read the sitemap
 // directly (no CORS), so the page asks us. The sitemap is heavy (~2 MB) and is
 // cached for a few hours inside listEvents, so this stays cheap.
@@ -458,6 +489,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/login') return handleLogin(req, res);
   if (req.method === 'POST' && u.pathname === '/parse') return handleParse(req, res);
   if (req.method === 'POST' && u.pathname === '/parse-file') return handleParseFile(req, res, u);
+  if (req.method === 'POST' && u.pathname === '/parse-list') return handleParseList(req, res, u);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 

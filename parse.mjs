@@ -61,6 +61,8 @@ let args = null;
 function parseArgs(argv) {
   const a = {
     url: null,
+    file: null,
+    fileExt: null,
     outDir: null,
     jsonName: 'mhq_army_lists.json',
     miniName: 'mhq_army_lists.mini.md',
@@ -69,6 +71,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (/^https?:\/\//.test(arg)) a.url = arg;
+    else if (a.url == null && a.file == null && !/^-/.test(arg)) a.file = arg;
     else if (arg === '--out-dir') a.outDir = argv[++i];
     else if (arg === '--json') a.jsonName = argv[++i];
     else if (arg === '--mini') a.miniName = argv[++i];
@@ -77,10 +80,26 @@ function parseArgs(argv) {
   // A cookie can also come from the environment: handy when the value is long
   // or comes from a secret store rather than the command line.
   if (!a.cookie && process.env.MHQ_COOKIE) a.cookie = process.env.MHQ_COOKIE;
-  if (!a.url) {
-    throw new Error('provide a link to an MHQ army list\n' +
-      '  Usage: node parse.mjs <army-lists-url> [--out-dir <dir>] [--json <name>] [--mini <name>] [--cookie <header>]\n' +
-      '  Example: node parse.mjs https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>');
+  if (!a.url && !a.file) {
+    throw new Error('provide a link to an MHQ army list, or a path to a list file\n' +
+      '  Usage: node parse.mjs <army-lists-url|list-file> [--out-dir <dir>] [--json <name>] [--mini <name>] [--cookie <header>]\n' +
+      '  Example: node parse.mjs https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>\n' +
+      '  Example: node parse.mjs ./my-list.txt');
+  }
+  if (a.file) {
+    // A path is not a URL, so URL_RE never sees it. Resolve it here; main()
+    // dispatches on the extension.
+    a.file = path.resolve(a.file);
+    a.fileExt = path.extname(a.file).toLowerCase();
+    if (!['.txt', '.md', '.html', '.htm'].includes(a.fileExt)) {
+      throw new Error('unsupported list file: ' + a.fileExt + '\n' +
+        '  Expected .txt or .md (list text), or .html (a saved MiniHeadQuarters page)');
+    }
+    if (!fs.existsSync(a.file)) throw new Error('no such file: ' + a.file);
+    // No slug to make a folder from, so the file's own name stands in - which is
+    // also what the page title falls back to.
+    if (!a.outDir) a.outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), nameFromFile(a.file) || 'output');
+    return a;
   }
   if (!URL_RE.test(a.url)) {
     throw new Error('provide a valid link\n' +
@@ -476,18 +495,41 @@ function stripTags(s) {
 // ============================================================
 // Header parsing (+++ delimited key-value block)
 // ============================================================
+
+// A line that belongs to the unit section rather than to a header or to a
+// preamble. Lifted out of findPlusBlock because the list splitter has to agree
+// with the header scanner about where a header stops.
+function isUnitContent(s) {
+  const t = String(s || '').trim();
+  return /\(\s*\d+\s*(?:pts?|points?)\s*\)/.test(t)
+    || /\[\s*\d+\s*pts?\s*\]/.test(t)
+    || /^Char\d+:/.test(t)
+    || /^[·•◦]/.test(t)
+    || /^\|/.test(t);
+}
+
+// A line that declares a unit, as opposed to preamble metadata. Used by the list splitter's
+// weakest start signal: the points value read against the army floor decides,
+// since a unit costs less than the army it belongs to. "Creations of Bile
+// (3 Detachment Points)" and "Unnamed list (1,995 Points)" are metadata, while
+// "Poxbringer (75 points)" is a unit. CAT_HDR is excluded outright: a category
+// header carrying a points value ("Héros épiques 1 : 2 Les Lances Jumelles [230pts]")
+// opens the unit section rather than declaring a unit itself.
+function isUnitDeclLine(s) {
+  const t = String(s || '').trim();
+  if (!t) return false;
+  if (/detachment\s+points?/i.test(t)) return false;
+  if (CAT_HDR.test(t)) return false;
+  const m = t.match(/\(?\s*\[?\s*(\d[\d\s.,'\u2019\u00a0\u202f]*)\s*\]?\s*\)?\s*(?:pts?|points?)/i);
+  if (!m) return false;
+  const n = parseInt(m[1].replace(/[^\d]/g, ''), 10);
+  return n > 0 && n < 1000;
+}
+
 function findPlusBlock(lines) {
   const DELIM_RE = /^\s*\++\s*$/;
   const DELIM_MIN = 20;
   const isDelim = s => DELIM_RE.test(s) && s.trim().length >= DELIM_MIN;
-  const isUnitContent = s => {
-    const t = s.trim();
-    return /\(\s*\d+\s*(?:pts?|points?)\s*\)/.test(t)
-      || /\[\s*\d+\s*pts?\s*\]/.test(t)
-      || /^Char\d+:/.test(t)
-      || /^[.•◦]/.test(t)
-      || /^\|/.test(t);
-  };
 
   const delimIdx = lines.findIndex(isDelim);
   if (delimIdx !== -1) {
@@ -882,7 +924,6 @@ function findPreambleEnd(lines) {
     const t = lines[i].trim();
     if (!t) continue;
     if (CAT_HDR.test(t)) { end = i; break; }
-    if (/^•/.test(t) || /^◦/.test(t)) { end = i; break; }
     if (/^Char\d+:/i.test(t)) { end = i; break; }
     // Any unit declaration, not just CharN-prefixed ones. Without this a
     // preamble immediately followed by a unit line swallows that unit into
@@ -890,9 +931,17 @@ function findPreambleEnd(lines) {
     // headers carry detachment and force-disposition lines that look
     // similar, so require the "1x Name" or "CharN: Name" shape.
     if (/^(?:\d+x|Char\d+:)\s*\S.*\(\s*\d+\s*(?:pts?|points?)\s*\)/i.test(t)) { end = i; break; }
+    // A bullet directly under a unit declaration belongs to that unit, so it
+    // does not end the preamble. The arm above only recognises "1x Name" and
+    // "CharN: Name", so "Khorne Berzerkers (160 pts)" - a documented shape -
+    // slipped through it and the bullet below it ended the preamble instead,
+    // taking that first unit with it. Measured on 140 headerless lists, 7
+    // lost a unit this way before the check.
+    if (/^•/.test(t) || /^◦/.test(t)) { end = i; break; }
   }
   return end;
 }
+
 function parsePreamble(bodyText) {
   const lines = bodyText.split('\n');
   const end = findPreambleEnd(lines);
@@ -992,8 +1041,12 @@ function buildPlayers(articles) {
       teamName: article.teamName || null,
     };
     // Team events have <h2>; individual events use <div class="whitespace-pre-line"> for the body.
+    // 5, not 6: '</h2>' is five characters. The off-by-one was invisible on an
+    // MHQ page because markup or a newline always follows the heading, and the
+    // lazy trim below eats leading whitespace either way - but a list pasted in
+    // abuts the heading directly, and the first unit lost its first character.
     const afterH2 = a.includes('</h2>')
-      ? a.slice(a.indexOf('</h2>') + 6)
+      ? a.slice(a.indexOf('</h2>') + 5)
       : a.slice(a.indexOf('>', a.indexOf('whitespace-pre-line')) + 1);
     const bodyText = stripTags(afterH2).replace(/^[\s\S]*?(?=[\S])/, '').split('\n').map(l => l.trim()).join('\n');
     // Preserve the full body text so parsePreamble (called from getMeta) can find
@@ -1336,10 +1389,15 @@ function extractEvent(url, html, fallbackName = null) {
 // Sum of real unit points and the total the list declares. declaredPts is
 // null when no readable total exists. "Real" excludes the Strike Force /
 // Force de Frappe summary lines, which are not units.
-function totals(player) {
-  const realUnits = (player.units || []).filter(u => u.points && u.points < 1000 &&
+// The units that count toward an army total. The Strike Force / Force de Frappe
+// summary lines are not units, and neither is anything priced like an army.
+function realUnits(player) {
+  return (player.units || []).filter(u => u.points && u.points < 1000 &&
     !/^(?:Strike Force|Force de Frappe|Force of|DA Recon)/i.test(u.model || ''));
-  const parsedPts = realUnits.reduce((s, u) => s + (u.points || 0), 0);
+}
+
+function totals(player) {
+  const parsedPts = realUnits(player).reduce((s, u) => s + (u.points || 0), 0);
   let declaredPts = null;
   if (player.header && player.header.totalPoints) {
     declaredPts = toPoints(player.header.totalPoints);
@@ -1369,8 +1427,26 @@ function totals(player) {
 
 // Warnings the mini formatter emits for one army, in mini order
 // (points first, then detachment, then force disposition).
+// Whether the text could be recognised as one of the formats the parser knows.
+//
+// Two ways to fail, and both used to pass silently: the text carries neither
+// marker family, or it parsed to fewer than two units. Either way the card
+// rendered as an army with nothing in it, which reads as an empty submission
+// rather than as a list in a shape this tool does not know. Measured on 233
+// real lists, exactly two trip it - both Ironbuilt exports.
+function isUnrecognizedFormat(player) {
+  const text = player.bodyText || player.bodyRest || '';
+  const newrecruit = /\[\s*\d+\s*pts?\s*\]/.test(text);
+  const bullets = /\(\s*\d+\s*(?:pts?|points?)\s*\)|^\s*Char\d+:|^\s*[\u00b7\u2022\u25e6]/m.test(text);
+  if (!newrecruit && !bullets) return true;
+  return realUnits(player).length < 2;
+}
+
 function playerWarnings(player, meta) {
   const warnings = [];
+  // Failure to recognise comes before any points arithmetic: an unrecognised list
+  // with zero units should not also be told it is missing a total.
+  if (isUnrecognizedFormat(player)) warnings.push({ type: 'unrecognized', text: '> \u26a0 Unrecognized format' });
   const t = totals(player);
   if (t.declaredPts == null) {
     warnings.push({ type: 'missing-total', text: '> ⚠ missing total points' });
@@ -1476,6 +1552,217 @@ function parseHtml(html, { url = '', name = null } = {}) {
   return articlesToOutput(articles, html, { url, name: nameFromFile(name), admin });
 }
 
+// ============================================================
+// Raw list text: a pasted or dropped army list, not an MHQ page
+// ============================================================
+
+// The end of a list, as the exporters write it. One shape per app, so the
+// pattern is on the form rather than on any single string: "Created with
+// newrecruit.eu v36.29", "Exported with App Version: v2.6.0 (144), Data Version:
+// v946", and the bare URL some exports leave behind ("https://ironbuilt.app/?s=...").
+const TRAILER_RE = /^(?:(?:created|generated|exported|made|printed)\s+with\b.*|https?:\/\/\S+)\s*$/i;
+
+// Keys that name a player. More spellings than HEADER_ALIAS carries, because these
+// are read off freeform text where the "+" block discipline does not hold:
+// "joueurs : Agabdir", "Nom du joueur : Arutho", "+ PLAYER : Heavens31" and
+// "Player name : Soultaker31" all turn up in lists carrying no header block.
+const NAME_KEYS = ['PLAYER NAME', 'PLAYER', 'PSEUDO', 'NOM DU JOUEUR', 'JOUEUR', 'JOUEURS'];
+const TEAM_KEYS = ['TEAM NAME', "NOM DE L'ÉQUIPE"];
+const FACTION_KEYS = ['FACTION KEYWORD', 'FACTIONS UTILISÉES'];
+
+// "+ PLAYER NAME: Blork" -> "Blork". Read off the raw lines rather than off the
+// parsed header, so a list can be named even when findPlusBlock did not find the
+// block around it - 140 of 233 lists in the corpus carry no header at all.
+function plusHeaderValue(lines, keys) {
+  for (const raw of lines) {
+    const m = raw.match(/^\+?\s*([^\s:][^:]*?)\s*:\s*(.*)$/);
+    if (!m) continue;
+    if (!keys.includes(m[1].trim().toUpperCase())) continue;
+    const v = m[2].trim();
+    if (v) return v;
+  }
+  return null;
+}
+
+// Not every army banner carries a player name.
+const UNNAMED_BANNER = /^(?:unnamed\s+list|army\s+list|liste\s+(?:test|sans\s+nom)|sans\s+nom|none)\b/i;
+const BANNER_NAME_RE = /^(.+?)\s*\(\s*([\d][\d\s.,'\u2019\u00a0\u202f]*)\s*(?:pts?|points?)\s*\)\s*$/i;
+
+// The last place a name hides, and often the only one: a headerless list opens
+// with a banner carrying the army name and the total. The total has to be
+// army-sized for the line to be a banner rather than a unit, and the name has to
+// survive the "Unnamed list" that half these exports put there.
+function bannerName(lines) {
+  for (const raw of lines.slice(0, 8)) {
+    const t = raw.trim();
+    const m = t.match(BANNER_NAME_RE);
+    if (!m) continue;
+    const n = parseInt(m[2].replace(/[^\d]/g, ''), 10);
+    if (!(n >= 1000 && n <= 3000)) continue;
+    const name = m[1].trim();
+    if (!name || UNNAMED_BANNER.test(name)) return null;
+    // "Strike Force (2000 points)" and "Force de Frappe (2000 points)" are the
+    // force layout, not the player. isPreamble drops the same names from unit
+    // lists, so they cannot stand in as an identity here either.
+    if (/^(?:Strike Force|Force de Frappe|Force of|DA Recon)/i.test(name)) return null;
+    return name;
+  }
+  return null;
+}
+
+// A "+" rule line. Only "=" was ever considered as well - Ironbuilt exports use
+// it and carry no other start marker - but admitting it made the corpus split
+// 42 lists into 20 instead of 39, because "=" rules turn up inside lists too.
+// Two lists that do not get their own slice is a better failure than twenty that
+// do not get the right one.
+function isDelimLine(s) {
+  return /^\+{20,}$/.test(String(s || '').trim());
+}
+
+// Where each list in a blob of text starts.
+//
+// A file holds one list or many and nothing in the format says which, so the
+// How far apart two signals can sit and still be one list starting. A preamble
+// carries several: a banner, a faction line, a detachment line, and a "Force de
+// Frappe (2000 points)" eight lines under them. Further apart than this and they
+// are separate lists.
+const START_CLUSTER = 10;
+
+// An army-sized points value. A unit never costs a thousand points or more, so a
+// line carrying one cannot be a unit declaration.
+const BANNER_PTS_RE = /\(\s*([\d][\d\s.,'\u2019\u00a0\u202f]*)\s*(?:pts?|points?)\s*\)/i;
+
+// Where each list in a blob of text starts.
+//
+// A blob holds one list or many and nothing in the format says which, so the
+// boundaries are read off the lists themselves. Three signals, each of them
+// something that only ever appears at the top of an army:
+//
+//   1. A "+++" run opening a header. Exact wherever it applies.
+//   2. A player-name key, with or without the "+" a header block uses.
+//   3. An army-sized points value: "Duck Fifiler (1990 points)". A unit never
+//      costs a thousand points or more, so this line cannot be one - and it is
+//      all a headerless list has to go on.
+//
+// A preamble carries several army-sized lines - the banner, a total, and a "Force de
+// Frappe (2 000 Points)" eight lines below - so (3) is held back until a list is
+// already under way. That guard is what makes it safe to use at all: without it
+// one army came apart into eleven.
+//
+// The obvious fourth candidate is a run of blank lines, and the corpus rules it
+// out: all 233 lists in the sample contain blank lines internally, in runs of up
+// to four. Any threshold low enough to catch a pasted-together file also cuts a
+// real army in half, so there is no safe one and there is not one here.
+//
+// When nothing fires, the whole blob is one list. That is the honest answer: the
+// text carries nothing saying where a second list would begin.
+function listStartIndexes(lines) {
+  const starts = [];
+  // Whether a unit has been seen since the last list began. A banner may only cut
+  // once it has: the second and third army-sized lines of a preamble belong to the
+  // list that is already under way.
+  let seenUnit = false;
+  const cut = i => { starts.push(i); seenUnit = false; };
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (!t) continue;
+    if (isDelimLine(t)) {
+      // A run of "+" only starts a list when it opens a real header block:
+      // a closing delimiter further down, with "+ KEY: value" lines between.
+      // Players also use long "+" rules as decoration between sections, and one
+      // of those mid-preamble used to read as a list start - the worst failure
+      // there is, since a single pasted list would come apart.
+      let j = i + 1;
+      while (j < lines.length && !isDelimLine(lines[j])) j++;
+      const opensHeader = j < lines.length && lines.slice(i + 1, j)
+    .some(l => /^\+\s*[A-ZÀ-Ý]/.test(l.trim()));
+      if (opensHeader) {
+        cut(i);
+        i = j;
+      }
+      continue;
+    }
+    if (plusHeaderValue([t], NAME_KEYS)) { cut(i); continue; }
+    const m = t.match(BANNER_PTS_RE);
+    if (m) {
+      const n = parseInt(m[1].replace(/[^\d]/g, ''), 10);
+      // A banner cuts once a list is under way, or when it is all there is so far.
+      // Both halves matter: the first is what stops the second and third
+      // army-sized lines of a preamble from shredding one army.
+      if (n >= 1000 && n <= 3000 && (seenUnit || starts.length === 0)) cut(i);
+      continue;
+    }
+    if (isUnitContent(t)) seenUnit = true;
+  }
+  // Several signals routinely fire on the same list - a banner and the force line
+  // seven lines under it - so candidates close together are one boundary, and the
+  // list starts at the earliest of them.
+  const merged = [];
+  for (const idx of starts) {
+    if (!merged.length || idx - merged[merged.length - 1] > START_CLUSTER) merged.push(idx);
+  }
+  return merged;
+}
+
+
+// A trailer is the last thing in a list. It corroborates the boundary that
+// follows it but never makes one on its own - a third of lists end without one -
+// so all it does here is come off the tail.
+function stripTrailer(lines) {
+  let end = lines.length;
+  while (end > 0) {
+    const t = lines[end - 1].trim();
+    if (!t) { end--; continue; }
+    if (TRAILER_RE.test(t)) { end--; continue; }
+    break;
+  }
+  return lines.slice(0, end);
+}
+
+// Who this list belongs to. Player name, then faction; team is left to
+// getTeamName(), which already falls back to the banner, because a list that
+// names its player in the banner has not named a team.
+function listIdentity(lines) {
+  return {
+    name: plusHeaderValue(lines, NAME_KEYS) || bannerName(lines) || 'Not found',
+    faction: plusHeaderValue(lines, FACTION_KEYS),
+    teamName: plusHeaderValue(lines, TEAM_KEYS),
+  };
+}
+
+// One pasted or dropped blob of army-list text: one list, or several.
+//
+// Same output shape as a fetched event, because it runs the same structuring and
+// formatting from articlesToOutput() on - the cards, the mini view and the
+// filters cannot differ between the two ways in. The name comes from the file
+// when there is one, because a paste has nothing else to call itself.
+function parseListText(text, { name = null } = {}) {
+  if (typeof text !== 'string' || !text.trim()) {
+    throw new Error('the text is empty - nothing to parse');
+  }
+  const lines = decodeEntities(text.replace(/\r\n?/g, '\n')).split('\n');
+  const starts = listStartIndexes(lines);
+  const bounds = starts.length ? starts : [0];
+  const articles = [];
+  for (let i = 0; i < bounds.length; i++) {
+    const from = bounds[i];
+    const to = i + 1 < bounds.length ? bounds[i + 1] : lines.length;
+    let slice = stripTrailer(lines.slice(from, to));
+    while (slice.length && !slice[0].trim()) slice.shift();
+    while (slice.length && !slice[slice.length - 1].trim()) slice.pop();
+    if (!slice.length) continue;
+    const who = listIdentity(slice);
+    articles.push({
+      // buildPlayers() reads name and faction out of an <h2> "Name : Faction".
+      // This is the same seam adminArticle() uses for a list submitted on MHQ.
+      html: '<h2>' + escapeHtml(who.faction ? who.name + ' : ' + who.faction : who.name) + '</h2>' + slice.join('\n'),
+      teamName: who.teamName,
+      playerName: null,
+    });
+  }
+  if (!articles.length) throw new Error('no army lists found in this text');
+  return articlesToOutput(articles, '', { url: '', name: name ? nameFromFile(name) : 'Pasted lists' });
+}
 async function parseUrl(url, { log = false, cookie = null } = {}) {
   const { status, html } = await fetchHTML(url, { cookie });
   if (status !== 200) throw new Error('HTTP ' + status + ' fetching ' + url);
@@ -1501,7 +1788,22 @@ async function parseUrl(url, { log = false, cookie = null } = {}) {
 // Main
 // ============================================================
 async function main() {
-  const { output, miniText } = await parseUrl(args.url, { log: true, cookie: args.cookie });
+  let output, miniText;
+  if (args.file) {
+    // Both file shapes end in the same output, so a saved page and a pasted list
+    // are written exactly the way an event is.
+    const raw = fs.readFileSync(args.file, 'utf8');
+    const name = path.basename(args.file);
+    if (args.fileExt === '.html' || args.fileExt === '.htm') {
+      ({ output, miniText } = parseHtml(raw, { name: name }));
+    } else {
+      ({ output, miniText } = parseListText(raw, { name: name }));
+    }
+    console.error('Read ' + raw.length + ' bytes from ' + args.file);
+    console.error('Parsed ' + output.count + ' list(s)');
+  } else {
+    ({ output, miniText } = await parseUrl(args.url, { log: true, cookie: args.cookie }));
+  }
   fs.mkdirSync(args.outDir, { recursive: true });
   const jsonPath = path.join(args.outDir, args.jsonName);
   const miniPath = path.join(args.outDir, args.miniName);
@@ -1547,7 +1849,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists, listCount };
 }
 
-export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, renderMini, parseUrl, parseHtml, clearEventCache, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
+export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, renderMini, parseUrl, parseHtml, parseListText, listStartIndexes, isUnrecognizedFormat, realUnits, nameFromFile, clearEventCache, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is
