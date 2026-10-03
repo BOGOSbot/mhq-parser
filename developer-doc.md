@@ -374,6 +374,91 @@ Three paths:
 
 Pitfall: the army banner "<ArmyName> (2000 points)" matches the naive detachment regex. The parser requires "Points de Détachement" or "Detachment Points" explicitly, so the banner never gets captured.
 
+## The archive: closed events, kept in the repository
+
+A tournament that has already happened is the one thing in this project that
+cannot change. Its lists are published, its date is behind us, and MHQ keeps
+the page up for years. So it is the one thing worth storing instead of
+fetching, and the archive is that store:
+
+```
+archive/index.json              the catalogue, one entry per archived event
+archive/events/<type>--<slug>.json   the parse output, exactly what /parse returns
+```
+
+```powershell
+node archive.mjs --plan          # what a harvest would consider, fetching nothing
+node archive.mjs --months 12     # harvest the last 12 months of closed events
+node archive.mjs --list          # what is in there
+node archive.mjs --verify        # every entry still resolves to a readable file
+node archive.mjs --reindex       # rebuild the index from the files on disk
+```
+
+The files are committed. That is the point: the site reads them off disk, with
+no network and no CORS, exactly as it reads `index.html` on every request.
+
+### What the site does with it
+
+- `/parse` answers from the file. No request to MHQ, no session, no timeout to
+  wait out: a 60-army event that takes about half a second live comes back in
+  under 100 ms. `{"live": true}` in the body declines the cache and goes to MHQ.
+- `/events` lists the archived ones without checking them, and the scan skips
+  them entirely. A closed event's game and its list count are already known,
+  so listing it costs nothing - which is also why the harvest, not just the
+  site, stops at each event after one visit.
+- Both URL shapes (`/army-lists/<slug>` and `/details/<slug>`) resolve to the
+  same key, so pasting either one hits the cache.
+
+What it must never answer: an organiser URL. It is a different page of the
+same event, carrying submitted lists that were never published, so a cached
+public parse in answer to one would show the wrong armies. `keyOfUrl()`
+therefore matches only the plain public form, and an organiser URL still gets
+a 401 asking for a session.
+
+It is a cache, so it is allowed to be incomplete and it is allowed to be
+stale. `archivedAt` says when each copy was taken, `--refresh` re-takes one,
+and `live: true` wins over the cache whenever the cache is what you doubt.
+
+### Numbers
+
+One harvest of the 12 months before 2026-10-04: **1,201** closed tournaments in
+the sitemap, **328** checked, **245** kept - a 75% hit rate, the rest being
+another game or lists never published - and **57.6 MB** of committed JSON for
+256 events. The whole closed catalogue, back to 2021, would be roughly 210 MB,
+which is why the default harvest is bounded rather than absolute.
+
+Each event file is compact, not indented: on a 60-list event that is 580 KB
+against 837 KB pretty-printed, and pretty-printing buys nothing here. Nothing
+reads these by eye, and a commit in this directory is a bulk import rather than
+a reviewable diff.
+
+### Two things the harvest gets wrong if it is not careful
+
+**A failure is not a verdict.** A timeout says nothing about whether an event is
+40k or whether its lists are out, so a failed check is never recorded as either
+and the event is left unarchived for the next run. Caching a failure as
+"checked, no lists" would drop the event from the picker and keep it dropped
+for good. Same reason as `runScan` leaving a failed event uncached.
+
+**The index is derived, and flushing it is where the bug was.** The index is
+written every 25 events so a Ctrl-C does not throw away the run, and the first
+version folded each batch in with `index.events.concat(batch)`. `concat` returns
+a *new* array, so the loaded index never grew and every flush overwrote the
+file with its own batch: 256 events on disk, 31 in the index, and a rerun that
+would have fetched all 256 again. The fix keeps the merged array in its own
+variable. `--reindex` exists because the files are the data - rebuilding the
+index off them is always possible, and `--verify` checks that each entry still
+resolves to a file whose `count` agrees with the entry.
+
+### The guarantee
+
+An archived answer is not an approximation of a live one. For the same event,
+`live: true` and the cached path return byte-identical players and mini text:
+the view, totals and warnings are all derived at serve time by the same code
+(`viewPlayer`, `renderMini`), so the cache stores the parse output and nothing
+else. `tests/test-archive.mjs` pins that round trip against the real public
+fixture.
+
 ## Hosting on Vercel
 
 One file is the deployment. `server.mjs` listens at import time and answers every route, including `/`, which it serves by reading `index.html` off disk on each request. No build step, no bundler, no dependencies. Nothing is compiled, so "static" describes `index.html` and nothing else: the function has to stay live for any part of the page to work.
@@ -400,6 +485,7 @@ Rules 2 and 3 had been in the tree since `678a91c`, and `bea4152` lost them, bec
 - **Request body.** Vercel caps request and response bodies at 4.5 MB and answers `FUNCTION_PAYLOAD_TOO_LARGE` above that. `MAX_FILE_BODY` allows 32 MB, so on a hosted instance the smaller number is the one that bites. A saved MHQ page runs about a megabyte and fits comfortably; the same page saved with every asset inlined does not.
 - **Duration.** 300 s by default on Hobby, which is also the ceiling there, and 800 s on Pro. `/parse` is the slow route, one request per army on the admin views.
 - **The catalogue scan.** `/events` is the expensive one. The sitemap fetch is the single slowest step, which server.mjs puts at about 9 s, and checking every event cannot happen inside one invocation. `FILTER_BATCH` (40) and `FILTER_CONCURRENCY` (16) exist for that reason: a bounded scan returns what it managed to check and the page polls for the rest, while an unbounded one gets killed mid-flight and returns nothing at all.
+- **Disk.** Rule 4 above is about caching, not about the filesystem: the deployment can read its own files, which is how `index.html` is served per request and how the archive is read. The archive adds 57.6 MB of JSON to what gets deployed. It is read on demand, one file per `/parse`, so it costs function memory only for the event being shown, but it does have to be inside the deployment for the cache to mean anything.
 
 ### Where the checkout stands
 
@@ -411,6 +497,7 @@ Tests are plain `node`. There is no runner to install:
 node tests/test-auth.mjs
 node tests/test-parse-file.mjs
 node tests/test-list-text.mjs
+node tests/test-archive.mjs
 ```
 
 ## Extending the parser

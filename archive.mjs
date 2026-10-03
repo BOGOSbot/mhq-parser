@@ -1,0 +1,437 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * The archive: every closed 40k event, parsed once and kept in the repository.
+ *
+ *   node archive.mjs [--plan] [--list] [--verify] [--refresh]
+ *                    [--limit <n>] [--months <n>] [--concurrency <n>]
+ *                    [--out-dir <dir>]
+ *
+ * A closed tournament is finished business. Its lists will not change, MHQ keeps
+ * the page up for years, and nothing on it moves again - which makes it the one
+ * thing in this project worth storing rather than fetching. So the harvest
+ * pulls each closed event once, writes the parse to
+ * archive/events/<type>--<slug>.json, and never asks for it again.
+ *
+ * server.mjs then reads those files off disk:
+ *   - /parse on an archived event answers from the file, with no request to
+ *     MHQ, no session and no timeout to wait out;
+ *   - /events lists the archived ones without checking them, because a closed
+ *     event's game and its list count are already known here.
+ *
+ * Layout
+ *   archive/index.json      the catalogue, one entry per archived event
+ *   archive/events/<file>   the parse output, exactly what /parse returns
+ *
+ * The index exists so the server can draw a picker without reading 400 files:
+ * name, date, format and list count for every archived event sit in one small
+ * file, and the heavy JSON is only opened when an event is actually opened.
+ *
+ * The files are compact, not indented. Nothing reads them by eye, the diff is
+ * never the point - a commit here is a bulk import - and pretty-printing costs
+ * about 30% of the size, which is hundreds of megabytes over a full history.
+ *
+ * It is a cache, so it is allowed to be wrong: every entry records when it was
+ * taken, --refresh re-takes one, and serving an archived event can be declined
+ * per request so the live page wins whenever that is what you want.
+ */
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { checkEvent, detectFormat, getAllEvents, parseUrl } from './parse.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export const ARCHIVE_DIR = process.env.MHQ_ARCHIVE_DIR || path.join(__dirname, 'archive');
+const EVENTS_DIR = 'events';
+const INDEX_FILE = 'index.json';
+
+// Four at a time. This is someone's hobby site: the scan already found six
+// concurrent requests enough to earn a 524 from the origin.
+const DEFAULT_CONCURRENCY = 4;
+
+export function eventKey(type, slug) {
+  return type + '/' + slug;
+}
+
+// A sitemap slug is already URL-safe, but a hand-edited index is not trusted
+// input and a key is about to become a filename.
+function fileNameFor(type, slug) {
+  return (type + '--' + slug).replace(/[^A-Za-z0-9._-]+/g, '-');
+}
+
+function indexPath(dir) {
+  return path.join(dir, INDEX_FILE);
+}
+
+// --- reading -------------------------------------------------------------
+// The index is re-read when the file changes, not on a timer: a harvest run
+// writes it, and a server that waited out a TTL would keep offering a picker
+// without the events harvested a second ago. One stat per read is cheaper than
+// the mistake of a stale list.
+const cache = new Map(); // dir -> { at, index }
+
+export function loadIndex(dir = ARCHIVE_DIR) {
+  const file = indexPath(dir);
+  let mtime = 0;
+  try { mtime = fs.statSync(file).mtimeMs; } catch { mtime = 0; }
+  const hit = cache.get(dir);
+  if (hit && hit.mtime === mtime) return hit.index;
+  let index = { generated: null, events: [] };
+  if (mtime) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (parsed && Array.isArray(parsed.events)) index = parsed;
+    } catch (e) {
+      // A truncated index is a broken commit, not an empty archive. Say so
+      // rather than quietly serving nothing: an empty picker looks like MHQ
+      // forgot its history.
+      throw new Error('archive index unreadable (' + e.message + ') at ' + file);
+    }
+  }
+  cache.set(dir, { mtime, index });
+  return index;
+}
+
+// One entry, or null. A miss is the normal case for a live event, so it is not
+// an error and not logged.
+export function entryFor(index, type, slug) {
+  return entryForKey(index, eventKey(type, slug));
+}
+
+// The same lookup by the key an incoming URL resolves to.
+export function entryForKey(index, key) {
+  if (!index || !index.events.length || !key) return null;
+  return index.events.find(e => e.key === key) || null;
+}
+
+// The parse output behind an entry, or null when the file is gone. A committed
+// index pointing at a missing file means a partial checkout; the caller falls
+// back to fetching live rather than failing the request.
+export function readEvent(dir, entry) {
+  if (!entry || !entry.file) return null;
+  try {
+    return JSON.parse(fs.readFileSync(path.join(dir, entry.file), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+// The key an incoming URL maps to, or null when the URL is not a plain public
+// event page.
+//
+// An organiser URL is deliberately not matched. It is a different view of the
+// same event - it carries submitted lists that were never published - so a
+// cached public parse in answer to one would quietly show the wrong armies.
+export function keyOfUrl(url) {
+  let u;
+  try { u = new URL(url); } catch { return null; }
+  if (u.hostname !== 'miniheadquarters.com') return null;
+  const m = u.pathname.match(/^\/tournaments\/([a-z-]+)\/(?:army-lists|details)\/([^/]+)\/?$/);
+  if (!m) return null;
+  return eventKey(m[1], m[2]);
+}
+
+// What the picker draws for an archived event. The shape is the sitemap row's,
+// so the page needs no second code path: it already knows how to render a
+// name, a date, a format tag and a list count.
+export function rowFor(entry) {
+  return {
+    slug: entry.slug,
+    type: entry.type,
+    name: entry.name,
+    date: entry.date,
+    format: entry.format,
+    url: entry.url,
+    detailsUrl: entry.detailsUrl,
+    listCount: entry.listCount,
+    checked: true,
+    past: true,
+    archived: true,
+    archivedAt: entry.archivedAt,
+  };
+}
+
+// --- the harvest ---------------------------------------------------------
+
+// Closed means the date is behind us. The sitemap dates every tournament it
+// lists, and a date it cannot read cannot be placed on either side of today,
+// so an undated entry is left out rather than guessed at.
+export function isClosed(ev, today = new Date().toISOString().slice(0, 10)) {
+  return typeof ev.date === 'string' && ev.date !== '' && ev.date < today;
+}
+
+export function is40k(game) {
+  return /warhammer\s*40/i.test(game || '');
+}
+
+function fmtBytes(n) {
+  return n >= 1024 * 1024
+    ? (n / (1024 * 1024)).toFixed(1) + ' MB'
+    : Math.round(n / 1024) + ' KB';
+}
+
+// What the harvest would consider, before it fetches anything.
+export function candidates(all, index, { months = 0, refresh = false, today } = {}) {
+  const t = today || new Date().toISOString().slice(0, 10);
+  const start = months > 0
+    ? new Date(Date.now() - Math.round(months * 30.44) * 86400000).toISOString().slice(0, 10)
+    : '0000-01-01';
+  const have = new Set(index.events.map(e => e.key));
+  return all.filter(e => isClosed(e, t) && e.date >= start &&
+    (refresh || !have.has(eventKey(e.type, e.slug))));
+}
+
+// One event's worth of fetching: judge it, then parse it if it qualifies.
+//
+// Both steps can fail for reasons that are not about the event - a throttled
+// origin, a timeout. A failure is therefore never recorded as "not 40k" and
+// never as "no lists": the event is left unarchived so the next run retries it.
+async function archiveOne(ev, { dir, log, totals }) {
+  const check = await checkEvent(ev.detailsUrl);
+  if (!(is40k(check.game) && check.hasLists)) return { skipped: true };
+  const { output } = await parseUrl(ev.url);
+  const file = path.join(EVENTS_DIR, fileNameFor(ev.type, ev.slug) + '.json');
+  const body = JSON.stringify(output);
+  const abs = path.join(dir, file);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  fs.writeFileSync(abs, body);
+  const entry = {
+    key: eventKey(ev.type, ev.slug),
+    type: ev.type,
+    slug: ev.slug,
+    name: output.event.name || ev.name,
+    date: output.event.date || ev.date,
+    format: ev.format,
+    game: check.game,
+    url: ev.url,
+    detailsUrl: ev.detailsUrl,
+    listCount: output.count,
+    bytes: Buffer.byteLength(body),
+    archivedAt: new Date().toISOString(),
+    file: file.split(path.sep).join('/'),
+  };
+  totals.done++;
+  totals.bytes += entry.bytes;
+  log('  ' + entry.date + '  ' + pad(entry.name, 44) + '  ' + pad(output.count + ' lists', 10) + '  ' + fmtBytes(entry.bytes) +
+      '   [archive ' + fmtBytes(totals.bytes) + ']');
+  return { entry };
+}
+
+function pad(s, n) {
+  s = String(s);
+  return s.length >= n ? s.slice(0, n - 1) + '\u2026' : s + ' '.repeat(n - s.length);
+}
+
+export function saveIndex(dir, index) {
+  const next = { generated: new Date().toISOString(), events: index.events.slice().sort(byDateDesc) };
+  fs.mkdirSync(dir, { recursive: true });
+  const file = indexPath(dir);
+  fs.writeFileSync(file + '.tmp', JSON.stringify(next, null, 2) + '\n');
+  fs.renameSync(file + '.tmp', file); // atomic: a crash never leaves half an index
+  cache.delete(dir);
+  return next;
+}
+
+function byDateDesc(a, b) {
+  if (a.date === b.date) return a.key < b.key ? -1 : 1;
+  return a.date < b.date ? 1 : -1;
+}
+
+/**
+ * Walk the closed events, archive the ones worth keeping.
+ *
+ * Resumable by construction: what is already in the index is skipped, so a run
+ * that dies halfway - or that you stop - costs a rerun, not the whole harvest.
+ */
+export async function harvest(opts = {}) {
+  const dir = opts.dir || ARCHIVE_DIR;
+  const log = opts.log || (m => process.stderr.write(m + '\n'));
+  const concurrency = opts.concurrency || DEFAULT_CONCURRENCY;
+  const limit = opts.limit || 0;
+  const index = loadIndex(dir);
+  const all = await getAllEvents();
+  const queue = candidates(all, index, { months: opts.months || 0, refresh: !!opts.refresh });
+  const todo = limit > 0 ? queue.slice(0, limit) : queue;
+
+  log('Closed events in the sitemap: ' + all.filter(e => isClosed(e)).length +
+      ', of which ' + queue.length + ' to check' +
+      (limit > 0 && queue.length > todo.length ? ' (taking ' + todo.length + ')' : ''));
+  log('Already archived: ' + merged.length + ', ' + fmtBytes(merged.reduce((s, e) => s + (e.bytes || 0), 0)));
+  if (!todo.length) return { entries: [], bytes: 0, checked: 0 };
+
+  const added = [];
+  // What the index holds, as of this run. Kept as its own array on purpose:
+  // concat() returns a new one, so folding the batches into the loaded index
+  // would throw the earlier batches away and the file would end up holding only
+  // the last flush.
+  let merged = index.events.slice();
+  const totals = { done: 0, bytes: 0, checked: 0, failed: 0, skipped: 0 };
+  const total = todo.length;
+  let n = 0;
+  const flush = () => {
+    if (!added.length) return;
+    merged = merged.concat(added.splice(0));
+    saveIndex(dir, { events: merged });
+  };
+
+  const worker = async () => {
+    while (todo.length) {
+      const ev = todo.shift();
+      n++;
+      log('[' + n + '/' + total + '] ' + ev.date + '  ' + ev.name);
+      totals.checked++;
+      try {
+        const r = await archiveOne(ev, { dir, log, totals });
+        if (r.skipped) totals.skipped++;
+        else added.push(r.entry);
+      } catch (e) {
+        // Left unarchived on purpose: the next run tries it again.
+        totals.failed++;
+        log('  failed: ' + String((e && e.message) || e));
+      }
+      // Flushed periodically rather than per event: the index is small, but a
+      // harvest is long and Ctrl-C should not throw away the last hundred.
+      if (added.length >= 25) flush();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, todo.length) }, worker));
+  flush();
+
+  log('');
+  log('Archived ' + totals.done + ' event' + (totals.done === 1 ? '' : 's') + ', ' +
+      fmtBytes(totals.bytes) + ' this run, ' + merged.length + ' in total.');
+  log('Checked ' + totals.checked + ', kept ' + totals.done + ', skipped ' + totals.skipped +
+      ' (another game, or no lists out), failed ' + totals.failed + '.');
+  return { entries: added, bytes: totals.bytes, checked: totals.checked };
+}
+
+// Rebuild the index from the files in archive/events/.
+//
+// Two reasons it exists. A harvest interrupted between writing a file and
+// flushing the index leaves an event on disk that nothing points at, and the
+// next run would fetch it all over again. And the events are the data: the
+// index is derived from them, so it can be thrown away and read back off them.
+//
+// What it cannot recover is what came from the details page - the game, and
+// when the copy was taken - so those are reconstructed rather than invented:
+// the game from the filter that put the event in the archive at all, and the
+// timestamp from the file's own mtime.
+export function reindex(dir = ARCHIVE_DIR) {
+  const eventsDir = path.join(dir, EVENTS_DIR);
+  let files = [];
+  try { files = fs.readdirSync(eventsDir); } catch { files = []; }
+  const entries = [];
+  const dropped = [];
+  for (const f of files) {
+    if (!f.endsWith('.json')) continue;
+    const rel = EVENTS_DIR + '/' + f;
+    const out = readEvent(dir, { file: rel });
+    const dash = f.indexOf('--');
+    let stat = null;
+    try { stat = fs.statSync(path.join(eventsDir, f)); } catch { stat = null; }
+    if (!out || !stat || dash < 1) { dropped.push(f); continue; }
+    const type = f.slice(0, dash);
+    const slug = f.slice(dash + 2, -5);
+    entries.push({
+      key: eventKey(type, slug),
+      type,
+      slug,
+      name: out.event.name || slug,
+      date: out.event.date || null,
+      format: detectFormat(slug, type),
+      game: 'Warhammer 40,000',
+      url: 'https://miniheadquarters.com/tournaments/' + type + '/army-lists/' + slug,
+      detailsUrl: 'https://miniheadquarters.com/tournaments/' + type + '/details/' + slug,
+      listCount: out.count,
+      bytes: stat.size,
+      archivedAt: stat.mtime.toISOString(),
+      file: rel,
+    });
+  }
+  saveIndex(dir, { events: entries });
+  return { entries, dropped };
+}
+
+// --- CLI ---------------------------------------------------------------
+
+function parseArgs(argv) {
+  const o = { plan: false, list: false, verify: false, reindex: false, refresh: false, limit: 0, months: 0, concurrency: DEFAULT_CONCURRENCY, dir: ARCHIVE_DIR };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--plan') o.plan = true;
+    else if (a === '--list') o.list = true;
+    else if (a === '--verify') o.verify = true;
+    else if (a === '--reindex') o.reindex = true;
+    else if (a === '--refresh') o.refresh = true;
+    else if (a === '--limit') o.limit = Number(argv[++i]) || 0;
+    else if (a.startsWith('--limit=')) o.limit = Number(a.slice(8)) || 0;
+    else if (a === '--months') o.months = Number(argv[++i]) || 0;
+    else if (a.startsWith('--months=')) o.months = Number(a.slice(9)) || 0;
+    else if (a === '--concurrency') o.concurrency = Number(argv[++i]) || DEFAULT_CONCURRENCY;
+    else if (a.startsWith('--concurrency=')) o.concurrency = Number(a.slice(14)) || DEFAULT_CONCURRENCY;
+    else if (a === '--out-dir') o.dir = argv[++i];
+    else if (a.startsWith('--out-dir=')) o.dir = a.slice(10);
+    else { console.error('unknown flag: ' + a); process.exit(2); }
+  }
+  return o;
+}
+
+async function main() {
+  const o = parseArgs(process.argv.slice(2));
+  const index = loadIndex(o.dir);
+
+  if (o.list) {
+    for (const e of index.events) {
+      console.log(e.date + '  ' + pad(e.name, 44) + '  ' + pad(e.listCount + ' lists', 12) + '  ' + fmtBytes(e.bytes || 0) + '  ' + e.slug);
+    }
+    console.log('\n' + index.events.length + ' archived event(s), ' +
+      fmtBytes(index.events.reduce((s, e) => s + (e.bytes || 0), 0)));
+    return;
+  }
+
+  if (o.reindex) {
+    const r = reindex(o.dir);
+    console.log(r.entries.length + ' events indexed from ' + path.join(o.dir, 'events'));
+    if (r.dropped.length) console.log(r.dropped.length + ' unreadable file(s) skipped: ' + r.dropped.join(', '));
+    return;
+  }
+
+  if (o.verify) {
+    let bad = 0;
+    for (const e of index.events) {
+      const out = readEvent(o.dir, e);
+      if (!out) { console.log('MISSING  ' + e.key + '  ' + e.file); bad++; continue; }
+      if (out.count !== e.listCount) { console.log('MISMATCH ' + e.key + '  index says ' + e.listCount + ', file says ' + out.count); bad++; }
+    }
+    console.log(index.events.length + ' entries, ' + bad + ' broken');
+    if (bad) process.exit(1);
+    return;
+  }
+
+  if (o.plan) {
+    const all = await getAllEvents();
+    const closed = all.filter(e => isClosed(e));
+    const todo = candidates(all, index, { months: o.months, refresh: o.refresh });
+    console.log('sitemap        ' + all.length + ' tournaments');
+    console.log('closed         ' + closed.length);
+    console.log('already in     ' + index.events.length);
+    console.log('to check       ' + todo.length + (o.months ? ' (last ' + o.months + ' months)' : ' (all time)'));
+    const byYear = new Map();
+    for (const e of todo) byYear.set(e.date.slice(0, 4), (byYear.get(e.date.slice(0, 4)) || 0) + 1);
+    for (const y of [...byYear.keys()].sort()) console.log('   ' + y + '  ' + byYear.get(y));
+    return;
+  }
+
+  await harvest(o);
+}
+
+const IS_MAIN = (() => {
+  try { return import.meta.url === pathToFileURL(process.argv[1] || '').href; }
+  catch { return false; }
+})();
+
+if (IS_MAIN) {
+  main().catch(e => { console.error(String((e && e.stack) || e)); process.exit(1); });
+}

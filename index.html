@@ -115,6 +115,11 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 .evlists.yes{color:var(--ok)}
 .evlists.no{color:var(--err);opacity:.7}
 .evlists.pending{color:var(--warn)}
+/* A row the site answers from archive/: committed in this repository, so it opens
+   without asking MHQ for anything. Marked in the edge and the tooltip rather
+   than in a column of its own, which would shove every row's columns around. */
+.evitem.archived{box-shadow:inset 2px 0 0 var(--acc)}
+.evlists.cached{color:var(--acc)}
 .evlink{font:11.5px var(--mono);color:var(--acc);text-decoration:none;white-space:nowrap}
 .evlink:hover{text-decoration:underline}
 /* !important on purpose: this utility has to beat any class that sets a
@@ -293,13 +298,21 @@ function blobOf(p) {
 }
 
 // One parse result, whichever way it arrived. The bar, the cards and the
-// mini view are identical for a fetched URL and for a file, so they meet here;
-// only the status line names the source.
+// mini view are identical for a fetched URL, for a file and for the archive, so
+// they meet here; only the status line names the source.
 function showResult(j, ms, via) {
   data = j;
   render();
   // Nothing on the status line: the event bar carries the name and the count,
-  // and repeating it there was noise. Clear whatever an earlier run left.
+  // and repeating it there was noise. The one thing worth saying is that this
+  // event came out of the repository rather than off MHQ - otherwise an instant
+  // answer looks exactly like a lucky fast one.
+  if (via === 'archive') {
+    setStatus('from the archive, saved ' + String(j.archivedAt || '').slice(0, 10) +
+      ' \u2014 no request to MHQ', 'ok');
+    return;
+  }
+  // Clear whatever an earlier run left.
   setStatus('');
 }
 
@@ -322,7 +335,7 @@ async function parse() {
       if (j.auth) e2.auth = true;
       throw e2;
     }
-    showResult(j, performance.now() - t0, '');
+    showResult(j, performance.now() - t0, j.source || '');
   } catch (e) {
     if (e.auth) {
       // An organiser URL with no session. Open the one place that can fix it
@@ -773,6 +786,11 @@ function renderEvList() {
         parse();
       };
     })(e));
+    if (e.archived) {
+      row.classList.add('archived');
+      row.title = 'Kept in this repository, saved ' + (e.archivedAt || '').slice(0, 10) +
+        ' - opens from the archive, no request to MHQ';
+    }
     row.appendChild(el('span', 'evdate', fmtDate(e.date)));
     var name = el('span', 'evname', e.name);
     if (e.future) name.appendChild(document.createTextNode(' (not yet)'));
@@ -781,7 +799,7 @@ function renderEvList() {
     row.appendChild(el('span', 'evtag ' + fmtClass(e.format), e.format || '?'));
     var lc = e.listCount ? 'yes' : 'pending';
     var li = e.listCount ? e.listCount + ' lists' : '\u2026';
-    row.appendChild(el('span', 'evlists ' + lc, li));
+    row.appendChild(el('span', 'evlists ' + lc + (e.archived ? ' cached' : ''), li));
     var link = el('a', 'evlink', '\u2197');
     link.href = e.detailsUrl;
     link.target = '_blank';

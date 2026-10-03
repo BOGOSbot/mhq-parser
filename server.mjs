@@ -9,6 +9,7 @@
  *   GET  /          serves index.html
  *   GET  /health    { ok: true }
  *   GET  /events    recent tournaments, for the picker in index.html
+ *                    (closed events held in archive/ are answered from there)
  *   POST /login     { username, password } -> { cookie }  obtain a session
  *   GET  /my-events tournaments the caller organises (X-MHQ-Cookie header)
  *   POST /parse     { url } -> { event, count, players, miniText, elapsedMs }
@@ -23,7 +24,8 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, parseHtml, parseListText, parseUrl, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
+import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
+import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -88,6 +90,49 @@ async function handleMyEvents(req, res) {
   } catch (e) {
     return json(res, 502, { error: 'my-events request failed: ' + String((e && e.message) || e), organized: [] });
   }
+}
+
+// --- the archive --------------------------------------------------------
+// Closed events live in archive/, committed to this repository, and they are
+// read off disk. A closed event is finished business: its game, its list count
+// and its armies are already known here, so listing it costs nothing and
+// re-opening it costs no request to MHQ at all.
+//
+// A broken index is reported rather than swallowed. It means a bad commit, and
+// the symptom without the message would be an empty archive that reads like MHQ
+// had forgotten its own history.
+let archiveError = null;
+function archiveIndex() {
+  try {
+    const idx = loadIndex(ARCHIVE_DIR);
+    archiveError = null;
+    return idx;
+  } catch (e) {
+    archiveError = String((e && e.message) || e);
+    return { events: [] };
+  }
+}
+
+// The entry behind a URL, when we hold it. The organiser view never matches:
+// it is a different page of the same event, carrying lists that were never
+// published, so a cached public parse would answer it with the wrong armies.
+function archiveEntryFor(url) {
+  const key = keyOfUrl(url);
+  return key ? entryForKey(archiveIndex(), key) : null;
+}
+
+// What the picker draws: the live window first, in the order it already had,
+// then the archive newest-first. Archived events are all in the past, so they
+// belong below the ones still worth watching - and they are added whole, not
+// under the caller's limit, since serving them is free.
+function withArchive(rows, index) {
+  if (!index.events.length) return rows;
+  const live = new Set(rows.map(e => eventKey(e.type, e.slug)));
+  const extra = index.events
+    .filter(e => !live.has(e.key))
+    .map(rowFor)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return rows.concat(extra);
 }
 
 // --- event filtering ---------------------------------------------------
@@ -320,6 +365,27 @@ async function handleParse(req, res) {
       'or one submitted army https://miniheadquarters.com/tournaments/<type>/administrate/army-lists/<id>)');
   }
   const t0 = Date.now();
+  // The archive answers first, for the events it holds. A closed event cannot
+  // change, so this is not a shortcut with a stale answer: it is the same parse,
+  // taken once and kept. "live": true declines it, which is what you want if
+  // you suspect the copy rather than the cache.
+  if (body.live !== true) {
+    const entry = archiveEntryFor(target);
+    const cached = entry ? readEvent(ARCHIVE_DIR, entry) : null;
+    if (cached && Array.isArray(cached.players)) {
+      return json(res, 200, {
+        event: cached.event,
+        count: cached.count,
+        players: cached.players.map(viewPlayer),
+        miniText: renderMini(cached),
+        elapsedMs: Date.now() - t0,
+        source: 'archive',
+        archivedAt: entry.archivedAt,
+      });
+    }
+    // An index pointing at a file that is not there - a partial checkout, say -
+    // falls through to the live page rather than failing the request.
+  }
   const r = await parseWithSession(target, typeof body.cookie === 'string' ? body.cookie : null);
   if (r.ok) {
     return json(res, 200, {
@@ -433,43 +499,62 @@ async function handleEvents(req, res, u) {
     filterScan = null;
   }
   if (u.searchParams.get('clear') === '1') {
-    return json(res, 200, { events: [], count: 0, scanned: 0, total: 0, done: true, cleared: true, windowDays: FILTER_WINDOW_DAYS });
+    // The archived rows stay: they are committed files, not something this
+    // process cached, so clearing the cache cannot empty them. Only the live
+    // scan starts over.
+    const rows = withArchive([], archiveIndex());
+    return json(res, 200, { events: rows, count: rows.length, scanned: 0, total: 0, done: true, cleared: true, windowDays: FILTER_WINDOW_DAYS });
   }
   try {
     // The window is applied once, here, and the subset is what the scan, the
     // progress report and the result list all see. That keeps "done" reachable:
     // out-of-window events are never scanned, so counting them against a target
     // would mean the scan can never finish.
+    const arch = archiveIndex();
+    const archived = new Set(arch.events.map(e => e.key));
     const all = await getAllEvents();
-    const windowed = withinWindow(all);
+    // Already archived means already judged, so the scan leaves it alone. That
+    // is the whole point of the archive: history costs no requests at all,
+    // here or on the harvest that filled it.
+    const windowed = withinWindow(all).filter(e => !archived.has(eventKey(e.type, e.slug)));
     lastWindowed = windowed;
     runScan(windowed); // fire and forget: the scan drains the queue on its own
     const progress = scanProgress(windowed);
-    const fl = filteredList(windowed, limit);
+    const fl = withArchive(filteredList(windowed, limit), arch);
     return json(res, 200, {
       events: fl,
       count: fl.length,
       scanned: progress.scanned,
       total: progress.total,
       done: progress.done,
+      archived: arch.events.length,
       windowDays: FILTER_WINDOW_DAYS,
+      archiveError: archiveError || undefined,
     });
   } catch (e) {
     // The catalogue could not be read. If we have one from a moment ago, hand
     // it back with the error attached rather than emptying the picker: a
     // throttled origin should cost a stale list, not a blank panel and an
     // error where the numbers should be.
+    const arch = archiveIndex();
     if (lastWindowed && lastWindowed.length) {
+      const rows = withArchive(filteredList(lastWindowed, limit), arch);
       return json(res, 200, {
-        events: filteredList(lastWindowed, limit),
-        count: filteredList(lastWindowed, limit).length,
+        events: rows,
+        count: rows.length,
         scanned: scanProgress(lastWindowed).scanned,
         total: scanProgress(lastWindowed).total,
         done: false,
+        archived: arch.events.length,
         stale: true,
         error: String((e && e.message) || e),
         windowDays: FILTER_WINDOW_DAYS,
       });
+    }
+    // Even with no catalogue at all, the archive still answers: it is on disk.
+    const rows = withArchive([], arch);
+    if (rows.length) {
+      return json(res, 200, { events: rows, count: rows.length, scanned: 0, total: 0, done: true, archived: arch.events.length, archiveOnly: true, error: String((e && e.message) || e) });
     }
     return json(res, 502, { error: String((e && e.message) || e) });
   }
@@ -483,7 +568,9 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && (u.pathname === '/' || u.pathname === '/index.html')) {
     return send(res, 200, readIndex(), 'text/html; charset=utf-8');
   }
-  if (req.method === 'GET' && u.pathname === '/health') return json(res, 200, { ok: true });
+  if (req.method === 'GET' && u.pathname === '/health') {
+    return json(res, 200, { ok: true, archived: archiveIndex().events.length });
+  }
   if (req.method === 'GET' && u.pathname === '/events') return handleEvents(req, res, u);
   if (req.method === 'GET' && u.pathname === '/my-events') return handleMyEvents(req, res);
   if (req.method === 'POST' && u.pathname === '/login') return handleLogin(req, res);
@@ -501,8 +588,10 @@ server.on('clientError', (err, socket) => {
 // the checks behind it cost far more, so starting at boot means the first click
 // on Browse reads a cache instead of waiting on a cold scan. Fire and forget:
 // a failure here costs the scan, not the server.
+const archived = archiveIndex();
+const archivedKeys = new Set(archived.events.map(e => e.key));
 getAllEvents()
-  .then((all) => runScan(withinWindow(all)))
+  .then((all) => runScan(withinWindow(all).filter(e => !archivedKeys.has(eventKey(e.type, e.slug)))))
   .catch(() => {});
 
 server.listen(port, host, () => {
@@ -510,4 +599,5 @@ server.listen(port, host, () => {
   console.log('POST /parse {"url":"<army-lists url>"}');
   console.log('POST /parse-file?name=<file>   (body: a saved page)');
   console.log('GET  /events?limit=80&type=team');
+  console.log('Archive: ' + archived.events.length + ' closed event(s)' + (archiveError ? ' - UNAVAILABLE: ' + archiveError : ''));
 });

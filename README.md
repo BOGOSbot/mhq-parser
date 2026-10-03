@@ -38,7 +38,7 @@ Options du serveur :
 | **--port <n>** | 8787 | Port d'ecoute (variable `PORT`) |
 | **--host <h>** | 127.0.0.1 | Interface d'ecoute (variable `HOST`) |
 
-Points de terminaison : `GET /` (la page), `GET /health`, `POST /parse` avec un corps JSON "{"url":"...", "cookie":"..."}" — la session vient de `POST /login` (ou de la variable `MHQ_COOKIE`) et est nécessaire pour les vues organisateur/admin — et `POST /parse-file?name=<fichier>`, dont le corps est la page HTML brute (32 Mo maximum) et qui repond comme `/parse`. Enfin `POST /parse-list?name=<fichier>`, dont le corps est le texte d'une liste et qui repond de la meme maniere.
+Points de terminaison : `GET /` (la page), `GET /health`, `POST /parse` avec un corps JSON "{"url":"...", "cookie":"..."}" — la session vient de `POST /login` (ou de la variable `MHQ_COOKIE`) et est nécessaire pour les vues organisateur/admin — et `POST /parse-file?name=<fichier>`, dont le corps est la page HTML brute (32 Mo maximum) et qui repond comme `/parse`. Enfin `POST /parse-list?name=<fichier>`, dont le corps est le texte d'une liste et qui repond de la meme maniere. Un evenement present dans `archive/` est repondu par `/parse` depuis le disque, sans requete vers miniheadquarters.com ; `"live": true` dans le corps passe outre.
 
 ## Options
 
@@ -94,6 +94,33 @@ La vue admin n'est pas la vue publique. La page d'événement est un **tableau**
 `https://miniheadquarters.com/tournaments/<type>/administrate/army-lists/<id>`
 
 Chaque armée porte le statut de sa ligne — `Pending validation`, `Accepted` ou `Rejected` — en pastille sur la carte (ambre, vert, rouge) et filtrable via « All statuses » dans la barre. Le mini Markdown l'inscrit entre crochets après la faction. Le JSON embarque aussi `adminId`, `adminUrl`, `lastModified`, `firstSubmission` et `lastReviewBy`.
+
+## Les événements fermés sont archivés
+
+Un tournoi déjà passé ne change plus : ses listes sont publiées, sa date est derrière nous, et MHQ garde la page des années. C'est le seul élément du projet qui mérite d'être **gardé** plutôt que récupéré. L'archive vit dans le dépôt :
+
+- `archive/index.json` - le catalogue, une entrée par événement archivé ;
+- `archive/events/<type>--<slug>.json` - l'analyse complète, exactement ce que `/parse` renvoie.
+
+```powershell
+node tools\\mhq-parser\\archive.mjs --plan          # ce qu'une récolte considérerait, sans rien récupérer
+node tools\\mhq-parser\\archive.mjs --months 12     # récolter les 12 derniers mois
+node tools\\mhq-parser\\archive.mjs --list          # ce qu'il y a dedans
+node tools\\mhq-parser\\archive.mjs --verify        # chaque entrée pointe encore vers un fichier lisible
+node tools\\mhq-parser\\archive.mjs --reindex       # reconstruire l'index depuis les fichiers
+```
+
+Récolter est reprenable : ce qui est déjà dans l'index n'est pas récupéré une seconde fois, donc une récolte interrompue se relance sans dommage. Un échec n'est jamais enregistré comme un verdict : un délai dépassé ne dit rien du jeu ni des listes, l'événement reste donc à récolter.
+
+**Le site s'en sert comme cache.** `/parse` sur un événement archivé répond depuis le fichier : aucune requête vers MHQ, aucune session, aucun délai à attendre (60 armées en moins de 100 ms, contre une demi-seconde en direct). `{"live": true}` dans le corps de la requête passe outre et va chercher la page. `/events` liste les événements archivés sans les vérifier et **le scan les saute** : leur jeu et leur nombre de listes sont déjà connus.
+
+Une URL organisateur n'est **jamais** servie depuis l'archive. C'est une autre page du même événement, avec des listes soumises et jamais publiées : y répondre montrerait les mauvaises armées. Elle demande toujours une session.
+
+Ce qui est archivé n'est pas une approximation d'une réponse en direct : pour un même événement, les deux renvoient des joueurs et un mini texte identiques, l'octet près. La copie ne peut dater que d'avant la fermeture ; chaque entrée porte sa date (`archivedAt`), `--refresh` en reprend une, et `live: true` l'emporte sur le cache quand c'est le cache qu'on doute.
+
+Une récolte des 12 mois : 1 201 tournois fermés dans le sitemap, 328 vérifiés, **245 gardés** (les autres sont un autre jeu, ou des listes jamais publiées), **57.6 Mo** de JSON pour 256 événements. Tout l'historique depuis 2021 pèserait environ 210 Mo, ce qui explique que la récolte soit bornée par défaut plutôt qu'absolue.
+
+Dans l'interface, une ligne archivée est marquée d'un liseré bleu et son nombre de listes s'affiche en bleu ; après l'avoir ouverte, la ligne d'état dit d'où elle vient.
 
 ## Sortie
 
@@ -164,6 +191,8 @@ Sur les 240 listes avec unités présentes dans ce dépôt (11 événements), l'
 ## Fichiers
 
 - `.mjs` - l'analyseur + le formatteur
+- **archive.mjs** - la recolte des evenements fermes, et le magasin que le site relit
+- **archive/** - les evenements fermes deja recoltes, un fichier JSON par tournoi
 - **README.md** - ce fichier
 - **developer-doc.md** - comment fonctionne l'analyseur et pourquoi
 - **translate.md** - dictionnaire FR/EN utilisé par l'analyseur (balises de rôle, dispositions, en-têtes de catégorie, mots-clés de puces, noms d'améliorations)
@@ -210,7 +239,7 @@ Parsing always goes through the server: the browser cannot fetch miniheadquarter
 | **--port <n>** | 8787 | Listening port (`PORT`) |
 | **--host <h>** | 127.0.0.1 | Listening interface (`HOST`) |
 
-Endpoints: `GET /` (the page), `GET /health`, `POST /parse` with a JSON body "{"url":"...", "cookie":"..."}" — the session comes from `POST /login` (or the `MHQ_COOKIE` variable) and is needed for organiser/admin views — `POST /parse-file?name=<file>`, whose body is the raw HTML page (32 MB limit) and which answers like `/parse`, and `POST /parse-list?name=<file>`, whose body is pasted list text and which answers the same way.
+Endpoints: `GET /` (the page), `GET /health`, `POST /parse` with a JSON body "{"url":"...", "cookie":"..."}" — the session comes from `POST /login` (or the `MHQ_COOKIE` variable) and is needed for organiser/admin views — `POST /parse-file?name=<file>`, whose body is the raw HTML page (32 MB limit) and which answers like `/parse`, and `POST /parse-list?name=<file>`, whose body is pasted list text and which answers the same way. An event held in `archive/` is answered by `/parse` straight off disk, with no request to miniheadquarters.com; `"live": true` in the body declines the cache.
 
 ## Flags
 
@@ -266,6 +295,33 @@ The admin view is not the public view. The event page is a **table** with one ro
 `https://miniheadquarters.com/tournaments/<type>/administrate/army-lists/<id>`
 
 Each army carries the status of its row — `Pending validation`, `Accepted` or `Rejected` — as a badge on the card (amber, green, red) and filterable via "All statuses" in the bar. The mini Markdown appends it in brackets after the faction. The JSON also carries `adminId`, `adminUrl`, `lastModified`, `firstSubmission` and `lastReviewBy`.
+
+## Closed events are kept in this repository
+
+A tournament that has already happened cannot change: its lists are out, its date is behind us, and MHQ keeps the page for years. That makes it the one thing here worth **keeping** rather than fetching, so the archive lives in the repository:
+
+- `archive/index.json` - the catalogue, one entry per archived event;
+- `archive/events/<type>--<slug>.json` - the full parse, exactly what `/parse` returns.
+
+```powershell
+node tools\\mhq-parser\\archive.mjs --plan          # what a harvest would consider, fetching nothing
+node tools\\mhq-parser\\archive.mjs --months 12     # harvest the last 12 months of closed events
+node tools\\mhq-parser\\archive.mjs --list          # what is in there
+node tools\\mhq-parser\\archive.mjs --verify        # every entry still resolves to a readable file
+node tools\\mhq-parser\\archive.mjs --reindex       # rebuild the index from the files on disk
+```
+
+A harvest is resumable: anything already indexed is not fetched again, so a run that dies halfway costs a rerun rather than the whole job. A failure is never recorded as a verdict either - a timeout says nothing about the game or the lists - so that event is left for the next run.
+
+**The site reads it as a cache.** `/parse` on an archived event answers from the file: no request to MHQ, no session, no timeout to wait out (60 armies in under 100 ms, against about half a second live). `{"live": true}` in the request body declines the cache and fetches the page. `/events` lists the archived ones without checking them, and the scan skips them outright: their game and their list count are already known.
+
+An organiser URL is **never** served from the archive. It is a different page of the same event, carrying submitted lists that were never published, so answering one would show the wrong armies; it still asks for a session.
+
+What is archived is not an approximation of a live answer: for the same event both return identical players and identical mini text, byte for byte. A copy can only predate the event closing, every entry carries its date (`archivedAt`), `--refresh` re-takes one, and `live: true` wins over the cache whenever the cache is what you doubt.
+
+One harvest of the last 12 months: 1,201 closed tournaments in the sitemap, 328 checked, **245 kept** (the rest are another game, or lists never published), **57.6 MB** of JSON for 256 events. The whole history back to 2021 would come to roughly 210 MB, which is why the harvest is bounded by default rather than absolute.
+
+In the UI an archived row is marked with a blue edge and its list count in blue, and after opening one the status line says where it came from.
 
 ## Output
 
@@ -336,6 +392,8 @@ Across the 240 lists with units in this repository (11 events), the parser produ
 ## Files
 
 - `.mjs` - the parser + formatter
+- **archive.mjs** - the closed-event harvest, and the store the site reads back
+- **archive/** - the closed events harvested so far, one JSON file per tournament
 - **README.md** - this file
 - **developer-doc.md** - how the parser works and why
 - **translate.md** - FR/EN dictionary used by the parser (role tags, dispositions, category headers, bullet keywords, enhancement names)
