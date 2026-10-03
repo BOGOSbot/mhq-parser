@@ -82,6 +82,50 @@ A saved **per-army admin page** has no article cards at all — its body is a si
 
 The endpoint is not JSON: the markup is the raw request body and the file name rides in the query string. An MHQ page is about a megabyte of quotes and backslashes, and a JSON envelope would inflate it for nothing. Its limit is 32 MB, separate from the 64 KB one the JSON control messages keep.
 
+### 2c. Raw list text: a pasted or dropped army list
+
+The third entry point takes list text rather than markup. Nothing is fetched and no session is used: the browser already holds the text, so it posts the bytes to `POST /parse-list` with the file name in the query string, exactly as `/parse-file` takes a saved page. The answer is the same shape `/parse` gives, so a paste, a drop and a fetched event render through one code path in the page.
+
+Everything downstream is shared. `parseListText()` builds the same fake-article shape `adminArticle()` builds for a submitted list — an `<h2>Name : Faction</h2>` followed by the raw body — and hands it to `articlesToOutput()` via `buildPlayers()`. That is the seam that made this cheap: the structuring, the mini view and the warnings were already written for exactly this input and had never been told.
+
+#### Where a list starts
+
+A blob of pasted text holds one list or several, and nothing in the format says which, so the boundaries are read off the lists themselves. `listStartIndexes()` uses three signals, each of which only ever appears at the top of an army:
+
+1. **A `+++` run opening a header block.** Requires both a closing delimiter further down *and* `+ KEY: value` lines between. That guard is not decoration: players also use long `+` rules between sections, and one of those sitting mid-preamble used to read as a list start. It was the single worst bug in this feature — a pasted list came apart into eleven pieces.
+2. **A player-name key** (`PLAYER NAME`, `PLAYER`, `PSEUDO`, `NOM DU JOUEUR`, `JOUEUR`, `JOUEURS`), with or without the leading `+`. The list is freeform enough that `joueurs : Agabdir` and `Nom du joueur : Arutho` both turn up outside any header block.
+3. **An army-sized total** — `Duck Fifiler (1990 points)`. A unit never costs a thousand points or more, so a line carrying one cannot be a unit declaration. This is the only signal a headerless list has.
+
+A banner is held back until a list is already under way (`seenUnit`). A preamble carries several army-sized lines — the banner, a total, and a `Force de Frappe (2 000 Points)` eight lines below — and without that guard one army came apart into three.
+
+**Candidates within ten lines of each other are one boundary**, merged to the earliest. Two signals routinely fire on the same list.
+
+#### What is not a signal: a blank line
+
+The obvious fourth candidate, and the corpus rules it out outright. All 233 lists harvested for this work contain blank lines internally, in runs of one to four (4312 singles, 465 doubles, 146 triples, 141 quads). Any threshold low enough to catch a pasted-together file also cuts a real army in half, so there is no safe one and there is not one here.
+
+#### What it costs, measured
+
+The corpus is 233 lists from eight events, harvested 2026-10. It is not in the tree — the `cleanup` commit deleted the generated event folders — so it was rebuilt from the live site to design this, and 42 format-diverse lists from it are now a fixture.
+
+- **233 / 233** single lists are left whole. This is the property that matters: pasting one list is the common case, and a list that comes apart destroys data rather than merely mislabeling it.
+- **250 random groups of 2–5 concatenated lists**: 199 exact, 17 right count with different units, 34 under-split, **0 over-split**. The bias is deliberate — under-splitting shows one card with a total that does not match, which the existing warning already catches; over-splitting silently truncates real armies.
+- **42-list corpus**: 40 slices, 39 of them exactly one list, 3 lists absorbed by a neighbour (two Ironbuilt exports, one keyed only on `BTP:`). Pinned in the test, because it is a trade and not an accident.
+
+Admitting `=` as a rule character was tried and reverted: Ironbuilt exports use it and carry no other start marker, but it made the corpus split 42 lists into 20 instead of 39, because `=` rules turn up inside lists too. Two lists that do not get their own slice beats twenty that do not get the right one.
+
+#### Identity
+
+`PLAYER NAME` → `PLAYER` → `PSEUDO` → the army banner → `Not found`. The banner matters because 140 of the 233 corpus lists carry no header at all, and it is often the only thing naming the player. It is skipped when it reads `Unnamed list` / `sans nom` / `liste test`, and when it names the force layout (`Strike Force`, `Force de Frappe`) — `isPreamble()` drops those names from unit lists, so they cannot stand in as an identity either. Team is left to `getTeamName()`, which already falls back to the banner.
+
+#### Unrecognized format
+
+`isUnrecognizedFormat()` fires when the text carries neither marker family, or when it parses to fewer than two units. Both used to pass silently: the second rendered as an army with nothing in it, which reads as an empty submission rather than as a list in an unknown shape. It is a warning chip, on **both** the list-text and the MHQ page path, so the tool says the same thing wherever the list came from. Two of 233 trip it — the Ironbuilt exports, which are kept in the fixture as the evidence for adding them later.
+
+#### A latent off-by-one, fixed
+
+`buildPlayers()` read the body as `a.slice(a.indexOf('</h2>') + 6)`. `</h2>` is **five** characters. On an MHQ page the bug was invisible, because markup or a newline always follows the heading and the lazy trim eats leading whitespace either way. A pasted list abuts the heading directly, and the first unit lost its first character every time. It is 5 now, and 121 / 121 real page parses are byte-identical before and after.
+
 ### 3. Split the page into player blocks
 
 The page has two formats depending on the event type:
@@ -366,6 +410,7 @@ Tests are plain `node`. There is no runner to install:
 ```
 node tests/test-auth.mjs
 node tests/test-parse-file.mjs
+node tests/test-list-text.mjs
 ```
 
 ## Extending the parser
@@ -385,4 +430,5 @@ Enhancement points are already included in unit points for all supported formats
 
 - Deterministic: same URL gives the same output, modulo upstream page changes.
 - Army-list HTML is not cached. Every parse re-fetches, so two runs of the same URL can differ if the organiser edits a list in between. The catalogue behind `/events` is the exception: `listEvents()` holds the sitemap in memory for hours and the per-event check results in `filterCache` for an hour.
+- The same applies to list text: `parseListText()` is deterministic, and `tests/fixtures/lists.json` is the offline corpus to diff against. The full 233-list corpus is not in the tree - `cleanup` removed the generated event folders - so `lists.json` holds the 42 format-diverse lists selected from it, each with the body and what it should parse to.
 - To diff two runs, save the HTML and feed both copies to `parseHtml()`. Do not patch `fetchHTML()` to read a file: `parseHtml()` already takes markup you have, and the **From file** button in the page calls it through `POST /parse-file`.

@@ -8,7 +8,7 @@ Récupère une page de listes d'armées sur [MiniHeadQuarters](https://miniheadq
 node tools\\mhq-parser\\parse.mjs "https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>"
 ```
 
-L'URL est obligatoire. Le répertoire de sortie par défaut est `<event-slug>/` relativement au script. Les deux fichiers y sont écrits :
+L'argument est une URL MHQ **ou** le chemin d'un fichier de liste. Le répertoire de sortie par défaut est `<event-slug>/` relativement au script (le nom du fichier, pour une liste). Les deux fichiers y sont écrits :
 
 - `<event-slug>\\mhq_army_lists.json`  (structuré : joueurs, unités, en-têtes)
 - `<event-slug>\\mhq_army_lists.mini.md`  (vue Markdown compacte)
@@ -27,7 +27,7 @@ Un petit serveur local, sans aucune dependance, sert une page unique qui appelle
 node tools\\mhq-parser\\server.mjs
 ```
 
-Coller ensuite l'URL de l'evenement dans la page http://127.0.0.1:8787 puis lancer l'analyse. Le bouton **From file** ouvre l'explorateur et analyse directement une page MiniHeadQuarters deja enregistree sur le disque (Ctrl+S dans le navigateur) : aucune requete vers le site et aucune session, donc une page privee, non publiee ou hors ligne s'analyse comme les autres. **Browse** reste la facon de choisir un tournoi. Les listes s'affichent groupees par equipe ; chaque armee indique son total de points (calcule vs declare), son detachement, ses dispositions de force et ses avertissements, suivis du tableau des unites. La recherche texte, le filtre par faction et l'affichage restreint aux avertissements filtrent a la volee ; `Copy mini` copie la vue Markdown et `Download JSON` telecharge l'equivalent du fichier du parseur.
+Coller ensuite l'URL de l'evenement dans la page http://127.0.0.1:8787 puis lancer l'analyse. Le bouton **From file** ouvre l'explorateur et analyse directement une page MiniHeadQuarters deja enregistree sur le disque (Ctrl+S dans le navigateur) : aucune requete vers le site et aucune session, donc une page privee, non publiee ou hors ligne s'analyse comme les autres. Le meme bouton accepte une **liste d'armée** en `.txt` ou `.md`, **Paste** ouvre une fenêtre pour coller du texte, et un fichier lâché n'importe où sur la page est pris en charge. **Browse** reste la facon de choisir un tournoi. Les listes s'affichent groupees par equipe ; chaque armee indique son total de points (calcule vs declare), son detachement, ses dispositions de force et ses avertissements, suivis du tableau des unites. La recherche texte, le filtre par faction et l'affichage restreint aux avertissements filtrent a la volee ; `Copy mini` copie la vue Markdown et `Download JSON` telecharge l'equivalent du fichier du parseur.
 
 L'analyse passe toujours par le serveur : le navigateur ne peut pas interroger miniheadquarters.com directement faute d'en-tete CORS. La page est relue a chaque requete, modifier index.html ne demande pas de redemarrage.
 
@@ -38,17 +38,36 @@ Options du serveur :
 | **--port <n>** | 8787 | Port d'ecoute (variable `PORT`) |
 | **--host <h>** | 127.0.0.1 | Interface d'ecoute (variable `HOST`) |
 
-Points de terminaison : `GET /` (la page), `GET /health`, `POST /parse` avec un corps JSON "{"url":"...", "cookie":"..."}" — la session vient de `POST /login` (ou de la variable `MHQ_COOKIE`) et est nécessaire pour les vues organisateur/admin — et `POST /parse-file?name=<fichier>`, dont le corps est la page HTML brute (32 Mo maximum) et qui repond comme `/parse`.
+Points de terminaison : `GET /` (la page), `GET /health`, `POST /parse` avec un corps JSON "{"url":"...", "cookie":"..."}" — la session vient de `POST /login` (ou de la variable `MHQ_COOKIE`) et est nécessaire pour les vues organisateur/admin — et `POST /parse-file?name=<fichier>`, dont le corps est la page HTML brute (32 Mo maximum) et qui repond comme `/parse`. Enfin `POST /parse-list?name=<fichier>`, dont le corps est le texte d'une liste et qui repond de la meme maniere.
 
 ## Options
 
 | Option | Valeur par défaut | Rôle |
 |------|---------|---------|
 | \ <url> | obligatoire | URL de listes d'armées : `…/tournaments/{team\|individual\|side-by-side}/{army-lists\|details}/<slug>`, ou la vue organisateur `…/administrate/<slug>/{army-lists\|details}` |
+| \ <fichier> | obligatoire | Chemin d'une liste : `.txt` / `.md` (texte), ou `.html` (page MiniHeadQuarters enregistrée) |
 | **--out-dir <dir>** | `<event-slug>/` | Où écrire les deux fichiers |
 | **--json <name>** | mhq_army_lists.json | Nom du fichier JSON |
 | **--mini <name>** | mhq_army_lists.mini.md | Nom du fichier mini |
 | **--cookie <val>** | `MHQ_COOKIE` (env.) | En-tête `Cookie` pour les vues organisateur/admin |
+
+## Une liste en texte
+
+Une liste d'armée peut être passée directement, sans passer par MHQ : **From file** pour un `.txt` ou `.md`, **Paste** pour du texte collé, ou un fichier lâché n'importe où sur la page. Aucune requête, aucune session.
+
+Un fichier peut contenir **une seule liste ou plusieurs**, sans aucun séparateur : le corpus de test en compte 42, collées les unes aux autres. L'analyseur trouve les frontières lui-même, à partir de trois signaux qui n'apparaissent qu'en tête d'armée :
+
+1. un bloc `+++` ouvrant un en-tête ;
+2. une clé de nom de joueur (`+ PLAYER NAME:`, `+ PLAYER`, `+ PSEUDO:`, `Nom du joueur :`) ;
+3. un total de valeur armée — `Duck Fifiler (1990 points)`. Une unité ne coûte jamais 1000 points, donc cette ligne n'en est pas une.
+
+Une ligne à vide **n'est pas** un signal : les 233 listes du corpus en contiennent toutes, par séries de deux à quatre. Tout seuil assez bas pour attraper un fichier collé coupe aussi une armée par la moitié.
+
+Les frontières ne sont coupées qu'à ces endroits. Sur 42 listes réelles concaténées, l'analyseur en retrouve 39 intactes et laisse 3 listes sans repère absorbées par leur voisine — jamais l'inverse : une liste n'est jamais coupée en deux.
+
+Le format est détecté liste par liste. Un texte qui ne porte aucun des deux familles de marqueurs, ou qui rend moins de deux unités, affiche l'avertissement **Unrecognized format** — sur une page MHQ comme sur du texte collé. Deux listes sur 233 le déclenchent : des exports « Ironbuilt », que l'analyseur ne sait pas structurer.
+
+L'identité vient d'une chaîne : `PLAYER NAME` → `PLAYER` → `PSEUDO` → la bannière d'armée (`Duck Fifiler (1990 points)`) → `Not found`. La bannière est ignorée quand elle dit `Unnamed list` ou `Strike Force`.
 
 ## Vues organisateur/admin
 
@@ -97,6 +116,7 @@ Chaque objet joueur contient :
 
 ### Mini Markdown
 
+- `Unrecognized format` signale une liste que l'analyseur n'a pas reconnue comme un format connu : aucun des deux marqueurs, ou moins de deux unités.
 - `⚠ points mismatch` signale une divergence entre le total calculé et le total déclaré.
 - `⚠ missing total points` signale qu'aucun total déclaré n'est lisible, ni dans l'en-tête `+++`, ni dans le corps de la liste (bannière `<nom> (1995 points)` comprise).
 - Les avertissements apparaissent sous l'en-tête du joueur.
@@ -147,6 +167,8 @@ Sur les 240 listes avec unités présentes dans ce dépôt (11 événements), l'
 - **README.md** - ce fichier
 - **developer-doc.md** - comment fonctionne l'analyseur et pourquoi
 - **translate.md** - dictionnaire FR/EN utilisé par l'analyseur (balises de rôle, dispositions, en-têtes de catégorie, mots-clés de puces, noms d'améliorations)
+- `tests/fixtures/lists.json` - corpus de 42 listes réelles, avec pour chacune ce qu'elle doit produire
+- `tests/test-list-text.mjs` - listes collées : découpage, identité, format non reconnu
 
 ---
 
@@ -160,7 +182,7 @@ Pull a [MiniHeadQuarters](https://miniheadquarters.com) army-lists page and dump
 node tools\\mhq-parser\\parse.mjs "https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>"
 ```
 
-The URL is required. The default output directory is `<event-slug>/` relative to the script. Both files go there:
+The argument is an MHQ URL **or** the path to a list file. The default output directory is `<event-slug>/` relative to the script - the file's own name, for a list. Both files go there:
 
 - `<event-slug>\\mhq_army_lists.json`  (structured: players, units, headers)
 - `<event-slug>\\mhq_army_lists.mini.md`  (compact Markdown view)
@@ -188,17 +210,36 @@ Parsing always goes through the server: the browser cannot fetch miniheadquarter
 | **--port <n>** | 8787 | Listening port (`PORT`) |
 | **--host <h>** | 127.0.0.1 | Listening interface (`HOST`) |
 
-Endpoints: `GET /` (the page), `GET /health`, `POST /parse` with a JSON body "{"url":"...", "cookie":"..."}" — the session comes from `POST /login` (or the `MHQ_COOKIE` variable) and is needed for organiser/admin views — and `POST /parse-file?name=<file>`, whose body is the raw HTML page (32 MB limit) and which answers like `/parse`.
+Endpoints: `GET /` (the page), `GET /health`, `POST /parse` with a JSON body "{"url":"...", "cookie":"..."}" — the session comes from `POST /login` (or the `MHQ_COOKIE` variable) and is needed for organiser/admin views — `POST /parse-file?name=<file>`, whose body is the raw HTML page (32 MB limit) and which answers like `/parse`, and `POST /parse-list?name=<file>`, whose body is pasted list text and which answers the same way.
 
 ## Flags
 
 | Flag | Default | Purpose |
 |------|---------|---------|
 | \ <url> | required | Army-lists URL: `…/tournaments/{team\|individual\|side-by-side}/{army-lists\|details}/<slug>`, or the organiser view `…/administrate/<slug>/{army-lists\|details}` |
+| \ <file> | required | Path to a list: `.txt` / `.md` (text), or `.html` (a saved MiniHeadQuarters page) |
 | **--out-dir <dir>** | `<event-slug>/` | Where to write both files |
 | **--json <name>** | mhq_army_lists.json | JSON filename |
 | **--mini <name>** | mhq_army_lists.mini.md | Mini filename |
 | **--cookie <val>** | `MHQ_COOKIE` (env.) | `Cookie` header for organiser/admin views |
+
+## A list as text
+
+An army list can go straight in, without MHQ: **From file** for a `.txt` or `.md`, **Paste** for pasted text, or a file dropped anywhere on the page. No request, no session.
+
+A file can hold **one list or several**, with no separator at all: the test corpus is 42 of them, concatenated. The parser finds the boundaries itself, off three signals that only ever appear at the top of an army:
+
+1. a `+++` block opening a header;
+2. a player-name key (`+ PLAYER NAME:`, `+ PLAYER`, `+ PSEUDO:`, `Nom du joueur :`);
+3. an army-sized total — `Duck Fifiler (1990 points)`. A unit never costs a thousand points, so that line is not a unit.
+
+A blank line is **not** a signal: all 233 lists in the corpus contain blank lines, in runs of two to four. Any threshold low enough to catch a pasted-together file also cuts a real army in half.
+
+Lists are only cut at those places. Of 42 real lists concatenated, the parser recovers 39 intact and lets 3 marker-less lists be absorbed by a neighbour — never the reverse: a list is never cut in two.
+
+The format is detected per list. Text carrying neither marker family, or parsing to fewer than two units, gets an **Unrecognized format** warning — on an MHQ page as much as on pasted text. Two lists in 233 trip it: "Ironbuilt" exports, which the parser cannot structure.
+
+Identity comes off a chain: `PLAYER NAME` → `PLAYER` → `PSEUDO` → the army banner (`Duck Fifiler (1990 points)`) → `Not found`. The banner is skipped when it reads `Unnamed list` or `Strike Force`.
 
 ## Organiser / admin views
 
@@ -247,6 +288,7 @@ Each player object has:
 
 ### Mini Markdown
 
+- `Unrecognized format` marks a list the parser did not recognise as a known format: neither marker family, or fewer than two units.
 - `⚠ points mismatch` warns when the parsed total differs from the declared total.
 - `⚠ missing total points` warns when no declared total is readable, neither in the `+++` header nor in the body (banner `<name> (1995 points)` included).
 - Warnings appear under the player header.
@@ -297,3 +339,5 @@ Across the 240 lists with units in this repository (11 events), the parser produ
 - **README.md** - this file
 - **developer-doc.md** - how the parser works and why
 - **translate.md** - FR/EN dictionary used by the parser (role tags, dispositions, category headers, bullet keywords, enhancement names)
+- **tests/fixtures/lists.json** - 42 real lists, each with what it should parse to
+- **tests/test-list-text.mjs** - concatenated lists: splitting, identity, unrecognised format
