@@ -147,6 +147,7 @@ Chaque objet joueur contient :
 
 - `Unrecognized format` signale une liste que l'analyseur n'a pas reconnue comme un format connu : aucun des deux marqueurs, ou moins de deux unités.
 - `⚠ points mismatch` signale une divergence entre le total calculé et le total déclaré.
+- `⚠ over points limit` signale que la seule valeur lisible est la taille de partie (`Strike Force (2000 points)`) et que l'armée la dépasse ; rester en dessous est normal et ne produit aucun avertissement.
 - `⚠ missing total points` signale qu'aucun total déclaré n'est lisible, ni dans l'en-tête `+++`, ni dans le corps de la liste (bannière `<nom> (1995 points)` comprise).
 - Les avertissements apparaissent sous l'en-tête du joueur.
 - `+` sépare les unités à l'intérieur d'un groupe attaché.
@@ -365,6 +366,7 @@ Each player object has:
 
 - `Unrecognized format` marks a list the parser did not recognise as a known format: neither marker family, or fewer than two units.
 - `⚠ points mismatch` warns when the parsed total differs from the declared total.
+- `⚠ over points limit` warns when the only readable figure is the battle size (`Strike Force (2000 points)`) and the army exceeds it; being under it is normal and warns nothing.
 - `⚠ missing total points` warns when no declared total is readable, neither in the `+++` header nor in the body (banner `<name> (1995 points)` included).
 - Warnings appear under the player header.
 - `+` separates units inside an attached group.

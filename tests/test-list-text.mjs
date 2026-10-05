@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { parseListText, listStartIndexes, isUnrecognizedFormat, playerWarnings, getMeta, totals, nameFromFile } from '../parse.mjs';
+import { parseListText, listStartIndexes, isUnrecognizedFormat, playerWarnings, getMeta, totals, armyBudget, nameFromFile } from '../parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -122,6 +122,63 @@ for (const r of freeform) {
   ok('freeform: ' + r.source + ' keeps its detachment', !!m.detachment, 'detachment ' + JSON.stringify(m.detachment));
   ok('freeform: ' + r.source + ' keeps its disposition', !!m.forceDisposition, 'disposition ' + JSON.stringify(m.forceDisposition));
 }
+
+// A header must survive concatenation too. The standalone checks above offer
+// each list on its own, where the first-list special case applies; in a blob,
+// the second and later freeform lists used to be cut at the budget line, so
+// their faction/detachment/disposition was handed to the previous army. That is
+// why the chips appeared only on a multi-list paste.
+for (const r of freeform) {
+  const alone = getMeta(oneOf(r.body).players[0]);
+  const slice = many.players.find(p => sig(p) === sigOf(r.body));
+  ok('multi: ' + r.source + ' keeps its header',
+    !!slice && !!slice.faction && getMeta(slice).detachment === alone.detachment &&
+      getMeta(slice).forceDisposition === alone.forceDisposition,
+    slice ? JSON.stringify({ faction: slice.faction, det: getMeta(slice).detachment, disp: getMeta(slice).forceDisposition }) : 'no slice');
+}
+
+// Two app-freeform lists pasted one after the other, the second with a blank
+// between its faction and its detachment and no army total anywhere: the only
+// army-sized number is the "Strike Force" budget. The boundary belongs on the
+// faction, not on the budget.
+const chain = [
+  'Adeptus Custodes',
+  'Lions of the Emperor (3 Detachment Points)',
+  'Take and Hold',
+  'Strike Force (2,000 Points)',
+  '',
+  'CHARACTERS',
+  '',
+  'Shield-Captain (150 Points)',
+  '\u2022 1x Guardian spear',
+  'Custodians (220 Points)',
+  '\u2022 9x Custodian',
+  '',
+  'World Eaters',
+  '',
+  'Berzerker Warband (3 Detachment Points)',
+  'Take and Hold',
+  'Strike Force (2000 points)',
+  '',
+  'CHARACTERS',
+  '',
+  'Angron (330 Points)',
+  '\u2022 1x Samniarius and Spinegrinder',
+  'Kharn the Betrayer (115 Points)',
+  '\u2022 1x Gorechild',
+  '',
+].join('\n');
+const chainLines = chain.split('\n');
+t('split: two freeform lists are two boundaries', listStartIndexes(chainLines).length, 2);
+t('split: the second starts at its faction', listStartIndexes(chainLines)[1], chainLines.indexOf('World Eaters'));
+const chainOut = parseListText(chain, { name: 'x' }).output;
+t('split: two players', chainOut.count, 2);
+t('split: the first keeps its own detachment', getMeta(chainOut.players[0]).detachment, 'Lions of the Emperor');
+const chain2 = chainOut.players[1];
+t('split: the second keeps its faction', chain2.faction, 'World Eaters');
+t('split: the second keeps its detachment', getMeta(chain2).detachment, 'Berzerker Warband');
+t('split: the second keeps its disposition', getMeta(chain2).forceDisposition, 'Take and Hold');
+t('split: the second warns about neither', playerWarnings(chain2, getMeta(chain2)).map(w => w.type), []);
 
 // --- categories ---------------------------------------------------------------
 // A unit takes the category of the last section header above it, so a header the
@@ -261,6 +318,24 @@ t('warnings: no detachment warning when found', playerWarnings(
   metaOf('World Eaters\nStrike Force (2000 points)\nBerzerker Warband\nDetachment Rule: Berzerker Warband\n' +
     'CHARACTERS\nChar1: 1x Angron (340 pts): samniarius\nChar2: 1x Kharn (85 pts): gorechild\n')
 ).filter(w => w.type === 'detachment'), []);
+
+// --- the battle-size budget ----------------------------------------------------
+// "Strike Force (2000 points)" is the game size the list is built for, not the
+// army's own total: an army under it is not in error. Going over it still is.
+const budgetList = costs => 'World Eaters\n\nBerzerker Warband (3 Detachment Points)\nTake and Hold\n' +
+  'Strike Force (2000 points)\nCHARACTERS\n' +
+  costs.map((c, i) => 'Squad ' + (i + 1) + ' (' + c + ' Points)\n\u2022 1x Body').join('\n') + '\n';
+const budgetWarn = costs => { const p = parseListText(budgetList(costs), { name: 'x' }).output.players[0]; return playerWarnings(p, getMeta(p)).map(w => w.type); };
+t('budget: read off the Strike Force line', armyBudget(parseListText(budgetList([330, 115]), { name: 'x' }).output.players[0]), 2000);
+t('budget: under the limit is not a mismatch', budgetWarn([330, 115]), []);
+t('budget: over the limit warns', budgetWarn([700, 700, 700]).filter(w => w === 'mismatch' || w === 'over-budget'), ['over-budget']);
+// A real banner still declares, and still mismatches, when it disagrees.
+const bannerList = 'Duck Fifiler (1990 points)\nWorld Eaters\nBerzerker Warband (3 Detachment Points)\n' +
+  'Take and Hold\nStrike Force (2000 points)\nCHARACTERS\n' +
+  'Angron (330 Points)\n\u2022 1x Samniarius\nKharn the Betrayer (115 Points)\n\u2022 1x Gorechild\n';
+const bannerP = parseListText(bannerList, { name: 'x' }).output.players[0];
+t('budget: the banner is still the declaration', totals(bannerP).declaredPts, 1990);
+t('budget: a banner mismatch still warns', playerWarnings(bannerP, getMeta(bannerP)).some(w => w.type === 'mismatch'), true);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

@@ -532,6 +532,10 @@ function card(p) {
     pts.appendChild(el('span', 'cmp', 'no total declared'));
   } else if (p.totals.declaredPts === p.totals.parsedPts) {
     pts.appendChild(el('span', 'cmp', '= declared ' + p.totals.declaredPts));
+  } else if (p.budget != null && p.totals.declaredPts === p.budget) {
+    // The only figure the list prints is the game size it is built for, not its
+    // own total: being under it is normal, so it is a limit, not a mismatch.
+    pts.appendChild(el('span', 'cmp', 'limit ' + p.budget));
   } else {
     var d = p.totals.parsedPts - p.totals.declaredPts;
     pts.appendChild(el('span', 'cmp bad', 'declared ' + p.totals.declaredPts +

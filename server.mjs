@@ -24,7 +24,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
+import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -351,7 +351,7 @@ function readBody(req, max = MAX_BODY) {
 // One army, enriched with the derived fields the UI displays.
 function viewPlayer(p) {
   const meta = getMeta(p);
-  return { ...p, meta: meta, totals: totals(p), warnings: playerWarnings(p, meta) };
+  return { ...p, meta: meta, totals: totals(p), budget: armyBudget(p), warnings: playerWarnings(p, meta) };
 }
 
 // A session is always supplied by the caller: either pasted by hand, or obtained

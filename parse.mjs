@@ -1387,15 +1387,37 @@ const BANNER_RE = new RegExp(
 // A whole line that is a unit entry rather than a banner: it starts with a
 // count ("1x ..."), a character label ("Char1: ..."), a bullet, or a pipe.
 const UNIT_SHAPED_RE = /^(?:\d+\s*[x\u00d7]\b|Char\d+:|[\u2022\u25e6|])/i;
-// Labels that introduce a total in a freeform list.
-const TOTAL_LABELS = String.raw`(?:Strike\s+Force|Force\s+de\s+Frappe|Total\s+Army\s+Points|Total\s+Army|Total\s+de\s+Points|Points\s+d['\u2019]?\s*arm(?:\u00e9e|ee)|Total\s+de\s+l['\u2019]?\s*arm(?:\u00e9e|ee)|Taille\s+de\s+la\s+force|Battle\s+Size|Size\s+of\s+the\s+Force)`;
+// Labels that introduce the army's own total in a freeform list.
+const TOTAL_LABELS = String.raw`(?:Total\s+Army\s+Points|Total\s+Army|Total\s+de\s+Points|Points\s+d['\u2019]?\s*arm(?:\u00e9e|ee)|Total\s+de\s+l['\u2019]?\s*arm(?:\u00e9e|ee))`;
+// Labels that introduce the game size instead: the app freeform export prints
+// "Strike Force (2000 points)" on every list and WarOrgan prints "Battle Size:
+// Strike Force (2000 point limit)", both regardless of what the army costs. The
+// figure is a ceiling the list has to fit under, never what the list costs, so
+// it is read apart from the total.
+const BUDGET_LABELS = String.raw`(?:Strike\s+Force|Force\s+de\s+Frappe|Taille\s+de\s+la\s+force|Battle\s+Size|Size\s+of\s+the\s+Force)`;
+// "Strike force : 1995 PTS" - the legacy freeform dialect prints the army
+// total with a colon, not the parenthesised game size, so these labels are kept
+// for the bare shape and never for the parenthesised one.
+const LEGACY_TOTAL_LABELS = String.raw`Strike\s+Force|Force\s+de\s+Frappe`;
+// "Battle Size: 2000" - a bare game size with no force label in front of it.
+const BUDGET_SIZE_LABELS = String.raw`(?:Taille\s+de\s+la\s+force|Battle\s+Size|Size\s+of\s+the\s+Force)`;
 // "Points d'armée : 2000", "Total Army Points: 1995" - a total printed
 // directly after the label, with no word following the number.
-const TOTAL_BARE_RE = new RegExp(TOTAL_LABELS + String.raw`\s*[:\-]\s*` + PTS_NUM_G + String.raw`\s*(?:` + PTS_WORD + String.raw`)?\b`, 'i');
+const TOTAL_BARE_RE = new RegExp(String.raw`(?:` + TOTAL_LABELS + String.raw`|` + LEGACY_TOTAL_LABELS + String.raw`)` + String.raw`\s*[:\-]\s*` + PTS_NUM_G + String.raw`\s*(?:` + PTS_WORD + String.raw`)?\b`, 'i');
 // "2000 / 2000 pts" - the force total printed against its budget.
 const TOTAL_RATIO_RE = new RegExp(String.raw`\b` + PTS_NUM_G + String.raw`\s*/\s*\d{3,5}\s*` + PTS_WORD + String.raw`\b`, 'i');
-// "Strike Force (2000 Point limit)", "Force de Frappe (2 000 Points)".
+// "Total Army Points (2000 pts)" - a label directly before a parenthesised total.
 const TOTAL_PTS_RE = new RegExp(TOTAL_LABELS + String.raw`[^()\n]*?\(\s*` + PTS_NUM_G + String.raw`\s*` + PTS_WORD + String.raw`\b`, 'i');
+// The same shapes again, for the game-size line.
+const BUDGET_BARE_RE = new RegExp(BUDGET_SIZE_LABELS + String.raw`\s*[:\-]\s*` + PTS_NUM_G + String.raw`\s*(?:` + PTS_WORD + String.raw`)?\b`, 'i');
+const BUDGET_PTS_RE = new RegExp(BUDGET_LABELS + String.raw`[^()\n]*?\(\s*` + PTS_NUM_G + String.raw`\s*` + PTS_WORD + String.raw`\b`, 'i');
+// A line that names a force layout or battle size rather than an army.
+const FORCE_LAYOUT_RE = /^(?:Strike\s+Force|Force\s+de\s+Frappe|Force\s+of|DA\s+Recon)\b/i;
+const BUDGET_LINE_RE = /^(?:Battle\s+Size|Size\s+of\s+the\s+Force|Taille\s+de\s+la\s+force)\b/i;
+function isBudgetShape(s) {
+  const t = String(s || '').trim();
+  return FORCE_LAYOUT_RE.test(t) || BUDGET_LINE_RE.test(t);
+}
 
 // Read a point value out of a fragment already known to hold a number,
 // tolerating thousands separators. Returns null when there is no digit run.
@@ -1404,12 +1426,14 @@ function toPoints(s) {
   return m ? parseInt(m[0].replace(/[^\d]/g, ''), 10) : null;
 }
 
-// The total the list declares, read from its body text. Priority order:
+// The total the list declares, excluding the game-size budget. Read from the
+// body text, in priority order:
 //   1. The army banner in the preamble - "<name> (N points)" or "(N points)".
 //      The MHQ app export always prints the army total here.
-//   2. A labelled total - "Points d'armée : N", then "Strike Force (N points)".
-// Returns null when nothing readable is present.
-function declaredTotalFromText(text) {
+//   2. A labelled total - "Points d'armée : N", "Total Army Points: N".
+// A "Strike Force (2000 points)" line is skipped: it is the budget, and
+// budgetFromText() reads it apart. Returns null when nothing readable is present.
+function realDeclaredTotal(text) {
   const body = String(text || '');
   // The banner lives in the preamble: stop at the first unit declaration.
   const lines = body.split('\n');
@@ -1419,6 +1443,8 @@ function declaredTotalFromText(text) {
     if (!t) continue;
     const m = t.match(BANNER_RE);
     if (m) {
+      // Keep looking past a budget line; a real banner can sit under it.
+      if (isBudgetShape(m[1])) continue;
       const n = toPoints(m[2]);
       if (n != null && n >= ARMY_PTS_MIN && n <= ARMY_PTS_MAX) return n;
       // A "<unit> (N points)" shape with an out-of-range number is the start of
@@ -1435,6 +1461,24 @@ function declaredTotalFromText(text) {
     }
   }
   return null;
+}
+
+// The game size the list is built for, when it names one: "Strike Force (2000
+// points)", "Battle Size: Strike Force (2000 point limit)". Null when the list
+// names no budget.
+function budgetFromText(text) {
+  const body = String(text || '');
+  const m = body.match(BUDGET_PTS_RE) || body.match(BUDGET_BARE_RE);
+  if (!m) return null;
+  const n = toPoints(m[1]);
+  return (n != null && n >= ARMY_PTS_MIN && n <= ARMY_PTS_MAX) ? n : null;
+}
+
+// The total the list declares, for display. Priority: a real declaration, then
+// the budget as a last resort, so the figure shown is the best one available.
+function declaredTotalFromText(text) {
+  const real = realDeclaredTotal(text);
+  return real != null ? real : budgetFromText(text);
 }
 
 // Extract the team name. Priority order:
@@ -1552,6 +1596,14 @@ function totals(player) {
   return { parsedPts: parsedPts, declaredPts: declaredPts };
 }
 
+// The game size the list is built for, or null when it names none. A budget is
+// not a declared total: "Strike Force (2000 points)" is printed on every app
+// freeform export, so a list under it is not in error and must not be reported
+// as a points mismatch.
+function armyBudget(player) {
+  return budgetFromText(player.bodyText || player.bodyRest || '');
+}
+
 // Warnings the mini formatter emits for one army, in mini order
 // (points first, then detachment, then force disposition).
 // Whether the text could be recognised as one of the formats the parser knows.
@@ -1575,8 +1627,20 @@ function playerWarnings(player, meta) {
   // with zero units should not also be told it is missing a total.
   if (isUnrecognizedFormat(player)) warnings.push({ type: 'unrecognized', text: '> \u26a0 Unrecognized format' });
   const t = totals(player);
+  // The declared total falls back to the battle-size budget, so on a list that
+  // names only its game size the two are the same number. There the figure is a
+  // ceiling, not a claim about what the army costs: going under it is normal and
+  // must not read as a mismatch; only going over it is worth saying.
+  const text = player.bodyText || player.bodyRest || '';
+  const budget = armyBudget(player);
+  const declaredIsBudget = budget != null && t.declaredPts === budget &&
+    !(player.header && player.header.totalPoints) && realDeclaredTotal(text) == null;
   if (t.declaredPts == null) {
     warnings.push({ type: 'missing-total', text: '> ⚠ missing total points' });
+  } else if (declaredIsBudget) {
+    if (t.parsedPts > budget) {
+      warnings.push({ type: 'over-budget', text: '> ⚠ over points limit: limit ' + budget + ', parsed ' + t.parsedPts + ' (+' + (t.parsedPts - budget) + ')' });
+    }
   } else if (t.parsedPts !== t.declaredPts) {
     const diff = t.parsedPts - t.declaredPts;
     warnings.push({ type: 'mismatch', text: '> ⚠ points mismatch: declared ' + t.declaredPts + ', parsed ' + t.parsedPts + ' (' + (diff > 0 ? '+' : '') + diff + ')' });
@@ -1884,6 +1948,49 @@ function isDelimLine(s) {
   return /^\+{20,}$/.test(String(s || '').trim());
 }
 
+// A whole line that is a faction name, as KNOWN_FACTIONS spells it. The one
+// thing a freeform header puts above the detachment that is not part of the
+// unit list, and the anchor that lets the splitter cross a blank line without
+// eating the previous army's trailing model lines.
+function isFactionTitle(s) {
+  const t = String(s || '').trim().toLowerCase();
+  return KNOWN_FACTIONS.some(f => t === f.toLowerCase() || t === f.toLowerCase() + 's');
+}
+
+// The top of the freeform header a banner line sits under.
+//
+// A banner is the first army-sized number a freeform export prints, but the
+// faction, the detachment and the force disposition all sit ABOVE the budget
+// line ("Strike Force (2000 points)"). Cutting at the banner therefore assigns
+// that header to the previous list, and the previous list's body then names the
+// next list's detachment. The first list in a blob was already pulled back to
+// the top; this is the same pull-back for every list after it.
+//
+// The walk stops at anything that belongs to the list body (a unit line or a
+// trailer) and never crosses the previous boundary. A blank run is crossed only
+// once, and only to a faction title anchored by a trailer, a unit line or the
+// top of the blob: crossing it blindly pulled ten corpus boundaries back into
+// the previous army's model lines.
+function preambleStart(lines, i, floor) {
+  let j = i;
+  while (j - 1 >= floor) {
+    const t = lines[j - 1].trim();
+    if (!t || TRAILER_RE.test(t) || isUnitContent(t)) break;
+    j--;
+  }
+  if (j - 1 >= floor && !lines[j - 1].trim()) {
+    let k = j - 1;
+    while (k >= floor && !lines[k].trim()) k--;
+    if (k >= floor && isFactionTitle(lines[k])) {
+      let a = k - 1;
+      while (a >= floor && !lines[a].trim()) a--;
+      if (a < floor || TRAILER_RE.test(lines[a]) || isUnitContent(lines[a])) j = k;
+    }
+    while (j < i && !lines[j].trim()) j++;
+  }
+  return j;
+}
+
 // Where each list in a blob of text starts.
 //
 // A file holds one list or many and nothing in the format says which, so the
@@ -1955,12 +2062,13 @@ function listStartIndexes(lines) {
       // Both halves matter: the first is what stops the second and third
       // army-sized lines of a preamble from shredding one army.
       if (n >= 1000 && n <= 3000 && (seenUnit || starts.length === 0)) {
-        // The very first banner in a blob is inside the first list’s own
-        // preamble — a freeform header puts the faction, the detachment and
-        // the force disposition above it — so the list starts at the top of
-        // the blob, not at the banner. Cutting at the banner threw that header
-        // away with it, and with it everything that only lives there.
-        cut(starts.length === 0 ? 0 : i);
+        // A banner is inside its list's own preamble — a freeform header puts
+        // the faction, the detachment and the force disposition above it — so
+        // the list starts at the top of that preamble, not at the banner.
+        // Cutting at the banner threw the header away, and the header then
+        // named the previous list. The first list's preamble reaches the top of
+        // the blob; preambleStart() walks every later one back to its top.
+        cut(starts.length === 0 ? 0 : preambleStart(lines, i, starts[starts.length - 1] + 1));
       }
       continue;
     }
@@ -2127,7 +2235,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists, listCount };
 }
 
-export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, renderMini, parseUrl, parseHtml, parseListText, listStartIndexes, isUnrecognizedFormat, detectExporter, realUnits, nameFromFile, clearEventCache, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
+export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, armyBudget, renderMini, parseUrl, parseHtml, parseListText, listStartIndexes, isUnrecognizedFormat, detectExporter, realUnits, nameFromFile, clearEventCache, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is
