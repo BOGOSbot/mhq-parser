@@ -14,3 +14,6 @@ _*.ps1
 # Neither belongs in the repo: both are per-machine.
 *.png
 .vercel/
+
+# scratch scripts and generated copies from analysis runs
+.scratch/

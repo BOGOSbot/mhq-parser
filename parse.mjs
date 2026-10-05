@@ -591,8 +591,24 @@ const HEADER_ALIAS = {
   'REGLES DE DETACHEMENT': 'detachment',
   'RÈGLE DE DÉTACHEMENT': 'detachment',
   'RÈGLES DE DÉTACHEMENT': 'detachment',
+  'DÉTACHEMENT': 'detachment',
+  'DETACHEMENT': 'detachment',
+  'DÉTACHEMENTS': 'detachment',
+  'DETACHEMENTS': 'detachment',
+  'DÉTACHEMENT UTILISÉ': 'detachment',
+  'DETACHEMENT UTILISE': 'detachment',
+  'DÉTACHEMENTS UTILISÉS': 'detachment',
+  'ARMY DETACHMENT': 'detachment',
+  'ARMY DETACHMENT USED': 'detachment',
+  'DETACHMENT CHOICE': 'detachment',
   'DISPOSITION': 'forceDisposition',
   'FORCE DISPOSITION': 'forceDisposition',
+  'FORCE DISPOSITIONS': 'forceDisposition',
+  'DISPOSITION': 'forceDisposition',
+  'DISPOSITIONS': 'forceDisposition',
+  'DISPOSITION DES FORCES': 'forceDisposition',
+  'DISPOSITIONS DES FORCES': 'forceDisposition',
+  'FORCE DE DISPOSITION': 'forceDisposition',
   'TOTAL ARMY POINTS': 'totalPoints',
   "POINTS D'ARMÉE": 'totalPoints',
   "TOTAL DE POINTS D'ARME": 'totalPoints',
@@ -907,16 +923,104 @@ function parseBullets(text) {
 // ============================================================
 // Preamble parser (for lists without a +++ header)
 // ============================================================
-const FORCE_RE = /^(?:Reconnaissance|Take and Hold|Prendre et Tenir|Priority Assets|Atouts Prioritaires|Purge the Foe|Prey in Ambush|Disruption|Perturbation)\s*$/im;
+// Force dispositions. The bare form is a whole line, as the app's freeform
+// export prints it; the labelled form ("Dispositions des Forces : …") is
+// handled separately below.
+const FORCE_RE = /^(?:Reconnaissance|Take and Hold|Prendre et Tenir|Priority Assets|Atouts Prioritaires|Purge the Foe|Prey in Ambush|Disruption|Perturbation|[ÉE]liminez l['\u2019]Adversaire|[ÉE]liminer l['\u2019]adversaire|Purger l['\u2019]Ennemi|Proie en Embuscade)\s*$/im;
+// "Dispositions des Forces : Éliminez l'Adversaire", "Force Dispositions: Purge
+// the Foe", "=> Disposition : Prendre et tenir", "Force de disposition : …".
+const DISPOSITION_LABEL_RE = /^(?:=>[ \t]*)?(?:FORCE[ \t]+)?(?:DISPOSITIONS?(?:[ \t]+(?:DES|DE)[ \t]+FORCES?)?|FORCE[ \t]+DE[ \t]+DISPOSITION)[ \t]*:[ \t]*(.+)$/im;
 const DET_PATTERNS = [
-  [/^(.+?)\s*\(\s*\d+\s*Points\s+de\s+Détachement\s*\)/im, m => m[1]],
-  [/^(.+?)\s*\(\s*\d+\s+Detachment\s+Points?\s*\)/im, m => m[1]],
-  [/^(?:Détachements?|Detachments?)\s*:\s*(.+)$/im, m => m[1]],
-  [/^(.+?)\s*\(\s*\d+\s*Points\s+de\s+Detachement\s*\)/im, m => m[1]],
-  // Labeled form "DETACHMENT : X" — may appear in a freeform header without
-  // a surrounding + delimiter block (e.g. kuwanan's + DETACHMENT : ...)
-  [/^\+?\s*DETACHMENT\s*:?\s*(.+)$/im, m => m[1]],
+  // "Lions of the Emperor (3 Detachment Points)" / "(3 Points de Détachement)".
+  [/^(.+?)[ \t]*\([ \t]*\d+[ \t]*(?:Points?[ \t]+de[ \t]+D[ée]tachement|Detachment[ \t]+Points?)[ \t]*\)/im, m => m[1]],
+  // "== DETACHEMENT Bataillon : Tyranids [2000pts] ==" - the name is what
+  // precedes the faction, and the colon is what separates the two.
+  [/^=+[ \t]*D[ÉE]?TACH(?:E)?MENT[ \t]+([^:\[(=]+?)[ \t]*(?::|\[|\(|=|$)/im, m => m[1]],
+  // "Détachement : X", "DÉTACHEMENT USED : X", "Detachement Rule : X",
+  // "Règle de détachement : X", "+DETACHEMENT: X".
+  [/^(?:[ \t]*\+[ \t]*)?(?:ARMY[ \t]+)?(?:D[ÉE]?TACH(?:E)?MENTS?(?:[ \t]+(?:UTILIS[ÉE]S?|USED|RULES?|RULE|CHOICE))?|R[ÈE]GLE[ \t]+DE[ \t]+D[ÉE]?TACH(?:E)?MENT)[ \t]*:[ \t]*(.+)$/im, m => m[1]],
+  // "Détachements : X" / "Detachments : X", with or without markdown hashes.
+  [/^(?:#+[ \t]*)?(?:D[ÉE]?TACH(?:E)?MENTS?|DETACHMENTS?)[ \t]*:[ \t]*(.+)$/im, m => m[1]],
 ];
+
+// "Détachements :" alone, the values on the lines under it. armylistnetwork
+// prints one per army list, as "* Faction - Detachment".
+const DET_HEAD_BARE_RE = /^(?:#+[ \t]*)?(?:D[ÉE]?TACH(?:E)?MENTS?|DETACHMENTS?)[ \t]*:[ \t]*$/i;
+// A detachment name carries a letter or a digit; a rule line ("++++", "----",
+// "=====") does not, and the freeform dialects put them between the fields.
+function isNameValue(v) {
+  return /[0-9A-Za-z\u00c0-\u017f]/.test(v);
+}
+
+// A detachment name is not the label that introduced it and not a rule line:
+// "== Détachement principal : …" and "++++" are boundaries, not values.
+function isDetachmentName(v) {
+  return isNameValue(v) && !/^[=+*#-]/.test(v) && !/D[ÉE]?TACH(?:E)?MENT/i.test(v);
+}
+
+function bareHeadDetachment(lines) {
+  for (let i = 0; i < lines.length; i++) {
+    if (!DET_HEAD_BARE_RE.test(lines[i].trim())) continue;
+    for (let j = i + 1; j < lines.length; j++) {
+      const v = lines[j].trim().replace(/^[*-]\s*/, '').trim();
+      if (!v) continue;
+      return (CAT_HDR.test(v) || !isDetachmentName(v)) ? null : v;
+    }
+  }
+  return null;
+}
+
+// The freeform preamble: faction, detachment and disposition as bare lines
+// around the "Strike Force (N points)" budget line. The detachment is the line
+// next to that budget line that is not the faction; which side it sits on
+// varies with the dialect, so the faction line is what decides.
+// "Detachment Rule :" / "DETACHMENT USED :" / "Règle de détachement :" with the
+// value on the line under it.
+const DET_LABEL_BARE_RE = /^(?:[ \t]*\+[ \t]*)?(?:ARMY[ \t]+)?(?:D[ÉE]?TACH(?:E)?MENTS?(?:[ \t]+(?:UTILIS[ÉE]S?|USED|RULES?|RULE|CHOICE))?|R[ÈE]GLE[ \t]+DE[ \t]+D[ÉE]?TACH(?:E)?MENT)[ \t]*:[ \t]*$/i;
+function bareLabelDetachment(lines) {
+  for (let i = 0; i < lines.length; i++) {
+    if (!DET_LABEL_BARE_RE.test(lines[i].trim())) continue;
+    for (let j = i + 1; j < lines.length; j++) {
+      const raw = lines[j].trim();
+      if (!raw) continue;
+      // The next "+ KEY :" line is another header field, not the value.
+      if (/^\+[ \t]*[A-ZÀ-Ý][A-ZÀ-Ý \t]{2,}[ \t]*:/.test(raw)) break;
+      const v = raw.replace(/^(?:\+|\*|-)[ \t]*/, '').trim();
+      if (!v) continue;
+      return (CAT_HDR.test(v) || !isDetachmentName(v)) ? null : v;
+    }
+  }
+  return null;
+}
+
+function barePreambleDetachment(lines, faction) {
+  const idx = lines.findIndex(l => /^(?:Strike\s+Force|Force\s+de\s+Frappe)\b.*\(/i.test(l));
+  if (idx < 1) return null;
+  const before = lines[idx - 1];
+  const after = lines[idx + 1];
+  const isFaction = t => {
+    if (!t) return false;
+    if (/^factions?\s*(utilis[ée]es?)?\s*[:\-]/i.test(t)) return true;
+    if (/^(?:name\s+)?battle\s+force\s*:/i.test(t)) return true;
+    const s = t.toLowerCase();
+    if (KNOWN_FACTIONS.some(f => s === f.toLowerCase() || s === f.toLowerCase() + 's' || s.startsWith(f.toLowerCase() + ' '))) return true;
+    if (faction) {
+      const f = String(faction).toLowerCase();
+      if (f === s || f.includes(s) || s.includes(f)) return true;
+    }
+    return false;
+  };
+  const usable = t => !!t && isDetachmentName(t) && !CAT_HDR.test(t) && !FORCE_RE.test(t) && !/^\+/.test(t) &&
+    !/[([]\s*\d[\d\s.,'\u2019\u00a0\u202f]*\s*(?:pts?|points?)\s*[)\]]/i.test(t) &&
+    !/^(?:WARLORD|ENHANCEMENT|SECONDARY|PLAYER|TEAM|TOTAL|NUMBER|DETACHMENT|DISPOSITION|FORCE)\b/i.test(t);
+  const clean = t => String(t).replace(/^(?:name\s+)?battle\s+force\s*:\s*/i, '').trim() || null;
+  // Prefer the line after the budget line, then the one before it; the faction
+  // and the disposition are excluded either way.
+  for (const t of [after, before]) {
+    if (usable(t) && !isFaction(t)) return clean(t);
+  }
+  return null;
+}
 
 function findPreambleEnd(lines) {
   let end = lines.length;
@@ -942,17 +1046,34 @@ function findPreambleEnd(lines) {
   return end;
 }
 
-function parsePreamble(bodyText) {
+function parsePreamble(bodyText, faction = null) {
   const lines = bodyText.split('\n');
   const end = findPreambleEnd(lines);
-  const preamble = lines.slice(0, end).join('\n');
+  const pre = lines.slice(0, end);
+  const preamble = pre.join('\n');
   let detachment = null;
   for (const [re, fn] of DET_PATTERNS) {
     const m = preamble.match(re);
     if (m) { detachment = fn(m).trim(); break; }
   }
-  const dispM = preamble.match(FORCE_RE);
-  return { detachment, forceDisposition: dispM ? dispM[0] : null };
+  // "Détachement principal" names no detachment, it only says there is one.
+  if (detachment && /^(?:principal|primary)$/i.test(detachment)) detachment = null;
+  if (!detachment) detachment = bareHeadDetachment(pre);
+  if (!detachment) detachment = bareLabelDetachment(pre);
+  if (!detachment) detachment = barePreambleDetachment(pre, faction);
+  // A player who puts the metadata under the units is still naming the
+  // detachment; scan the whole text once the preamble has come up empty.
+  if (!detachment) {
+    for (const [re, fn] of DET_PATTERNS) {
+      const m = bodyText.match(re);
+      if (m) { detachment = fn(m).trim(); break; }
+    }
+    if (detachment && /^(?:principal|primary)$/i.test(detachment)) detachment = null;
+    if (!detachment) detachment = bareLabelDetachment(lines);
+    if (!detachment) detachment = bareHeadDetachment(lines);
+  }
+  const dispM = preamble.match(FORCE_RE) || preamble.match(DISPOSITION_LABEL_RE);
+  return { detachment, forceDisposition: dispM ? (dispM[1] || dispM[0]).trim() : null };
 }
 
 // ============================================================
@@ -1356,7 +1477,7 @@ function getMeta(player) {
     // disposition lines that live in the preamble section (before the first
     // category header). bodyRest only holds what comes AFTER the preamble,
     // so using it here would silently drop the info.
-    const p = parsePreamble(player.bodyText || player.bodyRest || '');
+    const p = parsePreamble(player.bodyText || player.bodyRest || '', player.faction);
     if (!detachment) detachment = p.detachment;
     if (!forceDisposition) forceDisposition = p.forceDisposition;
   }

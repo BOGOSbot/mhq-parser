@@ -222,7 +222,7 @@ The parser picks the format by detecting `[Npts]` (newrecruit) vs. `(N pts)` (bu
 
 `detectExporter(bodyText)` returns `{ id, basis, version, language }`, and `buildPlayers()` stores `player.exporter` and `player.exporterVersion`. The id is one of `app`, `newrecruit`, `legacy`, `armylistnetwork`, `warorgan`, `battlebase`, `ironbuilt` or `unknown`.
 
-Signatures are checked first, bottom-up, so a signature sitting above trailing notes still counts (basis `signature` rather than `trailer`). Only 12.2% of the 27,830 archived lists carry one, so the shape names the rest:
+Signatures are checked first, bottom-up, so a signature sitting above trailing notes still counts (basis `signature` rather than `trailer`). Only 18.3% of the 7,128 lists the archive currently holds carry one, so the shape names the rest:
 
 | exporter | signature | structural fingerprint |
 |---|---|---|
@@ -415,7 +415,15 @@ node archive.mjs --months 12     # harvest the last 12 months of closed events
 node archive.mjs --list          # what is in there
 node archive.mjs --verify        # every entry still resolves to a readable file
 node archive.mjs --reindex       # rebuild the index from the files on disk
+node archive.mjs --prune         # drop what has fallen out of the window
+node archive.mjs --prune --months 0   # drop everything (defeats the point)
 ```
+
+The archive keeps **one year** (`WINDOW_MONTHS`). It exists to characterise the
+formats the parser has to be right about and to answer the site; a list from
+three editions ago does neither. The harvest ignores anything older than the
+window and `--prune` deletes what is already on disk. `--months <n>` moves the
+window; `--months 0` means all time.
 
 The files are committed. That is the point: the site reads them off disk, with
 no network and no CORS, exactly as it reads `index.html` on every request.

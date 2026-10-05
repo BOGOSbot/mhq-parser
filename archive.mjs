@@ -3,9 +3,15 @@
 /**
  * The archive: every closed 40k event, parsed once and kept in the repository.
  *
- *   node archive.mjs [--plan] [--list] [--verify] [--refresh]
+ *   node archive.mjs [--plan] [--list] [--verify] [--prune] [--refresh]
  *                    [--limit <n>] [--months <n>] [--concurrency <n>]
  *                    [--out-dir <dir>]
+ *
+ * Only the last year is kept. The archive exists to characterise the current
+ * formats and to answer the site, and a list from three editions ago does
+ * neither: the harvest ignores anything older than WINDOW_MONTHS, and --prune
+ * drops what is already on disk. --months <n> widens or narrows the window;
+ * --months 0 means all time.
  *
  * A closed tournament is finished business. Its lists will not change, MHQ keeps
  * the page up for years, and nothing on it moves again - which makes it the one
@@ -50,6 +56,11 @@ const INDEX_FILE = 'index.json';
 // Four at a time. This is someone's hobby site: the scan already found six
 // concurrent requests enough to earn a 524 from the origin.
 const DEFAULT_CONCURRENCY = 4;
+
+// How far back the archive reaches, in months. A year covers the current
+// edition and the tail of the last one, which is what the parser needs to be
+// right about; older lists only exist in formats nothing supports any more.
+export const WINDOW_MONTHS = 12;
 
 export function eventKey(type, slug) {
   return type + '/' + slug;
@@ -184,15 +195,39 @@ function fmtBytes(n) {
     : Math.round(n / 1024) + ' KB';
 }
 
-// What the harvest would consider, before it fetches anything.
-export function candidates(all, index, { months = 0, refresh = false, today } = {}) {
-  const t = today || new Date().toISOString().slice(0, 10);
-  const start = months > 0
-    ? new Date(Date.now() - Math.round(months * 30.44) * 86400000).toISOString().slice(0, 10)
+// The oldest date the window keeps. months <= 0 means all time, which is
+// spelled as a date no real event can precede rather than as a second branch
+// every caller has to remember.
+export function windowStart(months, now = Date.now()) {
+  return months > 0
+    ? new Date(now - Math.round(months * 30.44) * 86400000).toISOString().slice(0, 10)
     : '0000-01-01';
+}
+
+// What the harvest would consider, before it fetches anything.
+export function candidates(all, index, { months = WINDOW_MONTHS, refresh = false, today } = {}) {
+  const t = today || new Date().toISOString().slice(0, 10);
+  const start = windowStart(months);
   const have = new Set(index.events.map(e => e.key));
   return all.filter(e => isClosed(e, t) && e.date >= start &&
     (refresh || !have.has(eventKey(e.type, e.slug))));
+}
+
+// Drop archived events that have fallen out of the window, and rebuild the
+// index around what is left. Without this --prune is the only thing that ever
+// deletes, and it deletes exactly what the harvest would no longer take.
+export function prune(dir = ARCHIVE_DIR, { months = WINDOW_MONTHS, log = () => {} } = {}) {
+  const index = loadIndex(dir);
+  const start = windowStart(months);
+  const keep = [];
+  const dropped = [];
+  for (const e of index.events) (typeof e.date === 'string' && e.date >= start ? keep : dropped).push(e);
+  for (const e of dropped) {
+    try { fs.unlinkSync(path.join(dir, e.file)); } catch { /* already gone */ }
+    log('  dropped ' + (e.date || '(undated)') + '  ' + e.key);
+  }
+  saveIndex(dir, { events: keep });
+  return { kept: keep.length, dropped: dropped.length };
 }
 
 // One event's worth of fetching: judge it, then parse it if it qualifies.
@@ -264,7 +299,7 @@ export async function harvest(opts = {}) {
   const limit = opts.limit || 0;
   const index = loadIndex(dir);
   const all = await getAllEvents();
-  const queue = candidates(all, index, { months: opts.months || 0, refresh: !!opts.refresh });
+  const queue = candidates(all, index, { months: opts.months == null ? WINDOW_MONTHS : opts.months, refresh: !!opts.refresh });
   const todo = limit > 0 ? queue.slice(0, limit) : queue;
 
   log('Closed events in the sitemap: ' + all.filter(e => isClosed(e)).length +
@@ -369,13 +404,14 @@ export function reindex(dir = ARCHIVE_DIR) {
 // --- CLI ---------------------------------------------------------------
 
 function parseArgs(argv) {
-  const o = { plan: false, list: false, verify: false, reindex: false, refresh: false, limit: 0, months: 0, concurrency: DEFAULT_CONCURRENCY, dir: ARCHIVE_DIR };
+  const o = { plan: false, list: false, verify: false, reindex: false, prune: false, refresh: false, limit: 0, months: WINDOW_MONTHS, concurrency: DEFAULT_CONCURRENCY, dir: ARCHIVE_DIR };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--plan') o.plan = true;
     else if (a === '--list') o.list = true;
     else if (a === '--verify') o.verify = true;
     else if (a === '--reindex') o.reindex = true;
+    else if (a === '--prune') o.prune = true;
     else if (a === '--refresh') o.refresh = true;
     else if (a === '--limit') o.limit = Number(argv[++i]) || 0;
     else if (a.startsWith('--limit=')) o.limit = Number(a.slice(8)) || 0;
@@ -407,6 +443,12 @@ async function main() {
     const r = reindex(o.dir);
     console.log(r.entries.length + ' events indexed from ' + path.join(o.dir, 'events'));
     if (r.dropped.length) console.log(r.dropped.length + ' unreadable file(s) skipped: ' + r.dropped.join(', '));
+    return;
+  }
+
+  if (o.prune) {
+    const r = prune(o.dir, { months: o.months, log: s => console.log(s) });
+    console.log('Kept ' + r.kept + ' event(s) within ' + (o.months > 0 ? o.months + ' months' : 'all time') + ', dropped ' + r.dropped + '.');
     return;
   }
 

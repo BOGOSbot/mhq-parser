@@ -171,5 +171,96 @@ t('unrecognised: one unit is flagged',
 throws('empty text', () => parseListText('   ', {}), 'the text is empty - nothing to parse');
 throws('not a string', () => parseListText(null, {}), 'the text is empty - nothing to parse');
 
+// --- metadata: detachment and force disposition ------------------------------
+// Every exporter writes its metadata differently, and the parser used to read
+// only two of those spellings. Each shape below is one the corpus actually
+// produces.
+const metaOf = body => getMeta(parseListText(body, { name: 'x' }).output.players[0]);
+const detOf = body => metaOf(body).detachment;
+const dispOf = body => metaOf(body).forceDisposition;
+
+// "== DETACHEMENT <name> : <faction> [...] ==" — the newrecruit/9th-era line.
+t('det: == DETACHEMENT ==', detOf(
+  '++++++++++++++++\nNom du joueur : Azz\nFactions utilisées : Necrons\n++++++++++++++++\n' +
+  '== DETACHEMENT Nécrons - Dynastie Éveillée : Necrons [2000pts] ==\n' +
+  'Héros épiques 1 : Illuminor Szeras [185pts]\nPersonnages 1 : Tétrarque [110pts]\n'),
+  'Nécrons - Dynastie Éveillée');
+// The 9th-edition spelling, English.
+t('det: == DETACHEMENT Bataillon ==', detOf(
+  '== DETACHEMENT Bataillon : Tyranids (0 PC) [2000pts] == \nHQ1: Hive Tyrant\nTR1: 10 Termagants\n'),
+  'Bataillon');
+// "Détachement principal" names no detachment, only says there is one.
+t('det: principal is not a name', detOf(
+  '== Détachement principal : Necrons [1990pts] ==\nHéros 1 : X [100pts]\n'), null);
+// Labelled forms, both spellings and the "Rule"/"USED" suffixes.
+t('det: Detachement:', detOf(
+  'Joueur: Tomasson\nFaction: Space Marines\nDetachement: Righteous Crusaders\nCHARACTERS\n' +
+  'Captain (95 points)\n• 1x Bolt pistol\nChaplain (75 points)\n• 1x Crozius\n'), 'Righteous Crusaders');
+t('det: DETACHMENT USED', detOf(
+  '+ PLAYER : Kurze\n+ FACTION KEYWORD: Genestealer Cult\n+ DETACHMENT USED : Unparalleled Foresight\n' +
+  '+++++++++++++++\nCHARACTERS\nChar1: 1x X (10 pts): y\nChar2: 1x Y (10 pts): z\n'), 'Unparalleled Foresight');
+t('det: Detachment Rule', detOf(
+  'Factions Used: Drukhari\nArmy Points: 1995\nDetachment Rule: Kabalite Cartel\n+++++++++++++++\n' +
+  'CHARACTERS\nChar1: 1x Archon (80 pts): huskblade\nChar2: 1x Succubus (95 pts): agoniser\n'), 'Kabalite Cartel');
+t('det: +DETACHEMENT', detOf(
+  '+ PLAYER NAME: CLEMENCERY\n+ FACTION KEYWORD: Astra Militarum\n+DETACHEMENT: Combined Regiment\n' +
+  '+ TOTAL ARMY POINTS: 2000\n+++++++++++++++++\nCHARACTERS\nChar1: 1x Lord Solar (130 pts): sword\nChar2: 1x Ursula (60 pts): bolt pistol\n'),
+  'Combined Regiment');
+// "Detachment Rule :" with the value on the line under it.
+t('det: label with value on next line', detOf(
+  'Player: X\nFactions Used: World Eaters\nDETACHMENT USED :\nWorld Eaters - Berzerker Warband\n' +
+  '+++++++++++++++\nCHARACTERS\nChar1: 1x Angron (340 pts): samniarius\nChar2: 1x Kharn (85 pts): gorechild\n'),
+  'World Eaters - Berzerker Warband');
+// armylistnetwork: the heading alone, values on the lines under it.
+t('det: ### Détachements list', detOf(
+  'Thousand Sons : Tournoi armageddon\n### Détachements :\n* Thousand Sons - Phalange Rubricae\n' +
+  '=> Disposition : Prendre et tenir\n--- Ligne ---\nMarines Rubricae (10) : 190 pts\n- gear\n'),
+  'Thousand Sons - Phalange Rubricae');
+t('disp: => Disposition', dispOf(
+  'Thousand Sons : Tournoi armageddon\n### Détachements :\n* Thousand Sons - Phalange Rubricae\n' +
+  '=> Disposition : Prendre et tenir\n--- Ligne ---\nMarines Rubricae (10) : 190 pts\n- gear\n'),
+  'Prendre et tenir');
+// The freeform app header: detachment before, and after, the budget line.
+const free = (extra, mid) =>
+  'Tyty septembre (1995 Points)\nTyranids\n' + extra + 'Strike Force (2000 Points)\n' + mid +
+  'CHARACTERS\nDeathleaper (70 Points)\n• 1x Lictor claws and talons\nHive Tyrant (255 Points)\n• 1x Monstrous bonesword\n';
+t('det: freeform before Strike Force', detOf(free('Synaptic Nexus\n', '')), 'Synaptic Nexus');
+t('det: freeform after Strike Force', detOf(
+  'Banished cup (1995 points)\nAeldari\nStrike Force (2000 points)\nBattle Host\n' +
+  'CHARACTER\nAutarch Wayleaper (130 points)\n• 1x Dragon fusion gun\nFarseer (105 points)\n• 1x Witchblade\n'), 'Battle Host');
+t('det: freeform with no detachment', detOf(free('', '')), null);
+// The freeform budget line carries the faction, not a detachment, in both
+// positions.
+t('det: freeform faction before is skipped', detOf(
+  'Bare (2000 points)\nNecrons\nStrike Force (2000 points)\nCHARACTERS\nChar1: 1x X (10 pts): y\nChar2: 1x Y (10 pts): z\n'), null);
+// Labelled dispositions, English and French, singular and plural.
+t('disp: Dispositions des Forces', dispOf(
+  'Chevaliers du Chaos\nForce de Frappe (2000 points)\nInfernal Lance (3 Points de Détachement)\n' +
+  'Dispositions des Forces : Éliminez l’Adversaire\nPERSONNAGES\nChar1: 1x Knight (430 points): gatling\nChar2: 1x Knight (450 points): gatling\n'),
+  'Éliminez l’Adversaire');
+t('disp: Force Dispositions', dispOf(
+  'Adeptus Custodes\nLions of the Emperor (3 Detachment Points)\nForce Dispositions: Purge the Foe\n' +
+  'Strike Force (2000 points)\nCHARACTERS\nChar1: 1x X (10 pts): y\nChar2: 1x Y (10 pts): z\n'), 'Purge the Foe');
+t('disp: bare line', dispOf(
+  'Adeptus Custodes\nLions of the Emperor (3 Detachment Points)\nTake and Hold\nStrike Force (2000 points)\n' +
+  'CHARACTERS\nChar1: 1x X (10 pts): y\nChar2: 1x Y (10 pts): z\n'), 'Take and Hold');
+// A rule line is not a name: the "+++" that follows an empty label must not be
+// read as the detachment.
+t('det: a rule line is not a detachment', detOf(
+  'Nom du joueur : X\nRègle de détachement :\n+++++++++++++++++++++++++++++\nFactions utilisées : Necrons\n' +
+  'Points d’armée : 2000\nPersonnages 1 : Tétrarque [110pts]\nVéhicules 1 : Arche [200pts]\n'), null);
+// A player who puts the metadata under the units still names it.
+t('det: whole-body fallback', detOf(
+  'Player: Papy\nFaction Used: Tyranids\nArmy Points: 1995\n== Characters==\n' +
+  'Char1:Hiver Tyrant(260)\n-Monstrous Bones Sword\n== Battle Line==\n*10 Gargoyles(75)\n' +
+  'Detachment Rule: Invasion Fleet\n'), 'Invasion Fleet');
+// A fully-specified list warns about neither.
+t('warnings: no detachment warning when found', playerWarnings(
+  parseListText('World Eaters\nStrike Force (2000 points)\nBerzerker Warband\nDetachment Rule: Berzerker Warband\n' +
+    'CHARACTERS\nChar1: 1x Angron (340 pts): samniarius\nChar2: 1x Kharn (85 pts): gorechild\n', { name: 'x' }).output.players[0],
+  metaOf('World Eaters\nStrike Force (2000 points)\nBerzerker Warband\nDetachment Rule: Berzerker Warband\n' +
+    'CHARACTERS\nChar1: 1x Angron (340 pts): samniarius\nChar2: 1x Kharn (85 pts): gorechild\n')
+).filter(w => w.type === 'detachment'), []);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

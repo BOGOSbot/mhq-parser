@@ -178,14 +178,15 @@ Les en-têtes peuvent s'étendre sur plusieurs sections délimitées par `+++`. 
 
 | exporter | part du corpus | signature |
 |----------|---------------|-----------|
-| `app` | 69 % | en-tête `+ FACTION KEYWORD:`, lignes `Char1: 1x … (N pts):`, ou catégories en majuscules ; `Exported with App Version:` / `Exporté avec la Version de l'Appli :` / `END OF ROSTER` |
-| `newrecruit` | 17 % | points entre crochets `[Npts]` ; `Created with newrecruit.eu` |
-| `legacy` | 11 % | exports 9e édition : `== DETACHEMENT … ==`, `QG 1 :`, `[8PP, 175pts]` |
+| `app` | 90 % | en-tête `+ FACTION KEYWORD:`, lignes `Char1: 1x … (N pts):`, ou catégories en majuscules ; `Exported with App Version:` / `Exporté avec la Version de l'Appli :` / `END OF ROSTER` |
+| `newrecruit` | 7,5 % | points entre crochets `[Npts]` ; `Created with newrecruit.eu` |
+| `legacy` | 0,1 % | exports 9e édition : `== DETACHEMENT … ==`, `QG 1 :`, `[8PP, 175pts]` |
 | `armylistnetwork` | 0,8 % | `### Détachements :`, `Total : N points - N figurines - N unités`, URL `40k.armylistnetwork.com` |
 | `warorgan`, `battlebase`, `ironbuilt` | < 0,2 % | `Created with WarOrgan`, `Exported with BattleBase`, `https://ironbuilt.app/?s=…` |
-| `unknown` | 2 % | rien de tout cela — notes libres, brouillons, Kill Team |
+| `unknown` | 1,2 % | rien de tout cela — notes libres, brouillons, Kill Team |
 
-La dernière ligne est la signature la plus fiable, mais **12 % seulement** des 27 830 listes du corpus en portent une : l'essentiel se reconnaît à la structure. `node formats.mjs` rejoue l'analyse sur l'archive ; le détail est dans [formats.md](./formats.md).
+La dernière ligne est la signature la plus fiable, mais **18 % seulement** des 7 128 listes de l'année en cours en portent une : l'essentiel se reconnaît à la structure. `node formats.mjs` rejoue l'analyse sur l'archive ; le détail est dans [formats.md](./formats.md).
+
 ## Taux d'avertissements
 
 Sur les 240 listes avec unités présentes dans ce dépôt (11 événements), l'analyseur produit 35 avertissements (14,6 %).
@@ -393,14 +394,15 @@ Headers may span multiple `+++`-delimited sections. The parser merges consecutiv
 
 | exporter | share of corpus | signature |
 |----------|----------------|-----------|
-| `app` | 69% | `+ FACTION KEYWORD:` header, `Char1: 1x … (N pts):` lines, or ALL-CAPS categories; `Exported with App Version:` / `Exporté avec la Version de l'Appli :` / `END OF ROSTER` |
-| `newrecruit` | 17% | bracketed points `[Npts]`; `Created with newrecruit.eu` |
-| `legacy` | 11% | 9th-edition exports: `== DETACHEMENT … ==`, `QG 1 :`, `[8PP, 175pts]` |
+| `app` | 90% | `+ FACTION KEYWORD:` header, `Char1: 1x … (N pts):` lines, or ALL-CAPS categories; `Exported with App Version:` / `Exporté avec la Version de l'Appli :` / `END OF ROSTER` |
+| `newrecruit` | 7.5% | bracketed points `[Npts]`; `Created with newrecruit.eu` |
+| `legacy` | 0.1% | 9th-edition exports: `== DETACHEMENT … ==`, `QG 1 :`, `[8PP, 175pts]` |
 | `armylistnetwork` | 0.8% | `### Détachements :`, `Total : N points - N figurines - N unités`, `40k.armylistnetwork.com` URL |
 | `warorgan`, `battlebase`, `ironbuilt` | < 0.2% | `Created with WarOrgan`, `Exported with BattleBase`, `https://ironbuilt.app/?s=…` |
-| `unknown` | 2% | none of the above — freeform notes, drafts, Kill Team |
+| `unknown` | 1.2% | none of the above — freeform notes, drafts, Kill Team |
 
-The last line is the strongest signature, but **only 12%** of the corpus's 27,830 lists carry one: the rest are recognised by shape. `node formats.mjs` replays the analysis over the archive; the full write-up is in [formats.md](./formats.md).
+The last line is the strongest signature, but **only 18%** of the 7,128 lists in the current window carry one: the rest are recognised by shape. `node formats.mjs` replays the analysis over the archive; the full write-up is in [formats.md](./formats.md).
+
 ## Warning ratio
 
 Across the 240 lists with units in this repository (11 events), the parser produces 35 warnings (14.6%).
