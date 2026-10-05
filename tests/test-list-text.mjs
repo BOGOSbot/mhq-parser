@@ -123,6 +123,33 @@ for (const r of freeform) {
   ok('freeform: ' + r.source + ' keeps its disposition', !!m.forceDisposition, 'disposition ' + JSON.stringify(m.forceDisposition));
 }
 
+// --- categories ---------------------------------------------------------------
+// A unit takes the category of the last section header above it, so a header the
+// parser does not know makes its units inherit the previous section's label: a
+// Chaos Rhino under "Dedicated Transports" read as Battleline, a Cultist Mob
+// under "Unités alliées" as Autres fiches techniques. Each spelling the corpus
+// has produced is pinned here by source.
+const CAT_PIN = [
+  ['tournoi-de-dinan-2026-09-05__00', 'Dedicated Transports'],
+  ['la-croisade-des-canuts-2-2026-09-19__01', 'Dedicated Transports'],
+  ['la-croisade-des-canuts-2-2026-09-19__26', 'Unités alliées'],
+  ['tournoi-de-dinan-2026-09-05__20', 'Unités alliées'],
+  ['la-croisade-des-canuts-2-2026-09-19__32', 'Transports assignés'],
+  ['la-croisade-des-canuts-2-2026-09-19__37', 'Transport assigné'],
+];
+t('category: six pinned lists', CAT_PIN.length, 6);
+for (const [src_, cat] of CAT_PIN) {
+  const body = corpus.find(r => r.source === src_).body;
+  const seen = oneOf(body).players[0].units.map(u => (u.category || '').trim().toLowerCase());
+  ok('category: ' + src_ + ' recognises ' + cat, seen.includes(cat.toLowerCase()),
+    'saw ' + JSON.stringify([...new Set(seen)]));
+}
+
+// The corpus carries only the French allied-units spelling, so the English one is
+// pinned on a minimal list: it is the spelling the MHQ phone-app export uses.
+const allied = parseListText('Chaos Space Marines\nALLIED UNITS\nNoise Marines (160 Points)\n  • 1x Disharmonist\nDEDICATED TRANSPORTS\nChaos Rhino (65 Points)\n  • 1x Armoured tracks\n', { name: 'x' }).output.players[0];
+t('category: the English spellings', allied.units.map(u => u.category), ['ALLIED UNITS', 'DEDICATED TRANSPORTS']);
+
 // --- unrecognised format -----------------------------------------------------
 // The Ironbuilt exports carry "[N pts]" but nothing this parser can structure, so
 // they come out empty. That has to be said, not rendered as an army with no units.

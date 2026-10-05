@@ -675,7 +675,7 @@ function parseNewRecruit(text) {
 // ============================================================
 // Bullet-style parser
 // ============================================================
-const CAT_HDR = /^(?:PERSONNAGES?|CHARACTERS?|CHARACTER|LIGNE|LINE|BATTLELINE|OTHER DATASHEETS|OTHERS?|OTHER|AUTRES FICHES TECHNIQUES|VEHICULES?|VEHICLES?|TERRAIN|INDUSTRIALS?|BUILDINGS?|UNIQUE|ATTACHED UNITS|UNITÉS? ATTACH|HÉROS? ÉPIQUES?|HEROICS? EPICS?|BÊTES?|BEASTS?|MONTÉS?|MONTEES?|MONTER?|MONTEES?|INFANTERIE|FOOT|ELECTROMECANIQUE|ELECTROMECHANICAL|TERRAIN|AUTRES? FICHES TECHNIQUES)/i;
+const CAT_HDR = /^(?:PERSONNAGES?|CHARACTERS?|CHARACTER|LIGNE|LINE|BATTLELINE|OTHER DATASHEETS|OTHERS?|OTHER|AUTRES FICHES TECHNIQUES|VEHICULES?|VEHICLES?|TERRAIN|INDUSTRIALS?|BUILDINGS?|UNIQUE|ATTACHED UNITS|ALLIED UNITS|UNITÉS? ALLIÉES?|DEDICATED TRANSPORTS?|TRANSFERTS? ASSIGNÉ|TRANSFERTS? DÉDIÉ|TRANSPORTS? ASSIGNÉ|TRANSPORTS? DÉDIÉ|UNITÉS? ATTACH|HÉROS? ÉPIQUES?|HEROICS? EPICS?|BÊTES?|BEASTS?|MONTÉS?|MONTEES?|MONTER?|MONTEES?|INFANTERIE|FOOT|ELECTROMECANIQUE|ELECTROMECHANICAL|TERRAIN|AUTRES? FICHES TECHNIQUES)/i;
 const ATTACHED_RE = /^(?:UNIT|UNITÉS?)\s*(?:ATTACHED|ATTACHÉ(?:E)?S?)\s*\d*|(?:ATTACHED|ATTACHÉ)\s+UNIT|UNIT\s+\d+\s+ATTACHED|UNITÉ\s+\d+\s+ATTACHÉ|UNITÉ\s+ATTACHÉ(?:E)?\s*\d*/i;
 const ENHANCEMENT_RE = /^(?:Enhancement|Optimisation|Aggressive Deployment|Murderous Onslaught|Unleash Hell|Fade to Darkness|Sorrowsyphon|Rejuvenating Swarm|Murdermind|Psychic Celerity|Admonimortis|Fierce Conqueror|Lien dermique|Voile des Ténèbres|Deepening Madness|Mark of the Nekrosor|Lame Rapace|Tueuse Acculeuse|Leaping Shadows|Gene-tailored Toxins|Supa-snazz Dakka|Dreadherder|Targetin' Gizmos|Recon Hunter|Nightforged Battery|Intoxicating Elixir|Intoxicating|Intoxicating)/i;
 

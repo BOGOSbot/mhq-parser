@@ -55,11 +55,10 @@
   "faction": "Adeptus Custodes",
   "teamName": "So6",
   "format": "newrecruit",
-  "units": 16,
-  "parsedPts": 1655,
+  "units": 21,
+  "parsedPts": 2000,
   "declaredPts": 2000,
   "warnings": [
-   "mismatch",
    "disposition"
   ]
  },
