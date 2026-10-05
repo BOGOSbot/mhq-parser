@@ -1053,6 +1053,12 @@ function buildPlayers(articles) {
     // the detachment / force disposition lines that live in the preamble section,
     // which is otherwise discarded once the header block is stripped.
     player.bodyText = bodyText;
+    // Which tool wrote the list, as opposed to which parser will read it. Read
+    // off the whole body: the signature sits at the bottom, and the structural
+    // fallback needs the top.
+    const exporter = article.exporter || detectExporter(bodyText);
+    player.exporter = exporter.id;
+    player.exporterVersion = exporter.version;
     // Fallback for faction: freeform headers often omit the " : Faction" suffix
     // in the h2 but still include the faction as a standalone line in the preamble.
     if (!player.faction) player.faction = scanFaction(bodyText);
@@ -1562,6 +1568,144 @@ function parseHtml(html, { url = '', name = null } = {}) {
 // v946", and the bare URL some exports leave behind ("https://ironbuilt.app/?s=...").
 const TRAILER_RE = /^(?:(?:created|generated|exported|made|printed)\s+with\b.*|https?:\/\/\S+)\s*$/i;
 
+// ============================================================
+// Source formats
+// ============================================================
+// Which tool wrote a list, as distinct from which parser can read it. The
+// player's `format` field answers the second question ("bullets" or
+// "newrecruit"); `exporter` answers the first and is what actually
+// characterises the corpus. The same tool ships several dialects - the official
+// app alone has a "+" header export and a category export - and a list can be,
+// say, a newrecruit export that parses through the bullet reader. Keeping the
+// two apart is what lets the parser stop guessing from the body alone.
+//
+// The signature is normally the last line: every tool that signs its output
+// puts the signature there. It is absent from most lists all the same - MHQ
+// shows the list body, and many exports carry no signature even in the source -
+// so detection falls back to the shape only one dialect produces. The basis is
+// returned with the answer because a signature is proof and a shape is an
+// inference.
+
+// Signature lines, most specific tool first. `version` marks the ones whose
+// line carries a version worth recording.
+const EXPORTER_SIGNATURES = [
+  { id: 'warorgan', re: /^Created with WarOrgan/i },
+  { id: 'battlebase', re: /^Exported with BattleBase/i, version: true },
+  { id: 'newrecruit', re: /^Created with newrecruit\.eu/i, version: true },
+  { id: 'newrecruit', re: /^Exported with New Recruit/i, version: true },
+  { id: 'app', re: /^Exported with App Version/i, version: true, language: 'en' },
+  { id: 'app', re: /^Export\u00e9 avec la Version de l'Appli/i, version: true, language: 'fr' },
+  { id: 'app', re: /^END OF ROSTER\s*$/i },
+  { id: 'ironbuilt', re: /^https?:\/\/\S*ironbuilt\.app/i },
+  { id: 'armylistnetwork', re: /^url\s*:\s*https?:\/\/\S*armylistnetwork/i },
+  { id: 'armylistnetwork', re: /^https?:\/\/\S*armylistnetwork\.com/i },
+  { id: 'newrecruit', re: /newrecruit\.eu\/app\/list/i },
+];
+
+// "Created with newrecruit.eu v35.66" -> "v35.66"; "… v1.51.1 (117), Data
+// Version: v767" -> "v1.51.1". The first version on the line is the tool's.
+const EXPORTER_VERSION_RE = /v?\d+\.\d+(?:\.\d+)?/;
+
+// The French/English tint of a list, from the vocabulary only one of them uses.
+function exporterLanguage(text) {
+  return /(?:Personnages|Ligne\b|Infanterie|V[\u00e9e]hicules|D[\u00e9e]tachement|Unit[\u00e9e]s|Optimisation|Seigneur de Guerre|Force de Frappe|Points de D[\u00e9e]tachement)/.test(text)
+    ? 'fr' : 'en';
+}
+
+// Structure-only fingerprints, tried in order. Every one of these is a shape
+// unique to its dialect in the corpus. Where two tools share a shape - the
+// app's category export and BattleBase both print "Unit (N Points)" under
+// "CHARACTERS" - nothing structural can separate them, so the signature above
+// is the only honest answer and neither is guessed at here.
+function structureExporter(text) {
+  const has = re => re.test(text);
+  // Official 40k app, "+" header dialect: the FACTION KEYWORD / TOTAL ARMY
+  // POINTS block, or "Char1: 1x …" unit lines.
+  if (has(/^\+\s*FACTION KEYWORD\s*:/im) || has(/^\+\s*TOTAL ARMY POINTS\s*:/im) ||
+      has(/^(?:Char|Cdt)\d*\s*:\s*1x\s/m)) {
+    return { id: 'app', basis: 'header' };
+  }
+  // Ironbuilt: "=" rules, "── CATEGORY ──" rules and "Weapons:" lines. Checked
+  // before the bracketed-points rule below: "The Red Terror [130 pts]" would
+  // otherwise be claimed for newrecruit.
+  if (has(/^\+={10,}\s*$/m) || has(/^Weapons\s*:/m) || has(/^\u2500\u2500[^\u2500\n]+\u2500\u2500/m)) {
+    return { id: 'ironbuilt', basis: 'structure' };
+  }
+  // armylistnetwork.com: French markdown headings and a "Total : … figurines"
+  // line. Checked before the 9th-edition rule below, whose "[7PP, 135pts]" those
+  // lists also carry.
+  if (has(/^###\s*D[\u00e9e]tachements?\s*:/im) || has(/^Total\s*:.*figurines/im) ||
+      has(/^---+\s*(?:Personnages|Ligne|Infanterie|V[\u00e9e]hicules|Soutien|Transports|Volants?|Fortifications?|Autres|Characters|Battleline|Infantry|Vehicles|Monsters|Dedicated Transports)\b[^\n]*---/im)) {
+    return { id: 'armylistnetwork', basis: 'structure' };
+  }
+  // newrecruit.eu: bracketed points are its spine, with or without the French
+  // category labels that normally accompany them.
+  if (has(/\[\s*\d+\s*pts?\s*\]/i)) return { id: 'newrecruit', basis: 'bracket' };
+  // 9th-edition-era roster exports (2021-2023): "== DETACHEMENT … ==" sections,
+  // "QG 1 : … [8PP, 175pts]" unit lines and CP/PL budget headers. No reader
+  // handles these, which is why they are counted apart rather than as unknown
+  // modern lists.
+  if (has(/\[\s*\d+\s*(?:PP|PL)\b/i) || has(/^==\s*[A-Z\u00c0-\u00dd]/m) || has(/^QG\s*\d*\s*:/m) ||
+      has(/^\+\+\s*(?:Patrol|Battalion|Brigade|Vanguard|Spearhead|Outrider|Super-Heavy|Supreme Command|Ark of Omen|Roster)\b/im) ||
+      has(/^(?:Starting Command Points|Points de commandement|Points de renfort|Reinforcement Points)\s*:/im)) {
+    return { id: 'legacy', basis: 'structure' };
+  }
+  // WarOrgan: the battle-size / detachment / force-disposition preamble.
+  if (has(/^Battle Size\s*:/im) || (has(/^Detachments?\s*:/im) && has(/^Force Dispositions?\s*:/im))) {
+    return { id: 'warorgan', basis: 'structure' };
+  }
+  // Official 40k app, category dialect: ALL-CAPS category headings over
+  // "Unit (N Points)" lines, or the freeform header's "Strike Force (N points)"
+  // budget line.
+  if (has(/^(?:CHARACTERS?|BATTLELINE|INFANTRY|VEHICLES?|MONSTERS?|DEDICATED TRANSPORTS?|ALLIED UNITS?|EPIC HEROES?|FORTIFICATIONS?|PERSONNAGES?|LIGNE|V[\u00c9E]HICULES?|MONSTRES?|TRANSPORTS?|ALLI[\u00c9E]S?|VOLANTS?|SEIGNEURS? DE GUERRE)\s*$/m) ||
+      has(/(?:Strike\s+Force|Force\s+de\s+Frappe)\s*\(\s*\d/i)) {
+    return { id: 'app', basis: 'categories' };
+  }
+  return { id: 'unknown', basis: null };
+}
+
+// Identify the source tool. Returns
+//   { id, basis, version, language }
+// where id is one of app, newrecruit, legacy, armylistnetwork, warorgan,
+// battlebase, ironbuilt or unknown; basis is 'trailer' for the last line, 'signature' for a
+// signature found elsewhere in the text, or the structural fingerprint's name;
+// version and language are null when the exporter prints neither.
+function detectExporter(bodyText) {
+  const text = String(bodyText || '').replace(/\r\n?/g, '\n');
+  const lines = text.split('\n');
+  let lastNonEmpty = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].trim()) { lastNonEmpty = i; break; }
+  }
+  // Walk from the bottom: a signature is normally last, but a list pasted with a
+  // comment after it keeps its signature in the middle.
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const t = lines[i].trim();
+    if (!t) continue;
+    for (const sig of EXPORTER_SIGNATURES) {
+      if (!sig.re.test(t)) continue;
+      const vm = sig.version ? t.match(EXPORTER_VERSION_RE) : null;
+      return {
+        id: sig.id,
+        basis: i === lastNonEmpty ? 'trailer' : 'signature',
+        signature: t,
+        version: vm ? vm[0] : null,
+        // A signature names the tool but not always its language; the app's two
+        // signatures do, so only fall back for the rest.
+        language: sig.language || (sig.id === 'app' || sig.id === 'newrecruit' ? exporterLanguage(text) : null),
+      };
+    }
+  }
+  const s = structureExporter(text);
+  return {
+    id: s.id,
+    basis: s.basis,
+    signature: null,
+    version: null,
+    language: s.id === 'unknown' || s.id === 'legacy' ? null : exporterLanguage(text),
+  };
+}
+
 // Keys that name a player. More spellings than HEADER_ALIAS carries, because these
 // are read off freeform text where the "+" block discipline does not hold:
 // "joueurs : Agabdir", "Nom du joueur : Arutho", "+ PLAYER : Heavens31" and
@@ -1754,7 +1898,12 @@ function parseListText(text, { name = null } = {}) {
   for (let i = 0; i < bounds.length; i++) {
     const from = bounds[i];
     const to = i + 1 < bounds.length ? bounds[i + 1] : lines.length;
-    let slice = stripTrailer(lines.slice(from, to));
+    const raw = lines.slice(from, to);
+    // Read the source format before stripTrailer takes the signature off: the
+    // signature is the most precise thing an exporter prints, and the version it
+    // carries would otherwise be lost for every pasted list.
+    const exporter = detectExporter(raw.join('\n'));
+    let slice = stripTrailer(raw);
     while (slice.length && !slice[0].trim()) slice.shift();
     while (slice.length && !slice[slice.length - 1].trim()) slice.pop();
     if (!slice.length) continue;
@@ -1765,6 +1914,7 @@ function parseListText(text, { name = null } = {}) {
       html: '<h2>' + escapeHtml(who.faction ? who.name + ' : ' + who.faction : who.name) + '</h2>' + slice.join('\n'),
       teamName: who.teamName,
       playerName: null,
+      exporter,
     });
   }
   if (!articles.length) throw new Error('no army lists found in this text');
@@ -1856,7 +2006,7 @@ async function checkEvent(detailsUrl) {
   return { game, hasLists, listCount };
 }
 
-export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, renderMini, parseUrl, parseHtml, parseListText, listStartIndexes, isUnrecognizedFormat, realUnits, nameFromFile, clearEventCache, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
+export { URL_RE, parseArgs, isAdminUrl, ADMIN_LIST_RE, extractEventSlug, totals, getTeamName, getMeta, playerWarnings, renderMini, parseUrl, parseHtml, parseListText, listStartIndexes, isUnrecognizedFormat, detectExporter, realUnits, nameFromFile, clearEventCache, fetchHTML, httpRequest, fetchOnce, setCookieOf, loginSession, loginFormError, LOGIN_URL, splitArticles, buildPlayers, listEvents, getAllEvents, checkEvent, detectFormat, isLoginPage, authError, splitAdminRows, adminListContent, adminStatusOf, adminArticle, parseAdmin, formatDateOf, typeToFormat, parseOrganizedRows, listOrganizedTournaments };
 
 // ============================================================
 // Event discovery. MHQ publishes its whole catalogue in sitemap.xml, which is

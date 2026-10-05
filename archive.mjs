@@ -39,7 +39,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { checkEvent, detectFormat, getAllEvents, parseUrl } from './parse.mjs';
+import { checkEvent, detectExporter, detectFormat, getAllEvents, parseUrl } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -112,7 +112,19 @@ export function entryForKey(index, key) {
 export function readEvent(dir, entry) {
   if (!entry || !entry.file) return null;
   try {
-    return JSON.parse(fs.readFileSync(path.join(dir, entry.file), 'utf8'));
+    const out = JSON.parse(fs.readFileSync(path.join(dir, entry.file), 'utf8'));
+    // An archived file was written by whatever parser was current when it was
+    // harvested, so one taken before `exporter` existed lacks it. Detect it
+    // here rather than rewriting 160 MB of archive: the body text is in the
+    // file, the answer is cheap, and every caller - the site, the picker, a
+    // test - sees the field filled in.
+    for (const p of (out.players || [])) {
+      if (p.exporter != null) continue;
+      const ex = detectExporter(p.bodyText);
+      p.exporter = ex.id;
+      p.exporterVersion = ex.version;
+    }
+    return out;
   } catch {
     return null;
   }
@@ -258,7 +270,7 @@ export async function harvest(opts = {}) {
   log('Closed events in the sitemap: ' + all.filter(e => isClosed(e)).length +
       ', of which ' + queue.length + ' to check' +
       (limit > 0 && queue.length > todo.length ? ' (taking ' + todo.length + ')' : ''));
-  log('Already archived: ' + merged.length + ', ' + fmtBytes(merged.reduce((s, e) => s + (e.bytes || 0), 0)));
+  log('Already archived: ' + index.events.length + ', ' + fmtBytes(index.events.reduce((s, e) => s + (e.bytes || 0), 0)));
   if (!todo.length) return { entries: [], bytes: 0, checked: 0 };
 
   const added = [];

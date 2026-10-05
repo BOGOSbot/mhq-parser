@@ -216,6 +216,29 @@ MHQ is a free-text upload. Every player pastes their own list in whatever format
 
 The parser picks the format by detecting `[Npts]` (newrecruit) vs. `(N pts)` (bullets). Lists without a `+++` header use preamble stripping to find where units begin.
 
+### 4b. Source formats: which tool wrote the list
+
+`player.format` answers *which reader ran*; `player.exporter` answers *which tool wrote the text*. They are different questions, and the second is the one that characterises the corpus: a newrecruit export can be read by the bullet reader, and an app export is not a "bullet list" even when it uses bullets.
+
+`detectExporter(bodyText)` returns `{ id, basis, version, language }`, and `buildPlayers()` stores `player.exporter` and `player.exporterVersion`. The id is one of `app`, `newrecruit`, `legacy`, `armylistnetwork`, `warorgan`, `battlebase`, `ironbuilt` or `unknown`.
+
+Signatures are checked first, bottom-up, so a signature sitting above trailing notes still counts (basis `signature` rather than `trailer`). Only 12.2% of the 27,830 archived lists carry one, so the shape names the rest:
+
+| exporter | signature | structural fingerprint |
+|---|---|---|
+| `app` | `Exported with App Version:`, `Exporté avec la Version de l'Appli :`, `END OF ROSTER` | `+ FACTION KEYWORD:` / `+ TOTAL ARMY POINTS:` header, `Char1: 1x … (N pts):` lines, ALL-CAPS categories over `Unit (N points)`, or a freeform `Strike Force (2000 points)` line |
+| `newrecruit` | `Created with newrecruit.eu`, `Exported with New Recruit`, a `newrecruit.eu/app/list` URL | bracketed points, `[Npts]` |
+| `legacy` | none | `== DETACHEMENT … ==`, `QG 1 :`, `[8PP, 175pts]`, `++ Patrol Detachment 0CP …` |
+| `armylistnetwork` | `url : https://40k.armylistnetwork.com/…` | `### Détachements :`, `Total : N points - N figurines - N unités` |
+| `warorgan` | `Created with WarOrgan` | `Battle Size:`, `Detachments:` + `Force Dispositions:` |
+| `battlebase` | `Exported with BattleBase` | (shares the app category shape; signature only) |
+| `ironbuilt` | `https://ironbuilt.app/?s=…` | `+====` rules, `── CATEGORY ──`, `Weapons:` |
+
+Three ordering constraints are load-bearing. Ironbuilt is tested before the `[Npts]` rule, or `The Red Terror [130 pts]` reads as newrecruit. armylistnetwork is tested before the 9th-edition rule, because both print `[7PP, 135pts]`. And the 9th-edition rule must not claim `++ Total: [1,990pts] ++`, which is newrecruit's closing line.
+
+`node formats.mjs` replays the analysis over `archive/events/`; `formats.md` is the write-up, and `tests/test-formats.mjs` pins one signature and one shape per exporter.
+
+Archived files are not rewritten. They were harvested by whatever parser was current at the time, so most lack the field on disk; `archive.readEvent()` fills `exporter` in from the stored body text when the site opens an event, which keeps 160 MB of one-line JSON out of a diff.
 ### Hybrid format detection
 
 Some lists mix formats (e.g. `[N pts]` with `•` bullets). The parser detects hybrid formats and uses `parseBullets` when both newrecruit markers and bullets/markdown headers are present. This handles:

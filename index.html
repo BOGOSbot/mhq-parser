@@ -281,7 +281,7 @@ function isRealUnit(u) {
     !/^(?:Strike Force|Force de Frappe|Force of|DA Recon)/i.test(u.model || '');
 }
 function blobOf(p) {
-  var parts = [p.name, p.faction, p.teamName, p.format, p.status, p.adminId];
+  var parts = [p.name, p.faction, p.teamName, p.format, p.exporter, p.exporterVersion, p.status, p.adminId];
   if (p.meta) parts.push(p.meta.detachment, p.meta.forceDisposition);
   for (var i = 0; i < p.warnings.length; i++) parts.push(p.warnings[i].text);
   if (p.header) for (var k in p.header) parts.push(String(p.header[k]));
@@ -444,8 +444,8 @@ function render() {
   // and the header says nothing useful. Drop it there; teams and 2v2 keep it,
   // where the group is real information.
   //
-  // The tournament type comes from the URL, not from the players: p.format is
-  // the list format ('bullets', 'newrecruit'), which says nothing about teams.
+  // The tournament type comes from the URL, not from the players: p.exporter
+  // is the tool that wrote each list, which says nothing about teams either.
   var tType = (String((data.event && data.event.url) || '').match(/\/tournaments\/([^/]+)\//) || [])[1];
   var solo = tType === 'individual';
 
@@ -497,7 +497,13 @@ function card(p) {
 
   c.appendChild(el('h3', null, p.name));
   if (p.status) c.appendChild(el('span', 'badge' + statusClass(p.status), p.status));
-  var fbits = [p.faction, p.teamName, p.format ? 'format: ' + p.format : null].filter(Boolean);
+  // The exporter is what wrote the list (app, newrecruit, ...); format is the
+  // parser that read it. Show the exporter when it is known - that is the
+  // interesting fact - and fall back to the strategy so the line never empties.
+  var fmtLabel = p.exporter && p.exporter !== 'unknown'
+    ? p.exporter + (p.exporterVersion ? ' ' + p.exporterVersion : '')
+    : p.format;
+  var fbits = [p.faction, p.teamName, fmtLabel ? 'format: ' + fmtLabel : null].filter(Boolean);
   if (fbits.length) c.appendChild(el('div', 'faction', fbits.join(' · ')));
 
   var pts = el('div', 'points');
