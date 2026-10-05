@@ -1689,7 +1689,14 @@ function listStartIndexes(lines) {
       // A banner cuts once a list is under way, or when it is all there is so far.
       // Both halves matter: the first is what stops the second and third
       // army-sized lines of a preamble from shredding one army.
-      if (n >= 1000 && n <= 3000 && (seenUnit || starts.length === 0)) cut(i);
+      if (n >= 1000 && n <= 3000 && (seenUnit || starts.length === 0)) {
+        // The very first banner in a blob is inside the first list’s own
+        // preamble — a freeform header puts the faction, the detachment and
+        // the force disposition above it — so the list starts at the top of
+        // the blob, not at the banner. Cutting at the banner threw that header
+        // away with it, and with it everything that only lives there.
+        cut(starts.length === 0 ? 0 : i);
+      }
       continue;
     }
     if (isUnitContent(t)) seenUnit = true;

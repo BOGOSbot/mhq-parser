@@ -103,6 +103,26 @@ t('name: PSEUDO counts as a name',
   parseListText('++++++++++++++++++++++++\n+ PSEUDO: TITO\n' + hdr + '++++++++++++++++++++++++\n' + twoUnits, { name: 'x' }).output.players[0].name, 'TITO');
 t('nameFromFile prettifies', nameFromFile('beer-clowns.txt'), 'beer clowns');
 
+// --- the MHQ phone app's freeform header ------------------------------------
+// Those exports carry no "+" keys at all: the faction, the detachment and the
+// force disposition each sit on their own line, above the "Strike Force (N
+// Points)" budget line. That budget line is the first army-sized number in the
+// list, so the splitter used to read it as the start of the list and throw the
+// header - and the three values that live only there - away with it. They came
+// out with "detachment not found", "force disposition not found" and a null
+// faction. They are in the corpus in both the English and the French spelling.
+const freeform = corpus.filter(r => /la-croisade-des-canuts-2-2026-09-19__(34|35|39)$/.test(r.source));
+t('freeform: three in the corpus', freeform.length, 3);
+for (const r of freeform) {
+  const p = oneOf(r.body).players[0];
+  const m = getMeta(p);
+  // The list starts at the top of the blob, not at the budget line.
+  t('freeform: ' + r.source + ' starts at line zero', listStartIndexes(r.body.split('\n'))[0], 0);
+  ok('freeform: ' + r.source + ' keeps its faction', !!p.faction, 'faction ' + JSON.stringify(p.faction));
+  ok('freeform: ' + r.source + ' keeps its detachment', !!m.detachment, 'detachment ' + JSON.stringify(m.detachment));
+  ok('freeform: ' + r.source + ' keeps its disposition', !!m.forceDisposition, 'disposition ' + JSON.stringify(m.forceDisposition));
+}
+
 // --- unrecognised format -----------------------------------------------------
 // The Ironbuilt exports carry "[N pts]" but nothing this parser can structure, so
 // they come out empty. That has to be said, not rendered as an army with no units.
