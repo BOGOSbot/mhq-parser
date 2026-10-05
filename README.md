@@ -118,6 +118,8 @@ Une URL organisateur n'est **jamais** servie depuis l'archive. C'est une autre p
 
 Ce qui est archivé n'est pas une approximation d'une réponse en direct : pour un même événement, les deux renvoient des joueurs et un mini texte identiques, l'octet près. La copie ne peut dater que d'avant la fermeture ; chaque entrée porte sa date (`archivedAt`), `--refresh` en reprend une, et `live: true` l'emporte sur le cache quand c'est le cache qu'on doute.
 
+L'archive garde **un an** d'événements fermés, et l'index tient aussi la liste des événements **refusés** — un autre jeu, ou des listes jamais publiées. Un refus a coûté une requête : le retenir évite de la refaire, y compris au démarrage à froid d'une instance. Un événement **qui n'a pas encore eu lieu** n'est jamais servi depuis le disque, car ses listes arrivent encore, et le bouton **Refresh** de la barre de résultats force une relecture depuis MHQ pour l'événement affiché.
+
 Une récolte des 12 mois : 1 201 tournois fermés dans le sitemap, 328 vérifiés, **245 gardés** (les autres sont un autre jeu, ou des listes jamais publiées), **57.6 Mo** de JSON pour 256 événements. Tout l'historique depuis 2021 pèserait environ 210 Mo, ce qui explique que la récolte soit bornée par défaut plutôt qu'absolue.
 
 Dans l'interface, une ligne archivée est marquée d'un liseré bleu et son nombre de listes s'affiche en bleu ; après l'avoir ouverte, la ligne d'état dit d'où elle vient.
@@ -333,6 +335,8 @@ A harvest is resumable: anything already indexed is not fetched again, so a run 
 An organiser URL is **never** served from the archive. It is a different page of the same event, carrying submitted lists that were never published, so answering one would show the wrong armies; it still asks for a session.
 
 What is archived is not an approximation of a live answer: for the same event both return identical players and identical mini text, byte for byte. A copy can only predate the event closing, every entry carries its date (`archivedAt`), `--refresh` re-takes one, and `live: true` wins over the cache whenever the cache is what you doubt.
+
+The archive keeps **one year** of closed events, and the index also holds the events it **refused** — another game, or lists never published. A refusal cost a request, so remembering it saves the next one, including on a cold serverless start. An event that **has not happened yet** is never answered from disk, because its lists are still arriving, and the **Refresh** button in the result toolbar forces a re-read from MHQ for the event on screen.
 
 One harvest of the last 12 months: 1,201 closed tournaments in the sitemap, 328 checked, **245 kept** (the rest are another game, or lists never published), **57.6 MB** of JSON for 256 events. The whole history back to 2021 would come to roughly 210 MB, which is why the harvest is bounded by default rather than absolute.
 

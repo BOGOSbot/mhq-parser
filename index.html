@@ -312,22 +312,28 @@ function showResult(j, ms, via) {
       ' \u2014 no request to MHQ', 'ok');
     return;
   }
+  if (via === 'refresh') {
+    setStatus('refreshed from MHQ \u2014 the archived copy was ignored', 'ok');
+    return;
+  }
   // Clear whatever an earlier run left.
   setStatus('');
 }
 
-async function parse() {
+// force === true asks the server to decline its archived copy and re-read the
+// page from MHQ. That is what the Refresh button sends.
+async function parse(force) {
   var url = $('#url').value.trim();
   if (!url) return;
   var btn = $('#go');
   btn.disabled = true;
-  setStatus('fetching + parsing…', 'busy');
+  setStatus(force ? 'refreshing from MHQ…' : 'fetching + parsing…', 'busy');
   var t0 = performance.now();
   try {
     var r = await fetch('/parse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: url, cookie: cookieOf() })
+      body: JSON.stringify({ url: url, cookie: cookieOf(), live: force === true })
     });
     var j = await r.json().catch(function () { return { error: 'non-JSON response' }; });
     if (!r.ok || j.error) {
@@ -335,7 +341,7 @@ async function parse() {
       if (j.auth) e2.auth = true;
       throw e2;
     }
-    showResult(j, performance.now() - t0, j.source || '');
+    showResult(j, performance.now() - t0, force ? 'refresh' : (j.source || ''));
   } catch (e) {
     if (e.auth) {
       // An organiser URL with no session. Open the one place that can fix it
@@ -438,6 +444,20 @@ function render() {
   var dl = el('button', 'ghost', 'Download JSON');
   dl.addEventListener('click', downloadJson);
   bar.appendChild(dl);
+  // Re-fetch the event the cards are showing, bypassing the archive. Only
+  // meaningful for a fetched event: a file or a paste has no URL to re-read.
+  // The archived copy is final for a closed event, so this matters when the
+  // copy is suspect - or when the event has not happened yet and its lists are
+  // still being submitted.
+  if (data.event && data.event.url) {
+    var rf = el('button', 'ghost', 'Refresh');
+    rf.title = 'Fetch this event again from MiniHeadQuarters, ignoring the archived copy';
+    rf.addEventListener('click', function () {
+      $('#url').value = data.event.url;
+      parse(true);
+    });
+    bar.appendChild(rf);
+  }
   main.appendChild(bar);
 
   // A 1v1 event has no teams, so every player lands in the same 'Unknown' group

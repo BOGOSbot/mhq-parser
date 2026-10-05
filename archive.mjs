@@ -93,7 +93,13 @@ export function loadIndex(dir = ARCHIVE_DIR) {
   if (mtime) {
     try {
       const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-      if (parsed && Array.isArray(parsed.events)) index = parsed;
+      if (parsed && Array.isArray(parsed.events)) {
+        index = parsed;
+        // An index written before the rejected-event ledger existed has no
+        // "checked"; give it an empty one rather than making every reader
+        // remember to test for it.
+        if (!Array.isArray(index.checked)) index.checked = [];
+      }
     } catch (e) {
       // A truncated index is a broken commit, not an empty archive. Say so
       // rather than quietly serving nothing: an empty picker looks like MHQ
@@ -204,13 +210,35 @@ export function windowStart(months, now = Date.now()) {
     : '0000-01-01';
 }
 
+// The keys already judged and rejected, from the "checked" ledger. A decision
+// is permanent when it cannot become wrong: another game never turns into 40k,
+// and a closed event's "no lists out" stays true. A future event's "no lists
+// yet" is not a decision at all, so it is not counted here and the event is
+// checked again once it has happened.
+export function rejectedKeys(index) {
+  return (index.checked || [])
+    .filter(e => {
+      // Another game never becomes 40k, so that refusal is permanent.
+      if (!is40k(e.game)) return true;
+      if (e.hasLists !== false) return false;
+      // "No lists out" is final only if the event had already happened when
+      // the check was made. One made before the date is a promise to look
+      // again once it has, which is why the check's own date is compared, not
+      // yesterday's.
+      const on = String(e.checkedAt || '').slice(0, 10);
+      return typeof e.date === 'string' && on >= e.date;
+    })
+    .map(e => e.key);
+}
+
 // What the harvest would consider, before it fetches anything.
 export function candidates(all, index, { months = WINDOW_MONTHS, refresh = false, today } = {}) {
   const t = today || new Date().toISOString().slice(0, 10);
   const start = windowStart(months);
   const have = new Set(index.events.map(e => e.key));
+  const rejected = new Set(rejectedKeys(index));
   return all.filter(e => isClosed(e, t) && e.date >= start &&
-    (refresh || !have.has(eventKey(e.type, e.slug))));
+    (refresh || (!have.has(eventKey(e.type, e.slug)) && !rejected.has(eventKey(e.type, e.slug)))));
 }
 
 // Drop archived events that have fallen out of the window, and rebuild the
@@ -226,8 +254,11 @@ export function prune(dir = ARCHIVE_DIR, { months = WINDOW_MONTHS, log = () => {
     try { fs.unlinkSync(path.join(dir, e.file)); } catch { /* already gone */ }
     log('  dropped ' + (e.date || '(undated)') + '  ' + e.key);
   }
-  saveIndex(dir, { events: keep });
-  return { kept: keep.length, dropped: dropped.length };
+  // The rejected ledger follows the same window: an event no longer in range
+  // will not be considered again, so its refusal need not be kept either.
+  const checked = (index.checked || []).filter(e => typeof e.date === 'string' && e.date >= start);
+  saveIndex(dir, { events: keep, checked });
+  return { kept: keep.length, dropped: dropped.length, checked: checked.length };
 }
 
 // One event's worth of fetching: judge it, then parse it if it qualifies.
@@ -237,7 +268,21 @@ export function prune(dir = ARCHIVE_DIR, { months = WINDOW_MONTHS, log = () => {
 // never as "no lists": the event is left unarchived so the next run retries it.
 async function archiveOne(ev, { dir, log, totals }) {
   const check = await checkEvent(ev.detailsUrl);
-  if (!(is40k(check.game) && check.hasLists)) return { skipped: true };
+  if (!(is40k(check.game) && check.hasLists)) {
+    // Remember the refusal. Without it the next harvest fetches the same
+    // details page to learn the same thing, and over a sitemap that is
+    // hundreds of requests for an answer already known.
+    return { decision: {
+      key: eventKey(ev.type, ev.slug),
+      type: ev.type,
+      slug: ev.slug,
+      date: ev.date,
+      game: check.game || null,
+      hasLists: !!check.hasLists,
+      detailsUrl: ev.detailsUrl,
+      checkedAt: new Date().toISOString(),
+    } };
+  }
   const { output } = await parseUrl(ev.url);
   const file = path.join(EVENTS_DIR, fileNameFor(ev.type, ev.slug) + '.json');
   const body = JSON.stringify(output);
@@ -272,7 +317,11 @@ function pad(s, n) {
 }
 
 export function saveIndex(dir, index) {
-  const next = { generated: new Date().toISOString(), events: index.events.slice().sort(byDateDesc) };
+  const next = {
+    generated: new Date().toISOString(),
+    events: (index.events || []).slice().sort(byDateDesc),
+    checked: (index.checked || []).slice().sort(byDateDesc),
+  };
   fs.mkdirSync(dir, { recursive: true });
   const file = indexPath(dir);
   fs.writeFileSync(file + '.tmp', JSON.stringify(next, null, 2) + '\n');
@@ -305,22 +354,32 @@ export async function harvest(opts = {}) {
   log('Closed events in the sitemap: ' + all.filter(e => isClosed(e)).length +
       ', of which ' + queue.length + ' to check' +
       (limit > 0 && queue.length > todo.length ? ' (taking ' + todo.length + ')' : ''));
-  log('Already archived: ' + index.events.length + ', ' + fmtBytes(index.events.reduce((s, e) => s + (e.bytes || 0), 0)));
+  log('Already archived: ' + index.events.length + ', ' + fmtBytes(index.events.reduce((s, e) => s + (e.bytes || 0), 0)) +
+      ', already rejected: ' + (index.checked || []).length);
   if (!todo.length) return { entries: [], bytes: 0, checked: 0 };
 
   const added = [];
+  const refused = [];
   // What the index holds, as of this run. Kept as its own array on purpose:
   // concat() returns a new one, so folding the batches into the loaded index
   // would throw the earlier batches away and the file would end up holding only
   // the last flush.
   let merged = index.events.slice();
+  let mergedChecked = (index.checked || []).slice();
   const totals = { done: 0, bytes: 0, checked: 0, failed: 0, skipped: 0 };
   const total = todo.length;
   let n = 0;
+  // One entry per key: a re-check replaces the refusal it supersedes.
+  const byKey = (base, add) => {
+    const m = new Map(base.map(e => [e.key, e]));
+    for (const e of add) m.set(e.key, e);
+    return [...m.values()];
+  };
   const flush = () => {
-    if (!added.length) return;
-    merged = merged.concat(added.splice(0));
-    saveIndex(dir, { events: merged });
+    if (!added.length && !refused.length) return;
+    merged = byKey(merged, added.splice(0));
+    mergedChecked = byKey(mergedChecked, refused.splice(0));
+    saveIndex(dir, { events: merged, checked: mergedChecked });
   };
 
   const worker = async () => {
@@ -331,7 +390,7 @@ export async function harvest(opts = {}) {
       totals.checked++;
       try {
         const r = await archiveOne(ev, { dir, log, totals });
-        if (r.skipped) totals.skipped++;
+        if (r.decision) { totals.skipped++; refused.push(r.decision); }
         else added.push(r.entry);
       } catch (e) {
         // Left unarchived on purpose: the next run tries it again.
@@ -340,7 +399,7 @@ export async function harvest(opts = {}) {
       }
       // Flushed periodically rather than per event: the index is small, but a
       // harvest is long and Ctrl-C should not throw away the last hundred.
-      if (added.length >= 25) flush();
+      if (added.length + refused.length >= 25) flush();
     }
   };
   await Promise.all(Array.from({ length: Math.min(concurrency, todo.length) }, worker));
@@ -348,7 +407,8 @@ export async function harvest(opts = {}) {
 
   log('');
   log('Archived ' + totals.done + ' event' + (totals.done === 1 ? '' : 's') + ', ' +
-      fmtBytes(totals.bytes) + ' this run, ' + merged.length + ' in total.');
+      fmtBytes(totals.bytes) + ' this run, ' + merged.length + ' in total; ' +
+      mergedChecked.length + ' rejected so far.');
   log('Checked ' + totals.checked + ', kept ' + totals.done + ', skipped ' + totals.skipped +
       ' (another game, or no lists out), failed ' + totals.failed + '.');
   return { entries: added, bytes: totals.bytes, checked: totals.checked };
@@ -366,6 +426,9 @@ export async function harvest(opts = {}) {
 // the game from the filter that put the event in the archive at all, and the
 // timestamp from the file's own mtime.
 export function reindex(dir = ARCHIVE_DIR) {
+  // The rejected ledger cannot be rebuilt from event files - a refused event
+  // has none - so it is carried over rather than derived.
+  const existing = loadIndex(dir);
   const eventsDir = path.join(dir, EVENTS_DIR);
   let files = [];
   try { files = fs.readdirSync(eventsDir); } catch { files = []; }
@@ -397,8 +460,8 @@ export function reindex(dir = ARCHIVE_DIR) {
       file: rel,
     });
   }
-  saveIndex(dir, { events: entries });
-  return { entries, dropped };
+  saveIndex(dir, { events: entries, checked: existing.checked || [] });
+  return { entries, dropped, checked: (existing.checked || []).length };
 }
 
 // --- CLI ---------------------------------------------------------------
@@ -435,20 +498,23 @@ async function main() {
       console.log(e.date + '  ' + pad(e.name, 44) + '  ' + pad(e.listCount + ' lists', 12) + '  ' + fmtBytes(e.bytes || 0) + '  ' + e.slug);
     }
     console.log('\n' + index.events.length + ' archived event(s), ' +
-      fmtBytes(index.events.reduce((s, e) => s + (e.bytes || 0), 0)));
+      fmtBytes(index.events.reduce((s, e) => s + (e.bytes || 0), 0)) + ', ' +
+      (index.checked || []).length + ' rejected event(s).');
     return;
   }
 
   if (o.reindex) {
     const r = reindex(o.dir);
-    console.log(r.entries.length + ' events indexed from ' + path.join(o.dir, 'events'));
+    console.log(r.entries.length + ' events indexed from ' + path.join(o.dir, 'events') +
+      ', ' + r.checked + ' rejected entries kept');
     if (r.dropped.length) console.log(r.dropped.length + ' unreadable file(s) skipped: ' + r.dropped.join(', '));
     return;
   }
 
   if (o.prune) {
     const r = prune(o.dir, { months: o.months, log: s => console.log(s) });
-    console.log('Kept ' + r.kept + ' event(s) within ' + (o.months > 0 ? o.months + ' months' : 'all time') + ', dropped ' + r.dropped + '.');
+    console.log('Kept ' + r.kept + ' event(s) and ' + r.checked + ' rejected entr' + (r.checked === 1 ? 'y' : 'ies') +
+      ' within ' + (o.months > 0 ? o.months + ' months' : 'all time') + ', dropped ' + r.dropped + '.');
     return;
   }
 

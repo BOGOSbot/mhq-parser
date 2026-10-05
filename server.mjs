@@ -121,6 +121,29 @@ function archiveEntryFor(url) {
   return key ? entryForKey(archiveIndex(), key) : null;
 }
 
+// An archived parse is only as final as the event. A closed event cannot
+// change, so the copy is the same parse MHQ would return; one that has not
+// happened yet can, and the picker already labels it "(not yet)". Such an
+// event is never answered from disk - opening it goes to the site.
+function notYetPlayed(entry, today = new Date().toISOString().slice(0, 10)) {
+  return !entry || typeof entry.date !== 'string' || entry.date >= today;
+}
+
+// Seed the in-memory scan from the committed refusal ledger. A serverless
+// instance starts with an empty filter cache on every cold start, so without
+// this the same non-40k events are fetched from MHQ again for an answer
+// already on disk. The ledger is written by the harvest, which is the only
+// place that can write it: the deployment's filesystem is read-only.
+let filterSeeded = false;
+function seedFilterFromArchive(index) {
+  if (filterSeeded) return;
+  filterSeeded = true;
+  for (const e of (index.checked || [])) {
+    if (!e.detailsUrl || filterCache.has(e.detailsUrl)) continue;
+    filterCache.set(e.detailsUrl, { game: e.game || null, hasLists: !!e.hasLists, listCount: 0, at: Date.now() });
+  }
+}
+
 // What the picker draws: the live window first, in the order it already had,
 // then the archive newest-first. Archived events are all in the past, so they
 // belong below the ones still worth watching - and they are added whole, not
@@ -371,7 +394,7 @@ async function handleParse(req, res) {
   // you suspect the copy rather than the cache.
   if (body.live !== true) {
     const entry = archiveEntryFor(target);
-    const cached = entry ? readEvent(ARCHIVE_DIR, entry) : null;
+    const cached = entry && !notYetPlayed(entry) ? readEvent(ARCHIVE_DIR, entry) : null;
     if (cached && Array.isArray(cached.players)) {
       return json(res, 200, {
         event: cached.event,
@@ -492,11 +515,13 @@ async function handleEvents(req, res, u) {
   if (u.searchParams.get('refresh') === '1') {
     filterCache = new Map();
     filterScan = null;
+    filterSeeded = false; // the committed refusals come back on the next read
   }
   if (u.searchParams.get('clear') === '1') {
     clearEventCache();
     filterCache = new Map();
     filterScan = null;
+    filterSeeded = false;
   }
   if (u.searchParams.get('clear') === '1') {
     // The archived rows stay: they are committed files, not something this
@@ -511,6 +536,7 @@ async function handleEvents(req, res, u) {
     // out-of-window events are never scanned, so counting them against a target
     // would mean the scan can never finish.
     const arch = archiveIndex();
+    seedFilterFromArchive(arch);
     const archived = new Set(arch.events.map(e => e.key));
     const all = await getAllEvents();
     // Already archived means already judged, so the scan leaves it alone. That
@@ -528,6 +554,7 @@ async function handleEvents(req, res, u) {
       total: progress.total,
       done: progress.done,
       archived: arch.events.length,
+      checked: (arch.checked || []).length,
       windowDays: FILTER_WINDOW_DAYS,
       archiveError: archiveError || undefined,
     });
@@ -569,7 +596,13 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, readIndex(), 'text/html; charset=utf-8');
   }
   if (req.method === 'GET' && u.pathname === '/health') {
-    return json(res, 200, { ok: true, archived: archiveIndex().events.length });
+    const a = archiveIndex();
+    return json(res, 200, {
+      ok: true,
+      archived: a.events.length,
+      checked: (a.checked || []).length,
+      archiveError: archiveError || undefined,
+    });
   }
   if (req.method === 'GET' && u.pathname === '/events') return handleEvents(req, res, u);
   if (req.method === 'GET' && u.pathname === '/my-events') return handleMyEvents(req, res);

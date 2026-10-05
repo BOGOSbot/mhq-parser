@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseHtml, renderMini } from '../parse.mjs';
-import { candidates, entryFor, entryForKey, eventKey, is40k, isClosed, keyOfUrl, loadIndex, readEvent, rowFor, saveIndex } from '../archive.mjs';
+import { candidates, entryFor, entryForKey, eventKey, is40k, isClosed, keyOfUrl, loadIndex, prune, readEvent, rejectedKeys, reindex, rowFor, saveIndex } from '../archive.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -135,6 +135,59 @@ t('an empty archive has nothing to skip', candidates([sitemap[0]], { events: [] 
 const empty = tmpDir('empty');
 t('no index reads as empty', loadIndex(empty).events.length, 0);
 t('lookup in an absent archive', entryFor(loadIndex(empty), 'team', 'x'), null);
+
+// --- the rejected ledger: checks already answered, never repeated -----------
+// A refusal is worth keeping for the same reason a parse is: it cost a request
+// to learn. Without it a serverless instance re-fetches every non-40k event on
+// every cold start, and the harvest re-checks the whole sitemap every run.
+const led = tmpDir('ledger');
+const mk = (slug, date, game, hasLists, checkedAt) => ({
+  key: eventKey('individual', slug),
+  type: 'individual',
+  slug,
+  date,
+  game,
+  hasLists,
+  detailsUrl: 'https://miniheadquarters.com/tournaments/individual/details/' + slug,
+  checkedAt: checkedAt || '2026-10-05T00:00:00.000Z',
+});
+saveIndex(led, { events: [], checked: [
+  mk('aos-2026-01-01', '2026-01-01', 'Age of Sigmar', true),              // another game
+  mk('40k-empty-2026-01-01', '2026-01-01', 'Warhammer 40,000', false),    // closed, no lists
+  mk('40k-future-2030-01-01', '2030-01-01', 'Warhammer 40,000', false),   // not yet: not final
+  mk('40k-lists-2026-01-01', '2026-01-01', 'Warhammer 40,000', true),     // should have been archived
+  mk('old-2020-01-01', '2020-01-01', 'Age of Sigmar', true),              // out of window
+] });
+const ledIdx = loadIndex(led);
+t('ledger round-trips', (ledIdx.checked || []).length, 5);
+t('another game is a final refusal', rejectedKeys(ledIdx).includes('individual/aos-2026-01-01'), true);
+t('a closed event with no lists is final', rejectedKeys(ledIdx).includes('individual/40k-empty-2026-01-01'), true);
+t('a future "no lists yet" is not final', rejectedKeys(ledIdx).includes('individual/40k-future-2030-01-01'), false);
+t('a 40k event with lists is not a refusal', rejectedKeys(ledIdx).includes('individual/40k-lists-2026-01-01'), false);
+t('only the permanent refusals count', rejectedKeys(ledIdx).length, 3);
+
+const ledSitemap = [
+  { type: 'individual', slug: 'aos-2026-01-01', date: '2026-01-01', detailsUrl: 'x' },
+  { type: 'individual', slug: '40k-empty-2026-01-01', date: '2026-01-01', detailsUrl: 'x' },
+  { type: 'individual', slug: '40k-future-2030-01-01', date: '2030-01-01', detailsUrl: 'x' },
+];
+t('candidates drop the refused', candidates(ledSitemap, ledIdx, { today: '2026-10-05', months: 0 }).map(e => e.slug), []);
+t('refresh ignores the ledger', candidates(ledSitemap, ledIdx, { today: '2026-10-05', months: 0, refresh: true }).map(e => e.slug).sort(), ['40k-empty-2026-01-01', 'aos-2026-01-01']);
+// The promise is kept: once the future event has happened, a refusal recorded
+// before it no longer suppresses the check.
+t('a future refusal is retried once it has happened', candidates(ledSitemap, ledIdx, { today: '2031-01-01', months: 0 }).map(e => e.slug), ['40k-future-2030-01-01']);
+
+// An index written before the ledger existed must still load.
+const oldIndexDir = tmpDir('oldindex');
+fs.writeFileSync(path.join(oldIndexDir, 'index.json'), JSON.stringify({ generated: null, events: [] }));
+t('an index without a ledger loads', Array.isArray(loadIndex(oldIndexDir).checked), true);
+
+// reindex cannot invent refusals - a refused event has no file - so it carries
+// them over. prune follows the window for the ledger too.
+t('reindex keeps the ledger', reindex(led).checked, 5);
+const prunedLed = prune(led, { months: 12 });
+t('prune drops the out-of-window refusal', prunedLed.checked, 4);
+t('prune keeps the in-window refusals', (loadIndex(led).checked || []).length, 4);
 
 fs.rmSync(dir, { recursive: true, force: true });
 fs.rmSync(empty, { recursive: true, force: true });

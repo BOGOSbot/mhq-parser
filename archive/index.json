@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-05T20:35:50.846Z",
+  "generated": "2026-10-05T21:29:44.600Z",
   "events": [
     {
       "key": "individual/lanciers-solo-2026-2026-10-03",
@@ -3780,6 +3780,838 @@
       "bytes": 255690,
       "archivedAt": "2026-10-03T23:24:57.440Z",
       "file": "events/individual--les-des-sales-tournoi-n6-seine-et-marne-2025-10-05.json"
+    }
+  ],
+  "checked": [
+    {
+      "key": "individual/aqshys-not-dead-2026-10-03",
+      "type": "individual",
+      "slug": "aqshys-not-dead-2026-10-03",
+      "date": "2026-10-03",
+      "game": "Age of Sigmar",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/aqshys-not-dead-2026-10-03",
+      "checkedAt": "2026-10-05T21:29:32.538Z"
+    },
+    {
+      "key": "individual/larene-de-crussif-sep2026-2026-09-26",
+      "type": "individual",
+      "slug": "larene-de-crussif-sep2026-2026-09-26",
+      "date": "2026-09-26",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/larene-de-crussif-sep2026-2026-09-26",
+      "checkedAt": "2026-10-05T21:29:33.327Z"
+    },
+    {
+      "key": "individual/rencontre-autour-du-plastique-40k-2026-09-26",
+      "type": "individual",
+      "slug": "rencontre-autour-du-plastique-40k-2026-09-26",
+      "date": "2026-09-26",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/rencontre-autour-du-plastique-40k-2026-09-26",
+      "checkedAt": "2026-10-05T21:29:32.987Z"
+    },
+    {
+      "key": "individual/rencontre-autour-du-plastique-the-old-world-2026-09-26",
+      "type": "individual",
+      "slug": "rencontre-autour-du-plastique-the-old-world-2026-09-26",
+      "date": "2026-09-26",
+      "game": "The Old World",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/rencontre-autour-du-plastique-the-old-world-2026-09-26",
+      "checkedAt": "2026-10-05T21:29:33.330Z"
+    },
+    {
+      "key": "individual/tournoi-les-folies-guerrieres-spearhead-2026-2026-09-20",
+      "type": "individual",
+      "slug": "tournoi-les-folies-guerrieres-spearhead-2026-2026-09-20",
+      "date": "2026-09-20",
+      "game": "AoS Spearhead",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-les-folies-guerrieres-spearhead-2026-2026-09-20",
+      "checkedAt": "2026-10-05T21:29:33.310Z"
+    },
+    {
+      "key": "individual/maxi-fun-sigmar-2-2026-09-19",
+      "type": "individual",
+      "slug": "maxi-fun-sigmar-2-2026-09-19",
+      "date": "2026-09-19",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/maxi-fun-sigmar-2-2026-09-19",
+      "checkedAt": "2026-10-05T21:29:33.718Z"
+    },
+    {
+      "key": "individual/retour-en-armorique-aos-2026-09-19",
+      "type": "individual",
+      "slug": "retour-en-armorique-aos-2026-09-19",
+      "date": "2026-09-19",
+      "game": "Age of Sigmar",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/retour-en-armorique-aos-2026-09-19",
+      "checkedAt": "2026-10-05T21:29:33.618Z"
+    },
+    {
+      "key": "individual/summer-of-war-aos-2026-09-19",
+      "type": "individual",
+      "slug": "summer-of-war-aos-2026-09-19",
+      "date": "2026-09-19",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/summer-of-war-aos-2026-09-19",
+      "checkedAt": "2026-10-05T21:29:34.061Z"
+    },
+    {
+      "key": "individual/tournoi-wh40k-1v1-2000pts-le-vieux-monde-120926-2026-09-12",
+      "type": "individual",
+      "slug": "tournoi-wh40k-1v1-2000pts-le-vieux-monde-120926-2026-09-12",
+      "date": "2026-09-12",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-wh40k-1v1-2000pts-le-vieux-monde-120926-2026-09-12",
+      "checkedAt": "2026-10-05T21:29:33.737Z"
+    },
+    {
+      "key": "individual/le-defi-du-templier-40k-v11-solo-2k-pts-2nd-edition-2026-09-05",
+      "type": "individual",
+      "slug": "le-defi-du-templier-40k-v11-solo-2k-pts-2nd-edition-2026-09-05",
+      "date": "2026-09-05",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/le-defi-du-templier-40k-v11-solo-2k-pts-2nd-edition-2026-09-05",
+      "checkedAt": "2026-10-05T21:29:34.109Z"
+    },
+    {
+      "key": "individual/tournoi-wh40k-1v1-2000pts-le-vieux-monde-08082026-2026-08-08",
+      "type": "individual",
+      "slug": "tournoi-wh40k-1v1-2000pts-le-vieux-monde-08082026-2026-08-08",
+      "date": "2026-08-08",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-wh40k-1v1-2000pts-le-vieux-monde-08082026-2026-08-08",
+      "checkedAt": "2026-10-05T21:29:34.068Z"
+    },
+    {
+      "key": "individual/pas-dchichi-sur-aqshy-2026-08-01",
+      "type": "individual",
+      "slug": "pas-dchichi-sur-aqshy-2026-08-01",
+      "date": "2026-08-01",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/pas-dchichi-sur-aqshy-2026-08-01",
+      "checkedAt": "2026-10-05T21:29:39.539Z"
+    },
+    {
+      "key": "individual/tisseurs-de-reves-aos-1v1-2026-08-01",
+      "type": "individual",
+      "slug": "tisseurs-de-reves-aos-1v1-2026-08-01",
+      "date": "2026-08-01",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tisseurs-de-reves-aos-1v1-2026-08-01",
+      "checkedAt": "2026-10-05T21:29:34.485Z"
+    },
+    {
+      "key": "individual/open-de-bordeaux-2026-07-18",
+      "type": "individual",
+      "slug": "open-de-bordeaux-2026-07-18",
+      "date": "2026-07-18",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/open-de-bordeaux-2026-07-18",
+      "checkedAt": "2026-10-05T21:29:34.683Z"
+    },
+    {
+      "key": "individual/path-to-glory-open-2026-2026-07-11",
+      "type": "individual",
+      "slug": "path-to-glory-open-2026-2026-07-11",
+      "date": "2026-07-11",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/path-to-glory-open-2026-2026-07-11",
+      "checkedAt": "2026-10-05T21:29:34.487Z"
+    },
+    {
+      "key": "individual/lbig-boss-a-dit-kass-toa-ve-disse-2026-07-04",
+      "type": "individual",
+      "slug": "lbig-boss-a-dit-kass-toa-ve-disse-2026-07-04",
+      "date": "2026-07-04",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/lbig-boss-a-dit-kass-toa-ve-disse-2026-07-04",
+      "checkedAt": "2026-10-05T21:29:35.196Z"
+    },
+    {
+      "key": "individual/le-defi-du-templier-40k-v11-solo-2k-pts-premier-sang-2026-07-04",
+      "type": "individual",
+      "slug": "le-defi-du-templier-40k-v11-solo-2k-pts-premier-sang-2026-07-04",
+      "date": "2026-07-04",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/le-defi-du-templier-40k-v11-solo-2k-pts-premier-sang-2026-07-04",
+      "checkedAt": "2026-10-05T21:29:34.772Z"
+    },
+    {
+      "key": "individual/tournois-40k-1000pts-2026-07-04",
+      "type": "individual",
+      "slug": "tournois-40k-1000pts-2026-07-04",
+      "date": "2026-07-04",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournois-40k-1000pts-2026-07-04",
+      "checkedAt": "2026-10-05T21:29:34.988Z"
+    },
+    {
+      "key": "individual/star-wars-legion-isere-2026-06-27",
+      "type": "individual",
+      "slug": "star-wars-legion-isere-2026-06-27",
+      "date": "2026-06-27",
+      "game": "Star Wars Legion",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/star-wars-legion-isere-2026-06-27",
+      "checkedAt": "2026-10-05T21:29:35.042Z"
+    },
+    {
+      "key": "individual/tournoi-estival-de-warhammer-40k-by-acjs-i-guerrieri-2026-06-27",
+      "type": "individual",
+      "slug": "tournoi-estival-de-warhammer-40k-by-acjs-i-guerrieri-2026-06-27",
+      "date": "2026-06-27",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-estival-de-warhammer-40k-by-acjs-i-guerrieri-2026-06-27",
+      "checkedAt": "2026-10-05T21:29:35.366Z"
+    },
+    {
+      "key": "team/desluminatis-team-cup-aos-2026-06-27",
+      "type": "team",
+      "slug": "desluminatis-team-cup-aos-2026-06-27",
+      "date": "2026-06-27",
+      "game": "Age of Sigmar",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/team/details/desluminatis-team-cup-aos-2026-06-27",
+      "checkedAt": "2026-10-05T21:29:35.403Z"
+    },
+    {
+      "key": "individual/40k-test-de-la-v11-2026-06-21",
+      "type": "individual",
+      "slug": "40k-test-de-la-v11-2026-06-21",
+      "date": "2026-06-21",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/40k-test-de-la-v11-2026-06-21",
+      "checkedAt": "2026-10-05T21:29:35.567Z"
+    },
+    {
+      "key": "individual/tournoi-le-vieux-monde-warhammer-40k-2000pts-20062026-2026-06-20",
+      "type": "individual",
+      "slug": "tournoi-le-vieux-monde-warhammer-40k-2000pts-20062026-2026-06-20",
+      "date": "2026-06-20",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-le-vieux-monde-warhammer-40k-2000pts-20062026-2026-06-20",
+      "checkedAt": "2026-10-05T21:29:35.767Z"
+    },
+    {
+      "key": "individual/tournois-cadet-wargame-saumurois-2emes-editions-2026-06-20",
+      "type": "individual",
+      "slug": "tournois-cadet-wargame-saumurois-2emes-editions-2026-06-20",
+      "date": "2026-06-20",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournois-cadet-wargame-saumurois-2emes-editions-2026-06-20",
+      "checkedAt": "2026-10-05T21:29:35.990Z"
+    },
+    {
+      "key": "individual/frakenhammer-2026-06-14",
+      "type": "individual",
+      "slug": "frakenhammer-2026-06-14",
+      "date": "2026-06-14",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/frakenhammer-2026-06-14",
+      "checkedAt": "2026-10-05T21:29:36.130Z"
+    },
+    {
+      "key": "individual/spearhead-les-des-sales-n2-2026-06-14",
+      "type": "individual",
+      "slug": "spearhead-les-des-sales-n2-2026-06-14",
+      "date": "2026-06-14",
+      "game": "AoS Spearhead",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/spearhead-les-des-sales-n2-2026-06-14",
+      "checkedAt": "2026-10-05T21:29:35.937Z"
+    },
+    {
+      "key": "team/tournois-de-lete-2026-ordo-vesontio-2026-06-14",
+      "type": "team",
+      "slug": "tournois-de-lete-2026-ordo-vesontio-2026-06-14",
+      "date": "2026-06-14",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/team/details/tournois-de-lete-2026-ordo-vesontio-2026-06-14",
+      "checkedAt": "2026-10-05T21:29:36.298Z"
+    },
+    {
+      "key": "individual/tournoi-fin-ligue-inter-association-1ere-edition-2026-06-13",
+      "type": "individual",
+      "slug": "tournoi-fin-ligue-inter-association-1ere-edition-2026-06-13",
+      "date": "2026-06-13",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-fin-ligue-inter-association-1ere-edition-2026-06-13",
+      "checkedAt": "2026-10-05T21:29:36.359Z"
+    },
+    {
+      "key": "team/quercy-quest-narratif-part-1-2026-06-11",
+      "type": "team",
+      "slug": "quercy-quest-narratif-part-1-2026-06-11",
+      "date": "2026-06-11",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/team/details/quercy-quest-narratif-part-1-2026-06-11",
+      "checkedAt": "2026-10-05T21:29:36.517Z"
+    },
+    {
+      "key": "individual/star-wars-legion-2026-05-30",
+      "type": "individual",
+      "slug": "star-wars-legion-2026-05-30",
+      "date": "2026-05-30",
+      "game": "Star Wars Legion",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/star-wars-legion-2026-05-30",
+      "checkedAt": "2026-10-05T21:29:36.668Z"
+    },
+    {
+      "key": "individual/tournoi-de-printemps-2026-ordo-vesontio-2026-05-24",
+      "type": "individual",
+      "slug": "tournoi-de-printemps-2026-ordo-vesontio-2026-05-24",
+      "date": "2026-05-24",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-de-printemps-2026-ordo-vesontio-2026-05-24",
+      "checkedAt": "2026-10-05T21:29:37.277Z"
+    },
+    {
+      "key": "individual/40k-solo-isere-2026-05-23",
+      "type": "individual",
+      "slug": "40k-solo-isere-2026-05-23",
+      "date": "2026-05-23",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/40k-solo-isere-2026-05-23",
+      "checkedAt": "2026-10-05T21:29:36.861Z"
+    },
+    {
+      "key": "individual/end-time-is-recoming-aos-2026-05-23",
+      "type": "individual",
+      "slug": "end-time-is-recoming-aos-2026-05-23",
+      "date": "2026-05-23",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/end-time-is-recoming-aos-2026-05-23",
+      "checkedAt": "2026-10-05T21:29:37.398Z"
+    },
+    {
+      "key": "individual/open-de-loctogone-2026-05-23",
+      "type": "individual",
+      "slug": "open-de-loctogone-2026-05-23",
+      "date": "2026-05-23",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/open-de-loctogone-2026-05-23",
+      "checkedAt": "2026-10-05T21:29:37.224Z"
+    },
+    {
+      "key": "individual/rubelles-gt-3-2026-05-23",
+      "type": "individual",
+      "slug": "rubelles-gt-3-2026-05-23",
+      "date": "2026-05-23",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/rubelles-gt-3-2026-05-23",
+      "checkedAt": "2026-10-05T21:29:37.610Z"
+    },
+    {
+      "key": "individual/tournoi-aos-egide-x-lyon-war-club-pour-octogone-2026-05-23",
+      "type": "individual",
+      "slug": "tournoi-aos-egide-x-lyon-war-club-pour-octogone-2026-05-23",
+      "date": "2026-05-23",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-aos-egide-x-lyon-war-club-pour-octogone-2026-05-23",
+      "checkedAt": "2026-10-05T21:29:38.080Z"
+    },
+    {
+      "key": "individual/spring-of-war-aos-2026-2026-05-17",
+      "type": "individual",
+      "slug": "spring-of-war-aos-2026-2026-05-17",
+      "date": "2026-05-17",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/spring-of-war-aos-2026-2026-05-17",
+      "checkedAt": "2026-10-05T21:29:38.147Z"
+    },
+    {
+      "key": "individual/open-de-rueil-malmaison-orm-2026-05-16",
+      "type": "individual",
+      "slug": "open-de-rueil-malmaison-orm-2026-05-16",
+      "date": "2026-05-16",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/open-de-rueil-malmaison-orm-2026-05-16",
+      "checkedAt": "2026-10-05T21:29:37.988Z"
+    },
+    {
+      "key": "individual/riton-tournament-2026-05-08",
+      "type": "individual",
+      "slug": "riton-tournament-2026-05-08",
+      "date": "2026-05-08",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/riton-tournament-2026-05-08",
+      "checkedAt": "2026-10-05T21:29:38.714Z"
+    },
+    {
+      "key": "individual/abordage-et-canonnade-battlefleet-gothic-2026-05-02",
+      "type": "individual",
+      "slug": "abordage-et-canonnade-battlefleet-gothic-2026-05-02",
+      "date": "2026-05-02",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/abordage-et-canonnade-battlefleet-gothic-2026-05-02",
+      "checkedAt": "2026-10-05T21:29:38.421Z"
+    },
+    {
+      "key": "individual/blood-bowl-game-of-tiles-2026-04-26",
+      "type": "individual",
+      "slug": "blood-bowl-game-of-tiles-2026-04-26",
+      "date": "2026-04-26",
+      "game": "Bloodbowl",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/blood-bowl-game-of-tiles-2026-04-26",
+      "checkedAt": "2026-10-05T21:29:38.515Z"
+    },
+    {
+      "key": "individual/ar-bed-kozh-gt-solo-2026-04-25",
+      "type": "individual",
+      "slug": "ar-bed-kozh-gt-solo-2026-04-25",
+      "date": "2026-04-25",
+      "game": "The Old World",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/ar-bed-kozh-gt-solo-2026-04-25",
+      "checkedAt": "2026-10-05T21:29:38.793Z"
+    },
+    {
+      "key": "individual/kill-team-isere-avril-2026-2026-04-25",
+      "type": "individual",
+      "slug": "kill-team-isere-avril-2026-2026-04-25",
+      "date": "2026-04-25",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/kill-team-isere-avril-2026-2026-04-25",
+      "checkedAt": "2026-10-05T21:29:38.868Z"
+    },
+    {
+      "key": "individual/le-foupoudav-3-2026-04-19",
+      "type": "individual",
+      "slug": "le-foupoudav-3-2026-04-19",
+      "date": "2026-04-19",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/le-foupoudav-3-2026-04-19",
+      "checkedAt": "2026-10-05T21:29:39.488Z"
+    },
+    {
+      "key": "individual/40k-solo-1000-pts-isere-2026-04-18",
+      "type": "individual",
+      "slug": "40k-solo-1000-pts-isere-2026-04-18",
+      "date": "2026-04-18",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/40k-solo-1000-pts-isere-2026-04-18",
+      "checkedAt": "2026-10-05T21:29:39.165Z"
+    },
+    {
+      "key": "individual/kheops-17-kill-team-2026-2026-04-18",
+      "type": "individual",
+      "slug": "kheops-17-kill-team-2026-2026-04-18",
+      "date": "2026-04-18",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/kheops-17-kill-team-2026-2026-04-18",
+      "checkedAt": "2026-10-05T21:29:39.525Z"
+    },
+    {
+      "key": "individual/maxi-fun-sigmar-2026-04-04",
+      "type": "individual",
+      "slug": "maxi-fun-sigmar-2026-04-04",
+      "date": "2026-04-04",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/maxi-fun-sigmar-2026-04-04",
+      "checkedAt": "2026-10-05T21:29:39.918Z"
+    },
+    {
+      "key": "individual/40k-solo-isere-2026-03-28",
+      "type": "individual",
+      "slug": "40k-solo-isere-2026-03-28",
+      "date": "2026-03-28",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/40k-solo-isere-2026-03-28",
+      "checkedAt": "2026-10-05T21:29:39.849Z"
+    },
+    {
+      "key": "individual/tournoi-le-vieux-monde-warhammer-aos-2000pts-21032026-2026-03-21",
+      "type": "individual",
+      "slug": "tournoi-le-vieux-monde-warhammer-aos-2000pts-21032026-2026-03-21",
+      "date": "2026-03-21",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-le-vieux-monde-warhammer-aos-2000pts-21032026-2026-03-21",
+      "checkedAt": "2026-10-05T21:29:40.302Z"
+    },
+    {
+      "key": "individual/olonna-wargame-fest-ii-2026-02-28",
+      "type": "individual",
+      "slug": "olonna-wargame-fest-ii-2026-02-28",
+      "date": "2026-02-28",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/olonna-wargame-fest-ii-2026-02-28",
+      "checkedAt": "2026-10-05T21:29:40.697Z"
+    },
+    {
+      "key": "individual/open-aos-de-loire-atlantique-by-les-desluminatis-2026-02-28",
+      "type": "individual",
+      "slug": "open-aos-de-loire-atlantique-by-les-desluminatis-2026-02-28",
+      "date": "2026-02-28",
+      "game": "Age of Sigmar",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/open-aos-de-loire-atlantique-by-les-desluminatis-2026-02-28",
+      "checkedAt": "2026-10-05T21:29:39.952Z"
+    },
+    {
+      "key": "individual/lheurt-de-gloire-2026-02-22",
+      "type": "individual",
+      "slug": "lheurt-de-gloire-2026-02-22",
+      "date": "2026-02-22",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/lheurt-de-gloire-2026-02-22",
+      "checkedAt": "2026-10-05T21:29:40.695Z"
+    },
+    {
+      "key": "individual/tournoi-aos-des-loups-2026-02-22",
+      "type": "individual",
+      "slug": "tournoi-aos-des-loups-2026-02-22",
+      "date": "2026-02-22",
+      "game": "Age of Sigmar",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-aos-des-loups-2026-02-22",
+      "checkedAt": "2026-10-05T21:29:40.285Z"
+    },
+    {
+      "key": "individual/gwc-choose-your-game-aos-2026-02-21",
+      "type": "individual",
+      "slug": "gwc-choose-your-game-aos-2026-02-21",
+      "date": "2026-02-21",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/gwc-choose-your-game-aos-2026-02-21",
+      "checkedAt": "2026-10-05T21:29:41.504Z"
+    },
+    {
+      "key": "individual/league-kill-team-de-fevrier-a-juillet-2026-02-21",
+      "type": "individual",
+      "slug": "league-kill-team-de-fevrier-a-juillet-2026-02-21",
+      "date": "2026-02-21",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/league-kill-team-de-fevrier-a-juillet-2026-02-21",
+      "checkedAt": "2026-10-05T21:29:40.842Z"
+    },
+    {
+      "key": "individual/tournoi-solo-du-cfve-2026-02-21",
+      "type": "individual",
+      "slug": "tournoi-solo-du-cfve-2026-02-21",
+      "date": "2026-02-21",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-solo-du-cfve-2026-02-21",
+      "checkedAt": "2026-10-05T21:29:40.667Z"
+    },
+    {
+      "key": "team/tournois-des-trollistes-2026-02-21",
+      "type": "team",
+      "slug": "tournois-des-trollistes-2026-02-21",
+      "date": "2026-02-21",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/team/details/tournois-des-trollistes-2026-02-21",
+      "checkedAt": "2026-10-05T21:29:41.069Z"
+    },
+    {
+      "key": "individual/aos-tactical-2026-02-08",
+      "type": "individual",
+      "slug": "aos-tactical-2026-02-08",
+      "date": "2026-02-08",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/aos-tactical-2026-02-08",
+      "checkedAt": "2026-10-05T21:29:41.436Z"
+    },
+    {
+      "key": "individual/fwc-apocalypse-40k-narratif-levenement-narratif-de-cet-hiver-2026-02-07",
+      "type": "individual",
+      "slug": "fwc-apocalypse-40k-narratif-levenement-narratif-de-cet-hiver-2026-02-07",
+      "date": "2026-02-07",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/fwc-apocalypse-40k-narratif-levenement-narratif-de-cet-hiver-2026-02-07",
+      "checkedAt": "2026-10-05T21:29:41.463Z"
+    },
+    {
+      "key": "individual/open-open-de-la-table-ovale-nanterre-2026-02-07",
+      "type": "individual",
+      "slug": "open-open-de-la-table-ovale-nanterre-2026-02-07",
+      "date": "2026-02-07",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/open-open-de-la-table-ovale-nanterre-2026-02-07",
+      "checkedAt": "2026-10-05T21:29:41.191Z"
+    },
+    {
+      "key": "team/the-great-maw-ii-aos-teams-gt-2026-2026-02-07",
+      "type": "team",
+      "slug": "the-great-maw-ii-aos-teams-gt-2026-2026-02-07",
+      "date": "2026-02-07",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/team/details/the-great-maw-ii-aos-teams-gt-2026-2026-02-07",
+      "checkedAt": "2026-10-05T21:29:41.955Z"
+    },
+    {
+      "key": "team/stardust-summer-cup-2026-02-06",
+      "type": "team",
+      "slug": "stardust-summer-cup-2026-02-06",
+      "date": "2026-02-06",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/team/details/stardust-summer-cup-2026-02-06",
+      "checkedAt": "2026-10-05T21:29:41.806Z"
+    },
+    {
+      "key": "individual/age-of-provence-2026-01-25",
+      "type": "individual",
+      "slug": "age-of-provence-2026-01-25",
+      "date": "2026-01-25",
+      "game": "Age of Sigmar",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/age-of-provence-2026-01-25",
+      "checkedAt": "2026-10-05T21:29:41.833Z"
+    },
+    {
+      "key": "individual/age-of-simiane-2026-01-17",
+      "type": "individual",
+      "slug": "age-of-simiane-2026-01-17",
+      "date": "2026-01-17",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/age-of-simiane-2026-01-17",
+      "checkedAt": "2026-10-05T21:29:42.228Z"
+    },
+    {
+      "key": "individual/tournoi-le-vieux-monde-warhammer-40k-1000pts-10012026-2026-01-10",
+      "type": "individual",
+      "slug": "tournoi-le-vieux-monde-warhammer-40k-1000pts-10012026-2026-01-10",
+      "date": "2026-01-10",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-le-vieux-monde-warhammer-40k-1000pts-10012026-2026-01-10",
+      "checkedAt": "2026-10-05T21:29:42.153Z"
+    },
+    {
+      "key": "individual/santa-morka-tournoi-de-nowel-40k-2025-12-20",
+      "type": "individual",
+      "slug": "santa-morka-tournoi-de-nowel-40k-2025-12-20",
+      "date": "2025-12-20",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/santa-morka-tournoi-de-nowel-40k-2025-12-20",
+      "checkedAt": "2026-10-05T21:29:42.173Z"
+    },
+    {
+      "key": "team/cvm-championship-2025-12-13",
+      "type": "team",
+      "slug": "cvm-championship-2025-12-13",
+      "date": "2025-12-13",
+      "game": "Age of Sigmar",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/team/details/cvm-championship-2025-12-13",
+      "checkedAt": "2026-10-05T21:29:42.285Z"
+    },
+    {
+      "key": "individual/rock-tow-2025-12-07",
+      "type": "individual",
+      "slug": "rock-tow-2025-12-07",
+      "date": "2025-12-07",
+      "game": "The Old World",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/rock-tow-2025-12-07",
+      "checkedAt": "2026-10-05T21:29:43.010Z"
+    },
+    {
+      "key": "individual/warassos-tournois-spearhead-2025-12-07",
+      "type": "individual",
+      "slug": "warassos-tournois-spearhead-2025-12-07",
+      "date": "2025-12-07",
+      "game": "AoS Spearhead",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/warassos-tournois-spearhead-2025-12-07",
+      "checkedAt": "2026-10-05T21:29:42.517Z"
+    },
+    {
+      "key": "individual/larene-de-crussif-dec2025-2025-12-06",
+      "type": "individual",
+      "slug": "larene-de-crussif-dec2025-2025-12-06",
+      "date": "2025-12-06",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/larene-de-crussif-dec2025-2025-12-06",
+      "checkedAt": "2026-10-05T21:29:43.099Z"
+    },
+    {
+      "key": "individual/tournoi-de-noel-acjs-2025-12-06",
+      "type": "individual",
+      "slug": "tournoi-de-noel-acjs-2025-12-06",
+      "date": "2025-12-06",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-de-noel-acjs-2025-12-06",
+      "checkedAt": "2026-10-05T21:29:42.738Z"
+    },
+    {
+      "key": "individual/durandal-solo-2025-2025-11-29",
+      "type": "individual",
+      "slug": "durandal-solo-2025-2025-11-29",
+      "date": "2025-11-29",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/durandal-solo-2025-2025-11-29",
+      "checkedAt": "2026-10-05T21:29:42.862Z"
+    },
+    {
+      "key": "team/tournoi-equipe-1000-pts-lorient-2025-11-29",
+      "type": "team",
+      "slug": "tournoi-equipe-1000-pts-lorient-2025-11-29",
+      "date": "2025-11-29",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/team/details/tournoi-equipe-1000-pts-lorient-2025-11-29",
+      "checkedAt": "2026-10-05T21:29:43.182Z"
+    },
+    {
+      "key": "individual/age-of-gallicus-tome-6-2025-11-22",
+      "type": "individual",
+      "slug": "age-of-gallicus-tome-6-2025-11-22",
+      "date": "2025-11-22",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/age-of-gallicus-tome-6-2025-11-22",
+      "checkedAt": "2026-10-05T21:29:43.632Z"
+    },
+    {
+      "key": "individual/normandie-open-ospare-5-2025-11-22",
+      "type": "individual",
+      "slug": "normandie-open-ospare-5-2025-11-22",
+      "date": "2025-11-22",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/normandie-open-ospare-5-2025-11-22",
+      "checkedAt": "2026-10-05T21:29:43.385Z"
+    },
+    {
+      "key": "team/durandal-clash-2025-11-22",
+      "type": "team",
+      "slug": "durandal-clash-2025-11-22",
+      "date": "2025-11-22",
+      "game": "Warhammer 40000",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/team/details/durandal-clash-2025-11-22",
+      "checkedAt": "2026-10-05T21:29:43.451Z"
+    },
+    {
+      "key": "individual/le-foupoudav2-2025-11-09",
+      "type": "individual",
+      "slug": "le-foupoudav2-2025-11-09",
+      "date": "2025-11-09",
+      "game": "AoS Spearhead",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/le-foupoudav2-2025-11-09",
+      "checkedAt": "2026-10-05T21:29:43.547Z"
+    },
+    {
+      "key": "individual/tournoi-durandal-aos-2000-pts-novembre-2025-2025-11-08",
+      "type": "individual",
+      "slug": "tournoi-durandal-aos-2000-pts-novembre-2025-2025-11-08",
+      "date": "2025-11-08",
+      "game": "Age of Sigmar",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-durandal-aos-2000-pts-novembre-2025-2025-11-08",
+      "checkedAt": "2026-10-05T21:29:43.764Z"
+    },
+    {
+      "key": "individual/kumite-aos-rts-2025-11-01",
+      "type": "individual",
+      "slug": "kumite-aos-rts-2025-11-01",
+      "date": "2025-11-01",
+      "game": "Age of Sigmar",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/kumite-aos-rts-2025-11-01",
+      "checkedAt": "2026-10-05T21:29:43.852Z"
+    },
+    {
+      "key": "individual/tactical-aos-2025-10-26",
+      "type": "individual",
+      "slug": "tactical-aos-2025-10-26",
+      "date": "2025-10-26",
+      "game": "Age of Sigmar",
+      "hasLists": false,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tactical-aos-2025-10-26",
+      "checkedAt": "2026-10-05T21:29:43.981Z"
+    },
+    {
+      "key": "individual/paris-wargame-expo-warhammer-aos-solo-2025-10-18",
+      "type": "individual",
+      "slug": "paris-wargame-expo-warhammer-aos-solo-2025-10-18",
+      "date": "2025-10-18",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/paris-wargame-expo-warhammer-aos-solo-2025-10-18",
+      "checkedAt": "2026-10-05T21:29:44.599Z"
+    },
+    {
+      "key": "individual/tournoi-aos-octogone-15-2025-10-11",
+      "type": "individual",
+      "slug": "tournoi-aos-octogone-15-2025-10-11",
+      "date": "2025-10-11",
+      "game": "Age of Sigmar",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-aos-octogone-15-2025-10-11",
+      "checkedAt": "2026-10-05T21:29:44.524Z"
+    },
+    {
+      "key": "individual/tournoi-spearhead-les-des-sales-n2-2025-10-11",
+      "type": "individual",
+      "slug": "tournoi-spearhead-les-des-sales-n2-2025-10-11",
+      "date": "2025-10-11",
+      "game": "AoS Spearhead",
+      "hasLists": true,
+      "detailsUrl": "https://miniheadquarters.com/tournaments/individual/details/tournoi-spearhead-les-des-sales-n2-2025-10-11",
+      "checkedAt": "2026-10-05T21:29:44.557Z"
     }
   ]
 }

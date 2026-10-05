@@ -425,6 +425,16 @@ three editions ago does neither. The harvest ignores anything older than the
 window and `--prune` deletes what is already on disk. `--months <n>` moves the
 window; `--months 0` means all time.
 
+The index has two lists. `events` is the parsed 40k events, one entry per file.
+`checked` is the **refusal ledger**: every event judged and dropped, with the
+game the details page declared and whether lists were out. A refusal costs a
+request to learn, and a rerun that does not keep it pays for it again - on a
+serverless instance, on every cold start. Another game is a permanent refusal;
+"no lists out" is final only when the check was made on or after the event's own
+date, so the ledger carries the check's `checkedAt` and a list published late is
+still picked up. `rejectedKeys()` is the rule, and both the harvest and the
+site's scan read through it.
+
 The files are committed. That is the point: the site reads them off disk, with
 no network and no CORS, exactly as it reads `index.html` on every request.
 
@@ -433,6 +443,16 @@ no network and no CORS, exactly as it reads `index.html` on every request.
 - `/parse` answers from the file. No request to MHQ, no session, no timeout to
   wait out: a 60-army event that takes about half a second live comes back in
   under 100 ms. `{"live": true}` in the body declines the cache and goes to MHQ.
+- `/parse` also declines the cache for an event that **has not happened yet**,
+  even when a copy exists: its lists are still being submitted. The picker labels
+  such an event "(not yet)", and `notYetPlayed()` is the rule that keeps the
+  archive from freezing a page mid-submission. The result toolbar's **Refresh**
+  button is the manual form of the same question - it posts `{"live": true}` for
+  the event on screen and re-renders.
+- `/events` seeds its scan from the refusal ledger, so a non-40k event a harvest
+  recorded is not fetched from MHQ again on every cold start. `?refresh=1`
+  clears the in-memory results and re-seeds from disk rather than re-checking
+  what the ledger already settled.
 - `/events` lists the archived ones without checking them, and the scan skips
   them entirely. A closed event's game and its list count are already known,
   so listing it costs nothing - which is also why the harvest, not just the
@@ -452,11 +472,11 @@ and `live: true` wins over the cache whenever the cache is what you doubt.
 
 ### Numbers
 
-One harvest of the 12 months before 2026-10-04: **1,201** closed tournaments in
-the sitemap, **328** checked, **245** kept - a 75% hit rate, the rest being
-another game or lists never published - and **57.6 MB** of committed JSON for
-256 events. The whole closed catalogue, back to 2021, would be roughly 210 MB,
-which is why the default harvest is bounded rather than absolute.
+The 12 months before 2026-10-05: **1,203** closed tournaments in the sitemap,
+**252** kept and **83** refused and remembered - so a second run has nothing to
+check. The files are **59.7 MB**. The whole closed catalogue, back to 2021, would
+be roughly 210 MB, which is why the default harvest is bounded rather than
+absolute.
 
 Each event file is compact, not indented: on a 60-list event that is 580 KB
 against 837 KB pretty-printed, and pretty-printing buys nothing here. Nothing
