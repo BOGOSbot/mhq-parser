@@ -1652,7 +1652,16 @@ function playerWarnings(player, meta) {
   const declaredIsBudget = budget != null && t.declaredPts === budget &&
     !(player.header && player.header.totalPoints) && realDeclaredTotal(text) == null;
   if (t.declaredPts == null) {
-    warnings.push({ type: 'missing-total', text: '> ⚠ missing total points' });
+    // Several exporters never print an army total. When the counted units sit
+    // under the game size the list declares its budget with, the missing total
+    // is not worth a warning - the army demonstrably fits, which is what the
+    // total was there to convey. One that goes OVER the budget is the worse
+    // reading: warn on the budget, not on the absent total.
+    if (budget != null && t.parsedPts > budget) {
+      warnings.push({ type: 'over-budget', text: '> ⚠ over points limit: limit ' + budget + ', parsed ' + t.parsedPts + ' (+' + (t.parsedPts - budget) + ')' });
+    } else if (budget == null) {
+      warnings.push({ type: 'missing-total', text: '> ⚠ missing total points' });
+    }
   } else if (declaredIsBudget) {
     if (t.parsedPts > budget) {
       warnings.push({ type: 'over-budget', text: '> ⚠ over points limit: limit ' + budget + ', parsed ' + t.parsedPts + ' (+' + (t.parsedPts - budget) + ')' });
