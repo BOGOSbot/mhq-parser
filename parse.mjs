@@ -1670,10 +1670,12 @@ function renderMini(output) {
     for (const p of teamPlayers) {
       const meta = getMeta(p);
       out.push('### ' + p.name + ' — ' + p.faction + (p.status ? ' [' + p.status + ']' : ''));
+      // Warnings sit between the header and the metadata, so everything from
+      // the detachment line down is a contiguous clean block: selecting for a
+      // copy does not have to skip around a warning dropped between fields.
+      for (const w of playerWarnings(p, meta)) out.push(w.text);
       if (meta.detachment) out.push('- ' + meta.detachment);
       if (meta.forceDisposition) out.push('- ' + meta.forceDisposition);
-      // Emit warnings under the header
-      for (const w of playerWarnings(p, meta)) out.push(w.text);
       out.push('');
       out.push(...renderPlayer(p));
       out.push('');

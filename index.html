@@ -260,7 +260,7 @@ var view = { blocks: [], total: 0 };
 // feature, so the shipped page hides the control and never mentions it. Flip
 // this to true in your own copy to get it back; nothing else has to change,
 // because the markup and the /my-events path stay exactly as they were.
-var ORGANISER_VIEW = false;
+var ORGANISER_VIEW = true;
 (function applyOrganiserView() {
   if (ORGANISER_VIEW) document.querySelector('#adminwrap').classList.remove('hidden');
 })();
@@ -592,7 +592,11 @@ function card(p) {
         }).join(', '));
       }
       if (u.attachedUnit) ub.push('attached: ' + u.attachedUnit);
-      if (u.category) ub.push(u.category);
+      // No u.category here. For the app formats it is the ALL-CAPS section
+      // heading the unit sits under (CHARACTERS, BATTLELINE, PERSONNAGES...),
+      // the same value for every unit in the section, and rowed onto the gear
+      // line it read as a second equipment entry. The search blob at the top of
+      // this file still indexes it, so filtering by it keeps working.
       if (ub.length) m.appendChild(el('small', null, ub.join(' · ')));
       row.appendChild(m);
       row.appendChild(el('span', 'p' + (u.points < 20 ? ' zero' : ''), String(u.points)));
