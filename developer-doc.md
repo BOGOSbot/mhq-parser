@@ -575,3 +575,23 @@ Enhancement points are already included in unit points for all supported formats
 - Army-list HTML is not cached. Every parse re-fetches, so two runs of the same URL can differ if the organiser edits a list in between. The catalogue behind `/events` is the exception: `listEvents()` holds the sitemap in memory for hours and the per-event check results in `filterCache` for an hour.
 - The same applies to list text: `parseListText()` is deterministic, and `tests/fixtures/lists.json` is the offline corpus to diff against. The full 233-list corpus is not in the tree - `cleanup` removed the generated event folders - so `lists.json` holds the 42 format-diverse lists selected from it, each with the body and what it should parse to.
 - To diff two runs, save the HTML and feed both copies to `parseHtml()`. Do not patch `fetchHTML()` to read a file: `parseHtml()` already takes markup you have, and the **From file** button in the page calls it through `POST /parse-file`.
+## Points verification (verify-points.mjs)
+
+After an event's lists are parsed (the UI's Download JSON, or parse.mjs --json), verify-points.mjs checks every unit row against the official points tables - the Munitorum Field Manual, mfm.warhammer-community.com - and reports the rows a human has to look at.
+
+\`\`\`
+node verify-points.mjs <event.json> [--ref-dir <dir>] [--lang both|en|fr] [--rows <file>] [--report <file>] [--no-scrape]
+\`\`\`
+
+- **Input.** The JSON parse.mjs / the UI's Download JSON write: { event, count, players }, each player holding units[] with model / points / models / enhancements. No other file format is accepted - run the parse first.
+- **Reference cache (default .verify-ref/ next to the event).** One file per faction page, `<slug>.txt` for English and `<slug>@fr.txt` for French. The MFM is client-rendered with lazy sections and its /fr render prices rows the /en render shows as references only, so the tool drives a real browser through playwright-cli (installed globally; it must be on the PATH). Each page costs one open + one read; pages already on disk are never re-fetched, so a second verification of the same event is offline. Delete the directory to re-read everything. --lang en|fr restricts the languages fetched; --no-scrape forbids the browser entirely and answers from the cache alone.
+- **The check, per row.** The datasheet is matched into the faction's page - exact, then relaxed (prefix containment, both directions; "Escouade Outrider" matches the fr space-marines page natively), then through ALIAS for the spellings no render shares. The printed points must be a tier price; copy brackets (first-second vs 3rd+ unit) are picked by the copy index when the datasheet prices the bands separately. On a miss the tool checks whether the figure equals a tier plus the row's own enhancement (the app and newrecruit exporters fold its price into the figure - "Lokhust Destroyers (210 points)" is 190 + Deepening Madness 20), plus any sum of the row's MFM wargear options, MIXED sums included: 210 + 15 psycannon + 15 sublimator + 10 Sigil of the Hunt = 250 is the shape that made the combined check mandatory. A plain tier always outranks a folded combo when both explain the figure.
+- **What survives is a human's row.** CHECK = no MFM arithmetic explains the figure (a stale figure is the usual answer: the Imperial Rhino at 65 is the 70 price minus the recent +5 update the roster missed). no-mfm-row = the MFM carries the datasheet as a reference only in both languages (Dragon Knights). unmatched = the datasheet was not found; check the faction field first - an unknown faction silently finds nothing.
+- **Outputs.** A per-row ledger (--rows, default <event>.verify-rows.json) and a markdown report (--report, default <event>.verify.md) written next to the event JSON. Exit 0 when everything verified, 1 when rows remain, 2 on usage errors - so a CI pass can gate on it.
+- **Programmatic.** import { verifyEvent, summarize, parseMfmPage } - tests/test-verify-points.mjs pins every rule offline with synthetic tables; extend it when a new exporter dialect appears instead of debugging against the live site.
+
+### Lessons pinned by the first event this ran on
+
+- The exporters fold costs INTO the printed unit figure: enhancements always (verified on 70+ rows), wargear options sometimes (Defiler 330 = 300 + 15 + 15, the Nemesis Dreadknight above).
+- The MFM's own update markers (the ▲/▼ triangles with +/-N) are data: a stale roster usually differs from the current table by exactly one of those printed deltas.
+- A datasheet the /en render refuses may be priced on /fr - the tool's fallback makes the language irrelevant.
