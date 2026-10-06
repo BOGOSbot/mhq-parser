@@ -501,11 +501,21 @@ function stripTags(s) {
 // with the header scanner about where a header stops.
 function isUnitContent(s) {
   const t = String(s || '').trim();
+  if (isKeyShapedBullet(t)) return false;
   return /\(\s*\d+\s*(?:pts?|points?)\s*\)/.test(t)
     || /\[\s*\d+\s*pts?\s*\]/.test(t)
     || /^Char\d+:/.test(t)
     || /^[·•◦]/.test(t)
     || /^\|/.test(t);
+}
+
+// A bullet-prefixed header key: "• FACTION KEYWORD: Imperium". One roster header
+// dialect writes its keys with bullets instead of the leading '+' of the classic
+// app export, so the header scan must not read these as the unit list that
+// follows them. A unit bullet never fits: counts make the label start with a
+// digit, and gear bullets carry no colon.
+function isKeyShapedBullet(s) {
+  return /^[•◦]\s*[^:\n]{1,60}:\s*\S/.test(String(s || '').trim());
 }
 
 // A line that declares a unit, as opposed to preamble metadata. Used by the list splitter's
@@ -626,7 +636,9 @@ function parseHeaderLines(lines) {
   const out = {};
   let lastKey = null;
   for (const raw of lines) {
-    const line = raw.trim().replace(/^\+\s*/, '');
+    // Bullet-prefixed keys ("• DETACHMENT: ...") are the same dialect as the
+    // '+' keys: strip the marker, not just the plus.
+    const line = raw.trim().replace(/^[+•◦]\s*/, '');
     if (!line) continue;
     // continuation: line starts with "& " (multi-tweak warlord)
     if (/^&\s+/i.test(line) && lastKey) {
@@ -1028,13 +1040,17 @@ function findPreambleEnd(lines) {
     const t = lines[i].trim();
     if (!t) continue;
     if (CAT_HDR.test(t)) { end = i; break; }
-    if (/^Char\d+:/i.test(t)) { end = i; break; }
+    if (/^Char\d+\s*:/i.test(t)) { end = i; break; }
     // Any unit declaration, not just CharN-prefixed ones. Without this a
     // preamble immediately followed by a unit line swallows that unit into
     // the stripped preamble. A bare "(N pts)" is not enough: freeform
     // headers carry detachment and force-disposition lines that look
     // similar, so require the "1x Name" or "CharN: Name" shape.
-    if (/^(?:\d+x|Char\d+:)\s*\S.*\(\s*\d+\s*(?:pts?|points?)\s*\)/i.test(t)) { end = i; break; }
+    // "Char\d+\s*:" tolerates the space a roster dialect puts before the colon
+    // ("Char1 :Knight Defender (385 points)"); without it the unit fell inside
+    // the preamble and the "\u2022 Warlord" bullet under it closed the preamble
+    // with the first unit inside.
+    if (/^(?:\d+x|Char\d+\s*:)\s*\S.*\(\s*\d+\s*(?:pts?|points?)\s*\)/i.test(t)) { end = i; break; }
     // A bullet directly under a unit declaration belongs to that unit, so it
     // does not end the preamble. The arm above only recognises "1x Name" and
     // "CharN: Name", so "Khorne Berzerkers (160 pts)" - a documented shape -
@@ -1906,7 +1922,7 @@ const FACTION_KEYS = ['FACTION KEYWORD', 'FACTIONS UTILISÉES'];
 // block around it - 140 of 233 lists in the corpus carry no header at all.
 function plusHeaderValue(lines, keys) {
   for (const raw of lines) {
-    const m = raw.match(/^\+?\s*([^\s:][^:]*?)\s*:\s*(.*)$/);
+    const m = String(raw).trim().replace(/^[+•◦]\s*/, '').match(/^([^\s:][^:]*?)\s*:\s*(.*)$/);
     if (!m) continue;
     if (!keys.includes(m[1].trim().toUpperCase())) continue;
     const v = m[2].trim();
@@ -2048,8 +2064,17 @@ function listStartIndexes(lines) {
       // there is, since a single pasted list would come apart.
       let j = i + 1;
       while (j < lines.length && !isDelimLine(lines[j])) j++;
-      const opensHeader = j < lines.length && lines.slice(i + 1, j)
-    .some(l => /^\+\s*[A-ZÀ-Ý]/.test(l.trim()));
+      // Bullet-keyed headers ("• FACTION KEYWORD: ...") count like the classic
+      // '+' keys: without them the block reads as body, and its keys
+      // ("• PLAYER : ...") then read as a fresh list start mid-header. But a
+      // bullet+colon shape also occurs in unit bodies ("• Attached as: ..."),
+      // and decorative '+' runs sit inside lists too, so the span counts as a
+      // header only when it holds keys and no unit content at all.
+      const opensHeader = j < lines.length && (() => {
+        const span = lines.slice(i + 1, j);
+        if (span.some(l => l.trim() && isUnitContent(l.trim()))) return false;
+        return span.some(l => /^\+\s*[A-ZÀ-Ý]/.test(l.trim()) || isKeyShapedBullet(l.trim()));
+      })();
       if (opensHeader) {
         cut(i);
         i = j;

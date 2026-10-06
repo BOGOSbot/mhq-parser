@@ -69,13 +69,10 @@
   "faction": null,
   "teamName": null,
   "format": "newrecruit",
-  "units": 10,
-  "parsedPts": 1095,
+  "units": 15,
+  "parsedPts": 2000,
   "declaredPts": 2000,
-  "warnings": [
-   "mismatch",
-   "detachment"
-  ]
+  "warnings": []
  },
  {
   "source": "fwc-warhammer-40000-n85-solo-2000-points-2026-09-20__01",
