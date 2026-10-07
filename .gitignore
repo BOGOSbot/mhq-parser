@@ -17,3 +17,11 @@ _*.ps1
 
 # scratch scripts and generated copies from analysis runs
 .scratch/
+
+# the MFM reference cache verify-points.mjs fills: per-machine and
+# re-fetchable, so it is never committed
+.verify-ref/
+.mfm/
+
+# a hand-extraction scratch the tool replaced
+.verify-inventory.json
