@@ -15,12 +15,15 @@
  *   POST /parse     { url } -> { event, count, players, miniText, elapsedMs }
  *   POST /parse-file?name=<file>  body: a saved page -> same shape as /parse
  *   POST /parse-list?name=<file>  body: pasted/dropped list text -> same shape
+ *   POST /feedback  { title?, body } -> { created, url }  file an issue on GitHub,
+ *                    or a prefilled github.com/.../issues/new link when no token
  *
  * The browser cannot fetch miniheadquarters.com directly (no CORS headers), so
  * every parse happens here and the UI only renders. Stdlib only, no deps.
  */
 
 import http from 'http';
+import https from 'https';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -587,6 +590,96 @@ async function handleEvents(req, res, u) {
   }
 }
 
+// --- feedback: file an issue on GitHub -------------------------------------
+// The footer's Feedback button POSTs a short note here. Two outcomes:
+//   * GITHUB_TOKEN is set   -> the note is filed as an issue on its own, and the
+//     browser is handed the new issue's URL to confirm it. The token lives only
+//     on the server, so a public instance never leaks a credential.
+//   * no token configured    -> nothing is sent anywhere. Instead the server
+//     builds a github.com/<repo>/issues/new link with the title and body already
+//     filled in, and the browser opens it. The user reviews and clicks submit:
+//     the minimum that still respects GitHub's own auth.
+// The token is read from the environment, never from the request, so a caller
+// cannot make this endpoint file an issue through somebody else's credentials.
+const GITHUB_TOKEN = (typeof process.env.GITHUB_TOKEN === 'string' && process.env.GITHUB_TOKEN.trim()) || '';
+const FEEDBACK_REPO = feedbackRepo(process.env.FEEDBACK_REPO) || 'BOGOSbot/mhq-parser';
+
+function feedbackRepo(v) {
+  const s = typeof v === 'string' ? v.trim() : '';
+  // owner/repo, nothing else; reject URLs and empty so a bad env cannot send
+  // the issue to some arbitrary host.
+  return /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(s) ? s : '';
+}
+
+function newIssueUrl(title, body) {
+  const q = new URLSearchParams({ title, body });
+  return 'https://github.com/' + FEEDBACK_REPO + '/issues/new?' + q.toString();
+}
+
+// POST an issue to the GitHub API. Resolves with a plain descriptor rather than
+// rejecting: a bad token or a network stall must degrade to the prefilled link,
+// not surface as a 500 to a user who only wanted to leave a note.
+function createIssue({ repo, token, title, body }) {
+  return new Promise((resolve) => {
+    const payload = JSON.stringify({ title, body });
+    const req = https.request({
+      method: 'POST',
+      hostname: 'api.github.com',
+      path: '/repos/' + repo + '/issues',
+      headers: {
+        'User-Agent': 'mhq-parser-feedback',
+        'Accept': 'application/vnd.github+json',
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    }, r => {
+      const chunks = [];
+      r.on('data', c => chunks.push(c));
+      r.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        let obj = null;
+        try { obj = JSON.parse(text); } catch { /* non-JSON error page */ }
+        resolve({ status: r.statusCode, obj });
+      });
+    });
+    req.setTimeout(20000, () => { req.destroy(new Error('timed out')); });
+    req.on('error', e => resolve({ status: 0, error: String((e && e.message) || e) }));
+    req.write(payload);
+    req.end();
+  });
+}
+
+async function handleFeedback(req, res) {
+  let body;
+  try { body = JSON.parse((await readBody(req)) || '{}'); }
+  catch (e) { return fail(res, 400, 'invalid JSON body: ' + e.message); }
+
+  const detail = typeof body.body === 'string' ? body.body : '';
+  if (!detail.trim()) return fail(res, 400, 'missing "body"');
+  let title = typeof body.title === 'string' ? body.title.trim() : '';
+  if (!title) {
+    // No explicit title: the first non-empty line of the feedback is the title.
+    const firstLine = detail.split(/\r?\n/).find(l => l.trim());
+    title = (firstLine || 'Feedback').trim();
+  }
+  if (title.length > 256) title = title.slice(0, 253) + '\u2026';   // GitHub caps titles at 256
+  const fullBody = detail.length > 62000 ? detail.slice(0, 62000) + '\n\n_(truncated)_' : detail;
+
+  const fallback = newIssueUrl(title, fullBody);
+  if (!GITHUB_TOKEN) return json(res, 200, { created: false, url: fallback });
+
+  const r = await createIssue({ repo: FEEDBACK_REPO, token: GITHUB_TOKEN, title, body: fullBody });
+  if (r.status >= 200 && r.status < 300 && r.obj && r.obj.html_url) {
+    return json(res, 200, { created: true, url: r.obj.html_url, number: r.obj.number });
+  }
+  // Filed wrong (bad scope, rate limit, network). Do not lose the text: give the
+  // browser the prefilled link so the user can still submit it by hand.
+  const reason = r.error || (r.obj && r.obj.message) || ('GitHub returned HTTP ' + r.status);
+  return json(res, 200, { created: false, url: fallback, error: String(reason) });
+}
+
 const server = http.createServer(async (req, res) => {
   let u;
   try { u = new URL(req.url, 'http://localhost'); }
@@ -610,6 +703,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/parse') return handleParse(req, res);
   if (req.method === 'POST' && u.pathname === '/parse-file') return handleParseFile(req, res, u);
   if (req.method === 'POST' && u.pathname === '/parse-list') return handleParseList(req, res, u);
+  if (req.method === 'POST' && u.pathname === '/feedback') return handleFeedback(req, res);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 
@@ -632,5 +726,8 @@ server.listen(port, host, () => {
   console.log('POST /parse {"url":"<army-lists url>"}');
   console.log('POST /parse-file?name=<file>   (body: a saved page)');
   console.log('GET  /events?limit=80&type=team');
+  console.log('POST /feedback {title?,body}  -> ' + (GITHUB_TOKEN
+    ? 'files an issue on ' + FEEDBACK_REPO
+    : 'returns a prefilled github.com/' + FEEDBACK_REPO + '/issues/new link (set GITHUB_TOKEN to file directly)'));
   console.log('Archive: ' + archived.events.length + ' closed event(s)' + (archiveError ? ' - UNAVAILABLE: ' + archiveError : ''));
 });

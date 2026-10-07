@@ -38,7 +38,7 @@ Options du serveur :
 | **--port <n>** | 8787 | Port d'ecoute (variable `PORT`) |
 | **--host <h>** | 127.0.0.1 | Interface d'ecoute (variable `HOST`) |
 
-Points de terminaison : `GET /` (la page), `GET /health`, `POST /parse` avec un corps JSON "{"url":"...", "cookie":"..."}" — la session vient de `POST /login` (ou de la variable `MHQ_COOKIE`) et est nécessaire pour les vues organisateur/admin — et `POST /parse-file?name=<fichier>`, dont le corps est la page HTML brute (32 Mo maximum) et qui repond comme `/parse`. Enfin `POST /parse-list?name=<fichier>`, dont le corps est le texte d'une liste et qui repond de la meme maniere. Un evenement present dans `archive/` est repondu par `/parse` depuis le disque, sans requete vers miniheadquarters.com ; `"live": true` dans le corps passe outre.
+Points de terminaison : `GET /` (la page), `GET /health`, `POST /parse` avec un corps JSON "{"url":"...", "cookie":"..."}" — la session vient de `POST /login` (ou de la variable `MHQ_COOKIE`) et est nécessaire pour les vues organisateur/admin — et `POST /parse-file?name=<fichier>`, dont le corps est la page HTML brute (32 Mo maximum) et qui repond comme `/parse`. Enfin `POST /parse-list?name=<fichier>`, dont le corps est le texte d'une liste et qui repond de la meme maniere. `POST /feedback`, dont le corps JSON `{"body":"..."}` (la première ligne devient le titre) crée directement une issue sur GitHub lorsque `GITHUB_TOKEN` est défini, et renvoie sinon un lien `github.com/<dépôt>/issues/new` prérempli — celui qu'ouvre le bouton **Feedback** du pied de page. `FEEDBACK_REPO` change le dépôt visé (`BOGOSbot/mhq-parser` par défaut). Un evenement present dans `archive/` est repondu par `/parse` depuis le disque, sans requete vers miniheadquarters.com ; `"live": true` dans le corps passe outre.
 
 ## Options
 
@@ -257,7 +257,7 @@ Parsing always goes through the server: the browser cannot fetch miniheadquarter
 | **--port <n>** | 8787 | Listening port (`PORT`) |
 | **--host <h>** | 127.0.0.1 | Listening interface (`HOST`) |
 
-Endpoints: `GET /` (the page), `GET /health`, `POST /parse` with a JSON body "{"url":"...", "cookie":"..."}" — the session comes from `POST /login` (or the `MHQ_COOKIE` variable) and is needed for organiser/admin views — `POST /parse-file?name=<file>`, whose body is the raw HTML page (32 MB limit) and which answers like `/parse`, and `POST /parse-list?name=<file>`, whose body is pasted list text and which answers the same way. An event held in `archive/` is answered by `/parse` straight off disk, with no request to miniheadquarters.com; `"live": true` in the body declines the cache.
+Endpoints: `GET /` (the page), `GET /health`, `POST /parse` with a JSON body "{"url":"...", "cookie":"..."}" — the session comes from `POST /login` (or the `MHQ_COOKIE` variable) and is needed for organiser/admin views — `POST /parse-file?name=<file>`, whose body is the raw HTML page (32 MB limit) and which answers like `/parse`, and `POST /parse-list?name=<file>`, whose body is pasted list text and which answers the same way. `POST /feedback`, whose JSON body `{"body":"..."}` (the first line becomes the title) files an issue on GitHub when `GITHUB_TOKEN` is set, and otherwise returns a prefilled `github.com/<repo>/issues/new` link — the one the footer's **Feedback** button opens. `FEEDBACK_REPO` overrides the target repository (`BOGOSbot/mhq-parser` by default). An event held in `archive/` is answered by `/parse` straight off disk, with no request to miniheadquarters.com; `"live": true` in the body declines the cache.
 
 ## Flags
 

@@ -128,6 +128,16 @@ Admitting `=` as a rule character was tried and reverted: Ironbuilt exports use 
 
 `buildPlayers()` read the body as `a.slice(a.indexOf('</h2>') + 6)`. `</h2>` is **five** characters. On an MHQ page the bug was invisible, because markup or a newline always follows the heading and the lazy trim eats leading whitespace either way. A pasted list abuts the heading directly, and the first unit lost its first character every time. It is 5 now, and 121 / 121 real page parses are byte-identical before and after.
 
+### 2d. Feedback: an issue from the footer
+
+The footer carries a **Feedback** button. It opens a one-field modal and posts the note to `POST /feedback`. The page the user is on, the event if one is open, the browser and the time are appended to the body, so a report is actionable without the user typing any of it.
+
+The endpoint has two modes, and the difference is deliberately server-side. With `GITHUB_TOKEN` in the environment it calls the GitHub API and files the issue itself, returning its URL; the token never reaches the browser, so a public instance holds the only credential there is. Use a **fine-grained** token scoped to this repository alone, with `Issues: Read and write` — GitHub's docs list exactly `"Issues" repository permissions (write)` as what `POST /repos/{owner}/{repo}/issues` needs, and fine-grained tokens offer no finer setting than that. A classic `public_repo` token is broader than this endpoint requires and should not be used.
+
+On Vercel the endpoint rides the same function as every other route, so it works as long as `GITHUB_TOKEN` is set in the project's environment variables; with no token the prefilled link is built in the browser and works regardless. Note that on a public deployment this is an unauthenticated route that can create issues as the token's owner: it is rate-limit-free by design here, so set the token only if you accept that, and treat the token's narrow scope as the containment. Without a token it sends nothing and returns a `github.com/<repo>/issues/new?title=…&body=…` link instead — the page is prefilled, the user reviews it and clicks submit. GitHub answers a bad token or a rate limit with a non-2xx status; rather than fail the request, the handler falls back to the same prefilled link, because losing the user's text to a credential problem is worse than one extra click. `FEEDBACK_REPO` (default `BOGOSbot/mhq-parser`) chooses the target and is validated as `owner/repo`, so a bad value cannot redirect the issue to another host.
+
+The UI never calls `window.open()` after the round-trip: it renders the resulting link and the user clicks it. A tab opened from a real click evades the popup blocker that would otherwise swallow one opened from an awaited callback.
+
 ### 3. Split the page into player blocks
 
 The page has two formats depending on the event type:

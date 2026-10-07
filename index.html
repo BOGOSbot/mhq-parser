@@ -144,7 +144,7 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
   justify-content:center;background:rgba(15,17,22,.88);border:3px dashed var(--acc);
   color:var(--txt);font:600 15px system-ui;text-align:center;padding:24px;
   pointer-events:none}
-.foot{text-align:center;padding:4px 0 20px}
+.foot{display:flex;gap:14px;align-items:center;justify-content:center;padding:4px 0 20px}
 .count{font:12px var(--mono);color:var(--dim);white-space:nowrap}
 .hint{font:12px var(--mono);color:var(--dim);min-width:52px}
 .gh{display:inline-flex;color:var(--dim)}
@@ -222,6 +222,7 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
 </div>
 <main id="main"></main>
 <div class="foot">
+  <button id="fbbtn" type="button" class="ghost" title="Report a bug or suggest an improvement — sent to the project's GitHub issues">Feedback</button>
   <a class="gh" href="https://github.com/BOGOSbot/mhq-parser" target="_blank" rel="noopener" aria-label="GitHub">
     <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
   </a>
@@ -237,6 +238,19 @@ a.ext:hover{text-decoration:underline;background:rgba(110,168,254,.1)}
       <span class="note">Ctrl+Enter parses. Esc closes.</span>
       <span class="note">.txt and .md files work too, via From file or by dropping one anywhere on this page.</span>
     </div>
+  </div>
+</div>
+<div id="fbmodal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="fbtitle">
+  <div class="box">
+    <h2 id="fbtitle">Send feedback</h2>
+    <textarea id="fbtext" spellcheck="true" autocomplete="off"
+      placeholder="What happened, or what you would like to see. The first line becomes the issue title."></textarea>
+    <div class="mrow">
+      <button id="fbsend" type="button">Send</button>
+      <button id="fbcancel" type="button" class="ghost">Cancel</button>
+      <span id="fbnote" class="note"></span>
+    </div>
+    <div class="note">Details of the page you are on are added automatically. Ctrl+Enter sends.</div>
   </div>
 </div>
 <div id="dropzone" class="hidden">Drop an army list &mdash; .txt, .md or a saved .html page</div>
@@ -1089,8 +1103,111 @@ $('#pastetext').addEventListener('keydown', function (e) {
 });
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
-  if (!$('#pastemodal').classList.contains('hidden')) closePaste();
+  if (!$('#fbmodal').classList.contains('hidden')) closeFeedback();
+  else if (!$('#pastemodal').classList.contains('hidden')) closePaste();
   else if (!$('#evpanel').classList.contains('hidden')) $('#evclose').click();
+});
+
+// ---- feedback ------------------------------------------------------------
+// Footer button -> a modal with one textarea. Sending POSTs to /feedback:
+//   * the server files the issue itself (GITHUB_TOKEN set)  -> a "view it" link
+//   * the server has no token                               -> a prefilled
+//     github.com/.../issues/new link the user clicks to finish on GitHub.
+// Either way the new tab opens from a real click on the rendered anchor, not a
+// window.open after an await, so the browser's popup blocker never eats it.
+// The page you are on, the event, the browser and the time ride along in the
+// body so the report is useful without asking the user for any of it.
+function openFeedback() {
+  $('#fbmodal').classList.remove('hidden');
+  clearFbNote();
+  $('#fbsend').disabled = false;
+  $('#fbtext').focus();
+}
+function closeFeedback() {
+  $('#fbmodal').classList.add('hidden');
+  clearFbNote();
+  $('#fbtext').value = '';
+}
+function clearFbNote() {
+  var note = $('#fbnote');
+  while (note.firstChild) note.removeChild(note.firstChild);
+}
+// A short context footer, appended after the user's own words.
+function feedbackContext() {
+  var ev = (data && data.event) || {};
+  var lines = [
+    '',
+    '---',
+    '',
+    '*App:* ' + location.href,
+    ev.url ? ('*Event:* ' + (ev.name ? ev.name + ' \u2014 ' : '') + ev.url) : null,
+    '*Browser:* ' + navigator.userAgent,
+    '*Sent:* ' + new Date().toISOString()
+  ].filter(function (x) { return x != null; });
+  return lines.join(NL);
+}
+// Put a live anchor into the note line: linkText is the whole label, so there is
+// nothing to inject beyond the href, and the href comes from the server / GitHub.
+function fbResult(prefix, url, linkText) {
+  clearFbNote();
+  var note = $('#fbnote');
+  note.appendChild(document.createTextNode(prefix + ' '));
+  var a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.textContent = linkText || 'Open GitHub';
+  a.style.color = 'var(--acc)';
+  note.appendChild(a);
+}
+async function submitFeedback() {
+  var text = $('#fbtext').value;
+  if (!text.trim()) { fbNote('write something first'); return; }
+  var btn = $('#fbsend');
+  btn.disabled = true;
+  clearFbNote();
+  $('#fbnote').textContent = 'sending…';
+  try {
+    var r = await fetch('/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: text.trim() + NL + feedbackContext() })
+    });
+    var j = await r.json().catch(function () { return { error: 'non-JSON response' }; });
+    if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+    if (j.created) {
+      // Filed outright: leave the modal up with the issue link and clear the
+      // box so a second click cannot double-post the same note.
+      fbResult('Issue #' + (j.number || '') + ' filed.', j.url, 'View the issue');
+      $('#fbtext').value = '';
+      setStatus('feedback filed as GitHub issue #' + (j.number || ''), 'ok');
+    } else {
+      // No token on the server: nothing was sent. Hand the user the prefilled
+      // GitHub page; the click that opens it is theirs, which keeps a popup
+      // blocker from swallowing a tab opened after an await.
+      fbResult('Ready to submit on GitHub:', j.url);
+      setStatus('feedback ready - open the GitHub link to post it', '');
+    }
+  } catch (e) {
+    fbNote(String(e.message || e));
+    setStatus('feedback failed: ' + String(e.message || e), 'err');
+  } finally {
+    // Re-enable only once the request is done, so Send cannot fire twice.
+    btn.disabled = false;
+  }
+}
+function fbNote(msg) {
+  clearFbNote();
+  $('#fbnote').textContent = msg;
+}
+$('#fbbtn').addEventListener('click', openFeedback);
+$('#fbcancel').addEventListener('click', closeFeedback);
+$('#fbsend').addEventListener('click', submitFeedback);
+$('#fbmodal').addEventListener('click', function (e) {
+  if (e.target === e.currentTarget) closeFeedback();
+});
+$('#fbtext').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submitFeedback(); }
 });
 
 // ---- drop an army list anywhere -----------------------------------------
