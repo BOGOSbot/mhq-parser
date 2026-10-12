@@ -4,6 +4,7 @@
  * Retrieval accuracy for the /rules corpus.
  *
  *   node tests/eval-retrieval.mjs [--topk 20] [--kind player] [--verbose]
+ *   node tests/eval-retrieval.mjs --retriever dual --per-side 10    # the page's own path
  *
  * Measures whether the sections that answer a question are actually the ones
  * the index returns. This is the number that decides whether the page needs a
@@ -24,7 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expandQuery, grepCorpus, grepTerms, grepWithTerms, jevRank, queryIndex, readAllCorpus, retrieveWide } from '../src/rules-corpus.mjs';
+import { expandQuery, grepCorpus, grepTerms, grepWithTerms, jevRank, queryIndex, readAllCorpus, retrieveDual, retrieveWide } from '../src/rules-corpus.mjs';
 import { credential, fastCredential, jevKeyName } from '../src/rules.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -42,16 +43,30 @@ const VERBOSE = flag('--verbose');
 // grep+expand  the question rewritten into rulebook terms first, then grep+jev
 // union        vector and grep merged by rank fusion, then Jev
 // union+expand the same, with the rewritten terms on the grep side
+// dual         the page's own two-half path: per half, vector + grep, Jev, the
+//              anchors and the children, then both halves concatenated. This is
+//              the arm whose numbers describe what the reader is actually shown.
 const RETRIEVER = value('--retriever') || 'vector';
 const NET = parseInt(value('--net') || '40', 10);
+const PER_SIDE = parseInt(value('--per-side') || '10', 10);
 const NEEDS_CORPUS = RETRIEVER !== 'vector';
-const CORPUS = NEEDS_CORPUS ? readAllCorpus() : null;
+const CORPUS = NEEDS_CORPUS && RETRIEVER !== 'dual' ? readAllCorpus() : null;
+const RULES_CORPUS = RETRIEVER === 'dual' ? readAllCorpus('rules') : null;
+const FACTIONS_CORPUS = RETRIEVER === 'dual' ? readAllCorpus('factions') : null;
 const JEV_KEY = credential(jevKeyName());
 const SENSE_KEY = fastCredential();
 const asHits = list => list.map(s => ({ id: s.id, metadata: s, score: s.jev !== undefined ? s.jev : s.score }));
 
 async function retrieve(question) {
   if (RETRIEVER === 'vector') return queryIndex(question, { topK: TOPK });
+  if (RETRIEVER === 'dual') {
+    const dual = await retrieveDual(question, {
+      rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: JEV_KEY,
+      terms: [], grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70),
+      perSide: { rules: PER_SIDE, factions: PER_SIDE },
+    });
+    return asHits(dual.all);
+  }
   if (RETRIEVER === 'grep') return asHits(grepCorpus(question, CORPUS, NET).slice(0, TOPK));
   if (RETRIEVER === 'grep+jev') return asHits(await jevRank(question, grepCorpus(question, CORPUS, NET), JEV_KEY, { max: NET })).slice(0, TOPK);
   if (RETRIEVER === 'grep+expand') {
@@ -105,7 +120,7 @@ function pct(n, d) { return d ? Math.round((n / d) * 1000) / 10 : 0; }
 function at(k) { return graded.filter(r => r.rank !== null && r.rank <= k).length; }
 
 console.log('');
-console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (graded ' + graded.length + ', out-of-corpus ' + declined.length + ')  topK ' + TOPK + (RETRIEVER === 'vector' ? '' : '  net ' + NET));
+console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (graded ' + graded.length + ', out-of-corpus ' + declined.length + ')  topK ' + TOPK + (RETRIEVER === 'vector' ? '' : '  net ' + NET) + (RETRIEVER === 'dual' ? '  per-side ' + PER_SIDE : ''));
 console.log('hit@1   ' + at(1) + '/' + graded.length + '  ' + pct(at(1), graded.length) + '%');
 console.log('hit@5   ' + at(5) + '/' + graded.length + '  ' + pct(at(5), graded.length) + '%');
 console.log('hit@10  ' + at(10) + '/' + graded.length + '  ' + pct(at(10), graded.length) + '%');

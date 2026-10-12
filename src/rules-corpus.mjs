@@ -7,6 +7,7 @@
  *   node src/rules-corpus.mjs --scrape            fetch every source, write the corpus
  *   node src/rules-corpus.mjs --ingest            embed + upsert what changed
  *   node src/rules-corpus.mjs --stats             what is on disk and in the index
+ *   node src/rules-corpus.mjs --prune             delete index vectors the corpus no longer has
  *   node src/rules-corpus.mjs --source faqs       restrict --scrape/--ingest to one
  *
  * Why a corpus at all. The page used to answer by searching Wahapedia per
@@ -381,22 +382,26 @@ export function extractSections(html, source) {
     // context it belongs to rather than as an orphan paragraph, and grep can
     // match a parent term.
     const full = path.length ? path.concat([title]).join(' > ') : title;
-    const pieces = splitSection(body, MAX_CHARS);
-    for (const piece of pieces) {
-      out.push({
-        source: source.name,
-        title,
-        path,
-        heading: full,
-        ruleId,
-        anchor,
-        hasAnchor: !!anchor,
-        url: source.url + (anchor ? '#' + anchor : ''),
-        text: full + '\n' + piece.text,
-        part: piece.part,
-        parts: pieces.length,
-        chars: piece.text.length,
-      });
+    // The rules the page wrote inside this body become records of their own; the
+    // parent keeps its id and whatever came before the first of them.
+    for (const part of splitInlineRules(full, body, ruleId, anchor, title)) {
+      const pieces = splitSection(part.body, MAX_CHARS);
+      for (const piece of pieces) {
+        out.push({
+          source: source.name,
+          title: part.title,
+          path,
+          heading: part.heading,
+          ruleId: part.ruleId,
+          anchor: part.anchor,
+          hasAnchor: !!part.anchor,
+          url: source.url + (part.anchor ? '#' + part.anchor : ''),
+          text: part.heading + '\n' + piece.text,
+          part: piece.part,
+          parts: pieces.length,
+          chars: piece.text.length,
+        });
+      }
     }
   }
   return out;
@@ -466,6 +471,64 @@ export function splitLong(text, max) {
   }
   flush();
   return out.map((piece, i) => ({ text: piece, part: i }));
+}
+
+// A numbered rule the page rendered inside its parent's body. The core rules
+// page anchors '3. End of Shooting Phase' (10.03) and then writes 10.04 NORMAL
+// SHOOTING, 10.05 ASSAULT SHOOTING and the rest as plain text under it, so one
+// 1,938-character record holds six rules and a question about normal shooting
+// is answered from a record labelled something else. 78 of the 285 core-rules
+// records carry rules this way - 180 of them between them.
+//
+// A boundary is a line that is a title and a rule id and nothing else, with a
+// blank line before it: 'NORMAL SHOOTING 10.04'. Both halves are required, so a
+// sentence that happens to end in a number is not a heading, and the title may
+// not read as prose (no '. ' inside it, no more than ten words).
+//
+// The parent keeps its id and the text before the first boundary, so every
+// citation that already exists still resolves; each boundary becomes a record
+// the parent owns ('3. End of Shooting Phase > NORMAL SHOOTING'), which is the
+// shape childSections already attaches to a parent.
+const INLINE_RULE_LINE = /^([A-Z][^\n]{1,69}?)\s+(\d{2}(?:\.\d{2}){1,2})$/;
+
+export function splitInlineRules(heading, body, ruleId, anchor, parentTitle) {
+  const text = String(body == null ? '' : body);
+  const lines = text.split('\n');
+  const marks = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].trim().match(INLINE_RULE_LINE);
+    if (!m) continue;
+    const title = m[1].trim();
+    if (title.indexOf('. ') !== -1 || title.endsWith('.')) continue;
+    if (title.split(/\s+/).length > 10) continue;
+    // Prose that ends in a number is not a heading. Every observed sub-rule
+    // title starts with the rule's own name; a sentence starts with one of
+    // these, and 'The rule refers to page 10.04' is exactly the false positive
+    // this line is for.
+    if (/^(the|this|that|these|those|it|if|when|where|a|an|you|your|once|each|every|any|in|on|at|for|to|see|page)\b/i.test(title)) continue;
+    if (m[2] === ruleId) continue;
+    if (i > 0 && lines[i - 1].trim() !== '') continue;
+    marks.push({ line: i, title, ruleId: m[2] });
+  }
+  if (!marks.length) return [{ heading, title: parentTitle || heading, ruleId: ruleId || '', anchor, body: text }];
+  const out = [];
+  // The parent is emitted even when nothing precedes the first boundary: its id
+  // is a citation that already exists, and a container heading is a weak but real
+  // signal. The children are the content.
+  const lead = lines.slice(0, marks[0].line).join('\n').trim();
+  out.push({ heading, title: parentTitle || heading, ruleId: ruleId || '', anchor, body: lead });
+  for (let k = 0; k < marks.length; k++) {
+    const from = marks[k].line + 1;
+    const to = k + 1 < marks.length ? marks[k + 1].line : lines.length;
+    out.push({
+      heading: heading + ' > ' + marks[k].title,
+      title: marks[k].title,
+      ruleId: marks[k].ruleId,
+      anchor: '',
+      body: lines.slice(from, to).join('\n').trim(),
+    });
+  }
+  return out;
 }
 
 const GENERIC_HEADING = /^(faq|errata|see also|introduction|books|contents|disable ads|enable ads|subscribe|author|community|data export|color theme|nav|menu)$/i;
@@ -701,9 +764,17 @@ export function buildFactionSections() {
     const isCore = !s.faction_id;
     const faction = factionName.get(s.faction_id) || '';
     if (isCore) {
+      // Not every faction-less row is a stratagem. The export carries the core
+      // stratagems next to the move and shooting ability entries - NORMAL
+      // SHOOTING, ASSAULT SHOOTING, DISEMBARK MOVE - whose Type is 'Shooting
+      // Ability' or 'Movement Ability'. Calling those 'core stratagem' told the
+      // reader a unit's normal shooting is a stratagem, which it is not; the
+      // label now follows the export's own Type.
+      const type = clean(s.type);
+      const coreKind = /stratagem/i.test(type) ? 'core stratagem' : 'core ' + String(type || 'ability').toLowerCase();
       const lines = [
-        s.name + ' - core stratagem',
-        'Type: ' + clean(s.type),
+        s.name + ' - ' + coreKind,
+        'Type: ' + type,
         'CP: ' + s.cp_cost,
         'Turn: ' + clean(s.turn) + '  Phase: ' + clean(s.phase),
         clean(s.legend),
@@ -2128,12 +2199,12 @@ export function vectorConfig() {
   };
 }
 
-function vectorRequest(cfg, endpoint, body) {
+function vectorRequest(cfg, endpoint, body, method) {
   return new Promise((resolve, reject) => {
     const u = new URL(cfg.url + endpoint);
     const payload = JSON.stringify(body);
     const req = https.request({
-      method: 'POST',
+      method: method || 'POST',
       hostname: u.hostname,
       path: u.pathname,
       headers: {
@@ -2215,13 +2286,62 @@ export async function upsertSections(sections, opts) {
   return done;
 }
 
+// DELETE /delete/{namespace} with { ids }. The endpoint used to be written as
+// POST /delete-data/{namespace}, which Upstash answers 404 — it never ran,
+// because a rebuild had never needed a delete. The first one that did (splitting
+// a parent record into its sub-rules) failed on it.
 export async function deleteIds(ids, cfg, namespace) {
   if (!ids.length) return 0;
   if (VECTOR_BACKEND === 'local') return deleteIdsLocal(ids, namespace);
   const ns = namespace || '';
-  const r = await vectorRequest(cfg || vectorConfig(), '/delete-data' + (ns ? '/' + ns : ''), ids);
+  const r = await vectorRequest(cfg || vectorConfig(), '/delete' + (ns ? '/' + ns : ''), { ids }, 'DELETE');
   if (r.status !== 200) throw new Error('delete failed: HTTP ' + r.status + ' ' + r.text.slice(0, 200));
-  return ids.length;
+  const deleted = r.obj && r.obj.result && typeof r.obj.result.deleted === 'number' ? r.obj.result.deleted : ids.length;
+  return deleted;
+}
+
+// Every id in a namespace, cursor by cursor. GET /range/{namespace}. This is how
+// a stray is found: a vector whose id the corpus no longer has cannot be named
+// by --ingest (that compares the corpus against the ingest state, and the state
+// is in sync), so the only way to see it is to enumerate the index itself.
+export async function rangeIds(namespace, cfg, opts) {
+  const o = opts || {};
+  if (VECTOR_BACKEND === 'local') return localLoad(namespace).meta.ids.slice();
+  const out = [];
+  let cursor = '0';
+  for (let page = 0; page < (o.maxPages || 500); page++) {
+    const r = await vectorRequest(cfg || vectorConfig(), '/range' + (namespace ? '/' + namespace : ''), { cursor, limit: o.limit || 100, includeMetadata: false }, 'GET');
+    if (r.status !== 200) throw new Error('range failed: HTTP ' + r.status + ' ' + r.text.slice(0, 200));
+    const result = (r.obj && r.obj.result) || {};
+    const vectors = result.vectors || [];
+    for (const v of vectors) out.push(v.id);
+    if (!vectors.length || !result.nextCursor || result.nextCursor === cursor) break;
+    cursor = result.nextCursor;
+  }
+  return out;
+}
+
+// Delete what the index holds and the corpus does not. --ingest keeps the index
+// in step with the corpus it knows about; it cannot see a vector whose id was
+// dropped by an older build, because the ingest state agrees with the corpus.
+// Those strays still occupy top-K slots in every query.
+export async function pruneIndex(opts) {
+  const setName = (opts && opts.set) || undefined;
+  const o = opts || {};
+  const report = [];
+  for (const ns of [...new Set(sourcesFor(setName).map(s => namespaceFor(s.set)))]) {
+    const known = new Set();
+    for (const s of sourcesFor(setName)) {
+      if (namespaceFor(s.set) !== ns) continue;
+      const payload = readCorpus(s.name);
+      for (const sec of (payload && payload.sections) || []) known.add(sec.id);
+    }
+    const present = await rangeIds(ns, o.cfg, o);
+    const strays = present.filter(id => !known.has(id));
+    const deleted = o.dryRun ? 0 : await deleteIds(strays, o.cfg, ns);
+    report.push({ namespace: ns, vectors: present.length, corpus: known.size, strays: strays.length, deleted, sample: strays.slice(0, 4) });
+  }
+  return report;
 }
 
 // --- ingest -----------------------------------------------------------------
@@ -2363,6 +2483,17 @@ async function main() {
     console.log(dryRun ? 'would upsert ' + (r.planned || 0) : 'total upserted ' + r.upserted + ', deleted ' + r.deleted);
     return;
   }
+  if (flag('--prune')) {
+    const dryRun = flag('--dry-run');
+    if (dryRun) console.log('dry run - nothing is deleted');
+    const set = value('--set');
+    const rows = await pruneIndex({ set, dryRun });
+    for (const r of rows) {
+      console.log(r.namespace.padEnd(10) + ' index ' + String(r.vectors).padStart(5) + ', corpus ' + String(r.corpus).padStart(5) + ', strays ' + String(r.strays).padStart(4) + (dryRun ? '' : ', deleted ' + r.deleted));
+      for (const id of r.sample) console.log('    ' + id);
+    }
+    return;
+  }
   if (flag('--check')) {
     console.log('source                    edition  version  last update         state');
     for (const s of ALL_SOURCES.concat(REJECTED_SOURCES.map(r => Object.assign({ set: 'rejected' }, r)))) {
@@ -2410,7 +2541,7 @@ async function main() {
     }
     return;
   }
-  console.log('usage: node src/rules-corpus.mjs --scrape | --ingest | --stats [--source <name>]');
+  console.log('usage: node src/rules-corpus.mjs --scrape | --ingest | --stats | --prune [--source <name>] [--set rules|factions] [--dry-run]');
 }
 
 if (process.argv[1] && process.argv[1].endsWith('rules-corpus.mjs')) {

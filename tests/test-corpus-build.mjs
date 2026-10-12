@@ -1,5 +1,5 @@
 import {
-  CORE_STRATAGEMS, JUDGE_PASSAGE_CHARS, buildFactionSections, dedupeKey, dedupeSections, splitLong, splitSection,
+  CORE_STRATAGEMS, JUDGE_PASSAGE_CHARS, buildFactionSections, dedupeKey, dedupeSections, splitInlineRules, splitLong, splitSection,
 } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
@@ -99,6 +99,42 @@ t('the residue is never core', residue.filter(s => s.set === 'rules').length, 0)
   // did not, the parts said which part they were.
   t('the rules record fits in one part now', rules.length, 1);
   t('and is named without a part suffix', rules[0].heading, 'Asurmen - keywords and abilities');
+
+// --- a core ability is not a stratagem --------------------------------------
+// The export files the core stratagems next to the move and shooting ability
+// entries. Calling NORMAL SHOOTING a 'core stratagem' told the reader a unit's
+// normal shooting was a stratagem; the label follows the export's own Type.
+{
+  const first = name => (core.find(s => s.heading === name) || {}).text || '';
+  t('a shooting ability is labelled an ability', /ASSAULT SHOOTING - core shooting ability/.test(first('ASSAULT SHOOTING')), true);
+  t('a movement ability is labelled an ability', /DISEMBARK MOVE - core movement ability/.test(first('DISEMBARK MOVE')), true);
+  t('a real core stratagem is still one', /COMMAND RE-ROLL - core stratagem/.test(first('COMMAND RE-ROLL')), true);
+  t('exactly the ability rows lose the stratagem label', core.filter(s => / - core (movement|shooting) ability/.test(s.text)).length, 22);
+}
+
+// --- the rules the page wrote inside a parent body --------------------------
+// '3. End of Shooting Phase' (10.03) carries NORMAL SHOOTING 10.04, ASSAULT
+// SHOOTING 10.05 and the rest as plain text. One record holding six rules is a
+// question about normal shooting answered from a record labelled something else.
+{
+  const body = 'Rules that are triggered at the end of the Shooting phase are resolved now.\n\nNORMAL SHOOTING 10.04\n\nELIGIBLE IF: Your unit is unengaged.\n\nASSAULT SHOOTING 10.05\n\nELIGIBLE IF: All of the following apply.';
+  const parts = splitInlineRules('3. End of Shooting Phase', body, '10.03', '3.-End-of-Shooting-Phase', '3. End of Shooting Phase');
+  t('the parent keeps the lead-in', parts[0].heading, '3. End of Shooting Phase');
+  t('the parent keeps its own rule id', parts[0].ruleId, '10.03');
+  t('the parent keeps its anchor', parts[0].anchor, '3.-End-of-Shooting-Phase');
+  t('every numbered rule becomes a record', parts.length, 3);
+  t('a sub-rule carries its rule id', parts[1].ruleId, '10.04');
+  t('a sub-rule is named under its parent', parts[1].heading, '3. End of Shooting Phase > NORMAL SHOOTING');
+  t('a sub-rule has no anchor of its own', parts[1].anchor, '');
+  t('a sub-rule body starts after the title line', parts[1].body, 'ELIGIBLE IF: Your unit is unengaged.');
+  t('the last sub-rule runs to the end', parts[2].ruleId, '10.05');
+  t('a body with no numbered rule is left whole', splitInlineRules('Embarking', 'Once the first battle round has started, a unit can embark.', '18.02', 'Embarking', 'Embarking').length, 1);
+  t('a sentence ending in a rule id is not a heading', splitInlineRules('X', 'The rule refers to page 10.04\n\nand continues here with more text.', '', '', 'X').length, 1);
+  t('a heading re-stating the parent id is not a sub-rule', splitInlineRules('X', '3. End of Shooting Phase 10.03\n\nbody here', '10.03', '', 'X').length, 1);
+  const empty = splitInlineRules('Advance', 'NORMAL MOVE 09.05\n\nbody', '', '', 'Advance');
+  t('a container with no lead-in still exists for its citation', empty[0].heading + '|' + empty[0].body + '|' + empty.length, 'Advance||2');
+}
+
   t('it is under the part limit', rules[0].chars < 2000, true);
   // The Agile Manoeuvres card rides inside the Battle Focus ability row in the
   // export. It is stripped: six sub-rules (a vehicle trigger included) pasted
