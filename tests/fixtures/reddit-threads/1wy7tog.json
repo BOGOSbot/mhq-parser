@@ -1,0 +1,1028 @@
+{
+ "url": "https://redlib.tiekoetter.com/r/WarhammerCompetitive/comments/1wy7tog/",
+ "count": 146,
+ "comments": [
+  {
+   "id": "pe1p7zr",
+   "parent": "",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe1p7zr/?context=3#pe1p7zr",
+   "body": "Can Marneus Calgar join Deathwatch Terminators?\n\nIf you're playing Marines and take the Deathwatch Support detachment, is Marneus able to attach to them? I could see this going either way. In the MFM he has 10,000 units listed he can attach to, and Deathwatch Terminators are not on that list. If the units he can attach to didn't already have typos in it that might be a good indicator he cannot. But he is a terminator leader and in the past usually specialized units would have a \"if a leader can attach to X similar unit (in this case if they can lead normal terminators for example) then they can lead this one.\" Which would make sense as the case here.\n\nI lean towards no unless they update it in the MFM, but wanted to check here if there is something I am missing."
+  },
+  {
+   "id": "pe1tmlu",
+   "parent": "pe1p7zr",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe1tmlu/?context=3#pe1tmlu",
+   "body": "All rules for \"if a leader can lead X, they can lead this unit\" have been removed with the updates to 11th edition datasheets, so how it worked before is irrelevant. Even before the 11e Marines Codex, a FAQ was created by GW that explicitly stated that what units can be led is now dictated by the MFM, and no longer what datasheets say"
+  },
+  {
+   "id": "pe21rf2",
+   "parent": "pe1tmlu",
+   "score": 0,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe21rf2/?context=3#pe21rf2",
+   "body": "Right, gotcha, so if it doesn't spell it out as specifically attaching to them in the MFM (I'm hoping messed up \"STERNGUARD VETERAN SQUAD TERMINATOR SQUAD\" sandwiched between the actual Sternguard and Terminators is the Deathwatch when they update it) then it cannot. Thanks!"
+  },
+  {
+   "id": "pe5a3pm",
+   "parent": "",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe5a3pm/?context=3#pe5a3pm",
+   "body": "Can someone explain to me how the Ork Kommando rule 'Nowhere to hide,' works?\n\n'This unit's attacks that target a hidden unit have +1 to hit.'\n\nSo, a unit can only target a hidden unit if it is detected?  In this case, the unit would have to be hidden to anything else in my army.  So as long as 'something' has not detected them, the rule works?"
+  },
+  {
+   "id": "pe5seti",
+   "parent": "pe5a3pm",
+   "score": 5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe5seti/?context=3#pe5seti",
+   "body": "A Hidden unit is a unit with at least one model that is Hidden. It’s quite common for these types of units to have at least one model considered Hidden unless they’re standing out in the open. Hidden doesn’t care if your whole army is within their detection range (it’d just not benefit them if you were)\n\nYou just walk up into their detection range and benefit (you likely wanted to do that anyway to remove them but now you get a buff also)."
+  },
+  {
+   "id": "pe9j1hz",
+   "parent": "pe5a3pm",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe9j1hz/?context=3#pe9j1hz",
+   "body": "Hidden is a condition, that applies specific rules to units that are outside your detection range. Being inside the detection range doesn't change the fact that you are still Hidden.\n\nIf you need a narrative way of thinking about this, your unit is Hidden because they are squating behind stuff.\n\nThe Kommando rule is they get to punish any until that they can see, that are squatting behind stuff.\n\n(Note this is just a narrative explanation of what the mechanics are attempting to portray; do not use narrative to justify how a rule works)"
+  },
+  {
+   "id": "pe5luhq",
+   "parent": "pe5a3pm",
+   "score": -2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe5luhq/?context=3#pe5luhq",
+   "body": "[deleted]"
+  },
+  {
+   "id": "pe5xjup",
+   "parent": "pe5luhq",
+   "score": 5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe5xjup/?context=3#pe5xjup",
+   "body": "You don't lose hidden just because an enemy unit is close enough to you. The status just doesn't make you invisible to that specific unit anymore."
+  },
+  {
+   "id": "peluvuk",
+   "parent": "",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peluvuk/?context=3#peluvuk",
+   "body": "If I select my unit with multiple weapon profiles (declare that all weapons into this unit) shooting some Khorne bezerkers, with the first weapon they kill 1 - does the blood surge move activate now, or do I get to finish shooting with my other weapons?\n\nIf I shoot a transport with a unit with multiple weapon profiles and declare all weapons into this unit, the first weapon destroys the transport, do the rest of the guns go into the disembarked squad or are lost?\n\nAt what step does the ghostkeel damage blank ability trigger? Is it after armour saves, where the damage is allocated and you can blank up to two attacks?\nThanks"
+  },
+  {
+   "id": "pem3oes",
+   "parent": "peluvuk",
+   "score": 7,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pem3oes/?context=3#pem3oes",
+   "body": "1: They surge after all your attacks:\n\nIn your opponent's Shooting phase, when an enemy unit has shot*, if a model in this unit was destroyed as a result of those attacks, this unit can make a surge move of up to D6+2”.*\n\nThe ability triggers when the enemy unit has shot; which requires it to have finished making all of its attacks.\n\n04.03.04\nSHOT\nWhen all models in a unit that are making ranged attacks have resolved all of those attacks, that unit has shot.\n\n2: No; those attacks targeted the transport and not the embarked unit. As the transport became destroyed you just don’t resolve those attacks.\n\n3: Answered earlier in this thread: https://www.reddit.com/r/WarhammerCompetitive/s/YCPTZXy6is\n\nIt can be used on two seperate attacks and will be used in step 1 of inflict damage after the saves have been rolled but before any random damage is rolled."
+  },
+  {
+   "id": "pem0uxz",
+   "parent": "",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pem0uxz/?context=3#pem0uxz",
+   "body": "New Allarus captain states: in your movement phase when unengaged and didnt move you can use this ability. \"If you do, place this unit in strategic reserves and this unit must make an ingress move this phase.\"\n\nThis ability is not locked to 2nd BR onwards, but also not explicitly says that it allows the unit to make an ingress move in the first BR. Can he or can he not ingress first turn using that ability?"
+  },
+  {
+   "id": "pem4a8w",
+   "parent": "pem0uxz",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pem4a8w/?context=3#pem4a8w",
+   "body": "Do you mean the From Golden Light ability on Allarus?\n\nOnce per battle, at the end of your opponent's turn, if this unit is not within Engagement Range of one or more enemy units, you can remove it from the battlefield and place it into Strategic Reserves."
+  },
+  {
+   "id": "pem4i88",
+   "parent": "pem4a8w",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pem4i88/?context=3#pem4i88",
+   "body": "No i mean the once per game ability from the 11ed allarus captain (rules not officially released yet)"
+  },
+  {
+   "id": "pem4rbm",
+   "parent": "pem4i88",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pem4rbm/?context=3#pem4rbm",
+   "body": "Can you post the full rules text so we can be 100% sure of how to evaluate it"
+  },
+  {
+   "id": "pem5eld",
+   "parent": "pem4rbm",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pem5eld/?context=3#pem5eld",
+   "body": "(once per battle, per unit): In your movement phase, if this unit is unengaged and has not been selected to move this phase, you can use this ability. If you do, place this unit in strategic reserves and this unit must make an ingress move this phase."
+  },
+  {
+   "id": "pem8adj",
+   "parent": "pem5eld",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pem8adj/?context=3#pem8adj",
+   "body": "That ability will allow a turn 1 ingress move as it states they must do so."
+  },
+  {
+   "id": "pets8cu",
+   "parent": "",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pets8cu/?context=3#pets8cu",
+   "body": "How long does the scan from in cursors last? Is it just for one attacking unit, for the whole phase, or (gasp) forever? \n\n(I know it’s not intended to be forever I really just want to know if we have any clarity on if it is one attacking unit or the whole phase)."
+  },
+  {
+   "id": "petsrj8",
+   "parent": "pets8cu",
+   "score": 4,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/petsrj8/?context=3#petsrj8",
+   "body": ""
+  },
+  {
+   "id": "petu3u8",
+   "parent": "petsrj8",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/petu3u8/?context=3#petu3u8",
+   "body": "Thank you! Searching for “duration” didn’t find this, very appreciated."
+  },
+  {
+   "id": "petw8f4",
+   "parent": "",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/petw8f4/?context=3#petw8f4",
+   "body": "with the new da boss or transhuman strategist rule that gives an extra cp. does the warlord have to remain alive in order to give the cp. it says \"Gain 1CP at the start of the battle round where a model carrying this ability is your WARLORD.\" it doesn't say anything about if it has to remain on the battlefield or if it is dead."
+  },
+  {
+   "id": "peu2lnd",
+   "parent": "petw8f4",
+   "score": 5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peu2lnd/?context=3#peu2lnd",
+   "body": "I've seen it debated. My take is that it's a faction ability on the warlords datasheet. Destroyed models cannot use their abilities so you would not gain the CP if your warlord is destroyed.\n\nI don't know about other TOs but UKTC has ruled that it cannot be used after the warlord is destroyed."
+  },
+  {
+   "id": "pevx487",
+   "parent": "petw8f4",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pevx487/?context=3#pevx487",
+   "body": "The RAW situation is currently very weird and it's impossible to know how it's supposed to work.\n\nRAW dead models can't use abilities, so if your only \"da boss\" character (which was your warlord) is dead, you don't get the CP anymore (as \"da boss\" can't be used).\nBut if you have another warboss on the table, then that one will have \"da boss\" active, and as the abilty itself doesn't say \"If this model is your warlord\", but just \"if a model with this ability is your warlord\" (which is still true) it would still give you the CP.\n\nThat's deeply weird and I don't expect it to be the intended effect, but GW hasn't FAQed what their word salad is actually supposed to mean."
+  },
+  {
+   "id": "pf1lilh",
+   "parent": "",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf1lilh/?context=3#pf1lilh",
+   "body": "Does the Tyrannofex have the FRAME keyword?\n\nWahapedia says yes. Listforge says no. I don't have access to the codex in the GW app. What's the general consensus?"
+  },
+  {
+   "id": "pf45030",
+   "parent": "pf1lilh",
+   "score": 6,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf45030/?context=3#pf45030",
+   "body": "The general consensus is you don't need the codex unlocked go see FAQ and rules updates in the app."
+  },
+  {
+   "id": "pf4m0ag",
+   "parent": "pf45030",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf4m0ag/?context=3#pf4m0ag",
+   "body": "Thanks!"
+  },
+  {
+   "id": "pf400i0",
+   "parent": "",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf400i0/?context=3#pf400i0",
+   "body": "How many units is good to leave specifically to Rapid Ingress? You can't Rapid Ingress more than 2 times normally so is it good to run two and plan to always use the CP or have two with one as a backup normal ingress move? Or is it better to just have one? I'm in daemons so everything is deep strike."
+  },
+  {
+   "id": "pfacq8z",
+   "parent": "pf400i0",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pfacq8z/?context=3#pfacq8z",
+   "body": "This is asking for a universal answer for a question that should be looked at based on the match and what your opponent can do.\n\nI tend to only put one in reserves vs a Horde army to force them to be honest and screen their backline instead of rushing me, whereas Custodes it's a great idea to have several as they have issues screening."
+  },
+  {
+   "id": "pfb0fx9",
+   "parent": "pfacq8z",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pfb0fx9/?context=3#pfb0fx9",
+   "body": "Makes perfect sense to me thanks"
+  },
+  {
+   "id": "pf5q64d",
+   "parent": "pf400i0",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf5q64d/?context=3#pf5q64d",
+   "body": "I think having a single Rapid Ingress unit as a gameplan is good, having 2 might be a bit too much but obviously your opponent won't know whether you plan on Rapid Ingressing or standard Ingressing (Deepstrike/Strat Res). So I usually opt to have 1 unit Rapid, and hold another unit to either Deepstrike or Rapid."
+  },
+  {
+   "id": "pfedmxd",
+   "parent": "pf5q64d",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pfedmxd/?context=3#pfedmxd",
+   "body": "In most of my games I have 2 units in reserve for potential rapid Ingress, one with the plan to wipe out one of opponents units and than die, die other is a cheaper one for scoring purpose."
+  },
+  {
+   "id": "pf58ux5",
+   "parent": "",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf58ux5/?context=3#pf58ux5",
+   "body": "This is probably another \"ask your TO\" question, but the topic came in mind with the kneeling lancer thread. How much height difference is generally acceptable for infantry model to have compared to it's vanilla counterpart, and does it really matter in actual tabletop games when it comes to basic infantry?\n\nI have ruststalkers and hastarii that due to reposing and being built out of spare parts respectably are somewhat taller than their normal version if minicompare is to be believed,"
+  },
+  {
+   "id": "pfac8pp",
+   "parent": "pf58ux5",
+   "score": 5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pfac8pp/?context=3#pfac8pp",
+   "body": "This is a \"what are the measurements of the terrain that the tournament will be using\" situation.\n\nThe difference between a 1.2\" model and a 1.5\" model is effectively meaningless if all terrain is either .75 inches and shorter, or 3+inches tall on the table.\n\nHowever, here is a different example: I was playing in a tournament last year where my opponent had built his Sanguinary Guard with extremely tall wings and spears pointing up, but wanted to place his models in a spot where they couldn't physically fit because of how he modeled them. He kept trying to claim that his models were in one space when he had previously said they were in another, and I eventually had to call a judge over and the judge told him \"if your model doesn't physically fit where you you want it to be, then it can't be there\"\n\nMost people are fine with the model being on a bit of cork and it being a tad taller, (sometimes as much as 25% taller depending on the model) but when it's really going to be called as modeling for advantage is if that height takes you from \"can't stand behind this wall and see over it\" to \"I suddenly can see over all these walls\""
+  },
+  {
+   "id": "pf5q004",
+   "parent": "pf58ux5",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf5q004/?context=3#pf5q004",
+   "body": "Definitely an ask your TO situation but I don't think there is a measurable +/- comparative to vanilla poses. I also don't think it matters that much for shorter / infantry models, in fact, I'd argue you're modelling for disadvantage if you build your infantry taller. I think the only case for this is modelling big tanks and big units taller to see over walls etc."
+  },
+  {
+   "id": "pe0ivwx",
+   "parent": "",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0ivwx/?context=3#pe0ivwx",
+   "body": "I have a question on the company heroes' Raise the banner ability.\n\nIt says \"At the end of your movement phase, if this unit is controlling an objective, that objective is secured.\"\n\nNormally there's a restriction on things like this to mean it only applies to one thing, but this doesn't seem to mention it. So does this mean I can string this unit out over two objectives and sticky both of them at the end of the movement phase?"
+  },
+  {
+   "id": "pe0k4z4",
+   "parent": "pe0ivwx",
+   "score": 6,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0k4z4/?context=3#pe0k4z4",
+   "body": "Seems so"
+  },
+  {
+   "id": "pe0krat",
+   "parent": "pe0k4z4",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0krat/?context=3#pe0krat",
+   "body": "Thanks!\n\nYeah, I always understood that you can control multiple objectives with one unit, and word as written to me it makes sense, but seems too good to be able to sticky 2 objectives or more from turn 1 onwards.\n\nI fully intend to make use of this now."
+  },
+  {
+   "id": "pe0sp9c",
+   "parent": "pe0ivwx",
+   "score": -5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0sp9c/?context=3#pe0sp9c",
+   "body": "The banner ability menrions an objective, singular, not one or more objectives, or objectives, plural. You pick one to make it sticky."
+  },
+  {
+   "id": "pe0vcyq",
+   "parent": "pe0sp9c",
+   "score": 4,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0vcyq/?context=3#pe0vcyq",
+   "body": "It doesn't say one, or choose though, so its not clear.\n\nUnit controlls Objective 1 and 2 and 3.\n\nIs objective 1 an objective that the unit controls? Yes. Secured\n\nIs objective 2 an objective that the unit controls? Yes. Secured\n\nIs objective 3 an objective that the unit controls? Yes. Secured"
+  },
+  {
+   "id": "pe0vm79",
+   "parent": "pe0vcyq",
+   "score": -2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0vm79/?context=3#pe0vm79",
+   "body": "An objective, singular, is pretty clear to me. The unit is controlling three objectives, thats not singular."
+  },
+  {
+   "id": "pe0wg50",
+   "parent": "pe0vm79",
+   "score": 4,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0wg50/?context=3#pe0wg50",
+   "body": "What I should have done first, is look up rulings on other units sticking an objective. It turns out that yes you've always been able to sticky multiple objectives"
+  },
+  {
+   "id": "pe0x87n",
+   "parent": "pe0vm79",
+   "score": 4,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0x87n/?context=3#pe0x87n",
+   "body": "It’s just the way English works. The reason it uses “an” here is so that each objective controlled is stickied individually.\n\nIf it didn’t and it stickied all of them together then when the opponent removes sticky from one it would remove them from all of them."
+  },
+  {
+   "id": "pe10f8t",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe10f8t/?context=3#pe10f8t",
+   "body": "Can dreadnoughts use \"Duty in Death\" (Assault Brethren)?"
+  },
+  {
+   "id": "pe12uzh",
+   "parent": "pe10f8t",
+   "score": 6,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe12uzh/?context=3#pe12uzh",
+   "body": "It says DEPTUS ASTARTES unit.\n\nIs a Dreadnought a unit, with the relevant keywords?"
+  },
+  {
+   "id": "pe1x230",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe1x230/?context=3#pe1x230",
+   "body": "When using the “Infested War Zone” stratagem in the “Runt Swarm” detachment. Does the attached character come back with the unit? “identical to your destroyed unit” is the hang up my play group is having"
+  },
+  {
+   "id": "pe1zbbk",
+   "parent": "pe1x230",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe1zbbk/?context=3#pe1zbbk",
+   "body": "Yes. Attached units are treated as a single unit for all rules purposes. When the entire attached unit (leaders, supports and bodyguards) is completely destroyed you can use this strat to create a copy of that unit in reserves (leader, supports and bodyguards)"
+  },
+  {
+   "id": "pe27pk7",
+   "parent": "pe1x230",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe27pk7/?context=3#pe27pk7",
+   "body": "RAW it doesn't exclude characters, although generally these strats get FAQ'd to not include them. Until GW says otherwise, Zodgrod/Runtherd comes back"
+  },
+  {
+   "id": "pe2nrv9",
+   "parent": "pe27pk7",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe2nrv9/?context=3#pe2nrv9",
+   "body": "The old 10th edition ones had a restriction in place informing players that the strat won’t return a character to its bodyguards.\n\nIn 10th the unit would split and if a character revived it had to be returned to its bodyguards. The 10th wording advised this wasn’t possible because A) it was a new unit not the old one so it had no bodyguards to be returned to and B) it was a copy placed in reserves so couldn’t join bodyguards on the battlefield even if it had any.\n\nIn 11th units don’t split so that restriction / reminder is totally irrelevant and doesn’t even apply to what the Strats do (create new units rather than revive the old destroyed one).\n\nI think it’s reasonable to assume they’re all going to get updated to this new wording excluding that restriction / reminder."
+  },
+  {
+   "id": "pe3355h",
+   "parent": "pe2nrv9",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe3355h/?context=3#pe3355h",
+   "body": "Divine Intervention for Sisters has a specific carve out specifying the revived model is not part of an attached unit and has a starting strength of 1. Necrons also had a strat reworded that way as well, after the Tacoma Open. Reinforcements! strat for Guard cannot return Character models. Genestealers' Cult Ambush doesn't return character models either and was updated in one of the first FAQs to specify that character models don't come back.\n\nAs a certified Zodgrod hater from all my games against him in 10th and 11th, for the love of Khorne, GW better update this strat to exclude character models."
+  },
+  {
+   "id": "pe5rkyf",
+   "parent": "pe3355h",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe5rkyf/?context=3#pe5rkyf",
+   "body": "You know divine intervention and Necron rule is not the same type of rules as the one being discussed here? (Reinforcements for Guard is a 10th Ed version as mentioned and in 11th does in fact copy the full unit just as this Orks rule does). GSC rule is also not the same as is being discussed.\n\nThose rules REVIVE the affected models while the rule here CREATES A NEW IDENTICAL UNIT instead. There’s a big difference between standing the original unit back up and creating an entirely new unit (while the original one still exists).\n\nThese are fundamentally different. In fact if you had access to both you could first create a new copy of your full attached unit in reserves and then revive the original destroyed one (with limitations)."
+  },
+  {
+   "id": "pe8rgbl",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe8rgbl/?context=3#pe8rgbl",
+   "body": "Hello I wanted to ask the community how are you supposed to interpret rules like this one in the Orks Taktikal Brigade\n\n\"Kill Kommanda:\n\nBIG MEK/WARBOSS INFANTRY model only. While this unit is part of an attached unit, this model has:\n\nInfiltrators.\nStealth.\"\n\nFrom what I understand should be: Big Mek + Infantry or Warboss + Infantry to use it, meaning a model like Big Mek Dakkarig is a Big Mek but not Infantry so should not apply?\n\nThanks in advance"
+  },
+  {
+   "id": "pe8se99",
+   "parent": "pe8rgbl",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe8se99/?context=3#pe8se99",
+   "body": "Correct; the core rules state:\n\n02.05.01\nUSING KEYWORDS & MIXED KEYWORDS IN UNITS\n\nA rule with a comma-separated list of keywords, or a series of keywords separated by slashes ('/'), or two keywords separated by the word ‘or’ (e.g. ‘an IMMORTALS, DEATHMARKS or LYCHGUARDunit’) refers to a model/unit that has any one of those keywords.\n\nSo the model must have either BIG MEK or WARBOSS and then also INFANTRY in its keywords."
+  },
+  {
+   "id": "peanctp",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peanctp/?context=3#peanctp",
+   "body": "If I select a unit to shoot, declare the target of all the weapons, fire all the weapons at of one profile at a target and my opponent takes damage and removes models in such a way that I no longer have visibility to that unit what happens to the rest of the weapons I declared to shoot at that target\n\nEdit: specifically in regards to rule 04.03.03"
+  },
+  {
+   "id": "peb5hzn",
+   "parent": "peanctp",
+   "score": 4,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peb5hzn/?context=3#peb5hzn",
+   "body": "You declare all your weapons, all your targets and THEN you roll.\n\nSo it doesn't matter if he kills off stuff in a certain way for that unit.\n\nAll your shooting is happening at \"the same time\".\n\nJust like if all the models died to the first shot and you were shooting 50 times. The other 49 were just overkill.\n\n04.03.03. Is more a im shooting that unit. But before you shoot they run away and therefore are no longer eligible as a target. You get to pick another unit."
+  },
+  {
+   "id": "pf3p4do",
+   "parent": "peb5hzn",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf3p4do/?context=3#pf3p4do",
+   "body": "I assume this is the same with melee as well? I. You can't remove models mid fight phase and end engagement range"
+  },
+  {
+   "id": "pf3y1gm",
+   "parent": "pf3p4do",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf3y1gm/?context=3#pf3y1gm",
+   "body": "Yup."
+  },
+  {
+   "id": "peb8udd",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peb8udd/?context=3#peb8udd",
+   "body": "If I have a redeploy ability, like on the C’tan shard of the Deceiver, can I redeploy a unit that I started in reserves onto the battlefield? Or can I only redeploy units I put on the battlefield at the start?"
+  },
+  {
+   "id": "peb9ndw",
+   "parent": "peb8udd",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peb9ndw/?context=3#peb9ndw",
+   "body": "Unfortunately not. The rule for redeploying requires you to remove the chosen unit from the battlefield before setting it back up; you cannot remove a unit in reserves from the battlefield.\n\n03.02.03\nREDEPLOYMENTS\nWhen a player uses a rule that lets them redeploytheir unit, they remove that unit from the battlefield, then deploy it again using all the normal rules (e.g. if all the models in the redeploying unit have the Infiltrators ability, that unit can be set up using that ability)."
+  },
+  {
+   "id": "pebb6fr",
+   "parent": "peb9ndw",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pebb6fr/?context=3#pebb6fr",
+   "body": "Thank you"
+  },
+  {
+   "id": "pebbfp0",
+   "parent": "pebb6fr",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pebbfp0/?context=3#pebbfp0",
+   "body": "No worries :)"
+  },
+  {
+   "id": "pebab4n",
+   "parent": "peb8udd",
+   "score": 0,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pebab4n/?context=3#pebab4n",
+   "body": "[removed] — view removed comment"
+  },
+  {
+   "id": "pedoq65",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pedoq65/?context=3#pedoq65",
+   "body": "What is the order of precedence for the codex, the app and the faction packs? My captain in phobos armour has assault on the instigator bold carbine in the codex but not in the app. I can’t see a space marine faq/errata. My tormentors are toughness 4 in the app but 5 in the faction pack."
+  },
+  {
+   "id": "pedxnp6",
+   "parent": "pedoq65",
+   "score": 6,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pedxnp6/?context=3#pedxnp6",
+   "body": "Technically GW wants the app to be the most official rules source, but it's so buggy that it's wrong on a lot of things.\nSo factually, you kinda have to look at which source is the newest and make educated guesses from there.\n\n\"digital rules\" without any care to implement them properly, sadly."
+  },
+  {
+   "id": "pedx7vn",
+   "parent": "pedoq65",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pedx7vn/?context=3#pedx7vn",
+   "body": "There isn’t really one stated by GW and each TO sets their own but then also sometimes makes exceptions.\n\nUsually the most recent source that isn’t an obvious error is agreed upon. We do also have GW stating that insofar as attaching and points etc that the MFM should take precedence.\n\nIn my mind the app is supposed to be collating the data from the codexes, faction packs and MFM whilst also being the most current source for rules as it’s where the errata and FAQs are published rather than a standalone commentary document like we had in 11th.\n\nFor your specific queries I would feel comfortable saying the Captains weapon should have Assault as in the codex and it’s likely an app error similar to how many other weapon abilities aren’t correctly stated currently (missing Hunter profile keywords etc). For the T of the Tormentors I would feel the same; it appears EC Faction Packs errata to their T from 4 to 5 hasn’t been correctly updated in the app."
+  },
+  {
+   "id": "pedxysz",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pedxysz/?context=3#pedxysz",
+   "body": "At what stage of the resolving attacks step is random damage resolved and how does this interact with abilities that let you set damage to zero when an attack is allocated to the model? \n\nI am because a successful tournament player, on a YouTube video, stated that a TFex can set damage to zero after the damage roll and I think this is incorrect."
+  },
+  {
+   "id": "pee92lw",
+   "parent": "pedxysz",
+   "score": 5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pee92lw/?context=3#pee92lw",
+   "body": "The TFex ability reads:\n\nOnce per battle, when an attack is allocated to this model*, you can change the Damage characteristic of that attack to 0.*\n\nCore rules state:\n\n04.02.02\nAGAINST AN ATTACK\nRules that are triggered when an attack is 'allocated' to a unit are triggered in step 1 of the Inflict Damage step (05.04).\n\nand also:\n\n02.02.03\nRANDOM CHARACTERISTICS\nRandom Damage:\nIf a weapon has a random Dcharacteristic, then each time an attack made with it inflicts damage*, the controlling player determines that weapon's characteristic when the opposing player has selected a model in the target unit to allocate that attack to.*\n\nSo we know the TFex ability will trigger at step 1 of inflict damage 05.04 and it will apply a “set to 0” modifier at that point in time.\n\nWe also see that the damage roll is made when the attack inflicts damage and the player has selected a model. Attacks are only determined to have inflicted damage or not at step 2 of 05.04. The player would have selected a model in step 1 already so this criteria is already met during step 2 when the trigger occurs.\n\n05.04 Step 2\n2. Check Save Roll: For each result, check if that attack inflicts damage or fails by matching the first condition below that applies\n\nWe can see then that the blank ability triggers at step 1 of 05.04 and the attack will be determined to have inflicted damage or not at step 2 of 05.04 triggering the damage roll (when the opposing player “has” selected a model - past tense referring to step 1)\n\nIt appears that player is misplaying the rules as the TFex blank will trigger and apply at step 1 of 05.04 followed by the damage roll at step 2 of 05.04 provided the attack inflicts damage rather than fails."
+  },
+  {
+   "id": "pee1hem",
+   "parent": "pedxysz",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pee1hem/?context=3#pee1hem",
+   "body": "Looking at 02.02.03 Random Characteristics, Random Damage is determined each time you inflict damage. This happens when a failed save is assigned to a model in Step 2 of the Inflict Damage step.\n\nThe TFex ability is used when an attack is allocated to a model, we know from 04.02.02 that this is in step 1 of the Inflict Damage step which is before determining the Random Damage characteristic."
+  },
+  {
+   "id": "pedzbo3",
+   "parent": "pedxysz",
+   "score": -7,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pedzbo3/?context=3#pedzbo3",
+   "body": "The tfex zero damage rule is resolved when wounds are allocated. Which is before the saving throw. But, the rules dont say when random damage is actually rolled. Is this before the saving throw, or after ? We dont know."
+  },
+  {
+   "id": "peee9wb",
+   "parent": "pedzbo3",
+   "score": 6,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peee9wb/?context=3#peee9wb",
+   "body": "How you are able to read the rules and reference them and still come to incorrect conclusions should be studied."
+  },
+  {
+   "id": "peetokd",
+   "parent": "peee9wb",
+   "score": -5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peetokd/?context=3#peetokd",
+   "body": "Maybe its because GW rules are poorly written, ambigous, incredibly complex and scattered all over the place."
+  },
+  {
+   "id": "peex79v",
+   "parent": "peetokd",
+   "score": 5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peex79v/?context=3#peex79v",
+   "body": "Sometimes they are.\n\nHowever it has been shown time and time in this thread that there will be universal agreement on how it works, and you will argue a contrarian opinion based on a sub-definituon of grammar, like your argument that you could trigger the benefits of a stratagem without paying the CP cost because GW didn't defne the word \"use\".\n\nJust because GW sometimes messes up rules writing, doesn't mean every completely baseless conclusion you come to is their fault.\n\nThe rules are 100% clear on when in the sequence of events an attack is allocated to a model in relation to when saves are done."
+  },
+  {
+   "id": "pee156s",
+   "parent": "pedzbo3",
+   "score": 5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pee156s/?context=3#pee156s",
+   "body": "Wounds are allocated after in the inflict damage step in 11th edition (04.02.02) which is after the saving throw."
+  },
+  {
+   "id": "pefg60z",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pefg60z/?context=3#pefg60z",
+   "body": "In my app next to some of the Hunter profiles it says “HUNTER: null”. What does null mean in this instance?"
+  },
+  {
+   "id": "pefhm0c",
+   "parent": "pefg60z",
+   "score": 11,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pefhm0c/?context=3#pefhm0c",
+   "body": "It means the app is broken."
+  },
+  {
+   "id": "pefk752",
+   "parent": "pefhm0c",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pefk752/?context=3#pefk752",
+   "body": "I assumed haha."
+  },
+  {
+   "id": "peftqgp",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peftqgp/?context=3#peftqgp",
+   "body": "Where is clearly stated that a support unit cannot act by itself and must me attached to a bodyguard unit?"
+  },
+  {
+   "id": "pefxq43",
+   "parent": "peftqgp",
+   "score": 9,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pefxq43/?context=3#pefxq43",
+   "body": "In 25.04 'Fill Your Army Roster' under the heading ATTACH LEADERS AND SUPPORT UNITS. Its the last sentence in that paragraph."
+  },
+  {
+   "id": "pehf326",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pehf326/?context=3#pehf326",
+   "body": "If i rapid ingress my tyrannocyte with hive guard it it can i then immediately overwatch with them as the ingress targets the pod and the overwatch targets them?"
+  },
+  {
+   "id": "pehhbj8",
+   "parent": "pehf326",
+   "score": 4,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pehhbj8/?context=3#pehhbj8",
+   "body": "The core rules for sequencing state:\n\n01.03.02\nRULES SEQUENCING\nAt any point in the game, the players will have rules that they can or must use, which may occur at the same time another player can or must use a rule. Unless otherwise stated, these are activated in the following order:\n\n1. All of the active player’s rules that must be used, in an order of their choosing.\n2. All of the active player’s rules that they can optionally use and wish to use, in an order of their choosing.\n\n3. All of the opposing player’s rules that must be used, in an order of their choosing.\n4. All of the opposing player’s rules that they can optionally use and wish to use, in an order of their choosing.\n\nYour RI and OW are both optional rules so go under step 4.\n\nOnce you use RI to bring in the Tyranocyte its ability would usually trigger however the sequencing rule goes on to say:\n\nIf another rule could be used after a rule has resolved during this sequence but before other rules in that same timing have resolved, those new rules do not trigger until all the remaining rules to be resolved in that same timing have been resolved.\n\nThe Tyranocytes ability is such a rule and so it won’t trigger straight away but rather will wait for you to resolve any other rules you wish under step 4. This will include OW so you either resolve it with an available unit which doesn’t include the unit embarked within the Tyranocyte presently or you don’t use OW.\n\nOnce you’ve resolved all the rules you wish to under step 4 the Tyranocytes ability triggers and the unit disembarks. It however is now too late to use OW as step 4 is concluded and the game moves on.\n\nThis is the same for Drop Pods and Valkyries etc."
+  },
+  {
+   "id": "pehis5t",
+   "parent": "pehhbj8",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pehis5t/?context=3#pehis5t",
+   "body": "Ah dang great explanation. Would have been sick to work but ah well"
+  },
+  {
+   "id": "pehkhj7",
+   "parent": "pehis5t",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pehkhj7/?context=3#pehkhj7",
+   "body": "Yeah I think it would have been a fair interaction as it’s a 2CP play after all but sadly not allowed."
+  },
+  {
+   "id": "pehlxge",
+   "parent": "pehkhj7",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pehlxge/?context=3#pehlxge",
+   "body": "Ah well. Ill just have to drop it on my turn and make a vehicle go away"
+  },
+  {
+   "id": "pehypgy",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pehypgy/?context=3#pehypgy",
+   "body": "When I add a Chaplain, which has the TACTICUS keyword, to Death Watch Veterans, which they don't have, can I use stratagems or detachment rules on that unit?"
+  },
+  {
+   "id": "pei0ca9",
+   "parent": "pehypgy",
+   "score": 6,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pei0ca9/?context=3#pei0ca9",
+   "body": "As long as they target and apply their effects to TACTICUS units and not TACTICUS models, then yes."
+  },
+  {
+   "id": "peobmx6",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peobmx6/?context=3#peobmx6",
+   "body": "Can Grey Knights' Grand Master \"Warrior Strategist\" ability be used more than once in the same battle round if you have two or more units with one Grand Masters? Why?\n\nWarrior Strategist: Once per battle round, one model from your army with this ability can use it when its unit is targeted with a Stratagem. If it does, reduce the CP cost of that use of that Stratagem by 1CP.\n\nI know some people say you can but is not clear to me why that would be."
+  },
+  {
+   "id": "peoilgb",
+   "parent": "peobmx6",
+   "score": 6,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peoilgb/?context=3#peoilgb",
+   "body": "The people who say you can are saying so because they have a fourth grader's reading comprehension.\n\nThe rule literally starts with \"once per battle round, one model from your army can use it\".\n\nNot \"twice per battle round, one model from your army with this anokity can use it\"."
+  },
+  {
+   "id": "pes8e9b",
+   "parent": "peobmx6",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pes8e9b/?context=3#pes8e9b",
+   "body": "This restriction is pretty much on every type of this ability. You cannot stack multiple sources of the same -1 CP Ability across your army."
+  },
+  {
+   "id": "peoc4na",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peoc4na/?context=3#peoc4na",
+   "body": "Question on Apothecary reviving models:\n\nSay I have Company Heroes + Captain + Apothecary. Let's say the opponent kills the 4 dudes and the Captain, and I am left with the Apothecary... can I then revive the Captain to this unit?"
+  },
+  {
+   "id": "peoi4kd",
+   "parent": "peoc4na",
+   "score": 5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peoi4kd/?context=3#peoi4kd",
+   "body": "2.02.04, healing, excludes CHARACTER models from being revived."
+  },
+  {
+   "id": "peqd54f",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peqd54f/?context=3#peqd54f",
+   "body": "In the mission of Take and Hold - Purge and Secure, the player scores VP for killing a unit with a friendly unit that was on an objective.\n\nWhen does the scoring unit need to be on an objective? There doesn't seem to be a timing. Can the T&H player charge and kill a unit and then consolidate onto an objective to score?"
+  },
+  {
+   "id": "peqid6i",
+   "parent": "peqd54f",
+   "score": 4,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peqid6i/?context=3#peqid6i",
+   "body": "The mission text says you score from either killing an enemy unit that was on an objective, or when you kill a unit with a unit on an objective, so the wording implies the \"on an objective\" is checked at the point you destroy a unit."
+  },
+  {
+   "id": "per9iyc",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/per9iyc/?context=3#per9iyc",
+   "body": "Question about timings for Space Marine Eliminators led by a Phobos Librarian.\n\nThe Eliminators Special-Issue Optics and Ammunition says \"In your Shooting phase, when this unit is selected to shoot, you can select one of the following\" and one of those options is \"Select one enemy unit within 24\" of this unit. That enemy unit has +6\" detection range until this unit has shot.\" Does not require it be visible.\n\nThe Phobos Librarian's Soul Sight power says \"In your Shooting phase, if this unit is not battle-shocked, you can make a psychic roll for this unit [...] Select one Visible enemy unit. Ranged attacks that target that enemy unit have Ignores Cover.\"\n\nCan these two be used together, the unit being selected to shoot, choosing to increase detection range and then using the Librarian's Soul Sight to also strip cover from the now-visible unit, or can Soul Sight not be used until after the shooting is resolved?"
+  },
+  {
+   "id": "pes9ps0",
+   "parent": "per9iyc",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pes9ps0/?context=3#pes9ps0",
+   "body": "Technically yes but it’s likely not meant to be possible.\n\nWe have two sorts of triggers being general or specific ie ones like you mention which can be used at any point in a given phase such as “in your shooting phase” and then specific ones which can be used only at a specific point in the sequences that make up that phase such “each time an attack is allocated to this model”.\n\nPlayers expect that the specific triggers go off when those things occur during the steps making up phases and that they interrupt those steps to trigger and resolve before the steps then continue.\n\nWith the general triggers players have come to expect that they don’t interrupt a steps of a sequence but rather are used between the steps and sequences themselves.\n\nThis is why you’ll get push-back on this play. Players are happy for a rule that occurs on a failed hit roll to interrupt the attack sequence of hit, wound, save etc but aren’t happy for a generally triggered rule “in your shooting phase” to do so and instead expect it will be used in between the full attack sequences such as attack sequence 1, rule, select new unit, new units attack sequence, next rule etc.\n\nThe 11th edition rules however don’t set this out as such and what you’re wanting to do is perfectly legal - it’s just not really going to be accepted as such by almost the entire player base. Part of it is they aren’t used to rules doing so and another is it opens up weird things like unit A starting to resolve attacks and then unit B tosses explosives part way through in order to manipulate which models unit A’s remaining weapons damage.\n\nSo the answer is yes Rules As Written but no as it’s going to require a fundamental shift in the player bases thinking, acceptance and potentially several erratas to rules that aren’t meant to be doing so.\n\nYour best bet is to get enough people writing mails to the rules team to get them to make an FAQ about it so we have an indication of intent else in the interim query the TOs who’s events you attend and play according to their decisions."
+  },
+  {
+   "id": "peub3ii",
+   "parent": "pes9ps0",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peub3ii/?context=3#peub3ii",
+   "body": "Gotcha, and excellent explanation of the triggers. I'll shoot a question to the rules team for clarity's sake and not combo them together."
+  },
+  {
+   "id": "pevnf1p",
+   "parent": "peub3ii",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pevnf1p/?context=3#pevnf1p",
+   "body": "I know a bunch of Tau players have as we have a similar interaction with one of our enhancements. If it’s able to be used like this it’s actually useful and worth the points however if not then it’s got very little value - currently no one wants to use the RAW way as it invites too many other weird interactions and isn’t seen as “normal”."
+  },
+  {
+   "id": "pes7zog",
+   "parent": "per9iyc",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pes7zog/?context=3#pes7zog",
+   "body": "I don't believe this works as Special-issue Optics and Ammunition is both in your Shooting Phase and when that unit (which includes the Librarian) is selected to shoot and ends until that unit has shot.\n\nThe issue here is there is no window here where that selected unit is detectable and you can use the Librarian ability. The Librarian ability must occur before the Eliminators are selected to shoot or after the Eliminators have shot and the desired unit cannot be targetable by the ability since their detection is only increased within that window."
+  },
+  {
+   "id": "pesbw66",
+   "parent": "pes7zog",
+   "score": -1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pesbw66/?context=3#pesbw66",
+   "body": "This combo works fine. In your shooting phase is any point in time during the shooting phase. This can be before the eliminators shoot."
+  },
+  {
+   "id": "peutog2",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peutog2/?context=3#peutog2",
+   "body": "This is a question about the impulsor. When using firing deck, does the weapons still benefit from the units abilities? And if given the new orbital comms array, can I use scout if the units inside do not have it? I know it says for dedicated transports, if every unit inside has scouts, then the transport can make a scout move, but doesn't mention if the dedicated transport has scout and the unit inside doesnt."
+  },
+  {
+   "id": "pev2hst",
+   "parent": "peutog2",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pev2hst/?context=3#pev2hst",
+   "body": "When using 'Firing Deck', its as if the vehicle becomes equipped with those weapons.\n\nSo the vehicle fires them using the vehicles rules and abilities; the unit inside the transport is not shooting and doesn't get any of their rules or abilities.\n\nIf a transport has scouts X just on its own, then its allowed to make a scout move of X regardless of who or what it is transporting."
+  },
+  {
+   "id": "pey6qb1",
+   "parent": "pev2hst",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pey6qb1/?context=3#pey6qb1",
+   "body": "Okay, thank you for answering. Makes sense now."
+  },
+  {
+   "id": "pevpey5",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pevpey5/?context=3#pevpey5",
+   "body": "Questions on enhancements and upgrades -\n\n1) Can a unit with a character (or multiple) have both an enhancement and an upgrade? Assuming no epic hero.\n\n2) Limits on these? Enhancement is 1x per army, upgrades can be up to 3x? Or something like that.\n\n(Btw where are the references for these things?)\n\n3) Pretty minor, but does one need to properly 'model' on their model a particular enhancement? For example, the \"Imperium's Sword\" going on some minor character who doesn't ordinarily have an actual sword."
+  },
+  {
+   "id": "pew1ml7",
+   "parent": "pevpey5",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pew1ml7/?context=3#pew1ml7",
+   "body": "No, a unit can only have one enhancement total. (Upgrades are technically enhancements, just a special type).\n\nYou can have up to four different enhancements in your list. Upgrades can be put on to three different units (paying the cost each time) but only counts as one out of those four. Regular enhancements can only be taken once each.\n\nNo, there is no modeling requirement for enhancements or upgrades. Some people might kitbash something, especially if they have multiple of the same character but only one has the enhancement; just to make it easier to remember which one it is that has it. But it is not necessary to do so.\n\nAnd for your side question, the rules for adding enhancements can be found in section 25.04 - Fill your Army Roster"
+  },
+  {
+   "id": "pezxnel",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pezxnel/?context=3#pezxnel",
+   "body": "Can Deathwatch Terminators take a Cyclone Missile Launcher, a Thunder Hammer, and a Storm Shield on one model? The datasheet doesn't say you can't replace your Storm Bolter with a Cyclone Missile Launcher and a Storm Bolter, then replace your Storm Bolter and Power Fist with a Thunder Hammer and Storm Shield. However, the app give you an error if you try to do that in the army builder."
+  },
+  {
+   "id": "pf0dihd",
+   "parent": "pezxnel",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf0dihd/?context=3#pf0dihd",
+   "body": "Is the app/codex the same as wahapedia? Waha says that the storm bolter cannot be replaced if you take the missile launcher, though thats still the old datasheet and not the new one. If that rider is no longer there then I don't see why not."
+  },
+  {
+   "id": "pf042jg",
+   "parent": "pezxnel",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf042jg/?context=3#pf042jg",
+   "body": "I am trying to find a ruling but I'm struggling to do so but the reason I don't believe this works is that a model can usually only alter their wargear once from the predetermined default in addition to the CML option being a 'combined' option.\n\nSo you have to choose between: Replace Storm Bolter (Default) with 1 Cyclone Missile Launcher AND 1 Storm Bolter (No longer the default).\n\nOR\n\nReplace Power Fist and Storm Bolter (Default) with 1 Thunder Hammer and 1 Storm Shield (No longer the default).\n\nThe app probably throws an error because the Cyclone Missile Launcher option is explicitly \"1 Cyclone Missile Launcher and 1 Storm Bolter\" as a whole option, not \"1 Cyclone Missile Launcher; 1 Storm Bolter\". You no longer have 1 Power Fist, 1 Cyclone Missile Launcher, 1 Storm Bolter - The Storm Bolter and Cyclone Missile Launcher are 'combined'. Therefore, when you want to replace the Storm Bolter and Power Fist with the Thunder Hammer and Storm Shield, you cannot."
+  },
+  {
+   "id": "pf0z1jo",
+   "parent": "pf042jg",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf0z1jo/?context=3#pf0z1jo",
+   "body": "The Cyclone Missile Launcher and the Storm Bolter are seperate entries in the Ranged Weapons section, though. There's no combined entry for them."
+  },
+  {
+   "id": "pf2p4oi",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf2p4oi/?context=3#pf2p4oi",
+   "body": "I have 3 units who charged and 3 units who are engaged but didn’t charge. My opponent has no Fights First units. Am I right in assuming my 3x Fights First units who charged fight, then my opponent starts next with his non-fights first?\n\nIf so, if I interrupt after being charged is there a risk my opponent will be able to fight next instead of me after interrupting?"
+  },
+  {
+   "id": "pf4notj",
+   "parent": "pf2p4oi",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pf4notj/?context=3#pf4notj",
+   "body": "Correct. All your FF units will fight in the fights first step then when moving into ongoing combat as you fought most recently (your ladt FF unit) your opponent fights next.\n\nAlso yes. If they charge you and fight with their unit and you interrupt this fighting in the fight first step your opponent will fight next."
+  },
+  {
+   "id": "pfb3nvj",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pfb3nvj/?context=3#pfb3nvj",
+   "body": "Does armor of contempt work on a 2+ save in 11th? Or is it still the rule where you can’t keep a 2+?"
+  },
+  {
+   "id": "pfbhyyt",
+   "parent": "pfb3nvj",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pfbhyyt/?context=3#pfbhyyt",
+   "body": "armour of contempt has no affect on save so I'm not sure why you think it would ever be relevant? armour of contempt simply reduces the enemy's AP by 1"
+  },
+  {
+   "id": "pfbibw6",
+   "parent": "pfbhyyt",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pfbibw6/?context=3#pfbibw6",
+   "body": "Sorry, poor wording.\nIn 10th, wasn’t it set so that you couldn’t ever get beyond a 3+ save?\n\nOr was that cover?\n\nUltimately I’m trying to clarify if terminators can use it and maintain their 2+ save against ap1 attacks."
+  },
+  {
+   "id": "pfbxubm",
+   "parent": "pfbibw6",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pfbxubm/?context=3#pfbxubm",
+   "body": "Models with 3+ or better couldn't get cover against ap 0 weapons specifically in 10th. Nothing to do with armour of contempt.\n\nYou can use armour of contempt just fine with any unit, doesn't matter what their sv is because it only affects enemy ap, nothing to do with your save."
+  },
+  {
+   "id": "pfc9bc4",
+   "parent": "pfbxubm",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pfc9bc4/?context=3#pfc9bc4",
+   "body": "Much appreciated, thank you!"
+  },
+  {
+   "id": "pffqw77",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pffqw77/?context=3#pffqw77",
+   "body": "Take and Hold vs Priority Assets: As the T&H player, are you really not putting units on the center objective? I feel like it spreads me thin to push opposite corners to opponent's expansion (Layout A, crucible)"
+  },
+  {
+   "id": "pe4e7t0",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe4e7t0/?context=3#pe4e7t0",
+   "body": "Is it legal to take 2 plasma pistols (sergeant + 1) with three other vanguard vets with combat shields? It doesnt seem likely to me but the warhammer app says it is, though obviously that app is filled with bugs."
+  },
+  {
+   "id": "pe5sm69",
+   "parent": "pe4e7t0",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe5sm69/?context=3#pe5sm69",
+   "body": "What does the datasheet say?\n\nEdit: If the datasheet allows it and the app does then it’s fine; if the datasheet doesn’t but the app does then the app is bugged and you may not.\n\nThe answer is simple: what does the datasheet say."
+  },
+  {
+   "id": "pe6r8qn",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe6r8qn/?context=3#pe6r8qn",
+   "body": "For the Emperors Children Defiler does the conditions for this rule below have to be checked at each weapon group stage or is it just checked at the start and will apply to all attacks?\n\nScenario I'm thinking is where the first set of weapons take the defending unit below half-strength but there are still more weapon groups to roll.\nIs 'makes an attack' the act of starting a target selection or is it the act of resolving attacks?\n\nRevel in Desecration: Each time this model makes an attack that targets an enemy unit that is not below Half-strength, add 1 to the Hit roll."
+  },
+  {
+   "id": "pe6wwp8",
+   "parent": "pe6r8qn",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe6wwp8/?context=3#pe6wwp8",
+   "body": "It will be checked at targeting then locked it.\n\nMaking an Attack comprises the full sequence of steps of 04.01 Select Weapons, 04.02 Select Targets and 04.03 Resolve Attacks (which itself has sub stages for gathering dice, hit rolls etc)\n\n04.00 MAKING ATTACKS\nDuring the battle, your units will shoot at and fight the enemy, making attacks with their weapons each time they do so. This section explains how to make attacks with your models\nEach time a unit shoots or fights, the active player follows these steps:\nSELECT WEAPONS (04.01)\nSELECT TARGETS (04.02)\nRESOLVE ATTACKS (04.03)\n\nThe ability states that each time you undertake this process (make an attack) that if the target (determined at 04.02 in that process) meets the condition set then you get the effect.\n\nAs you will do all of 04.01 then do all of 04.02 (select targets) the check will be done here for all of the attacks before you move on to 04.03 where you resolve them."
+  },
+  {
+   "id": "pe6yrpn",
+   "parent": "pe6wwp8",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe6yrpn/?context=3#pe6yrpn",
+   "body": "Thanks"
+  },
+  {
+   "id": "pe7kh3f",
+   "parent": "",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe7kh3f/?context=3#pe7kh3f",
+   "body": "When you have 2 characters in a unit, leader and support, after the body guard grouping dies can the leader take wounds before the support?\n\nI.e. kaius and calgar. Can you take wounds on calgar to use that 4+ fnp or do you have to take wounds on kaius before calgar, and the 4+ fnp only good for spill over damage?"
+  },
+  {
+   "id": "pe7n6fa",
+   "parent": "pe7kh3f",
+   "score": 7,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe7n6fa/?context=3#pe7n6fa",
+   "body": "When making allocation groups each character model forms its own group. You must then set the order of groups as:\n\n- Damaged non-character groups\n\n\nUn-Damaged non-character groups\n\nDamaged character groups\n\nUn-Damaged character groups\n\nAssuming your Leader and Support are character models they’ll each be a separate allocation group and assuming neither has been damaged already will be in the last item in that list - you can decide in which order they’d be in.\n\nIf one were damaged it’d have to be first in the order before the un-damaged group"
+  },
+  {
+   "id": "pe0gzv9",
+   "parent": "",
+   "score": 0,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0gzv9/?context=3#pe0gzv9",
+   "body": "Are the map layouts only available in War Journal in the app?\nI’m looking to print out some of the layouts, but I can’t find them online. Thanks in advance"
+  },
+  {
+   "id": "pe0iofy",
+   "parent": "",
+   "score": 0,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0iofy/?context=3#pe0iofy",
+   "body": "Are the map layouts only available in War Journal in the app?\nI’m looking to print out some of the layouts, but I can’t find them online. Thanks in advance"
+  },
+  {
+   "id": "pe0ozyk",
+   "parent": "pe0iofy",
+   "score": 5,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe0ozyk/?context=3#pe0ozyk",
+   "body": "The Tournament Companion on the Warhammer Community downloads page has what you are looking for"
+  },
+  {
+   "id": "pe11d4s",
+   "parent": "pe0ozyk",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe11d4s/?context=3#pe11d4s",
+   "body": "Thanks!🙏"
+  },
+  {
+   "id": "pe28dmd",
+   "parent": "pe0iofy",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe28dmd/?context=3#pe28dmd",
+   "body": "You can also check the Event Companion in the app as well. If you go to Reference and search for your disposition, some of the results will be X v Y Layout A/B/C"
+  },
+  {
+   "id": "pe13bqg",
+   "parent": "",
+   "score": 0,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe13bqg/?context=3#pe13bqg",
+   "body": "[deleted]"
+  },
+  {
+   "id": "pe1mide",
+   "parent": "pe13bqg",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe1mide/?context=3#pe1mide",
+   "body": "Providing the full wording, or at least what faction has this stratagem, is recommended if you have a question about the rule."
+  },
+  {
+   "id": "pe17k5k",
+   "parent": "",
+   "score": 0,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe17k5k/?context=3#pe17k5k",
+   "body": "[deleted]"
+  },
+  {
+   "id": "pe1fw89",
+   "parent": "pe17k5k",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pe1fw89/?context=3#pe1fw89",
+   "body": "Without seeing the specific abilities it appears they were misplaying it unless those abilities specified they could embark despite having been set up earlier that turn.\n\nHere is the rule which says that in order to be able to embark the rule used to embark must specifically modify the restrictions usually in place:\n\n18.02.01 ABLE TO EMBARK\nA unit is able to embark if it meets all of the conditions in Embarking (18.02). Note that one or more of these conditions may be modified by other rules, in which case a unit must satisfy those modified conditions in addition to any unmodified conditions to be able to embark.\n\nThe restrictions noted in 18.02 as mentioned:\n\nEach model in that unit is within 3\" of that TRANSPORT.\n\nThat unit was not set up on the battlefield this turn.\n\nThat unit is eligible to embark within that TRANSPORT, as described on that TRANSPORT’s datasheet.\n\nThat TRANSPORT has sufficient remaining transport capacity for each model in that unit."
+  },
+  {
+   "id": "pesq8hg",
+   "parent": "",
+   "score": -2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pesq8hg/?context=3#pesq8hg",
+   "body": "The SM army rule says, unless otherwise stated, you can only select each combat doctrine once per battle. I was told you need a rule to remove a restriction for it to work. Like, your unit is still eligible to charge even if it advanced this turn. This removes the restriction that you cannot charge after advancing.\n\nAssault Mastery says you can select the assault doctrine one additional time per battle, removing the restriction that you can only select each combat doctrine once per battle.\n\nStrategic acumen doesnt say you can select one combat doctrine which you already selected during the battle, or one additional time, like assault mastery. So why does it work, if it doesnt remove the restriction that you can only select each doctrine once per battle ? Or doesnt it work to select a doctrine which you already selected before ?\n\nStrategic Acumen\n\nIn your command phase, you can use this ability. If you do, select one combat doctrine to be active for this unit unit the start of your next command phase."
+  },
+  {
+   "id": "pevvg23",
+   "parent": "pesq8hg",
+   "score": 7,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pevvg23/?context=3#pevvg23",
+   "body": "You're misunderstanding the actual restriction. A unit can be in a doctrine any number of times for various reasons with no limit.\nWhat's restricted is combat doctrines ability of simply stating a doctrine in your command phase and have it be active for your whole army. That is limited to once per doctrine.\nStrategic acumen doesn't allow you to do that. It simply puts a single unit in a doctrine, which doesn't interact with the restriction at all."
+  },
+  {
+   "id": "peztxfp",
+   "parent": "pevvg23",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/peztxfp/?context=3#peztxfp",
+   "body": "Yes, any unit can be in a doctrine any number of times. But, the only way to put it into a doctrine is to select it. Unless it has another rule which says doctrine X, Y, Z is active for them all the time, like girlyman.\n\nStrategic acumen literally tells me to select a doctrine in the command phase. And that is limited to once per battle."
+  },
+  {
+   "id": "pesr279",
+   "parent": "pesq8hg",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pesr279/?context=3#pesr279",
+   "body": "I don't think restrictions require explicit rules to override those specific restrictions each time. The reason Assault Mastery has the restriction is because it applies to the entire army the same way Combat Doctrines apply to the entire army whereas Strategic Acumen essentially replaces whichever Doctrine was selected for your entire army with a new one without any prior restriction (e.g. you can select a Doctrine for Strategic Acumen that was already selected for Combat Doctrines) because it applies outside of the Combat Doctrines restriction.\n\nAnd back to the restrictions bit. While its not necessarily written, the rules in the game function as:\n\nCore Rules Cans < Core Rules Cannots < Army Rules Cans < Army Rules Cannots."
+  },
+  {
+   "id": "pess6ge",
+   "parent": "pesr279",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pess6ge/?context=3#pess6ge",
+   "body": "The rules do require explicit statement of removing restrictions. The classic example is Ingress Move; it states:\n\n“Unless otherwise stated, until the start of the next Charge phase, your unit is not eligible to make any other type of move.”\n\nLet’s say we have a rule that states “…may make a <move type>” This isn’t sufficient to get around the Ingress Ingress move restriction as if it were then the restriction would never prevent any moves being made ever.\n\nWe have numerous examples of rules which state “can do X” and then some continue with “even if it has done Y” or similar which are where they are “stating otherwise” for those restrictions."
+  },
+  {
+   "id": "pesscih",
+   "parent": "pess6ge",
+   "score": 3,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pesscih/?context=3#pesscih",
+   "body": "Ah I stand corrected, thanks. You're definitely right on that."
+  },
+  {
+   "id": "pet0d33",
+   "parent": "pess6ge",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pet0d33/?context=3#pet0d33",
+   "body": "Okay strictly RAW, what does this mean if you use for example Logan Grimnar:\n\n\"At the start of each phase, the assault doctrine, devastator doctrine and tactical doctrine are active for this unit\"\n\nSo do i understand you correctly that this would mean that for this UNIT it works and it will always have all 3 doctrines active. But after t1 i could never choose a doctrine for my whole army because all of them have been used already?\n\nOr does this case doesn't matter because i don't select a combat doctrine for Logan?"
+  },
+  {
+   "id": "pet6bfh",
+   "parent": "pet0d33",
+   "score": 2,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pet6bfh/?context=3#pet6bfh",
+   "body": "Yep correct; the restriction is:\n\n“You can only select each combat doctrineonce per battle.”\n\nAs you aren’t selecting anything with Logan there’s no interaction with the restriction."
+  },
+  {
+   "id": "petazz6",
+   "parent": "pess6ge",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/petazz6/?context=3#petazz6",
+   "body": "Are you aware of any Tournament ruling regarding this?\n\nI agree with your interpretation of RAW but I don't know anyone who actually plays it that way, ant also I assume that this is not RAI by GW."
+  },
+  {
+   "id": "petcbpi",
+   "parent": "petazz6",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/petcbpi/?context=3#petcbpi",
+   "body": "Yes, all of them have ruled you can’t use the various factions “Fire and Fade” abilities after an Ingress Move due to “can make a normal move” being insufficient to counts as “unless otherwise stated” and get around the Ingress Move restriction - it’s why I specifically chose that as the example as it’s common and known to most."
+  },
+  {
+   "id": "petd65o",
+   "parent": "petcbpi",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/petd65o/?context=3#petd65o",
+   "body": "Ah sorry no for that one the ruling is clear.\n\nI was asking about the Combat Doctrines / Strategic acumen ability topic"
+  },
+  {
+   "id": "petkp9g",
+   "parent": "petd65o",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/petkp9g/?context=3#petkp9g",
+   "body": "Oh my bad; I’m not aware any that have ruled on it specifically"
+  },
+  {
+   "id": "pesrns4",
+   "parent": "pesq8hg",
+   "score": 0,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pesrns4/?context=3#pesrns4",
+   "body": "It appears it doesn’t work as you said as there is nothing permitting it to be selected an additional time whereas there is a restriction saying it may not.\n\nWho is saying it does work that way and what was their logic in determining that?"
+  },
+  {
+   "id": "pesw1jy",
+   "parent": "pesrns4",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pesw1jy/?context=3#pesw1jy",
+   "body": "I was under the impression that the intention is that you can use doctrines for the captains unit if you already used it before.\n\nIf it doesnt remove the restriction, whats the point of it ? It would limit an army wide combat doctrine on one unit, and then that doctrine has been used, and cannot be used anymore."
+  },
+  {
+   "id": "pevmtwj",
+   "parent": "pesw1jy",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pevmtwj/?context=3#pevmtwj",
+   "body": "It appears poorly worded as the RAW doesn’t meet the expected intent."
+  },
+  {
+   "id": "pevs75c",
+   "parent": "pevmtwj",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pevs75c/?context=3#pevs75c",
+   "body": "Question is, is the expected intend what the rule writer intended ?"
+  },
+  {
+   "id": "pevzmg5",
+   "parent": "pevs75c",
+   "score": 1,
+   "href": "/r/WarhammerCompetitive/comments/1wy7tog/weekly_question_thread_rules_comp_qs/pevzmg5/?context=3#pevzmg5",
+   "body": "We’ll have to wait and see if they advise us."
+  }
+ ]
+}

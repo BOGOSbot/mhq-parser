@@ -1,0 +1,415 @@
+{
+ "version": 1,
+ "note": "Real questions from r/WarhammerCompetitive weekly threads posted after 11th edition launched (June 2026). Validates retrieval on real phrasing rather than authored questions.",
+ "source": "r/WarhammerCompetitive weekly question threads",
+ "questions": [
+  {
+   "q": "Does armor of contempt work on a 2+ save in 11th? Or is it still the rule where you can’t keep a 2+?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "This is probably another \"ask your TO\" question, but the topic came in mind with the kneeling lancer thread. How much height difference is generally acceptable for infantry model to have compared to it's vanilla counterpart, and does it really matter in actual tabletop games when it comes to basic infantry? I have ruststalkers and hastarii that due to reposing and being built out of spare parts respectably are somewhat taller than their normal version if minicompare is to be believed,",
+   "score": 2,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "How many units is good to leave specifically to Rapid Ingress? You can't Rapid Ingress more than 2 times normally so is it good to run two and plan to always use the CP or have two with one as a backup normal ingress move? Or is it better to just have one? I'm in daemons so everything is deep strike.",
+   "score": 2,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "I have 3 units who charged and 3 units who are engaged but didn’t charge. My opponent has no Fights First units. Am I right in assuming my 3x Fights First units who charged fight, then my opponent starts next with his non-fights first? If so, if I interrupt after being charged is there a risk my opponent will be able to fight next instead of me after interrupting?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Does the Tyrannofex have the FRAME keyword? Wahapedia says yes. Listforge says no. I don't have access to the codex in the GW app. What's the general consensus?",
+   "score": 2,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Can Deathwatch Terminators take a Cyclone Missile Launcher, a Thunder Hammer, and a Storm Shield on one model? The datasheet doesn't say you can't replace your Storm Bolter with a Cyclone Missile Launcher and a Storm Bolter, then replace your Storm Bolter and Power Fist with a Thunder Hammer and Storm Shield. However, the app give you an error if you try to do that in the army builder.",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Questions on enhancements and upgrades - 1) Can a unit with a character (or multiple) have both an enhancement and an upgrade? Assuming no epic hero. 2) Limits on these? Enhancement is 1x per army, upgrades can be up to 3x? Or something like that. (Btw where are the references for these things?) 3) Pretty minor, but does one need to properly 'model' on their model a particular enhancement? For example, the \"Imperium's Sword\" going on some minor character who doesn't ordinarily have an actual sword.",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "This is a question about the impulsor. When using firing deck, does the weapons still benefit from the units abilities? And if given the new orbital comms array, can I use scout if the units inside do not have it? I know it says for dedicated transports, if every unit inside has scouts, then the transport can make a scout move, but doesn't mention if the dedicated transport has scout and the unit inside doesnt.",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "How long does the scan from in cursors last? Is it just for one attacking unit, for the whole phase, or (gasp) forever? (I know it’s not intended to be forever I really just want to know if we have any clarity on if it is one attacking unit or the whole phase).",
+   "score": 2,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "The SM army rule says, unless otherwise stated, you can only select each combat doctrine once per battle. I was told you need a rule to remove a restriction for it to work. Like, your unit is still eligible to charge even if it advanced this turn. This removes the restriction that you cannot charge after advancing. Assault Mastery says you can select the assault doctrine one additional time per battle, removing the restriction that you can only select each combat doctrine once per battle. Strategic acumen doesnt say you can select one combat doctrine which you already selected during the battle, or one additional time, like assault mastery. So why does it work, if it doesnt remove the restriction that you can only select each doctrine once per battle ? Or doesnt it work to select a doctrine which you already selected before ? Strategic Acumen In your command phase, you can use this ability. If you do, select one combat doctrine to be active for this unit unit the start of your next command phase.",
+   "score": -2,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Question about timings for Space Marine Eliminators led by a Phobos Librarian. The Eliminators Special-Issue Optics and Ammunition says \"In your Shooting phase, when this unit is selected to shoot, you can select one of the following\" and one of those options is \"Select one enemy unit within 24\" of this unit. That enemy unit has +6\" detection range until this unit has shot.\" Does not require it be visible. The Phobos Librarian's Soul Sight power says \"In your Shooting phase, if this unit is not battle-shocked, you can make a psychic roll for this unit \\[...\\] Select one Visible enemy unit. Ranged attacks that target that enemy unit have Ignores Cover.\" Can these two be used together, the unit being selected to shoot, choosing to increase detection range and then using the Librarian's Soul Sight to also strip cover from the now-visible unit, or can Soul Sight not be used until after the shooting is resolved?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "In the mission of Take and Hold - Purge and Secure, the player scores VP for killing a unit with a friendly unit that was on an objective. When does the scoring unit need to be on an objective? There doesn't seem to be a timing. Can the T&amp;H player charge and kill a unit and then consolidate onto an objective to score?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Question on Apothecary reviving models: Say I have Company Heroes + Captain + Apothecary. Let's say the opponent kills the 4 dudes and the Captain, and I am left with the Apothecary... can I then revive the Captain to this unit?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Can Grey Knights' Grand Master \"Warrior Strategist\" ability be used more than once in the same battle round if you have two or more units with one Grand Masters? Why? &gt;**Warrior Strategist:** Once per battle round, one model from your army with this ability can use it when its unit is targeted with a Stratagem. If it does, reduce the CP cost of that use of that Stratagem by 1CP. I know some people say you can but is not clear to me why that would be.",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "New Allarus captain states: in your movement phase when unengaged and didnt move you can use this ability. \"If you do, place this unit in strategic reserves and this unit must make an ingress move this phase.\" This ability is not locked to 2nd BR onwards, but also not explicitly says that it allows the unit to make an ingress move in the first BR. Can he or can he not ingress first turn using that ability?",
+   "score": 2,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "If I select my unit with multiple weapon profiles (declare that all weapons into this unit) shooting some Khorne bezerkers, with the first weapon they kill 1 - does the blood surge move activate now, or do I get to finish shooting with my other weapons? If I shoot a transport with a unit with multiple weapon profiles and declare all weapons into this unit, the first weapon destroys the transport, do the rest of the guns go into the disembarked squad or are lost? At what step does the ghostkeel damage blank ability trigger? Is it after armour saves, where the damage is allocated and you can blank up to two attacks? Thanks",
+   "score": 2,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "When I add a Chaplain, which has the TACTICUS keyword, to Death Watch Veterans, which they don't have, can I use stratagems or detachment rules on that unit?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "If i rapid ingress my tyrannocyte with hive guard it it can i then immediately overwatch with them as the ingress targets the pod and the overwatch targets them?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Where is clearly stated that a support unit cannot act by itself and must me attached to a bodyguard unit?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "In my app next to some of the Hunter profiles it says “HUNTER: null”. What does null mean in this instance?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "At what stage of the resolving attacks step is random damage resolved and how does this interact with abilities that let you set damage to zero when an attack is allocated to the model? I am because a successful tournament player, on a YouTube video, stated that a TFex can set damage to zero after the damage roll and I think this is incorrect.",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "What is the order of precedence for the codex, the app and the faction packs? My captain in phobos armour has assault on the instigator bold carbine in the codex but not in the app. I can’t see a space marine faq/errata. My tormentors are toughness 4 in the app but 5 in the faction pack.",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "If I have a redeploy ability, like on the C’tan shard of the Deceiver, can I redeploy a unit that I started in reserves onto the battlefield? Or can I only redeploy units I put on the battlefield at the start?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Hello I wanted to ask the community how are you supposed to interpret rules like this one in the Orks Taktikal Brigade \"Kill Kommanda: **BIG MEK/WARBOSS INFANTRY** model only. While this unit is part of an attached unit, this model has: * **Infiltrators**. * **Stealth**.\" From what I understand should be: Big Mek + Infantry or Warboss + Infantry to use it, meaning a model like Big Mek Dakkarig is a Big Mek but not Infantry so should not apply? Thanks in advance",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "When you have 2 characters in a unit, leader and support, after the body guard grouping dies can the leader take wounds before the support? I.e. kaius and calgar. Can you take wounds on calgar to use that 4+ fnp or do you have to take wounds on kaius before calgar, and the 4+ fnp only good for spill over damage?",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "For the Emperors Children Defiler does the conditions for this rule below have to be checked at each weapon group stage or is it just checked at the start and will apply to all attacks? Scenario I'm thinking is where the first set of weapons take the defending unit below half-strength but there are still more weapon groups to roll. Is 'makes an attack' the act of starting a target selection or is it the act of resolving attacks? Revel in Desecration: Each time this model makes an attack that targets an enemy unit that is not below Half-strength, add 1 to the Hit roll.",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Can someone explain to me how the Ork Kommando rule 'Nowhere to hide,' works? 'This unit's attacks that target a hidden unit have +1 to hit.' So, a unit can only target a hidden unit if it is detected? In this case, the unit would have to be hidden to anything else in my army. So as long as 'something' has not detected them, the rule works?",
+   "score": 2,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Is it legal to take 2 plasma pistols (sergeant + 1) with three other vanguard vets with combat shields? It doesnt seem likely to me but the warhammer app says it is, though obviously that app is filled with bugs.",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "When using the “Infested War Zone” stratagem in the “Runt Swarm” detachment. Does the attached character come back with the unit? “identical to your destroyed unit” is the hang up my play group is having https://preview.redd.it/k5hcbaccnoth1.jpeg?width=750&amp;format=pjpg&amp;auto=webp&amp;s=a92715db8bb8cf4f76d948f77592fd90cf8956ff",
+   "score": 1,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Can Marneus Calgar join Deathwatch Terminators? If you're playing Marines and take the Deathwatch Support detachment, is Marneus able to attach to them? I could see this going either way. In the MFM he has 10,000 units listed he can attach to, and Deathwatch Terminators are not on that list. If the units he can attach to didn't already have typos in it that might be a good indicator he cannot. But he is a terminator leader and in the past usually specialized units would have a \"if a leader can attach to X similar unit (in this case if they can lead normal terminators for example) then they can lead this one.\" Which would make sense as the case here. I lean towards no unless they update it in the MFM, but wanted to check here if there is something I am missing.",
+   "score": 3,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "I have a question on the company heroes' Raise the banner ability. It says \"At the end of your movement phase, if this unit is controlling an objective, that objective is secured.\" Normally there's a restriction on things like this to mean it only applies to one thing, but this doesn't seem to mention it. So does this mean I can string this unit out over two objectives and sticky both of them at the end of the movement phase?",
+   "score": 2,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Are the map layouts only available in War Journal in the app? I’m looking to print out some of the layouts, but I can’t find them online. Thanks in advance",
+   "score": 0,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Are the map layouts only available in War Journal in the app? I’m looking to print out some of the layouts, but I can’t find them online. Thanks in advance",
+   "score": 0,
+   "thread": "1wy7tog",
+   "date": "2026-10-05"
+  },
+  {
+   "q": "Aura abilities timing question: Unit A provides an aura buff to unit B. The attacker has two different ranged weapons so splits fire. First weapon group into A and the other weapon group into B. The first weapon group removes all of unit A from the board. Does unit B still get the buffs from the aura when resolved the next weapon group?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "1) if its bottom of turn 5 and it's my turn, do I get max. Points for display of might? The card says the max point version only scores at the end of my opponents turn, but they're not getting another turn, so do I get max by default in my turn? 2) if I'm on an objective after fighting and killing what I'm engaged with and there's no other enemy within 2, can I use my 3inch consolidate move to reposition myself on the objective? I don't see anything that says I can't make an objective consolidate move if I'm already in the objective.",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Am I missing something with the central objective measurement on PtF vs PtF Layout C? The app shows a 26\" measurement to the corner of the central objective, but in practice that would put it well into my opponent's deployment zone as the middle of the battlefield is 22\" from the edge. Is this just an error in the app or am I missing something? [Picture of the layout with the specfic area in question highlighted](https://imgur.com/a/qM9kwIY)",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "2 questions about scoring that came up during yesterdays game: - when playing the Punishment primary mission for Purge the foe: can you score the 5 points for killing a condemned unit twice per battle round (once in my turn, once in opponents turn)? The card says \"at the end of a turn\" without any further limitations. - a weird situation came up where my secondary score for a battleround had almost reached the 15 point cap during my opponents turn (opponent went first). If I score a card, say Assassination, can I just decide not to cash it in that turn and keep it for the next battle round to not lose out?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "The impulsor has an ability that lets a unit disembark after advancing, doing a shock disembark move. If an impulsor advances, and the embarked unit disembarks, can they still shoot if they dont have assault weapons ? Shock disembark move has no mention of any restrictions that the disembarked unit cannot shoot. I dont see anything against it ? Rapid Disembarkation: In your movement phase, when this unit ends an advance move, units embarked within this unit can make a shock disembark move (18.07).",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Any word if/when the BA/SW/BT/DA faction packs will release on Warcom?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "On Line of Sight - had a big bust up with a friend over whether my swooping hawks could see his custodes. My hawks were in the blue circle positions and I could draw direct LOS from part of their models for each individual one (a wing - note these models are quite tall, a gun tip, a head) onto one of his custodes inside the terrain piece (main body, an axe etc). He argued I couldn't see them because some of the the lines (circled in green) cut over the shorter part of the wall. He argued this wall is infinite height, I had to move my models closer so I can draw LOS without crossing any part of the wall. Who was right? My local group has conflicting answers... Thank you https://preview.redd.it/fowzrgl2hbth1.jpeg?width=1344&amp;format=pjpg&amp;auto=webp&amp;s=461018df86b20fd1b94770ec68ac9ea16221c711",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "A local game store still has a Horus Heresy Saturnine box available, and it's gone on sale. Yes, I know every conversation around proxies and counts-as comes down to \"ask your TO\", but does anyone here have any experience with using the models from Saturnine as proxies? I play Dark Angels and my girlfriend plays Iron Warriors.",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Question regarding fnp: So, with the new custodes codex, I want to try might of moritio and put the augury uplink on my telemon, the one that gives fnp 5+. Now my question is, does it replace the standard fnp that custodes get against mortal wounds? Or is it like added on top. Say for example I get a mortal wound, can I try to save it twice, once with the augury uplink and once with aegis of the emperor, or do I only get a single shot at saving it, thanks!",
+   "score": 2,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Mechanised Assault ‘Vox Relay’ Strat - when I use this strategem on an officer in a transport, can I use the vox caster in the attached squad in the transport to get the CP back on a 5+ ? My reading is yes, but it wouldn’t get the +1 to the roll for being within 6” of an officer (because as it in the transport it cannot be within a distance of anything)",
+   "score": 2,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "For rules which enable units to ingress turn 1 (ie chogorian huntmaster, the terminator corporeum reliquary), does this enable turn 1 rapid ingress? I was fairly certain no, but I keep seeing people arguing for it.",
+   "score": 2,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "How does Spearpoint War Leader work if I give it to a Bladeguard Ancient who I have in a vehicle with his squad does the transport get scouts 6”? I saw a post about putting them in an impulsor with that enhancement and was confused. Thank you",
+   "score": 3,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Scorn the Witch stratagem (World Eaters Vessels of Wrath detachment) targets a World Eaters Character unit when it suffers a mortal wound, granting a 4+ Feel No Pain against mortal wounds. Because the rules text does not specify a duration (e.g., \"until the end of the phase\"), does the 4+ FNP apply only to that specific attack/instance of mortal wounds, or does it last for the remainder of that phase? I would assume just those attacks and not the entire phase?",
+   "score": 2,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Can I use the chogorian huntmaster enhancement from Spearpoint task force to rapid ingress on my opponents first turn?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Looking at the new Taticus Firestorm Force detachment in the marine codex, there's a strat called \"For The Emperor!\". Exact wording: When: command phase Target: one friendly tacticus unit within range of an objective Effect: Your unit has +1 OC until the end of the turn Would this give each model +1 OC or just the unit as it says \"the unit\" - essentially if you had 5 intersesors on an objective would you be going from having 10 OC (2 OC × 5) to 15 OC (3 OC × 5) OR would you just add one making it 11 OC ? If it's + 1 OC per model it seems very useful, if it's just + 1 to the overall unit it seems very very situational imo.",
+   "score": 2,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "How does the wrath of the first khan ability work in Spearpoint task force. Do you make a normal move or a six inch move, and do you have to have fought something earlier in the phase before you are allowed to make that normal move?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "The Avatar of Khaine has an ability where when an attack is allocated to it, the Damage characteristic is halved. If I attack it with a weapon that deals 3 damage, how much does it actually deal? (and is there a general rule for rounding up vs. down?)",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "If I have a dark angel terminator unit in wrath of the rock which gives -1 to wound if enemy strength is higher than my toughness and led by an ancient that gives his unit the same buff, is the unit still -1 to wound against Lance or any other ability giving +1 to wound?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Was there a Guard player running a lot of indirect fire and winning? I’m trying to understand why most model went up in points when taking 3. Sounds like they were all bad, now they are just worst.",
+   "score": 2,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "For CP discount abilities like the Necron Overlord's My Will be Done, does the discount apply if targeting another specific model within that unit, such as the support? Ability: \"one unit from your army with this ability can use it when its unit is targeted with a Stratagem\" Example stratagem, Solar Flare from Canoptek Court: \"TARGET: One CRYPTEK model from your army.\"",
+   "score": 0,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "For the new TRANSHUMAN STRATEGIST ability on Space Marine Captains/Chapter Masters, does it work while they're not on the battlefield since it doesn't specify they have to be? We know abilities can function while the model with them is in a Transport or in reserves, i.e. the old Captains ability to reduce CP costs could let his unit Rapid Ingress for 0 CP. I just want to double check before I start using it either way Here's the rules text: \"At the start of the battle round, if a model with this ability is your WARLORD, gain 1 CP.\"",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "**FIRESTRIKE TURRET 11TH EDITION QUESTION:** **If I have three units of two Firestrike turrets each, can all three units use Overwatch in the phase?** Sorry that all I have is this crappy leaked page scan for the new rules (for now), but it says once per phase PER UNIT for Sentinel Protocols. It also says that use does not prevent any uses of that stratagem on other units this phase. And yes. . .I'm the guy who was bringing 6 Firestrikes to tournaments in 10th Edition. That's me. https://preview.redd.it/ugt4khswdmsh1.jpeg?width=514&amp;format=pjpg&amp;auto=webp&amp;s=9ce1d8cb8ac40ce469d3c5b683a1e13163519621",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Could someone point me to where the rules say weapons being fired from the same unit all go at the same time so blast weapons still get the bonus even if the unit being shot loses models from other weapons? I've been running it like that but was challenged on it and realized I could not point to where I got that from.",
+   "score": 2,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "When using Crazed Rampage (Fights on Death) stratagem in Orks Dread Mob, do you need to declare it and pay 1CP as soon as the enemy targets your walker or can you wait to see if it is destroyed first?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "2 questions! 1. Rule 20.04 states that a unit cannot make a move after deepstriking unless otherwise specified. The phobos captains in the SM codex (Amd many other units) have an ability to move shoot move. Can you do that out of deepstrike? It is specifically stating that you can move, therefore the otherwise clause is fixed. It feels like 20.04 is ment to stop making a normal/advance move and doesnt include move shoot move abilities. 2. Specifically in the space marine codex, the captains have a rule that allow you to put them into any doctrine. Lieutenants have the ability to copy it. My question is, can a captain in reserves still get a doctrine? They should be able to, correct? They could target themselves with their free CP strat last edition? And if they do can Lieutenants still copy it? It never says the captain has to be on the battlefield for the Lieutenant to copy it. Thank you",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "How do the *Suffering and Sacrifice* (Adepta Sororitas) and *Hungry for Combat* (Chaos Knights) Stratagems interact if they are declared simultaneously?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Can a vehicle fight through a dense wall? Obviously can’t move through it (fly or other rule aside) but can’t see any reason it can’t fight through as long as it’s in the 2” engagement range",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "in the new Space Marine Codex, the librarian \"Veil of Time\" ability triggers \"when this unit is selected to make an advance move\" (so this would mean before you roll your advance dice. But the text further along of the ability says \"this unit can change that advance roll to a 6\", a roll that has not happenned yet. So my question is: are you allowed to roll your advance and then trigger the psychic power to change it to a 6 or do you trigger it before and don't even roll it?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Wording of the Techmarine's Lone Operative ability in the new codex has changed from 'this *model* has Lone Operative' to 'this *unit* has Lone Operative*'. Is the implication here that leading a unit would grant that entire unit Lone Operative?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "When i emergency disembark from transport because it was destroyed and i dont have space in 3\" or 6\" to get all my models out because other models from my army and models from opponent are there, can i disembark in engagement range (so i can disembark more models) ? Saw this on a stream and the unit who disembarked had to remove some models because of not enough space. Thanks!",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "question, if you have more than 3 5-points secondary on hand and on one turn you know you're going to score more than 15p on them, can you select which ones you complete and which not? Assuming they are non-action secondaries but things like engage, bring, no pris and outflank for example",
+   "score": 2,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Do units in reserves and transports perform battle shock tests during Shadows in the warp? Normal battle shock? Does an aura character (Gaz for example) who dies ,but fights on death, still emit its aura? When can 3rd parties shoot into melee combat? Only when its 2 monsters or vehicule?",
+   "score": 2,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "Ongoing combats in your turn. If you don’t charge and there are no fights first units, ongoing combats start with the player who’s turn it is. Is that right? As I understand - Active player - I don’t have any fights first Opponent - I don’t have any fights first Active Player - let’s move to ongoing combats, I chose first unit",
+   "score": 4,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "When resolving Scout moves, do you do all your Scouts and then your opponent does theirs or is it do 1 and then alternate?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  },
+  {
+   "q": "I just want to confirm something. Plunging Fire it sais one of the conditions must apply. One is being on a terrain feature. The other is being towering. Only the towering condition has the 12\" range restriction as written. So, plunging fire from a terrain feature *does not* have the same 12\" restriction that a towering unit has? I would very much appreciate a clear yes/no answer to this. Does the 12\" restriction only apply to towering models? Can a unit on a terrain feature use this beyond 12\"?",
+   "score": 1,
+   "thread": "1wsducd",
+   "date": "2026-09-28"
+  }
+ ]
+}
