@@ -5,7 +5,7 @@ import {
   FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, JEV_ENDPOINT, JEV_MODEL, MODEL, MODEL_ENDPOINT, MODEL_REASONING, RULES_EDITION, RULES_EDITION_LABEL,
   anchorFor, credential, credentialFromFile, credentials, credentialsPath, editionOf, fastKeyName, keyState, modelKeyName,
   RulesError,
-} from '../rules.mjs';
+} from '../src/rules.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {

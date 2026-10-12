@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { parseListText, listStartIndexes, isUnrecognizedFormat, playerWarnings, getMeta, totals, armyBudget, nameFromFile } from '../parse.mjs';
+import { parseListText, listStartIndexes, isUnrecognizedFormat, playerWarnings, getMeta, totals, armyBudget, nameFromFile } from '../src/parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {

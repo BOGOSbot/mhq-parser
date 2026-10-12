@@ -4,10 +4,10 @@
  * The rules corpus: Wahapedia scraped into citable sections, and pushed into
  * the vector index the /rules page searches.
  *
- *   node rules-corpus.mjs --scrape            fetch every source, write the corpus
- *   node rules-corpus.mjs --ingest            embed + upsert what changed
- *   node rules-corpus.mjs --stats             what is on disk and in the index
- *   node rules-corpus.mjs --source faqs       restrict --scrape/--ingest to one
+ *   node src/rules-corpus.mjs --scrape            fetch every source, write the corpus
+ *   node src/rules-corpus.mjs --ingest            embed + upsert what changed
+ *   node src/rules-corpus.mjs --stats             what is on disk and in the index
+ *   node src/rules-corpus.mjs --source faqs       restrict --scrape/--ingest to one
  *
  * Why a corpus at all. The page used to answer by searching Wahapedia per
  * question: a query, a fetch, a lexical shortlist, then a model. It worked when
@@ -41,7 +41,7 @@ import { fileURLToPath } from 'url';
 import { FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_ENDPOINT, MODEL, MODEL_REASONING, MODEL_TIMEOUT_MS, JEV_ENDPOINT, JEV_MODEL, anchorFor, credential } from './rules.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const CORPUS_DIR = process.env.RULES_CORPUS_DIR || path.join(__dirname, 'rules-corpus');
+export const CORPUS_DIR = process.env.RULES_CORPUS_DIR || path.join(__dirname, '..', 'workspace', 'rules-corpus');
 const SESSION_ID = crypto.randomUUID();
 
 const UA = 'Mozilla/5.0 (compatible; mhq-rules/1)';
@@ -2410,7 +2410,7 @@ async function main() {
     }
     return;
   }
-  console.log('usage: node rules-corpus.mjs --scrape | --ingest | --stats [--source <name>]');
+  console.log('usage: node src/rules-corpus.mjs --scrape | --ingest | --stats [--source <name>]');
 }
 
 if (process.argv[1] && process.argv[1].endsWith('rules-corpus.mjs')) {

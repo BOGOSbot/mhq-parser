@@ -16,8 +16,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { credential, fastCredential, modelCredential, FAST_MODEL, MODEL } from '../rules.mjs';
-import { compileFindings, findingFor, frenchTerms, judgeCoverage, readAllCorpus, retrieveDual } from '../rules-corpus.mjs';
+import { credential, fastCredential, modelCredential, FAST_MODEL, MODEL } from '../src/rules.mjs';
+import { compileFindings, findingFor, frenchTerms, judgeCoverage, readAllCorpus, retrieveDual } from '../src/rules-corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const only = (() => { const i = process.argv.indexOf('--id'); return i === -1 ? null : process.argv[i + 1]; })();

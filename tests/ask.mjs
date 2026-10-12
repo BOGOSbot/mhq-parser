@@ -11,8 +11,8 @@
  * product, and the reader can always go and read the rule. The judge is a
  * signal about the findings, not a replacement for them.
  */
-import { credential, fastCredential, modelCredential, FAST_MODEL, MODEL } from '../rules.mjs';
-import { compileFindings, findingFor, judgeCoverage, readAllCorpus, retrieveDual } from '../rules-corpus.mjs';
+import { credential, fastCredential, modelCredential, FAST_MODEL, MODEL } from '../src/rules.mjs';
+import { compileFindings, findingFor, judgeCoverage, readAllCorpus, retrieveDual } from '../src/rules-corpus.mjs';
 
 const question = process.argv.slice(2).filter(a => a.indexOf('--') !== 0).join(' ').trim();
 if (!question) { console.error('usage: node tests/ask.mjs "<question>"'); process.exit(1); }

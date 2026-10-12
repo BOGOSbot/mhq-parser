@@ -1,8 +1,9 @@
 # /rules — handoff (2026-10-12)
 
-Everything below is live in the working tree; nothing is committed. The server is
-running detached on 127.0.0.1:8787 (pid 1596 at handoff, logs `server.log` /
-`server.err.log`). `GET /health` reports both inference routes.
+Everything below is on the `rules-page` branch, which carries the source layout
+(sources in `src/`, docs in `docs/`, working data in `workspace/`). The server is
+running detached on 127.0.0.1:8787 (started with `node src/server.mjs`, logs under
+`workspace/logs/`). `GET /health` reports both inference routes.
 
 ## 1. What changed this session
 
@@ -105,8 +106,10 @@ were updated with it (50 + 76 now).
   output file is not redone, so a run resumes.
 - `tests/eval-reddit.mjs` now also reports judge latency (mean/median).
 
-Run artifacts kept in the repo root: `eval-accuracy-*.log` and `eval-accuracy-*.ndjson`
-(one pair per arm below), `rules-progress-times.png`, `rules-reasoning-off.png`.
+Run artifacts kept under `workspace/eval/`: `eval-accuracy-*.log` and
+`eval-accuracy-*.ndjson` (one pair per arm below). The UI screenshots
+(`rules-progress-times.png`, `rules-reasoning-off.png`) sit in the repository root
+and are gitignored, like every `*.png`.
 
 ## 3. What was measured (writer = SenseNova unless stated)
 

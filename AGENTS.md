@@ -1,0 +1,5 @@
+- work in workspace/ (untracked) sources in src/, doc in docs/
+- ~/README.md is the user front-end (human and agent), must stay up to date
+- docs/* must document the functionalities and changes made, 1 doc per page
+- work in a branch, commit often, test end-to-end and review doc before push
+- make the user test before merge

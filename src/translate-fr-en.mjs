@@ -3,8 +3,8 @@
 /**
  * FR/EN term translation, gated by Jev.
  *
- *   node translate-fr-en.mjs --term "INFANTRY"
- *   node translate-fr-en.mjs --demo
+ *   node src/translate-fr-en.mjs --term "INFANTRY"
+ *   node src/translate-fr-en.mjs --demo
  *
  * The glossary next door holds only pairs read off a parallel source. This file
  * exists for the terms no parallel source publishes: keywords, stratagems and
@@ -224,7 +224,7 @@ async function main() {
   const terms = demo
     ? ['INFANTRY', 'MONSTER', 'CHARACTER', 'AHRIMAN', 'AGGRESSOR SQUAD', 'Oath of Moment', 'Fall-back Move', 'SUSTAINED HITS']
     : (term ? [term] : []);
-  if (!terms.length) { console.log('usage: node translate-fr-en.mjs --term "INFANTRY" | --demo'); return; }
+  if (!terms.length) { console.log('usage: node src/translate-fr-en.mjs --term "INFANTRY" | --demo'); return; }
   const out = await translateTerms(terms, { direction: 'en-fr' });
   printTable(out);
 }

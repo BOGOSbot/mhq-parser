@@ -3,8 +3,8 @@
 /**
  * FR/EN glossary, built from a parallel source.
  *
- *   node glossary.mjs --build      write glossary-fr-en.json + .md
- *   node glossary.mjs --stats      what is in the built glossary
+ *   node src/glossary.mjs --build      write glossary-fr-en.json + .md
+ *   node src/glossary.mjs --stats      what is in the built glossary
  *
  * The Munitorum Field Manual is published in both languages at
  * mfm.warhammer-community.com/{en,fr}/<faction>, with the same structure: the
@@ -31,9 +31,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REF_DIR = process.env.RULES_REF_DIR || path.join(__dirname, '.verify-ref');
+const REF_DIR = process.env.RULES_REF_DIR || path.join(__dirname, '..', '.verify-ref');
 export const OUT_JSON = path.join(__dirname, 'glossary-fr-en.json');
-export const OUT_MD = path.join(__dirname, 'glossary-fr-en.md');
+export const OUT_MD = path.join(__dirname, '..', 'docs', 'glossary-fr-en.md');
 
 // Lines that look like a name but are furniture.
 const SKIP = new Set([

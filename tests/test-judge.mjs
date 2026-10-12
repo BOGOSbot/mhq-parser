@@ -1,6 +1,6 @@
 import {
   ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, dontKnowAnswer, entityAnchors, normalizeConfidence, normalizeWiden, parseJsonObject, termCount, termPresent, widenPlan,
-} from '../rules-corpus.mjs';
+} from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {

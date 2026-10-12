@@ -1,4 +1,4 @@
-import { detectExporter, parseListText } from '../parse.mjs';
+import { detectExporter, parseListText } from '../src/parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {

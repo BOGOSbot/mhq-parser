@@ -40,8 +40,8 @@ import fs from 'node:fs';
 import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { credential, fastCredential, jevKeyName, modelCredential, FAST_MODEL, MODEL } from '../rules.mjs';
-import { answerableFindings, compileFindings, parseJsonObject, readAllCorpus, translateQuestion } from '../rules-corpus.mjs';
+import { credential, fastCredential, jevKeyName, modelCredential, FAST_MODEL, MODEL } from '../src/rules.mjs';
+import { answerableFindings, compileFindings, parseJsonObject, readAllCorpus, translateQuestion } from '../src/rules-corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);

@@ -3,7 +3,7 @@
 /**
  * MHQ Army Lists - local web UI for parse.mjs.
  *
- *   node server.mjs [--port 8787] [--host 127.0.0.1]
+ *   node src/server.mjs [--port 8787] [--host 127.0.0.1]
  *
  * Endpoints:
  *   GET  /          serves index.html

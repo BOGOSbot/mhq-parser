@@ -25,8 +25,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FAST_MODEL, credential, fastCredential } from '../rules.mjs';
-import { judgeCoverage, readAllCorpus, retrieveDual } from '../rules-corpus.mjs';
+import { FAST_MODEL, credential, fastCredential } from '../src/rules.mjs';
+import { judgeCoverage, readAllCorpus, retrieveDual } from '../src/rules-corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);

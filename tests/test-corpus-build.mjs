@@ -1,6 +1,6 @@
 import {
   CORE_STRATAGEMS, JUDGE_PASSAGE_CHARS, buildFactionSections, dedupeKey, dedupeSections, splitLong, splitSection,
-} from '../rules-corpus.mjs';
+} from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {

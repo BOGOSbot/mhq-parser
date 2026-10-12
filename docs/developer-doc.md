@@ -2,11 +2,13 @@
 
 How the parser works and why. Read this before modifying parse.mjs.
 
+The /rules page is a separate subject with its own document: [rules-page.md](./rules-page.md).
+
 ## CLI behavior
 
 - **URL is required.** No default URL. If none is provided, the script exits with `Error: provide a link to an MHQ army list`.
 - **URL validation.** The URL must match `URL_RE`: host `miniheadquarters.com`, path `/tournaments/<type>/...`, where `<type>` is `team`, `individual`, `2v2` or `side-by-side`, and the rest is one of `army-lists/<slug>`, `details/<slug>`, `administrate/<slug>/{army-lists,details}` or `administrate/army-lists/<id>`. Every arm requires its own slug, so a bare `/tournaments/team/army-lists` is rejected rather than defaulting to an `output/` directory. Invalid URLs exit with `Error: provide a valid link`.
-- **Default output dir.** `<event-slug>/` relative to the script's directory (`tools/mhq-parser/`). Both files (`mhq_army_lists.json`, `mhq_army_lists.mini.md`) go there. Override with `--out-dir <dir>`.
+- **Default output dir.** `<event-slug>/` relative to the script's directory (`tools/mhq-parser/src/`). Both files (`mhq_army_lists.json`, `mhq_army_lists.mini.md`) go there. Override with `--out-dir <dir>`.
 - **Path resolution.** Uses `fileURLToPath(import.meta.url)` from the `url` module to get the script's directory. This handles Windows paths correctly (unlike `new URL(import.meta.url).pathname`, which produces a leading-slash path that breaks `path.join`).
 
 ## Step-by-step walkthrough
@@ -248,7 +250,7 @@ Signatures are checked first, bottom-up, so a signature sitting above trailing n
 
 Three ordering constraints are load-bearing. Ironbuilt is tested before the `[Npts]` rule, or `The Red Terror [130 pts]` reads as newrecruit. armylistnetwork is tested before the 9th-edition rule, because both print `[7PP, 135pts]`. And the 9th-edition rule must not claim `++ Total: [1,990pts] ++`, which is newrecruit's closing line.
 
-`node formats.mjs` replays the analysis over `archive/events/`; `formats.md` is the write-up, and `tests/test-formats.mjs` pins one signature and one shape per exporter.
+`node src/formats.mjs` replays the analysis over `archive/events/`; `formats.md` is the write-up, and `tests/test-formats.mjs` pins one signature and one shape per exporter.
 
 Archived files are not rewritten. They were harvested by whatever parser was current at the time, so most lack the field on disk; `archive.readEvent()` fills `exporter` in from the stored body text when the site opens an event, which keeps 160 MB of one-line JSON out of a diff.
 ### Hybrid format detection
@@ -425,13 +427,13 @@ archive/events/<type>--<slug>.json   the parse output, exactly what /parse retur
 ```
 
 ```powershell
-node archive.mjs --plan          # what a harvest would consider, fetching nothing
-node archive.mjs --months 12     # harvest the last 12 months of closed events
-node archive.mjs --list          # what is in there
-node archive.mjs --verify        # every entry still resolves to a readable file
-node archive.mjs --reindex       # rebuild the index from the files on disk
-node archive.mjs --prune         # drop what has fallen out of the window
-node archive.mjs --prune --months 0   # drop everything (defeats the point)
+node src/archive.mjs --plan          # what a harvest would consider, fetching nothing
+node src/archive.mjs --months 12     # harvest the last 12 months of closed events
+node src/archive.mjs --list          # what is in there
+node src/archive.mjs --verify        # every entry still resolves to a readable file
+node src/archive.mjs --reindex       # rebuild the index from the files on disk
+node src/archive.mjs --prune         # drop what has fallen out of the window
+node src/archive.mjs --prune --months 0   # drop everything (defeats the point)
 ```
 
 The archive keeps **one year** (`WINDOW_MONTHS`). It exists to characterise the
@@ -590,7 +592,7 @@ Enhancement points are already included in unit points for all supported formats
 After an event's lists are parsed (the UI's Download JSON, or parse.mjs --json), verify-points.mjs checks every unit row against the official points tables - the Munitorum Field Manual, mfm.warhammer-community.com - and reports the rows a human has to look at.
 
 \`\`\`
-node verify-points.mjs <event.json> [--ref-dir <dir>] [--lang both|en|fr] [--rows <file>] [--report <file>] [--no-scrape]
+node src/verify-points.mjs <event.json> [--ref-dir <dir>] [--lang both|en|fr] [--rows <file>] [--report <file>] [--no-scrape]
 \`\`\`
 
 - **Input.** The JSON parse.mjs / the UI's Download JSON write: { event, count, players }, each player holding units[] with model / points / models / enhancements. No other file format is accepted - run the parse first.

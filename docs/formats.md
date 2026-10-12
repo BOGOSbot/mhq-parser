@@ -1,7 +1,7 @@
 # Source formats
 
 Which tool wrote each army list, how to tell, and what that means for the
-parser. The numbers below come from `node formats.mjs` over the archive: the
+parser. The numbers below come from `node src/formats.mjs` over the archive: the
 **last year** of closed events, **252 events and 7,128 lists** (2025-10 to
 2026-10). That is the window the archive keeps - a list from an older edition
 characterises nothing the parser has to be right about - and `--months 0`

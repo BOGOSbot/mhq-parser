@@ -24,8 +24,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expandQuery, grepCorpus, grepTerms, grepWithTerms, jevRank, queryIndex, readAllCorpus, retrieveWide } from '../rules-corpus.mjs';
-import { credential, fastCredential, jevKeyName } from '../rules.mjs';
+import { expandQuery, grepCorpus, grepTerms, grepWithTerms, jevRank, queryIndex, readAllCorpus, retrieveWide } from '../src/rules-corpus.mjs';
+import { credential, fastCredential, jevKeyName } from '../src/rules.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const QUESTIONS = path.join(__dirname, 'fixtures', 'rules-questions.json');
