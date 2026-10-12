@@ -1,5 +1,5 @@
 import {
-  ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, dontKnowAnswer, entityAnchors, normalizeConfidence, normalizeWiden, parseJsonObject, termCount, termPresent, widenPlan,
+  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, normalizeConfidence, normalizeWiden, parseJsonObject, termCount, termPresent, widenPlan,
 } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
@@ -98,6 +98,22 @@ t('naming the faction half puts all twenty there', widenPlan('faction', 5), { ru
 t('naming both splits them', widenPlan('both', 5), { rules: 15, factions: 15, target: 'both' });
 t('the first pass is ten a side', ESCALATION_TOPKS, [10]);
 t('the widening adds twenty', WIDEN_ADD, 20);
+
+// --- the two settings the page offers ----------------------------------------
+// Fast and deep differ in four measured ways at once: how deep the first pass
+// looks, how many times a miss widens it, how wide the reranker's net is, and
+// whether the judge reasons. The judge's reasoning is the one that moves the
+// clock (79.4% -> 61.8% on the real bank when it is turned off).
+t('fast is a setting', askMode('fast'), 'fast');
+t('deep is a setting', askMode('deep'), 'deep');
+t('the setting is case-insensitive', askMode('FAST'), 'fast');
+t('an unknown setting is deep, not an error', askMode('turbo'), 'deep');
+t('a missing setting is deep', askMode(undefined), 'deep');
+t('fast turns the judge reasoning off', ASK_MODES.fast.reasoning, 'none');
+t('deep lets the judge reason', ASK_MODES.deep.reasoning, 'medium');
+t('fast looks shallower', ASK_MODES.fast.first < ASK_MODES.deep.first, true);
+t('fast widens fewer times', ASK_MODES.fast.passes < ASK_MODES.deep.passes, true);
+t('fast gives the reranker a smaller net', ASK_MODES.fast.jevMax < ASK_MODES.deep.jevMax, true);
 
 // --- the escalation policy --------------------------------------------------
 const at = n => ({

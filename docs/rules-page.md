@@ -38,16 +38,26 @@ next, a space as a last resort. A datasheet is two records, not one - values on
 one side, keywords and abilities on the other - because the two answer unrelated
 kinds of question and each is half noise to the other.
 
+**The rules a page writes inside a parent body get their own records.**
+`3. End of Shooting Phase` (10.03) carried NORMAL SHOOTING 10.04, ASSAULT
+SHOOTING 10.05 and four more as plain text - one 1,938-character record holding
+six rules, so a question about normal shooting was answered from a record
+labelled something else. 78 of the 285 core-rules records carried 180 rules that
+way. `splitInlineRules` cuts a body at a line that is a title and a rule id and
+nothing else (blank line before it, no prose in the title: 'The rule refers to
+page 10.04' is not a heading) and hands each to a record the parent owns,
+`3. End of Shooting Phase > NORMAL SHOOTING`. The parent keeps its id, its
+anchor and the text before the first boundary, so citations that already exist
+still resolve. core-rules went from 285 records to 339, rules-appendix from 149
+to 168, and the longest record from 1,938 to 2,000 characters.
+
 Known weaknesses of the current chunker, both measured:
 
-- **Inline numbered rules never become records.** 78 of the 285 core-rules
-  records carry 180 numbered rules inside their bodies: `NORMAL SHOOTING 10.04`
-  and `ASSAULT SHOOTING 10.05` sit inside the 1,938-character record `3. End of
-  Shooting Phase` (10.03). Splitting a body at a line that is a title followed
-  by a rule id is the fix, and it needs a core-rules re-scrape and re-ingest.
 - **Derived-title buckets run across cards.** 38 core-rules and 31
   rules-appendix records take their heading from the first question in a body
-  that then spans several unrelated cards.
+  that then spans several unrelated cards. The splitter now pulls the numbered
+  rules out of them, but the container's own label is still the first question
+  its body happened to start with.
 
 The on-disk corpus, the CSV export and the index state live in
 `workspace/rules-corpus/` (untracked):
@@ -58,6 +68,7 @@ node src/rules-corpus.mjs --scrape             # fetch the anchored pages
 node src/rules-corpus.mjs --scrape --set factions --cached   # rebuild from the cached CSV
 node src/rules-corpus.mjs --ingest             # embed + upsert what changed
 node src/rules-corpus.mjs --stats              # what is on disk, and in the index
+node src/rules-corpus.mjs --prune --set rules  # delete index vectors the corpus no longer has
 ```
 
 `RULES_CORPUS_DIR` points the whole thing elsewhere; `RULES_VECTOR_BACKEND=local`
@@ -128,6 +139,42 @@ per-passage cap from `JUDGE_PASSAGE_CHARS` (2,400) and `JUDGE_TOTAL_CHARS`
 (60,000), so a deeply widened pass shows the judge less of each passage - the
 ceiling is what keeps that from eating the evidence.
 
+## The two settings
+
+The page offers two, and the server fixes four things for each: the depth of the
+first pass, how many times a miss deepens it, how wide the reranker's net is,
+and whether the judge reasons.
+
+| setting | first pass | widening | Jev net | judge |
+|---|---|---|---|---|
+| fast | 5 a side | 2 passes | 60 | no reasoning |
+| deep | 10 a side | 3 passes | 80 | reasons (`medium`) |
+
+`ASK_MODES` in `rules-corpus.mjs` is the only place they are written down;
+`askMode()` maps an unknown or missing value to `deep`, so a client that does
+not know about the setting gets the careful one. The setting is sent as
+`mode` in the request body, echoed in a `mode` stream event and in the JSON
+response, and remembered in `localStorage` by the page.
+
+Why the split falls where it does, measured:
+
+- The judge's wall-clock is its own reasoning, not the prompt. Holding the
+  question and the route fixed, 10 findings and 23 findings came out at a 31.9s
+  and a 33.0s mean over five questions - the paired difference was -5.8s, and
+  the single slowest call (134.5s) had the smaller prompt. Across 96 single-pass
+  benchmark rows, r(findings, retrieve+judge ms) was -0.11.
+- Turning the judge's reasoning off takes the judge from a mean 33.0s / median
+  20.6s to 7.1s / 6.0s, and costs accuracy: 79.4% to 61.8% on the same 17
+  questions.
+- Taking 5 a side instead of 10 costs recall: 27/29 questions retrieving an
+  expected section against 28/29 (93.1% against 96.6%) on the retrieval bank.
+  The anchoring is what keeps that cost small - the rule the question names
+  reaches the judge at either depth.
+
+End to end on the Asurmen question, same server, same moment: fast judged in
+about 2 seconds where deep judged in about 49, both answering `high` on the
+first pass, fast with 15 findings against deep's 23.
+
 ## Routes, keys and reasoning
 
 Two inference routes, because the two halves fail differently. The **writer**
@@ -150,7 +197,17 @@ answer the same question differently.
 
 - `node tests/eval-retrieval.mjs --topk 20 --verbose` - hit@1/5/10/20 and MRR
   against `tests/fixtures/rules-questions.json`, whose expectations are section
-  ids. This is the number the corpus and the retriever are graded on.
+  ids. This is the number the corpus and the retriever are graded on. This
+  harness predates the two-half split and reads the whole corpus as one index.
+- `node tests/eval-retrieval.mjs --retriever dual --per-side 10 --net 60` - the
+  page's own path. That is the arm the chunking was measured with: before, 29
+  graded questions at hit@1 31% / hit@5 69% / hit@10 86.2% / hit@20 89.7%, MRR
+  0.472; after, the same exact-id numbers 27.6% / 62.1% / 86.2% / 89.7%, MRR
+  0.437, and 41.4% / 69% / 93.1% / 96.6%, MRR 0.540 when a record the split put
+  under the expected one counts - which is what the reader actually gets. Two
+  questions that used to miss entirely ("what does the Advance move do", "what
+  happens when a transport blows up") now find the rule at #3 and #7 under its
+  parent.
 - `node tests/eval-reddit.mjs --limit 16` - judge coverage and latency on real
   questions, twice, to compare model routes.
 - `node tests/eval-accuracy.mjs --limit 25` - the page's own path, graded by a
@@ -165,13 +222,13 @@ answer the same question differently.
 
 ## Known limits
 
-- The stale-index orphans: `--stats` reports more vectors than sections, and a
-  query returns ids that no longer exist in the corpus, so the vector leg spends
-  top-20 slots on records that are then dropped. `--ingest` cannot see them (the
-  ingest state matches the corpus); a prune or a namespace rebuild is needed.
-- Chunking, above: inline numbered rules and derived-title buckets.
-- The core-stratagem builder labels every faction-less `Stratagems.csv` row
-  "core stratagem", including the `Movement Ability` and `Shooting Ability`
-  entries (NORMAL SHOOTING among them); the label should follow the CSV type.
+- Derived-title buckets, above: the splitter empties the numbered rules out of
+  them, but a bucket's own heading is still whatever question its body started
+  with.
 - The same rule can appear twice in one answer when the core rules and the rules
-  appendix both carry it (two `Able To Embark` records, one per source).
+  appendix both carry it (two `Able To Embark` records, one per source), and a
+  split rule can appear both under its real parent and under a bucket that also
+  contained it.
+- The rules namespace is in step with the corpus (`--prune` saw to that), but
+  nothing prunes `factions` automatically: run `--prune` without `--set` after a
+  big rebuild.

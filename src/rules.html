@@ -45,6 +45,14 @@ button.mic.on{color:#fff;background:var(--err);border-color:var(--err);animation
 select.lang{background:var(--panel2);color:var(--dim);border:1px solid var(--line);
   border-radius:7px;padding:8px 6px;font:12px system-ui}
 select.lang:focus{outline:none;border-color:var(--acc)}
+/* Two settings, one button each: fast asks the judge not to reason and looks
+   shallower, deep lets it think and searches wider. The difference is measured,
+   not cosmetic - see docs/rules-page.md. */
+.modes{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+button.mode{background:var(--panel2);color:var(--dim);border:0;border-radius:0;padding:8px 12px;font:12px system-ui}
+button.mode + button.mode{border-left:1px solid var(--line)}
+button.mode:hover{filter:none;color:var(--txt)}
+button.mode.on{background:var(--acc);color:#0b1020;font-weight:600}
 button{background:var(--acc);color:#0b1020;border:0;border-radius:7px;padding:9px 18px;
   font:600 13px system-ui;cursor:pointer}
 button:hover{filter:brightness(1.1)}
@@ -150,6 +158,12 @@ details pre{background:var(--panel2);border:1px solid var(--line);border-radius:
            placeholder="Ask a rules question — e.g. can a unit shoot after it Fell Back?">
     <button id="go" type="submit">Ask</button>
     <button type="button" id="mic" class="mic" title="Ask by voice"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg><span id="miclabel">Voice</span></button>
+    <!-- Two settings for the search and the judge. Fast asks the judge not to
+         reason and ranks fewer findings; deep lets it think and looks wider. -->
+    <span class="modes" id="modes" role="group" aria-label="Mode">
+      <button type="button" class="mode" id="mfast" data-mode="fast" aria-pressed="false">Fast</button>
+      <button type="button" class="mode on" id="mdeep" data-mode="deep" aria-pressed="true">Deep</button>
+    </span>
     <!-- One switch, three jobs: the text on this page, the language the
          microphone listens for, and the language of the answer. The language of
          the question itself is still detected server-side. -->
@@ -203,6 +217,10 @@ var I18N = {
     placeholder: 'Ask a rules question — e.g. can a unit shoot after it Fell Back?',
     ask: 'Ask',
     voice: 'Voice',
+    modeFast: 'Fast',
+    modeDeep: 'Deep',
+    modeFastTitle: 'quicker: the judge does not reason, fewer findings are ranked',
+    modeDeepTitle: 'slower: the judge reasons, more findings are ranked and judged',
     langTitle: 'Page and answer language',
     keysPrefix: 'keys: ',
     keyMissing: ' key missing',
@@ -269,6 +287,10 @@ var I18N = {
     placeholder: 'Posez une question de règles — ex. une unité peut-elle tirer après avoir battu en retraite ?',
     ask: 'Demander',
     voice: 'Voix',
+    modeFast: 'Rapide',
+    modeDeep: 'Approfondi',
+    modeFastTitle: 'plus rapide : le juge ne raisonne pas, moins de constats sont classés',
+    modeDeepTitle: 'plus lent : le juge raisonne, plus de constats sont classés et jugés',
     langTitle: 'Langue de la page et de la réponse',
     keysPrefix: 'clés : ',
     keyMissing: ' clé absente',
@@ -376,6 +398,7 @@ function applyLang() {
   var go = $('#go'); if (go) go.textContent = t('ask');
   var ml = $('#miclabel'); if (ml) ml.textContent = t('voice');
   var ls = $('#lang'); if (ls) ls.setAttribute('title', t('langTitle'));
+  labelModes();
   var it = $('#introtext'); if (it) it.innerHTML = t('intro');
   var fl = $('#footline'); if (fl) fl.innerHTML = t('footline');
   renderExamples();
@@ -397,6 +420,41 @@ function applyLang() {
     });
   }
   applyLang();
+})();
+
+// --- the two settings -------------------------------------------------------
+// The choice is the reader's and it is remembered. It goes to the server as
+// 'mode', which fixes the first-pass depth, the widening ceiling, how wide the
+// reranker's net is and whether the judge reasons - the four things the
+// benchmark says separate a quick answer from a careful one.
+var MODE = 'deep';
+
+function labelModes() {
+  var f = $('#mfast'), d = $('#mdeep');
+  if (f) { f.textContent = t('modeFast'); f.setAttribute('title', t('modeFastTitle')); }
+  if (d) { d.textContent = t('modeDeep'); d.setAttribute('title', t('modeDeepTitle')); }
+}
+
+function setMode(m) {
+  MODE = m === 'fast' ? 'fast' : 'deep';
+  var f = $('#mfast'), d = $('#mdeep');
+  if (f) { f.className = 'mode' + (MODE === 'fast' ? ' on' : ''); f.setAttribute('aria-pressed', MODE === 'fast' ? 'true' : 'false'); }
+  if (d) { d.className = 'mode' + (MODE === 'deep' ? ' on' : ''); d.setAttribute('aria-pressed', MODE === 'deep' ? 'true' : 'false'); }
+  labelModes();
+  try { localStorage.setItem('rulesMode', MODE); } catch (e) { /* private mode */ }
+}
+
+(function initMode() {
+  var saved = null;
+  try { saved = localStorage.getItem('rulesMode'); } catch (e) { }
+  setMode(saved === 'fast' ? 'fast' : 'deep');
+  var box = $('#modes');
+  if (box) box.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('button.mode') : null;
+    if (!b) return;
+    e.preventDefault();
+    setMode(b.getAttribute('data-mode'));
+  });
 })();
 
 function setStatus(msg, cls) {
@@ -775,6 +833,10 @@ function flash(node) {
 function applyEvent(ev, state) {
   if (!ev || !ev.type) return;
   if (ev.type === 'start') { startProgress(ev.stages); return; }
+  // The server echoes the setting it actually ran, which is also what a shared
+  // link or a curl says: the page draws it from its own toggle, so this only
+  // keeps the state honest if the two ever disagree.
+  if (ev.type === 'mode') { state.mode = ev.mode; setMode(ev.mode); return; }
   if (ev.type === 'escalate') { pAttribute('judge', ev.elapsedMs); addStage('widen', 'retrieve'); return; }
   if (ev.type === 'translation') { state.translation = ev; doneStage('translate', ev.elapsedMs); return; }
   if (ev.type === 'terms') { state.terms = ev.terms || []; doneStage('translate', ev.elapsedMs); return; }
@@ -972,6 +1034,7 @@ async function ask(over) {
         question: question,
         answerLang: answerLang,
         english: o.english === true,
+        mode: MODE,
         stream: true
       })
     });

@@ -85,7 +85,26 @@ miss adds 20 more a round, cumulatively, until the judge answers -
 `RULES_MAX_PASSES` (default 3) is the ceiling and the last pass is final. On
 the question, end to end: Embarking is finding [9], Asurmen's Tactical Acumen
 [18], Fire and Fade [14]; the judge answers high on the first pass. Unit tests
-were updated with it (50 + 76 now).
+were updated with it (50 + 86 now).
+
+**Chunking and the two settings** (`rules-corpus.mjs`, `rules.html`, `server.mjs`).
+`splitInlineRules` cuts a body at a line that is a title and a rule id and
+nothing else, so 10.04/10.05 and the rest become records the parent owns; the
+parent keeps its id, its anchor and the lead-in text. core-rules 285 -> 339
+records, rules-appendix 149 -> 168, the longest record 1,938 -> 2,000
+characters. The measured result is in `docs/rules-page.md`: the exact-id
+benchmark moves from hit@5 69% to 62.1% (the parents are now short and the
+content sits in their children), but the rule is *reachable* 93.1% of the time
+at hit@10 against 86.2%, 96.6% against 89.7% at hit@20, MRR 0.540 against
+0.472 - and two questions that used to miss entirely now find their rule at #3
+and #7 under the parent.
+
+The page now offers **fast** (judge reasons not at all, 5 findings a side, two
+passes, Jev net 60) and **deep** (judge reasons `medium`, 10 a side, three
+passes, net 80). `ASK_MODES` is the only place they are written down; an
+unknown `mode` is deep. Measured on the Asurmen question back to back: fast
+judged in ~2 s, deep in ~49 s, both `high` on the first pass (fast: 15
+findings, deep: 23).
 
 ## 2. Benchmark assets (new, all in the tree)
 
@@ -151,25 +170,18 @@ processed → 4 wrong, 2 still over 180 s; judge mean 99 s, question mean 208 s.
    (see §2). `_jevprobe.tmp.mjs` predates this session. Optional one-liner: the
    `findingsTitle` i18n key exists but the findings card title is hardcoded
    English (`Findings - N`), so the FR page shows one English label.
-6. **The vector index is stale.** `--stats` reports 7441 vectors against 7138
-   sections, and 5 of the 20 rules hits for a query carry ids that are not in
-   the corpus at all (old heading scheme), so the vector leg spends its top-20 on
-   records that are dropped and the rank fusion is skewed by them. `--ingest`
-   cannot fix it - the ingest state matches the corpus, so nothing is judged
-   changed or vanished. It needs a prune (enumerate the namespace, delete ids
-   the corpus does not have) or a namespace rebuild.
-7. **Chunking: inline numbered rules never become records.** 78 of the 285
-   core-rules records carry 180 inline numbered rules - `NORMAL SHOOTING 10.04`
-   and `ASSAULT SHOOTING 10.05` sit inside the 1938-character record
-   `3. End of Shooting Phase` (10.03) - and 38 core-rules plus 31 rules-appendix
-   records are derived-title Q&A buckets whose text runs across several cards
-   (`Muster Armies > Q: I failed hazard rolls...` with end-of-fight text under
-   it). Splitting a body at a line that is a title followed by a rule id would
-   give 10.03/10.04/10.05 their own citable records, and is a chunker change plus
-   a core-rules re-scrape and re-ingest. Related: the core-stratagems builder
-   labels every faction-less `Stratagems.csv` row 'core stratagem', including the
-   22 whose Type is 'Movement Ability' or 'Shooting Ability' - NORMAL SHOOTING
-   among them; the label should follow the CSV type.
+6. ~~The vector index is stale.~~ **Done.** DELETE /delete/{ns} is the endpoint
+   (`POST /delete-data/{ns}` is answered 404, and ingest had never needed a
+   delete until the split created one); `--prune` enumerates a namespace with
+   GET /range/{ns} and deletes what the corpus no longer has. 161 strays went,
+   leaving the rules namespace at exactly its 636 records.
+7. ~~Chunking: inline numbered rules never become records.~~ **Done.**
+   `splitInlineRules` gives them their own records under the parent (core-rules
+   285 -> 339, rules-appendix 149 -> 168), the parent keeps its id and anchor,
+   and the core-stratagem label follows the CSV Type (22 ability rows stop
+   claiming to be stratagems). What is left of the chunking problem is the
+   derived-title buckets: the splitter empties the rules out of them, but the
+   container's own heading is still whatever question its body started with.
 
 ## 5. Re-measuring
 
@@ -180,8 +192,12 @@ node tests/eval-accuracy.mjs --ids <thread>/<comment>,... --out hard.ndjson
 node tests/eval-reddit.mjs --limit 16                             # judge coverage + latency
 node tests/ask.mjs "can a unit shoot after it Fell Back?"         # one question end to end
 node tests/ask-fr.mjs --id asurmen-embark-after-shooting
-node tests/test-rules.mjs && node tests/test-judge.mjs            # 50 + 76
+node tests/eval-retrieval.mjs --retriever dual --per-side 10 --net 60  # the page's path
+node tests/test-rules.mjs && node tests/test-judge.mjs            # 50 + 86
 ```
+
+`workspace/eval/retrieval-dual-before.txt` and `retrieval-dual-after.txt` are
+the two runs the chunking was measured against.
 
 Compare arms only on questions **all** arms graded — different arms lose different
 questions to the timeout, and the raw percentages are not comparable otherwise.

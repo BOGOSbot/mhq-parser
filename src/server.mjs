@@ -34,7 +34,7 @@ import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { answerableFindings, compileFindings, corpusState, dontKnowAnswer, looksForeign, readAllCorpus, translateQuestion } from './rules-corpus.mjs';
+import { ASK_MODES, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, looksForeign, readAllCorpus, translateQuestion } from './rules-corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -820,8 +820,17 @@ async function handleRulesAsk(req, res) {
       ruleId: f.ruleId, url: f.url, href: f.href, excerpt: f.excerpt,
     }));
 
+    // The reader picks the setting: fast asks the judge not to reason and takes
+    // a narrower, shallower search; deep lets it think and looks wider for
+    // longer. Both keep the anchoring, which is what makes the fast setting safe.
+    const modeName = askMode(body.mode);
+    const mode = ASK_MODES[modeName];
+    emit({ type: 'mode', mode: modeName, first: mode.first, passes: mode.passes, reasoning: mode.reasoning || 'model default', elapsedMs: Date.now() - started });
     const outcome = await timed('retrieve+judge', () => answerableFindings(asked, {
       fastKey: keys.fast,
+      topKs: [mode.first],
+      passes: mode.passes,
+      judgeOpts: { reasoning: mode.reasoning },
       dual: {
         rulesCorpus: corpora().rules,
         factionsCorpus: corpora().factions,
@@ -833,8 +842,8 @@ async function handleRulesAsk(req, res) {
         // 50 never showed it to Jev and the judge was asked about a corpus that
         // had the rule without being shown it. At 80 the same passage came back
         // 4th. One batched call, so the wider net is one request, not forty.
-        grepNet: 60,
-        jevMax: 80,
+        grepNet: mode.grepNet,
+        jevMax: mode.jevMax,
       },
       onFindings: ({ plan, findings: found, dual, attempt }) => {
         findings = found;
@@ -901,7 +910,7 @@ async function handleRulesAsk(req, res) {
     }
     return json(res, 200, {
       question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: payload, judge, answer,
-      counts, steps, elapsedMs: Date.now() - started,
+      counts, steps, elapsedMs: Date.now() - started, mode: modeName,
       unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,
     });
   } catch (e) {

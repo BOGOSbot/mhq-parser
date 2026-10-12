@@ -1235,11 +1235,14 @@ async function routeText(route, prompt, key, maxTokens, opts) {
   let budget = maxTokens || 900;
   let last = '';
   for (let attempt = 0; attempt < 3; attempt++) {
+    // The route carries a default; a caller may override it for one call - the
+    // /rules page's fast mode asks the judge not to reason, deep asks it to.
+    const reasoning = (opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning;
     const body = JSON.stringify(Object.assign({
       model: route.model,
       messages: [{ role: 'user', content: prompt }],
       max_tokens: budget,
-    }, route.reasoning ? { reasoning_effort: route.reasoning } : {}));
+    }, reasoning ? { reasoning_effort: reasoning } : {}));
     const res = await new Promise((resolve, reject) => {
       const u = new URL(route.endpoint);
       const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) };
@@ -1561,14 +1564,16 @@ export function normalizeWiden(value) {
   return 'both';
 }
 
-export async function judgeCoverage(question, passages, key) {
+export async function judgeCoverage(question, passages, key, opts) {
+  const o = opts || {};
+  const callOpts = o.reasoning === undefined ? { json: true } : { json: true, reasoning: o.reasoning };
   const prompt = judgePrompt(question, passages);
-  let obj = parseJsonObject(await fastText(prompt, key, 4000, { json: true }));
+  let obj = parseJsonObject(await fastText(prompt, key, 4000, callOpts));
   // A small model sometimes answers the judgement in prose instead of the object
   // it was asked for. The verdict is binding - an unparseable one is read as
   // "I do not know" - so it is asked once more, for the object alone, rather
   // than the reader being told the rule is absent because a brace was missing.
-  if (!obj) obj = parseJsonObject(await fastText(prompt + '\n\nReply with the JSON object only, in one line, and nothing else.', key, 1200, { json: true }));
+  if (!obj) obj = parseJsonObject(await fastText(prompt + '\n\nReply with the JSON object only, in one line, and nothing else.', key, 1200, callOpts));
   if (!obj) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'judge returned nothing parseable', raw: true };
   const answered = obj.answered === true;
   // The model is asked to always give one; when it does not, the verdict itself
@@ -1615,6 +1620,24 @@ export async function judgeCoverage(question, passages, key) {
 export const ESCALATION_TOPKS = [10];
 export const WIDEN_ADD = 20;
 export const MAX_PASSES = Math.max(1, Number(process.env.RULES_MAX_PASSES) || 3);
+
+// --- the two settings the page offers --------------------------------------
+// Not a speed dial: measured, the judge's wall-clock is its own reasoning, not
+// the size of the prompt (holding the question and the route fixed, 10 findings
+// and 23 findings came out at a 31.9s and a 33.0s mean). So the fast setting
+// buys its seconds where the seconds are - the judge does not think - and pays
+// for them where the benchmark says the thinking is worth it (79.4% -> 61.8% on
+// the real bank). Taking fewer findings is the second half of it: a smaller
+// prompt, and the recall the benchmark puts at 93.1% against 96.6%, with the
+// anchoring still guaranteeing the rule the question names.
+export const ASK_MODES = {
+  fast: { first: 5, passes: 2, reasoning: 'none', grepNet: 50, jevMax: 60 },
+  deep: { first: 10, passes: 3, reasoning: 'medium', grepNet: 60, jevMax: 80 },
+};
+export function askMode(value) {
+  const s = String(value == null ? '' : value).toLowerCase().trim();
+  return Object.prototype.hasOwnProperty.call(ASK_MODES, s) ? s : 'deep';
+}
 
 // The next pass adds WIDEN_ADD findings in total to the depth the previous one
 // searched. Naming a half concentrates all twenty there; naming both splits
@@ -1665,7 +1688,7 @@ export async function answerableFindings(question, opts) {
   // the ceiling, not the plan.
   const passes = Math.max(1, o.passes || MAX_PASSES);
   const retrieve = o.retrieve || ((q, plan) => retrieveDual(q, Object.assign({}, o.dual, { perSide: plan })));
-  const judge = o.judge || ((q, findings) => judgeCoverage(q, findings, o.fastKey));
+  const judge = o.judge || ((q, findings) => judgeCoverage(q, findings, o.fastKey, o.judgeOpts));
   const attempts = [];
   let widened = false;
   let plan = { rules: base, factions: base };
