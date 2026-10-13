@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LINK_BLOCK_MAX, MIN_PART, WIKI_BUDGET, chars, distribution, idReport, planWiki, renderLinks, resolveLinks, splitWithin } from '../src/wiki-plan.mjs';
+import { toSection } from '../src/wiki-build.mjs';
+import { textHash } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -109,6 +111,15 @@ const without = planWiki({ rules: bigRules }, { blockInText: false });
 ok('with the block in, the parent text carries the block', chars(withBlock.index.get('r#big').text) > chars(bigBody));
 t('with the block out, the parent text is its own body', without.index.get('r#big').text, bigBody);
 t('and the link is still on the record', (without.index.get('r#big').links || []).map(l => l.to), ['r#big->-Kid']);
+
+// --- the written hash, for the ingest ----------------------------------------
+// Phase C compares this hash to the per-source ingest state to decide what to
+// embed. A record whose text was rewritten must not carry the source's hash, or
+// --ingest skips it and the live index keeps the old vector.
+const rewritten = { id: 'r#x', set: 'rules', heading: 'X', text: 'X\nnew body', hash: 'stale' };
+t('the written hash describes the written text', toSection(rewritten).hash, textHash('X\nnew body'));
+t('and a rewritten record does not carry the source hash', toSection(rewritten).hash === 'stale', false);
+t('an unchanged record keeps the same hash', toSection({ id: 'r#y', set: 'rules', heading: 'Y', text: 'Y\nbody', hash: textHash('Y\nbody') }).hash, textHash('Y\nbody'));
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

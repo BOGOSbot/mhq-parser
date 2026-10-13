@@ -321,6 +321,67 @@ halves) or a hosted faction-side arm (6,829 records, minutes).*
   block pushed a parent over the budget. Alternative: cap the block harder and
   keep the parent whole.
 
+## Phase C: the rebuild, step by step (dry-run verified 2026-10-13)
+
+Preconditions: arm 3 has reported (the faction half's dense leg), Mandal has said
+adopt, and the shape is variant D - links on the record, the block in the embedded
+text, split by the live chunker's body cap. Nothing below has been run against a
+live namespace; every number is from `--dry-run` and the read-only parity check.
+
+1. **Build the corpus.**
+   `node src/wiki-build.mjs workspace/rules-corpus-wiki-c`
+   Expect the manifest 7,525 records: rules 696 (6 block-forced chunks), factions
+   6,829 (254 new: 59 faction rules and 191 index pages), `linkBlockInText: true`.
+2. **Seed the ingest state - the incremental path.** Copy the five
+   `workspace/rules-corpus/*.index.json` files into the new directory. Without
+   this `--ingest` treats all 7,525 sections as new; with it only what changed is
+   embedded. This is the one manual step; the copy is exact and auditable.
+3. **Dry-run the ingest.** `RULES_CORPUS_DIR=<dir> node src/rules-corpus.mjs
+   --ingest --dry-run`. Expect **embed 6,705, delete 0**: core-rules 84,
+   rules-appendix 12, event-companion 5, core-stratagems 0, factions-csv 6,604,
+   leave 820. (A plan near 7,525 means the state copy in step 2 was missed.)
+4. **Ingest.** `RULES_CORPUS_DIR=<dir> node src/rules-corpus.mjs --ingest`. No
+   `--prune`: the rewrite is additive, every source's vanish count is 0 - the
+   dry run proves it. This writes the live `rules` and `factions` namespaces and
+   the new state and ledger beside the corpus.
+5. **Prove it id for id.** `RULES_CORPUS_DIR=<dir> node workspace/index-vs-corpus.mjs`
+   (read-only). Expect `rules 696 | corpus 696 | 0 | 0` and
+   `factions 6,829 | corpus 6,829 | 0 | 0`. Counts alone are not proof; this
+   enumerates both sides.
+6. **Restart the server** per docs/HANDOFF.md §Restarting - it caches the corpus
+   for the life of the process. Do not set `RULES_TRACES=1` in that recipe: the
+   retention line is not on the page yet (docs/question-traces.md).
+7. **Read one answer by hand.** The FALL-BACK question and the Asurmen ability
+   question are the two the rewrite is for; check the anchored record is in the
+   findings before trusting the bank.
+8. **Snapshot.** The off-disk Box snapshot is the recovery point taken after an
+   ingest (docs/corpus-storage.md). It is a Box-side step, there is no script for
+   it here, and it captures any key written to a file - keep keys out of the
+   corpus directory (docs/key-hygiene.md).
+9. **Record it.** Flip this document from "not adopted" to adopted with the
+   ledger's rebuild number and the parity line, and note the rules count the bank
+   was measured against.
+
+### Two tooling gaps found by the dry run
+
+- **FIXED, and it would have corrupted phase C: the writer carried the source
+  record's hash onto rewritten text.** `--ingest` decides what to embed by
+  comparing each section's hash to the per-source ingest state, and the planner
+  copied the live hash onto records whose text it had just changed. The first dry
+  run therefore planned **6 rules upserts while 78 core-rules records had a new
+  link block and the old hash** - phase C would have rebuilt the corpus, "run"
+  and left those old vectors in the live index. `toSection` now recomputes
+  `textHash(rec.text)` over the final text (the live convention), which is why
+  the plan above is 6,705 and not 260. Guarded by tests in
+  `tests/test-wiki-plan.mjs`.
+- **OPEN, a cost decision: the faction cards carry a back-link line in their
+  text.** That is 6,575 records whose text changes, so adopting the rewrite
+  re-embeds 6,604 faction vectors - about $4.2 on pay-as-you-go, or most of one
+  Free plan day, against the 700-vector rules arms. The card back-link is the
+  nearly-meaningless line the open questions already flag ("- faction: Aeldari");
+  dropping it from the embedded text is the one-line switch that would cut the
+  re-embed to the 254 genuinely new records. Decide it with arm 3's numbers.
+
 ## Recommendation
 
 **Build the rules half in the variant-D shape, after the faction arm and not

@@ -151,6 +151,27 @@ is appended, so every existing byte of the fixture survives. What no tool can ch
 is whether the expectation is right. That is the human's, and it is the one part
 of the bank a machine must not write.
 
+### What the first harvest did not show
+
+The first pass promoted five traces (2026-10-13) and one of them is worth its own
+note for what it did NOT show. The English 'Can a unit shoot after it Fell Back?'
+trace did not carry the FALL-BACK MOVE record among its 25 findings, while its
+French twins retrieved it at rank 3-4 - and on the bank's fixed path (dual,
+`--rerank off`, per-side 10, net 60) the same English question retrieves it at
+#9. So the difference is **configuration** - the trace ran deep with the reranker
+on - not the question's language. Read no language effect out of a comparison
+whose two sides ran different settings; the bank entry is what pins the rank on a
+fixed path.
+
+### Where a promotion is graded
+
+A promoted question grows the **retrieval** bank,
+`tests/fixtures/rules-questions.json`, which
+`node tests/eval-retrieval.mjs` grades. The accuracy harness
+(`tests/eval-accuracy.mjs`) grades its own banks - reddit by default,
+`fixtures/rules-questions-fr.json` for `--bank fr` - and does not read this
+fixture, so a promotion does not move its n or its accuracy number.
+
 ### The harvest order
 
 `--harvest` prints in the order a human should work: traces whose thumb is down

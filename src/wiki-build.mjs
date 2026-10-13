@@ -18,6 +18,7 @@
 import fs from 'fs';
 import path from 'path';
 import { planWiki, readPlanInput, distribution, chars } from './wiki-plan.mjs';
+import { textHash } from './rules-corpus.mjs';
 
 export const RULES_SOURCES = ['core-rules', 'rules-appendix', 'event-companion', 'core-stratagems'];
 export const FACTION_SOURCES = ['factions-csv'];
@@ -28,7 +29,14 @@ export function toSection(rec) {
   return {
     id: rec.id, source: rec.source, set: rec.set, heading: rec.heading,
     ruleId: rec.ruleId || '', anchor: rec.anchor || '', hasAnchor: !!rec.hasAnchor,
-    url: rec.url || '', text: rec.text, chars: chars(rec.text), hash: rec.hash || '',
+    url: rec.url || '', text: rec.text, chars: chars(rec.text),
+    // The hash decides what --ingest embeds (src/rules-corpus.mjs compares it to
+    // the per-source state), so it has to describe the text actually written. A
+    // carried source hash is a silent skip: the first phase-C dry run planned 6
+    // rules upserts while 78 core-rules records had a new link block and the old
+    // hash, i.e. the rebuild would have "succeeded" and left the old vectors in
+    // the live index. Recomputed here, over the final text, the live convention.
+    hash: textHash(rec.text),
     // The wiki fields ride along, so a later phase can render and follow them.
     parent: rec.parent || '', children: rec.children || [], links: rec.links || [],
     kind: rec.kind || '', idFrom: rec.idFrom || '', part: rec.part || 1, parts: rec.parts || 1,
