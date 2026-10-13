@@ -27,7 +27,8 @@ two routes are the same.
 
 **Reasoning** (`RULES_FAST_REASONING`, `RULES_MODEL_REASONING`). Sent as
 `reasoning_effort`, only where chosen and never to a custom endpoint unless asked.
-Default: fast route `medium`, writer untouched (the model's own). SenseNova:
+Default: fast route `medium`, writer `none` (reasoning off - measured 60.0%
+against 60.4%, mean 17.1s against 102.2s, no failures against one). SenseNova:
 `none` → 0 reasoning tokens; `medium` is the setting that behaves (~375 tokens on
 both samples); `high` measured no deeper than medium.
 

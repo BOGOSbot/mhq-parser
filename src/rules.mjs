@@ -78,8 +78,8 @@ export function fastReady() { return !!(process.env.RULES_FAST_ENDPOINT || fastC
 // 0 tokens and 2.1s with reasoning off - and the real bank's judge prompts are
 // ten times that, which is why the wait is where it is. The judge, the
 // translation and the search terms only decide and rewrite, so the fast route
-// runs with reasoning off by default. The writer keeps whatever the model does
-// by default (medium or high) so the answer is not written short.
+// runs with reasoning off by default, and so does the writer (measured; see
+// MODEL_REASONING below).
 //
 // The field is reasoning_effort, and it is only sent where it was chosen: a
 // route pointed at another gateway gets it when RULES_MODEL_REASONING or
@@ -93,7 +93,14 @@ export function fastReady() { return !!(process.env.RULES_FAST_ENDPOINT || fastC
 // it is the setting that behaves: on a real judge prompt it spent ~375
 // reasoning tokens on both samples, where the model's own default wandered
 // between 80 and 367. RULES_FAST_REASONING=none buys back the seconds.
-export const MODEL_REASONING = process.env.RULES_MODEL_REASONING || '';
+// The writer does NOT keep its thinking, measured: on the 25-question bank, the
+// writer with reasoning off scored 60.0% against the default's 60.4% - the same
+// within the noise - with zero empty or timed-out writer responses against one,
+// and a mean answer time of 17.1s against 102.2s. The reasoning was buying six
+// times the wall clock and the failures, not the answer. The judge is the one
+// that needs it (79.4% against 61.8%); the writer does not.
+// RULES_MODEL_REASONING=medium restores the old behaviour.
+export const MODEL_REASONING = process.env.RULES_MODEL_REASONING || 'none';
 export const FAST_REASONING = process.env.RULES_FAST_REASONING || (process.env.RULES_FAST_ENDPOINT ? '' : 'medium');
 
 // How long one call may take. The thinking judge is the slow step and 90s was

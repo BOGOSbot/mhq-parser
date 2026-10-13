@@ -229,7 +229,12 @@ come from the environment first, then from the DSH credential store at
 `.dsh/.credentials.yaml`; `DSH_CREDENTIALS` points at another file.
 
 The judge keeps its reasoning (`RULES_FAST_REASONING`, `medium` by default):
-without it the same judge scored 61.8% where thinking it scored 79.4%. A call
+without it the same judge scored 61.8% where thinking it scored 79.4%. The
+writer does not (`MODEL_REASONING` is `none`): on the 25-question bank the
+writer with reasoning off scored 60.0% against 60.4% with it, both inside the
+bank's noise floor, with no empty or timed-out response against one, and a mean
+17.1s against 102.2s - the thinking bought six times the wall clock and the
+failures, not the answer. `RULES_MODEL_REASONING=medium` restores it. A call
 may take three minutes (`RULES_MODEL_TIMEOUT_MS`, `RULES_FAST_TIMEOUT_MS`); at
 90s the thinking judge cut off 7 of 25 real questions. Jev runs on the free
 OpenCode Zen gateway (`RULES_JEV_GATEWAY=openrouter` for the paid fallback).

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import {
   FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, JEV_ENDPOINT, JEV_MODEL, MODEL, MODEL_ENDPOINT, MODEL_REASONING, RULES_EDITION, RULES_EDITION_LABEL,
   anchorFor, credential, credentialFromFile, credentials, credentialsPath, editionOf, fastKeyName, keyState, modelKeyName,
@@ -86,11 +87,22 @@ t('the fast endpoint is a url', /^https:\/\//.test(FAST_ENDPOINT), true);
 t('the fast model is named', FAST_MODEL.length > 3, true);
 t('one route by default: the fast route is the writer', FAST_ENDPOINT === MODEL_ENDPOINT && FAST_MODEL === MODEL, true);
 t('the judge keeps its thinking by default', FAST_REASONING, 'medium');
-t('the writer keeps its own reasoning by default', MODEL_REASONING, '');
+t('the writer reasons not at all by default', MODEL_REASONING, 'none');
 t('the jev model is named', JEV_MODEL.length > 3, true);
 t('RulesError carries a status', new RulesError('nope', 400).status, 400);
 t('RulesError defaults to 500', new RulesError('nope').status, 500);
 t('RulesError is an Error', new RulesError('nope') instanceof Error, true);
+
+// The reasoning default is read from the environment when the module is
+// imported, so the parent process cannot re-import it. A child is the only
+// honest way to check that RULES_MODEL_REASONING=medium restores the old
+// behaviour rather than the comment merely claiming it does.
+const rulesUrl = new URL('../src/rules.mjs', import.meta.url).href;
+const writerReasoning = (env) => spawnSync(process.execPath,
+  ['-e', 'import(' + JSON.stringify(rulesUrl) + ').then(m => console.log(m.MODEL_REASONING))'],
+  { env: { ...process.env, ...env }, encoding: 'utf8' }).stdout.trim();
+t('reasoning off is the writer default in a fresh process', writerReasoning({ RULES_MODEL_REASONING: '' }), 'none');
+t('RULES_MODEL_REASONING=medium restores the writer reasoning', writerReasoning({ RULES_MODEL_REASONING: 'medium' }), 'medium');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
