@@ -540,6 +540,56 @@ exactly as recorded before the rebuild.
 silently revert the shape. The next session should make the build the scrape's
 output or gate the scrape behind it.
 
+### Task 30: the generic-ability restructure (dry run, not yet ingested)
+
+A datasheet's ability record embedded the full text of every ability it has,
+including the ones that are the same on hundreds of datasheets. The corpus paid
+for them 598 times over (Deadly Demise alone) and the record's own ability was
+buried behind them: `unitrules#000002541~2` held 845 chars of the Harlequin army
+rule before Rapid Embarkation began.
+
+The fix is a **labelled-segment extractor**, not a text heuristic: the scrape
+already marks every ability `Ability (Core|Faction|Datasheet): <name> - <text>`. A
+Core or Faction segment is a rule defined elsewhere, so it is dropped whole and
+replaced by a link line naming its record; a Datasheet segment is the unit's own
+and stays. The extractor works on the CONCATENATED record, because the live
+chunker can split a segment across `~1`/`~2` - which is exactly what happened to
+Battle Focus here. It removes a segment by its own boundaries, so there is no span
+heuristic and no rule-dependent offset.
+
+Dry run (`workspace/task30-dryrun/`, no writes to the corpus or the index):
+
+| measure | value |
+|---|---|
+| records with a segment label and no text after it (the debris class) | **0** |
+| removed ids | **1,602**, every one mapped in `id-migration.tsv` |
+| base ids created | 792 |
+| new ability records | 16 |
+| changed records | 672 |
+| proposed total | **6,731** (was 7,525) |
+| owner records absorbing a variant they lacked | 16, 27,055 chars total (one text per near-identical cluster) |
+| owners with a materially different variant pair | 3 - Super-heavy Walker, Synapse, Combat Doctrines |
+| the case, merged | `unitrules#000002541`, 822c, Rapid Embarkation at **228** |
+| the case, unmerged | `unitrules#000002541~2`, 1,054c, Rapid Embarkation at **590** |
+
+**This is a deliberate one-time restructure, not scrape drift.** The id-stability
+rule exists to stop accidental churn; this churn is the point, it is mapped id for
+id, and nothing has to go dead: the 68 trace references and the bank's
+`unitrules#000002541~2` become a deterministic translation through the migration
+map. The bank move itself still waits on reachability, verified on the deployed
+namespace.
+
+The unmerged row is the design's invariant: the strip is correct only because the
+extractor sees the whole segment. An extractor that worked per part would leave the
+569-char orphan tail of Battle Focus in `~2` and Rapid Embarkation at 590 instead
+of 228. The rollback point for the change is `workspace/rules-corpus-before-task30/`
+(68 files, 25.5 MB), refreshed again immediately before the ingest.
+
+The link line is `renderLinks(links)` and nothing else: a finding exposes
+`links: [{to, title, kind, anchor, url}]`, the page renders from that array and
+stops parsing `- ability: X` out of text. One format for the page slice and the
+corpus slice.
+
 ## Recommendation
 
 **Both halves take the variant-D shape, decided 2026-10-13.** Links on the record,
