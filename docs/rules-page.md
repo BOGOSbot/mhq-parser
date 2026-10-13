@@ -68,7 +68,8 @@ Moving records changes ids, so the benchmark grades two readings of every
 question - see *Measuring it*.
 
 The on-disk corpus, the CSV export and the index state live in
-`workspace/rules-corpus/` (untracked):
+`workspace/rules-corpus/` (untracked; the storage and copyright posture is in
+`docs/corpus-storage.md`):
 
 ```
 node src/rules-corpus.mjs --check              # is our copy behind the sources?
