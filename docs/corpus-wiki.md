@@ -208,35 +208,57 @@ corpus that adds records rather than moving them should look like.
   parent. The link block is built; the retrieval benefit it was bet on is
   unproven for this pair, where the child is a strong hit in its own right.
 
-**The vector arm is not run, and its price was measured wrong.** Ollama and
-bge-m3 are on the machine, at 98% CPU / 2% GPU (the GTX 660 takes no meaningful
-load). The local embedding rate measured on 2026-10-13 is **6-12s per record
-batched** - 25.65s for 4 live rules records, 169.7s and 188.0s for two 16-record
-batches - not the ~1.5s per record once recorded here, which was off by about
-7x. So the full 7,556-record local index is **13-25 hours**, and the rules halves
-of the live and wiki corpora alone (1,417 records) are **2.5-4.5 hours**: free,
-but not a session's work. That is the price of the vector-arm numbers and of
-phase C's rebuild; it is measured, not estimated.
+**The vector arm ran, hosted (2026-10-13).** The local route was priced out
+first: bge-m3 on this box runs at 98% CPU / 2% GPU and embeds a record in 6-12s
+(measured: 25.65s for 4 live rules records, 169.7s and 188.0s for two 16-record
+batches), so the two rules halves alone are 2.5-4.5 hours. Both sides were then
+embedded by the **same hosted BGE_M3** on the existing Upstash index, the wiki
+records in a scratch namespace, queried DENSE on the HYBRID index. The live
+namespaces were never written to and the scratch namespace was deleted after; a
+drift control preceded the arm (20 live rules records re-upserted into it rank #1
+for their own text in both, 20/20, and their relative order is identical across
+all 33 bank questions - 0 inversions in 173 comparable pairs - so the two sides
+are one model revision).
 
-**So: a conditional go.** The rewrite is safe (0 ids moved), affordable (+291
-records), and it fixes a class of rule that cannot be retrieved today - the Battle
-Focus class - which the lexical arm already proves. The aggregate is positive
-beyond the noise at hit@5 and at the edge of it elsewhere. What is NOT shown is the
-link-block mechanism (its parent test is negative) and the vector arm (~3.4h), and
-the four open questions below (back-links in or out of the text, name-only index
-pages, the 37 forced chunks) are all vector-arm arms. Phase C should therefore be
-scheduled with the local build first, and the live rebuild asked for only once the
-local numbers exist.
+| rules half, DENSE, topK 20 | exact hit@1 / 5 / 10 / 20 | exact MRR | reachable hit@1 / 5 / 10 / 20 | reachable MRR |
+|---|---|---|---|---|
+| live, 690 records | 58.6 / 72.4 / 89.7 / 93.1 | 0.666 | 58.6 / 79.3 / 96.6 / 96.6 | 0.682 |
+| wiki, 727 records | **62.1** / 72.4 / **82.8** / 93.1 | **0.689** | **62.1** / 75.9 / **89.7** / 96.6 | **0.703** |
+
+The head improves at the edge of the noise floor (hit@1 +3.4 - "How are command
+points generated for an event?" #4 -> #1 - and MRR +0.023), and **the cut is
+hurt** beyond it: hit@10 loses 6.9 on both readings, two questions falling from
+#10 to #11 ("what happens to my models when a transport blows up") and #18 ("how
+close do my models have to stay to each other"). hit@20 is unchanged. Paired per
+question: 22 same rank, 1 better, 4 worse. The vector leg contributes 20
+candidates in the page's path, so both questions still enter the fusion - the
+6.9 is a loss at the bank's hit@10, not proof the page drops them; it is still
+the wrong direction on the metric the corpus is graded on. The link-block parent
+test is negative on the dense leg too ("What does NORMAL SHOOTING allow a unit to
+do?" returns the same top five in both halves and never the parent), and one
+wiki-added overflow chunk (`core-rules#Duplicated-Abilities#2~2`) takes #2 on a
+close-quarters question, pushing the rule's own child to #3.
+
+**So: not adopted.** The rewrite is safe (0 ids moved), affordable (+291
+records), and it closes a real hole - the Battle Focus class, 59 faction rules no
+query can reach today - but that win is in the faction half, which this arm did
+not embed (6,829 records, minutes and under a cent hosted, a separate decision).
+On the rules half the dense leg's cut is 6.9 points worse, two questions fall out
+at hit@10, and the mechanism the rewrite was bet on is negative on both legs. The
+live rebuild is not taken; the numbers are with Mandal. Artifact:
+`workspace/eval/retrieval-vector-wiki-arm.txt`.
 
 ## Open questions for the vector arm
 
-*The four arms below all need the local vector index (measured: 13-25 hours of
-embedding for the full corpus, 2.5-4.5 hours for the two rules halves), which is
-why the lexical gate above is the only one that has run.*
+*The hosted arm above answered the first bullet for the dense leg; the others
+still need the local index (13-25 hours full, 2.5-4.5 hours for the two rules
+halves) or a hosted faction-side arm (6,829 records, minutes).*
 
-- **Is the link block noise for retrieval?** A parent's vector now carries up to
-  40 names it does not discuss. The bank test above answers it; if hit@1 drops
-  while hit@10 rises, the block belongs on the record but not in the vector text.
+- **Is the link block noise for retrieval? ANSWERED, for the two hosted legs.**
+  A parent's vector now carries up to 40 names it does not discuss. On the dense
+  leg the head gains 3.4 at hit@1 and loses 6.9 at hit@10 (two questions); on the
+  lexical leg hit@5 gains 6.9. Neither leg makes the parent reachable to a query
+  that names its child, which is the mechanism the block was for.
 - **Which links are in the text and which are only on the record?** Today the
   plan puts every link in the text when it fits. A card's single back-link to its
   faction is cheap but nearly meaningless ("- faction: Aeldari" on 6,575 cards);
@@ -250,13 +272,12 @@ why the lexical gate above is the only one that has run.*
 
 ## Recommendation
 
-**Proceed to phase B, on the local backend, with the bank as the gate** - phase B
-has now run, and its measured result is above. In short: build it, and the local
-vector arm before the live rebuild. The
-dry run says the rewrite is additive (0 ids moved), affordable (291 records,
-+0.5% on rules, +3.9% on factions), and it fixes a real hole (59 faction rules,
-Battle Focus among them, that no query can reach today). But the retrieval gain
-is unproven, and the honest order is: build it locally, run the bank, and only
-then decide whether the live index is rebuilt. The plan is one module
-(`src/wiki-plan.mjs`), so rejecting it costs nothing that has been written into
-the corpus.
+**Do not rebuild the live index on this evidence.** The rewrite is additive and
+correct (0 ids moved, a real hole closed), and the one arm that could show the
+Battle Focus win - the faction half, 6,829 records through the same hosted route
+- is minutes away rather than hours. But the rules-half dense leg loses 6.9
+points at hit@10 while the link block's parent test stays negative on both legs,
+so the retrieval premise is unproven where it was testable. Adopting the corpus
+now would be accepting that cost for a hole this arm did not measure; the plan is
+one module (`src/wiki-plan.mjs`), so rejecting it costs nothing written into the
+live corpus.

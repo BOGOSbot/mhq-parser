@@ -29,6 +29,16 @@ pid, the new process never got the port: stop whatever did not get it and read
 `workspace/logs/server.err.log`. A leftover server keeps serving the code it
 loaded, which is a detour this repository has already paid for twice.
 
+## Corpus changes rebuild the index
+
+Standing rule (Mandal, 2026-10-13): **after any corpus change the index is rebuilt
+and the parity check re-run**, because a measurement against a stale index has no
+value. `--ingest` is pre-authorised for this; a rebuild that drops sections still
+needs `--prune` afterwards. Prove it id for id per namespace - enumerate with
+`rangeIds` (`workspace/index-vs-corpus.mjs` on this machine) and compare against
+the sections on disk; counts alone are not proof. Then restart the server
+(§Restarting), because it caches the corpus for the life of the process.
+
 ## 1. What changed this session
 
 **The page** (`rules.html`). The progress bar is the record now: it stays after the
