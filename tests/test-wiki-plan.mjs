@@ -84,5 +84,31 @@ const dist = distribution(plan.records);
 t('the distribution counts every record', dist.n, plan.records.length);
 ok('the buckets sum to the record count', Object.values(dist.buckets).reduce((a, b) => a + b, 0) === plan.records.length);
 
+// --- the surgical variant: links out of the embedded text --------------------
+// The block is the retrieval bet; this takes it out of the text the vector sees
+// and keeps every link on the record. A body that only overflowed BECAUSE of the
+// block must go back to being one record, and a parent must lose the child's
+// NAME from its text while keeping the link.
+const surgical = planWiki({ rules, factions, abilities, factionsCsv }, { blockInText: false });
+const sParent = surgical.index.get('r#parent');
+t('the parent still links to its child', sParent.links.map(l => l.to), ['r#parent->-Child']);
+t('the parent text no longer carries the child title', sParent.text.indexOf('Child Rule'), -1);
+ok('fewer links sit in the text', surgical.stats.linksInText < plan.stats.linksInText);
+// A body that fits alone must be its own text again, exactly - and the link it
+// used to carry in that text is still on the record. (Whether the block forced a
+// chunk depends on how many children a parent has: with the block out, a parent
+// that only overflowed because of it is one record again. That is measured on
+// the real corpus by the surgical build, not on a toy.)
+const bigBody = 'x'.repeat(WIKI_BUDGET - 5);
+const bigRules = [
+  { id: 'r#big', set: 'rules', source: 'core-rules', heading: 'Big', text: bigBody, url: 'u' },
+  { id: 'r#big->-Kid', set: 'rules', source: 'core-rules', heading: 'Big > Kid', text: 'The kid states the rule.', url: 'u' },
+];
+const withBlock = planWiki({ rules: bigRules });
+const without = planWiki({ rules: bigRules }, { blockInText: false });
+ok('with the block in, the parent text carries the block', chars(withBlock.index.get('r#big').text) > chars(bigBody));
+t('with the block out, the parent text is its own body', without.index.get('r#big').text, bigBody);
+t('and the link is still on the record', (without.index.get('r#big').links || []).map(l => l.to), ['r#big->-Kid']);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

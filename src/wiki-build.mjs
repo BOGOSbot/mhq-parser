@@ -35,9 +35,9 @@ export function toSection(rec) {
   };
 }
 
-export function writeWikiCorpus(dir, data) {
+export function writeWikiCorpus(dir, data, opts) {
   const input = data || readPlanInput();
-  const plan = planWiki(input);
+  const plan = planWiki(input, opts);
   fs.mkdirSync(dir, { recursive: true });
   // The rules half is four files by source; the faction half is ONE file that
   // carries its own per-faction 'source' label on every section (which is how the
@@ -59,6 +59,7 @@ export function writeWikiCorpus(dir, data) {
   }
   const manifest = {
     builtAt: new Date().toISOString(),
+    linkBlockInText: plan.stats.blockInText !== false,
     records: plan.records.length,
     links: plan.stats.links,
     written,
@@ -71,7 +72,9 @@ export function writeWikiCorpus(dir, data) {
 
 if (process.argv[1] && path.basename(process.argv[1]) === 'wiki-build.mjs') {
   const dir = process.argv[2];
-  if (!dir) { console.error('usage: node src/wiki-build.mjs <dir>'); process.exit(1); }
-  const manifest = writeWikiCorpus(dir);
+  if (!dir) { console.error('usage: node src/wiki-build.mjs <dir> [--links-out-of-text]'); process.exit(1); }
+  // --links-out-of-text is the surgical variant: links stay on the record, the
+  // block leaves the embedded text (see planWiki).
+  const manifest = writeWikiCorpus(dir, null, { blockInText: !process.argv.includes('--links-out-of-text') });
   console.log(JSON.stringify(manifest, null, 2));
 }

@@ -100,7 +100,14 @@ export function readPlanInput() {
   };
 }
 
-export function planWiki(data) {
+export function planWiki(data, opts) {
+  const o = opts || {};
+  // The retrieval bet is that a parent's vector carries its children's NAMES.
+  // blockInText:false is the surgical variant: every link is still resolved and
+  // kept on the record, the block is simply not part of the text that is
+  // embedded - and with it out, a parent that only overflowed BECAUSE of the
+  // block stays one record again.
+  const blockInText = o.blockInText !== false;
   const rules = (data && data.rules) || [];
   const factions = (data && data.factions) || [];
   const abilities = (data && data.abilities) || [];
@@ -110,7 +117,7 @@ export function planWiki(data) {
   const planned = [];
   const index = new Map();
   const stats = {
-    budget, links: 0, linksDropped: 0, linksOmitted: 0, linksInText: 0, split: 0,
+    budget, blockInText, links: 0, linksDropped: 0, linksOmitted: 0, linksInText: 0, split: 0,
     created: { rules: 0, factions: 0 }, largest: { chars: 0, id: '' },
     factionRules: 0, indexPages: 0,
   };
@@ -216,9 +223,10 @@ export function planWiki(data) {
       idFrom: 'source-key', part: 1, parts: 1, text: String(r.text || ''),
     });
     if (resolved.links.length) {
+      stats.links += resolved.links.length;
+      if (blockInText) {
       const block = renderLinks(resolved.links, LINK_BLOCK_MAX);
       stats.linksOmitted += block.omitted;
-      stats.links += resolved.links.length;
       const withLinks = rec.text + '\n\n' + block.text;
       if (chars(withLinks) <= budget) {
         rec.text = withLinks;
@@ -236,6 +244,7 @@ export function planWiki(data) {
           stats.created.rules++;
           stats.split++;
         }
+      }
       }
     }
     fit(rec, 'rules');
@@ -259,7 +268,7 @@ export function planWiki(data) {
     rec.links = resolved.links;
     rec.parent = resolved.links.length ? resolved.links[0].to : '';
     const line = renderLinks(resolved.links, 1);
-    if (chars(rec.text) + chars(line.text) + 2 <= budget) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }
+    if (blockInText && chars(rec.text) + chars(line.text) + 2 <= budget) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }
     fit(rec, 'factions');
     rec.chars = chars(rec.text);
     push(rec);
@@ -302,7 +311,7 @@ export function planWiki(data) {
         idFrom: 'csv-row-id', part: 1, parts: 1, text: String(r.text || ''),
       });
       const line = renderLinks(wanted, 1);
-      if (chars(rec.text) + chars(line.text) + 2 <= budget) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }
+      if (blockInText && chars(rec.text) + chars(line.text) + 2 <= budget) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }
       stats.links++;
       fit(rec, 'factions');
       rec.chars = chars(rec.text);

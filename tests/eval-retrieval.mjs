@@ -79,6 +79,12 @@ const NO_KEY = flag('--no-key');
 // A run in which any question fell back is not the arm it says it is. The bank
 // numbers are withheld unless this is passed on purpose.
 const ALLOW_DEGRADED = flag('--allow-degraded');
+// The two halves are queried by namespace name. The default is the live pair;
+// the wiki arm points the rules half at a scratch namespace while the corpus on
+// disk comes from RULES_CORPUS_DIR, so a corpus rewrite can be measured before
+// the live index is rebuilt.
+const RULES_NS = value('--rules-ns') || 'rules';
+const FACTIONS_NS = value('--factions-ns') || 'factions';
 const corpusIds = ns => new Set(readAllCorpus(ns).map(s => s.id));
 const PER_SIDE = parseInt(value('--per-side') || '10', 10);
 const NEEDS_CORPUS = RETRIEVER !== 'vector';
@@ -162,6 +168,7 @@ async function retrieve(question, item) {
   if (RETRIEVER === 'dual') {
     const dual = await retrieveDual(question, {
       rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: NO_KEY ? '' : JEV_KEY, jevSkip: RERANK_OFF,
+      rulesNamespace: RULES_NS, factionsNamespace: FACTIONS_NS,
       terms: [], grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70),
       perSide: { rules: PER_SIDE, factions: PER_SIDE },
       fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
@@ -183,6 +190,7 @@ async function retrieve(question, item) {
     if (!g.half) {
       const dual = await retrieveDual(question, {
         rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: NO_KEY ? '' : JEV_KEY, jevSkip: RERANK_OFF,
+        rulesNamespace: RULES_NS, factionsNamespace: FACTIONS_NS,
         terms: [], grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70),
         perSide: { rules: PER_SIDE, factions: PER_SIDE },
         fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
@@ -191,7 +199,7 @@ async function retrieve(question, item) {
     }
     const wide = await retrieveWide(question, {
       corpus: g.half === 'factions' ? FACTIONS_CORPUS : RULES_CORPUS,
-      namespace: g.half, jevKey: NO_KEY ? '' : JEV_KEY, jevSkip: RERANK_OFF, terms: [],
+      namespace: g.half === 'factions' ? FACTIONS_NS : RULES_NS, jevKey: NO_KEY ? '' : JEV_KEY, jevSkip: RERANK_OFF, terms: [],
       grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70), topK: PER_SIDE,
       fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
     });
@@ -281,7 +289,8 @@ function at(k) { return graded.filter(r => r.rank !== null && r.rank <= k).lengt
 console.log('');
 console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (graded ' + graded.length + ', out-of-corpus ' + declined.length + ')  topK ' + TOPK + (RETRIEVER === 'vector' ? '  ns ' + (NAMESPACE || '(default)') + [FUSION, QUERY_MODE, WEIGHTING].filter(Boolean).map(v => ' ' + v).join('') : '  net ' + NET) + (SPLIT_HALVES ? '  per-side ' + PER_SIDE + '  w ' + VECTOR_WEIGHT + '  protect ' + PROTECT_VECTOR + (QUERY_MODE ? '  ' + QUERY_MODE : '') : '')
   + (RETRIEVER === 'gate' ? '  gate ' + GATE + (GATE === 'lexical' ? ' margin ' + GATE_MARGIN : '') : '')
-  + (RERANK_OFF ? '  rerank off' : '') + (NO_KEY ? '  no key' : ''));
+  + (RERANK_OFF ? '  rerank off' : '') + (NO_KEY ? '  no key' : '')
+  + (RULES_NS !== 'rules' || FACTIONS_NS !== 'factions' ? '  ns ' + RULES_NS + '/' + FACTIONS_NS : ''));
 if (resolveNotes.length) {
   console.log('');
   console.log('expectations the corpus does not name as written:');

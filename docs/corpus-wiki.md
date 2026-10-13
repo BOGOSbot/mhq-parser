@@ -239,14 +239,39 @@ do?" returns the same top five in both halves and never the parent), and one
 wiki-added overflow chunk (`core-rules#Duplicated-Abilities#2~2`) takes #2 on a
 close-quarters question, pushing the rule's own child to #3.
 
-**So: not adopted.** The rewrite is safe (0 ids moved), affordable (+291
-records), and it closes a real hole - the Battle Focus class, 59 faction rules no
-query can reach today - but that win is in the faction half, which this arm did
-not embed (6,829 records, minutes and under a cent hosted, a separate decision).
-On the rules half the dense leg's cut is 6.9 points worse, two questions fall out
-at hit@10, and the mechanism the rewrite was bet on is negative on both legs. The
-live rebuild is not taken; the numbers are with Mandal. Artifact:
-`workspace/eval/retrieval-vector-wiki-arm.txt`.
+**The shape arms: the rules half can be neutral, and the block is not the cost.**
+Three more hosted arms (all free, no Jev; every scratch namespace waited on until
+`pendingVectorCount` was 0 before a single query - a query against pending
+vectors reads them as misses and looks like drift - and every one deleted after,
+/info back to 7,266):
+
+- **The page's own path** (`--retriever dual --per-side 10 --net 60 --rerank
+  off`, the rules half from the wiki corpus and a scratch namespace): hit@10
+  86.2 and hit@20 93.1 unchanged from live, reachable hit@5 69 -> 75.9, hit@1
+  27.6 -> 34.5, MRR 0.449 -> 0.496. Paired: 19 same rank, 5 better, 3 worse,
+  none lost. **The reader's candidate set is not hurt** - the vector leg's -6.9
+  at hit@10 does not survive the merge with grep and the anchoring.
+- **The block out of the embedded text** (`blockInText: false`, every link still
+  resolved and kept on the record) does NOT restore hit@10 on its own (82.8,
+  the same as block-in). The planner budgets the whole record text, while the
+  live chunker caps the BODY at 2,000 and then prepends the heading - so 35 live
+  records sit over the planner's budget and it re-splits them into 30 extra
+  `~2` chunks. The chunks, not the block, cost the two questions.
+- **Block out and the live chunker's own ceiling** (690 rules records: 0 added,
+  0 gone, 690/690 byte-identical to the live corpus, no link line in any text):
+  the dense leg reproduces the live row on every column, exactly (58.6 / 72.4 /
+  89.7 / 93.1, MRR 0.666; reachable 58.6 / 79.3 / 96.6 / 96.6, MRR 0.682).
+
+**So: a rules-neutral shape exists, and the decision is the faction half.** Links
+on the record, block out of the embedded text, planner budget matching the live
+chunker costs the rules half nothing; the block's own mechanism stays unproven
+(negative on the lexical leg, the dense leg and the targeted parent test). What
+is still unmeasured is the half the rewrite was actually built for - Battle
+Focus and the 58 other faction rules that no query can reach today, and the 191
+index pages - 6,829 records, minutes and under a cent hosted, but 6,829 upserts
+plus 6,829 deletes against a Free daily update budget these arms have largely
+spent. The live rebuild is not taken; the numbers are with Mandal. Artifacts:
+`workspace/eval/retrieval-wiki-shape-arms.txt`.
 
 ## Open questions for the vector arm
 
@@ -272,12 +297,12 @@ halves) or a hosted faction-side arm (6,829 records, minutes).*
 
 ## Recommendation
 
-**Do not rebuild the live index on this evidence.** The rewrite is additive and
-correct (0 ids moved, a real hole closed), and the one arm that could show the
-Battle Focus win - the faction half, 6,829 records through the same hosted route
-- is minutes away rather than hours. But the rules-half dense leg loses 6.9
-points at hit@10 while the link block's parent test stays negative on both legs,
-so the retrieval premise is unproven where it was testable. Adopting the corpus
-now would be accepting that cost for a hole this arm did not measure; the plan is
-one module (`src/wiki-plan.mjs`), so rejecting it costs nothing written into the
-live corpus.
+**Rebuild the rules half only in the neutral shape, and measure the faction half
+before adopting it.** The rules half in "links on the record, block out of the
+embedded text, planner budget matching the live chunker" is measured to cost
+nothing (the dense leg reproduces live exactly, the page's own path gains at the
+head), so this is no longer a question of the rules half's risk. What is missing
+is the benefit: the faction rules the corpus cannot reach today, Battle Focus
+among them, and the index pages. That is one more hosted arm after the daily
+update budget resets; the plan is one module (`src/wiki-plan.mjs`) with the
+block now a switch, so nothing has been written into the live corpus.

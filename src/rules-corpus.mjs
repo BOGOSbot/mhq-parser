@@ -2300,14 +2300,14 @@ export async function retrieveDual(question, opts) {
   const [rules, factions] = await Promise.all([
     retrieveWide(question, {
       corpus: o.rulesCorpus || readAllCorpus('rules'),
-      namespace: 'rules',
+      namespace: o.rulesNamespace || 'rules',
       jevKey: o.jevKey, jevSkip: o.jevSkip, jevEndpoint: o.jevEndpoint, cfg: o.cfg, terms: o.terms,
       grepNet: Math.max(o.grepNet || 40, rulesK * 4), jevMax: netFor(rulesK), topK: rulesK,
       queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
     }),
     retrieveWide(question, {
       corpus: o.factionsCorpus || readAllCorpus('factions'),
-      namespace: 'factions',
+      namespace: o.factionsNamespace || 'factions',
       jevKey: o.jevKey, jevSkip: o.jevSkip, jevEndpoint: o.jevEndpoint, cfg: o.cfg, terms: o.terms,
       grepNet: Math.max(o.grepNet || 40, factionsK * 4), jevMax: netFor(factionsK), topK: factionsK,
       queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
