@@ -99,6 +99,9 @@ entry to `tests/fixtures/rules-questions.json`.
 - **A broken run cannot be promoted.** A trace whose `writer` is `empty` or
   `timeout` is refused, and a trace written before that field existed is judged on
   its answer instead - an empty answer is a writer failure whatever the field says.
+  `writer` is the **prose** outcome and nothing else: the unit card is additive
+  now, so a card that previewed a datasheet does not set this field, and which
+  datasheet it was is in `card: { id, name }`.
 - **A question already in the bank is not promoted twice**, matched on the question
   text, case- and space-insensitive.
 - **Existing entries are never touched.** The new one is appended as text before

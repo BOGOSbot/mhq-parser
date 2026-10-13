@@ -780,6 +780,19 @@ async function handleRulesAsk(req, res) {
       'Cache-Control': 'no-cache, no-transform',
       'X-Accel-Buffering': 'no',
     });
+    // A heartbeat. The longest silent gap on this stream is the judge thinking
+    // (up to three minutes), and a response that sends nothing for a minute is
+    // what an intermediary or a browser is entitled to cut - the page then shows
+    // the browser's own 'Error in input stream' after an answer that had already
+    // arrived. One line every 15s keeps the connection busy; the page ignores it
+    // (an unknown event type is a no-op) and it is never written after the
+    // response has finished.
+    var pingTimer = setInterval(function () {
+      if (!gone) { try { res.write(JSON.stringify({ type: 'ping', elapsedMs: Date.now() - started }) + '\n'); } catch (e) { gone = true; } }
+    }, 15000);
+    var stopPing = function () { clearInterval(pingTimer); pingTimer = null; };
+    res.on('close', stopPing);
+    res.on('finish', stopPing);
     // Without this the headers sit in Node until the first body write, so the
     // browser's fetch does not even resolve - and the page cannot draw its
     // waiting state - until translation has finished several seconds later.

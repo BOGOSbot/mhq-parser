@@ -87,15 +87,19 @@ export function traceFindings(findings) {
 }
 
 // How the writer ended, as its own field: 'ok', 'empty' (it came back with
-// nothing), 'timeout' (the call was cut), 'declined' (it read the findings and
-// refused) or 'card' (the question was a datasheet lookup and the card answered
-// it, so no writer ran at all). Empty and timeout read the same to a reader - one
-// sentence covers both - but they are different defects and a trace has to be
-// filterable by which one happened, or the page's real failure rate stays
-// invisible in the data we just started collecting.
+// nothing), 'timeout' (the call was cut) or 'declined' (it read the findings and
+// refused). Empty and timeout read the same to a reader - one sentence covers
+// both - but they are different defects and a trace has to be filterable by which
+// one happened, or the page's real failure rate stays invisible in the data we
+// just started collecting.
+//
+// This is the PROSE outcome and nothing else. The card used to answer alone and
+// wrote 'card' here; now that the card is a preview the prose always runs, and a
+// preview must not overwrite the outcome - the evaluation bank's writer-empty
+// guard and any failure-rate count read this field. Which datasheet previewed is
+// in `card: { id, name }`.
 export function writerMode(input) {
   const o = input || {};
-  if (o.card) return 'card';
   if (o.failed) return o.failed;
   if (o.declined) return 'declined';
   if (!String(o.answer == null ? '' : o.answer).trim()) return 'empty';

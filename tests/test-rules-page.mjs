@@ -51,7 +51,7 @@ t('and in the French table too', missingFr, []);
 // the tables like every other one.
 const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild', 'rankN', 'rankScore', 'rankScoreTitle', 'matchedWords', 'openPassage', 'moreFindings', 'close', 'openSource',
   'cardTitle', 'cardRanged', 'cardMelee', 'cardAbilities', 'cardKeywords', 'cardComposition', 'cardPoints', 'cardSourceNote', 'cardOpen',
-  'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'cardReady'];
+  'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'cardReady', 'streamCut'];
 const absent = needed.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined);
 t('the new display labels exist in both languages', absent, []);
 

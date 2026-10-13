@@ -427,6 +427,7 @@ var I18N = {
     intro: '<p>The question is searched against an indexed copy of the <span id="edlabel">current-edition</span> rules, not answered from memory. Both halves are searched — core rules, and faction datasheets, stratagems, detachments and enhancements:</p><ol><li><b>translate</b> — a question in another language is translated in full into English first, because the corpus is English, and the translation is shown so you can correct it;</li><li><b>retrieve</b> — each half is searched separately, then <b>jev</b> reranks the union. Jev decides; it does not write;</li><li><b>judge + answer</b> — the findings below are the product; a small model writes alongside them and judges whether they answer the question, and the two need not be the same model;</li><li><b>voice</b> is optional: the <b>Voice</b> button transcribes in your browser and needs https or localhost. The text is left in the box to correct — speech recognition mangles unit names, and the wrong unit retrieves the wrong rule.</li></ol><p>Every citation below links to the section it came from — <code>.../core-rules/#1.-Hit-Roll</code> or a datasheet page. The anchor is derived by the server from the heading, never written by the model, so a citation cannot point at a source that was not indexed.</p>',
     answerFailed: 'The prose could not be written this time - the findings above are what was retrieved.',
     requestFailed: 'The request failed. Try again.',
+    streamCut: 'the connection dropped before the end - what arrived is above, ask again for the rest',
     retention: 'What you type is kept, anonymously, to make this page better: the question, what it found, and the answer. No IP address, no browser, no account — just a random number for the question.',
     dataFrom: 'Data from: ',
     footRepo: 'Source code',
@@ -556,6 +557,7 @@ var I18N = {
     intro: '<p>La question est cherchée dans une copie indexée des règles <span id="edlabel">de l\u2019édition en cours</span>, jamais répondue de mémoire. Les deux moitiés sont cherchées — règles de base, et fiches techniques, stratagèmes, détachements et optimisations de faction :</p><ol><li><b>traduction</b> — une question dans une autre langue est d\u2019abord traduite en entier en anglais, car le corpus est anglais, et la traduction est affichée pour être corrigée ;</li><li><b>recherche</b> — chaque moitié est cherchée séparément, puis <b>jev</b> reclasse l\u2019union. Jev décide ; il n\u2019écrit pas ;</li><li><b>juge + réponse</b> — les constats ci-dessous sont le produit ; un petit modèle écrit à côté et juge s\u2019ils répondent à la question, et les deux ne sont pas forcément le même ;</li><li><b>voix</b> est optionnel : le bouton <b>Voix</b> transcrit dans votre navigateur et exige https ou localhost. Le texte reste dans le champ pour être corrigé — la reconnaissance vocale abîme les noms d\u2019unités, et la mauvaise unité fait chercher la mauvaise règle.</li></ol><p>Chaque citation renvoie à la section d\u2019où elle vient — <code>.../core-rules/#1.-Hit-Roll</code> ou une page de fiche technique. L\u2019ancre est dérivée par le serveur à partir du titre, jamais écrite par le modèle : une citation ne peut pas pointer vers une source non indexée.</p>',
     answerFailed: 'La réponse n\u2019a pas pu être rédigée cette fois — les constats ci-dessus sont ce qui a été trouvé.',
     requestFailed: 'La requête a échoué. Réessayez.',
+    streamCut: 'la connexion a lâché avant la fin — ce qui est arrivé est ci-dessus, relancez pour la suite',
     retention: 'Ce que vous écrivez est conservé, anonymement, pour améliorer cette page : la question, ce qu’elle a trouvé et la réponse. Ni adresse IP, ni navigateur, ni compte — juste un numéro tiré au hasard pour la question.',
     dataFrom: 'Données de : ',
     footRepo: 'Code source',
@@ -1275,7 +1277,7 @@ function startResult(lang) {
   host.appendChild(answerCard);
   var rest = el('div');
   host.appendChild(rest);
-  return { cardSlot: cardSlot, verdict: verdict, findingSlot: findingSlot, answer: answerCard, rest: rest, findings: [], terms: [], translation: null, card: false, judge: null, judge2: null, judgeAttempt: 0, disputed: false };
+  return { cardSlot: cardSlot, verdict: verdict, findingSlot: findingSlot, answer: answerCard, rest: rest, findings: [], terms: [], translation: null, card: false, judge: null, judge2: null, judgeAttempt: 0, disputed: false, events: 0, answered: false };
 }
 
 // --- stage progress ---------------------------------------------------------
@@ -1414,6 +1416,7 @@ function flash(node) {
 
 function applyEvent(ev, state) {
   if (!ev || !ev.type) return;
+  state.events = (state.events || 0) + 1;
   if (ev.type === 'start') { startProgress(ev.stages); return; }
   // The server echoes the setting it actually ran, which is also what a shared
   // link or a curl says: the page draws it from its own toggle, so this only
@@ -1489,6 +1492,7 @@ function applyEvent(ev, state) {
     return;
   }
   if (ev.type === 'answer') {
+    state.answered = true;
     var waiting = state.answer.querySelector('.waiting');
     if (waiting) waiting.parentNode.removeChild(waiting);
     // The writer failed - it timed out, or it came back with nothing. The reader
@@ -1688,9 +1692,14 @@ async function ask(over) {
       }
     }
   } catch (e) {
-    var bar = $('#progress');
-    if (bar) bar.classList.add('hidden');
-    setStatus(String(e.message || e), 'err');
+    // A stream can be cut mid-answer - the browser reports it as 'Error in input
+    // stream', which is what a response that never sent its last event looks like
+    // from here. What arrived is kept and the bar keeps its timings: the findings
+    // are the product, and replacing them with a raw browser string is the one
+    // thing not to do. The real error goes to the console with how far it got.
+    try { console.error('rules/ask stream ended early after ' + (state.events || 0) + ' events: ' + (e && e.message ? e.message : e)); } catch (e2) { /* no console */ }
+    finishProgress();
+    setStatus(state.answered ? t('streamCut') : String((e && e.message) || e), 'err');
   } finally {
     clearInterval(tick);
     busy = false;

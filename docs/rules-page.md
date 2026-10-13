@@ -16,7 +16,13 @@ functionality document for that page; the army-list parser has its own in
   (`start`, `translation`, `terms`, `findings`, `escalate`, `judge`, `answer`,
   `done`), plus `card` for a datasheet question and `reconcile` when the two
   judges disagree - see *The unit card* and *Two judges, one answer*. The stream
-  is what lets the page draw the findings before the prose exists.
+  is what lets the page draw the findings before the prose exists. It also sends a
+  `ping` every 15 seconds while a stage runs: the longest silence on it is the
+  judge thinking - up to three minutes - and a response that sends nothing for a
+  minute is one a browser or an intermediary may cut, which reaches the page as
+  the browser's own *Error in input stream* after an answer that had already
+  arrived. A cut stream keeps whatever arrived, leaves the bar's timings in place
+  and says the connection dropped, instead of printing that string at the reader.
 - `GET /health` publishes `corpus` (sections per half, build date, edition),
   the edition, and both inference routes. The page no longer prints the key
   state: which models a deployment uses is not the reader's business, and a

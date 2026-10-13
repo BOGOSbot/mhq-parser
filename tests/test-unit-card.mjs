@@ -137,8 +137,12 @@ const tr = buildTrace({
   asked: 'Give me the profile of Fuegan.', terms: ['FUEGAN'], answer: '', findings: [], judge: null,
   card: { id: '000000574', name: 'Fuegan' },
 });
-t('a card question is a writer mode of its own', tr.writer, 'card');
-t('the trace names the datasheet, not a passage', tr.card, { id: '000000574', name: 'Fuegan' });
+// The writer field is the prose outcome, never the preview: the card is additive
+// now, so a card trace whose writer produced nothing is an 'empty' writer, and
+// the datasheet it previewed lives in its own field.
+t('a card trace with no prose is an empty writer, not a card writer', tr.writer, 'empty');
+t('the trace names the datasheet beside the prose outcome', tr.card, { id: '000000574', name: 'Fuegan' });
+t('a previewed card with prose is an ok writer', buildTrace({ id: 'x', at: '2026-10-13T00:00:00.000Z', question: 'q', answer: 'A rule [1].', card: { id: '000000574', name: 'Fuegan' } }).writer, 'ok');
 t('a card trace carries no findings and no answer', [tr.findings, tr.answer], [[], '']);
 
 // The tables are a cache of files on disk; a reload must give the same card.
