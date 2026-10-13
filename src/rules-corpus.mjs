@@ -2012,25 +2012,76 @@ export async function retrieveWide(question, opts) {
   const corpus = o.corpus || readAllCorpus();
   const lists = [];
 
+  // Which retriever found what, and where it ranked it. The two legs are fused
+  // by rank and then reordered by the reranker and by anchoring, so by the time
+  // a finding reaches the page its origin is gone - and a reader shown '[3]' has
+  // no way to tell a vector hit from a word match. The scores are kept separate
+  // for the same reason the fusion does not compare them: a similarity and a
+  // term score are not the same quantity.
+  const prov = new Map();
+  const note = (id, key, rank, score) => {
+    if (!id) return;
+    const p = prov.get(id) || {};
+    p[key + 'Rank'] = rank;
+    if (typeof score === 'number') p[key + 'Score'] = score;
+    prov.set(id, p);
+  };
+
   try {
     const hits = await queryIndex(question, { topK: o.vectorTopK || 20, cfg: o.cfg, namespace: o.namespace, queryMode: o.queryMode });
     const byId = new Map(corpus.map(s => [s.id, s]));
-    const vec = hits.map(h => byId.get(h.id)).filter(Boolean);
+    const vec = [];
+    hits.forEach((h, i) => {
+      const sec = byId.get(h.id);
+      if (!sec) return;
+      note(h.id, 'vector', i + 1, h.score);
+      vec.push(sec);
+    });
     if (vec.length) lists.push(vec);
   } catch (e) {
     // No index, no vectors. Grep does not care, and neither does the caller.
   }
 
-  const grep = o.terms && o.terms.length
-    ? grepWithTerms(o.terms.concat(grepTerms(question)), corpus, o.grepNet || 40, question)
-    : grepCorpus(question, corpus, o.grepNet || 40);
+  // The lexical pass, and the terms it ran on: the same words decide the
+  // matched-keyword outline the page draws, so they are computed once here.
+  const lexicalTerms = o.terms && o.terms.length ? o.terms.concat(grepTerms(question)) : grepTerms(question);
+  const grep = grepWithTerms(lexicalTerms, corpus, o.grepNet || 40, question);
+  grep.forEach((g, i) => note(g.id, 'lexical', i + 1, g.score));
   if (grep.length) lists.push(grep);
+
+  // Anchoring and clarification are recorded as they happen further down; the
+  // sets are declared here so every return path labels its findings the same way.
+  const anchoredIds = new Set();
+  const childIds = new Set();
+  const matchedTerms = sec => {
+    const hay = (String(sec.heading || '') + '\n' + String(sec.text || '')).toLowerCase();
+    const hits = [];
+    for (const raw of lexicalTerms) {
+      const t = String(raw).toLowerCase().trim();
+      if (!t || t.indexOf(' ') !== -1) continue;
+      if (termPresent(hay, t)) hits.push(t);
+    }
+    return Array.from(new Set(hits)).slice(0, 4);
+  };
+  // The retriever that produced each finding, and its rank inside this half's
+  // list. 'both' means the two legs agreed; 'anchored' and 'child' are the
+  // records anchoring and clarification added rather than a retriever.
+  const decorate = list => list.map((s, i) => {
+    const p = prov.get(s.id) || {};
+    const leg = p.vectorRank
+      ? (p.lexicalRank ? 'both' : 'vector')
+      : (p.lexicalRank ? 'lexical' : (anchoredIds.has(s.id) ? 'anchored' : 'child'));
+    return Object.assign({}, s, p, { leg, rank: i + 1, matchedTerms: (leg === 'lexical' || leg === 'both') ? matchedTerms(s) : [] });
+  });
 
   // The vector list is short and its head is its best evidence; the grep list is
   // long and its head is a word match. Weighting keeps the second from burying
   // the first - measured on the retrieval bank, see docs/rules-page.md.
   const merged = rrfMerge(lists, o.fusionK || 60, o.fusionWeights).slice(0, o.jevMax || 80);
-  if (!o.jevKey) return merged.slice(0, o.topK || 10);
+  // The ranker is optional; without it the fusion order is the answer, and the
+  // provenance has to ride along on this path too - a page whose findings have
+  // no leg is a page that cannot say where they came from.
+  if (!o.jevKey) return decorate(merged.slice(0, o.topK || 10));
   let ranked = null;
   try {
     ranked = await jevRank(question, merged, o.jevKey, { max: o.jevMax || 80 });
@@ -2054,6 +2105,7 @@ export async function retrieveWide(question, opts) {
   // The records of the unit the question names come first: dropping the answer
   // to a question about a datasheet is worse than showing one passage too many.
   for (const anchor of entityAnchors(question, corpus, o.anchorCap || 2, o.terms)) {
+    anchoredIds.add(anchor.id);
     if (guarded.some(s => s.id === anchor.id)) continue;
     guarded.unshift(anchor);
   }
@@ -2071,11 +2123,13 @@ export async function retrieveWide(question, opts) {
   // A rule's own clarifications travel with it, so the condition that limits
   // the answer is on the page even when the reranker only saw the permission.
   for (const child of childSections(guarded.slice(), corpus, o.childPerParent || 1, o.childCap || 3)) {
+    childIds.add(child.id);
     if (guarded.some(s => s.id === child.id)) continue;
     guarded.push(child);
   }
   // Anchored and clarifying records may sit past the cut once everything is merged.
-  return guarded.slice(0, topK + (o.anchorCap || 2) + (o.childCap || 3));
+  const out = guarded.slice(0, topK + (o.anchorCap || 2) + (o.childCap || 3));
+  return decorate(out);
 }
 
 // --- the two halves ---------------------------------------------------------
@@ -2225,6 +2279,16 @@ export function findingFor(section, n) {
     // The scraped sections already carry their fragment in url, so appending
     // the anchor again produced '...#X#X'. Strip back to the page first.
     href: section.anchor ? String(section.url || '').split('#')[0] + '#' + section.anchor : String(section.url || '').split('#')[0],
+    // Which leg produced it and how it ranked, for the page's own labels. A
+    // finding the caller built by hand (a test, a caller with no retrievers)
+    // simply carries no provenance.
+    rank: section.rank || 0,
+    leg: section.leg || '',
+    vectorRank: section.vectorRank || 0,
+    vectorScore: section.vectorScore,
+    lexicalRank: section.lexicalRank || 0,
+    lexicalScore: section.lexicalScore,
+    matchedTerms: section.matchedTerms || [],
     text: section.text,
     excerpt: section.text.length > 600 ? section.text.slice(0, 600).replace(/\s+\S*$/, '') + ' ...' : section.text,
   };

@@ -862,9 +862,18 @@ async function handleRulesAsk(req, res) {
     // answer, which is exactly what used to happen.
     let findings = [];
     let counts = { rules: 0, factions: 0 };
+    // The page labels every finding with the leg that produced it and outlines
+    // the words the lexical leg matched, so the provenance travels with the
+    // payload rather than being guessed from the question. `passage` is the
+    // whole record - the popup shows the passage without a second request - and
+    // `excerpt` stays the short form the list prints.
     const toPayload = list => list.map(f => ({
       n: f.n, set: f.set, source: f.source, faction: f.faction, heading: f.heading,
-      ruleId: f.ruleId, url: f.url, href: f.href, excerpt: f.excerpt,
+      ruleId: f.ruleId, url: f.url, href: f.href, excerpt: f.excerpt, passage: f.text || '',
+      rank: f.rank || 0, leg: f.leg || '',
+      vectorRank: f.vectorRank || 0, vectorScore: f.vectorScore,
+      lexicalRank: f.lexicalRank || 0, lexicalScore: f.lexicalScore,
+      matchedTerms: f.matchedTerms || [],
     }));
 
     // The reader picks the setting: fast asks the judge not to reason and takes

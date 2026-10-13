@@ -183,6 +183,39 @@ per-passage cap from `JUDGE_PASSAGE_CHARS` (2,400) and `JUDGE_TOTAL_CHARS`
 (60,000), so a deeply widened pass shows the judge less of each passage - the
 ceiling is what keeps that from eating the evidence.
 
+## Showing the findings
+
+The findings are the product, so the page draws them as findings: each carries
+the leg that produced it, the rank that leg gave it, and - when the lexical leg
+matched - the words it matched.
+
+- `retrieveWide` records provenance as it searches: `vectorRank` beside the
+  vector's similarity, `lexicalRank` beside the term score. Every finding comes
+  back with a `leg` (`both`, `vector`, `lexical`, `anchored`, `child`) and its
+  position in the half. Both return paths decorate: the ranker is optional, and
+  a page whose findings have no leg cannot say where they came from.
+- The display sorts each half by that rank - ranks are per-half positions, so
+  interleaving two halves would invent an order - shows the top five overall
+  whole above the prose, and puts the rest behind *more findings*.
+- A lexical finding outlines the terms it matched, in the list and in the
+  passage. The vector leg's similarity is shown as a **rank score**: it orders
+  passages, and it is not a confidence that one answers the question. The judge
+  is that, and it is on the page above them.
+- A widening re-emits `findings` with the whole wider list; the page replaces
+  the list it was showing instead of stacking a second one under it, and the
+  bar gives the widening its own segment.
+- Citations are links with a popup. The payload already carries the whole record
+  (`passage`, capped at the record's own 2,000 characters), so opening `[3]`
+  costs no request: the popup shows the heading path as a breadcrumb, the body
+  as paragraphs with the matched words outlined, and the Wahapedia link.
+  `excerpt` stays the short line the list prints.
+
+The labels are in both i18n tables, and `tests/test-rules-page.mjs` holds that:
+the two tables must carry the same keys, every `t('...')` the script asks for
+must exist in both, and a reader-facing label may not be written as a literal in
+the code. Commit 864ad28 is why - one hardcoded `Findings - N` was the only
+English left on an otherwise French page.
+
 ## The unit card
 
 A datasheet question - "donne moi le profil de fuegan" - used to be answered with
@@ -349,6 +382,10 @@ answer the same question differently.
 - `node tests/test-unit-card.mjs` - the datasheet resolution, every field of the
   Fuegan card against the CSV, the silent fallbacks (a rules question, an unknown
   unit, a name several factions share) and the trace's card shape.
+- `node tests/test-findings.mjs` - the retriever leg, rank and matched words
+  surviving fusion and anchoring, on both the ranked and the unranked return.
+- `node tests/test-rules-page.mjs` - the page's i18n discipline: both tables carry
+  the same keys, every `t('...')` key exists, and no label is hardcoded.
 
 ## Known limits
 
