@@ -312,8 +312,27 @@ export function stripChrome(html) {
 // --- html into sections -----------------------------------------------------
 // Every heading, with or without an id. A heading the page anchored becomes a
 // citable fragment; one it did not stays a label on a page-level citation.
+// The FAQ and the errata are not headings. A question is a `<td>Q:</td><td>`
+// cell inside a table, and an errata entry is a `<div class="errata_H">` title;
+// the extractor only cuts at headings, so one card's question became the heading
+// for every card after it - 'Units and Models > Q: If a rule's effect lasts...'
+// was a 2,000-character record holding a dozen unrelated answers, and the vector
+// built from it describes none of them well. 96 FAQ cards and 9 errata entries
+// in the core rules alone. Promoting each card's own title to a heading is the
+// whole fix, and it is done on the HTML so the splitter and the heading stack
+// see exactly what a real heading would give them.
+const FAQ_Q_CELL = /<td[^>]*class="faq_Q"[^>]*>\s*Q:\s*<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/g;
+const ERRATA_TITLE = /<div class="errata_H">([\s\S]*?)<\/div>/g;
+
+export function promoteFaqCards(html) {
+  const plain = s => htmlToText(s).replace(/\s+/g, ' ').trim();
+  return String(html == null ? '' : html)
+    .replace(FAQ_Q_CELL, (m, question) => '<h4 class="faq-heading">Q: ' + plain(question) + '</h4>' + m)
+    .replace(ERRATA_TITLE, (m, title) => '<h4 class="errata-heading">' + plain(title) + '</h4>');
+}
+
 export function extractSections(html, source) {
-  const page = String(html);
+  const page = promoteFaqCards(html);
   const head = /<h([1-6])([^>]*)>([\s\S]*?)<\/h\1>/gi;
   const marks = [];
   let m;
@@ -361,7 +380,9 @@ export function extractSections(html, source) {
     // update". It dates the copy; nobody asks about it.
     if (/^Book\s+Kind\s+Edition\s+Version\s+Last update/i.test(title)) continue;
     while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
-    const path = stack.map(s => s.title);
+    // 'Show' and 'Hide' are the spoiler toggles: they end up as ancestors once a
+    // promoted card hangs under them, and they say nothing about the rule.
+    const path = stack.map(s => s.title).filter(t => !/^(show|hide)$/i.test(t));
     // "FAQ" over eighty-four sections, "Errata" over fourteen: a real heading
     // that names a container rather than a rule. The content is worth keeping -
     // a clarification is a rule - but the label has to come from the content or
@@ -1722,18 +1743,25 @@ export async function answerableFindings(question, opts) {
 // term counts; they are not on the same scale and must not be compared. Rank
 // fusion merges the two lists without pretending otherwise - a section both
 // retrievers like wins, and one only a single retriever found still gets in.
-export function rrfMerge(lists, k) {
+// Reciprocal rank fusion. Lists may be weighted: the two retrievers are not
+// equally good at the top - measured on the retrieval bank, a dense vector
+// query alone lands the expected section first 62% of the time and a hybrid one
+// 59%, while our own grep does not - and an unweighted merge lets a long grep
+// list walk over the head of a short vector list.
+export function rrfMerge(lists, k, weights) {
   const weight = k || 60;
+  const w = weights || [];
   const score = new Map();
   const item = new Map();
-  for (const list of lists) {
+  lists.forEach((list, li) => {
+    const scale = w[li] || 1;
     (list || []).forEach((entry, i) => {
       const id = entry.id;
       if (!id) return;
       item.set(id, entry);
-      score.set(id, (score.get(id) || 0) + 1 / (weight + i + 1));
+      score.set(id, (score.get(id) || 0) + scale / (weight + i + 1));
     });
-  }
+  });
   return Array.from(score.entries())
     .sort((a, b) => b[1] - a[1])
     .map(([id, s]) => Object.assign({ rrf: s }, item.get(id)));
@@ -1856,7 +1884,7 @@ export async function retrieveWide(question, opts) {
   const lists = [];
 
   try {
-    const hits = await queryIndex(question, { topK: o.vectorTopK || 20, cfg: o.cfg, namespace: o.namespace });
+    const hits = await queryIndex(question, { topK: o.vectorTopK || 20, cfg: o.cfg, namespace: o.namespace, queryMode: o.queryMode });
     const byId = new Map(corpus.map(s => [s.id, s]));
     const vec = hits.map(h => byId.get(h.id)).filter(Boolean);
     if (vec.length) lists.push(vec);
@@ -1869,7 +1897,10 @@ export async function retrieveWide(question, opts) {
     : grepCorpus(question, corpus, o.grepNet || 40);
   if (grep.length) lists.push(grep);
 
-  const merged = rrfMerge(lists).slice(0, o.jevMax || 80);
+  // The vector list is short and its head is its best evidence; the grep list is
+  // long and its head is a word match. Weighting keeps the second from burying
+  // the first - measured on the retrieval bank, see docs/rules-page.md.
+  const merged = rrfMerge(lists, o.fusionK || 60, o.fusionWeights).slice(0, o.jevMax || 80);
   if (!o.jevKey) return merged.slice(0, o.topK || 10);
   let ranked = null;
   try {
@@ -1897,11 +1928,16 @@ export async function retrieveWide(question, opts) {
     if (guarded.some(s => s.id === anchor.id)) continue;
     guarded.unshift(anchor);
   }
-  for (const list of lists) {
-    const own = list[0];
-    if (!own || guarded.some(s => s.id === own.id)) continue;
-    if (guarded.length < topK) guarded.push(own);
-    else guarded[guarded.length - 1] = own;
+  for (let li = 0; li < lists.length; li++) {
+    // The vector leg's own head is not one hit but its first few: on the bank it
+    // ranks the expected section first more often than the merged result does,
+    // and a reranker that reorders 80 candidates can only shuffle that head.
+    const protect = li === 0 ? (o.protectVector || 1) : 1;
+    for (const own of lists[li].slice(0, protect)) {
+      if (!own || guarded.some(s => s.id === own.id)) continue;
+      if (guarded.length < topK) guarded.push(own);
+      else guarded[guarded.length - 1] = own;
+    }
   }
   // A rule's own clarifications travel with it, so the condition that limits
   // the answer is on the page even when the reranker only saw the permission.
@@ -1945,12 +1981,14 @@ export async function retrieveDual(question, opts) {
       namespace: 'rules',
       jevKey: o.jevKey, cfg: o.cfg, terms: o.terms,
       grepNet: Math.max(o.grepNet || 40, rulesK * 4), jevMax: netFor(rulesK), topK: rulesK,
+      queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
     }),
     retrieveWide(question, {
       corpus: o.factionsCorpus || readAllCorpus('factions'),
       namespace: 'factions',
       jevKey: o.jevKey, cfg: o.cfg, terms: o.terms,
       grepNet: Math.max(o.grepNet || 40, factionsK * 4), jevMax: netFor(factionsK), topK: factionsK,
+      queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
     }),
   ]);
   return { rules, factions, all: rules.concat(factions), plan: { rules: rulesK, factions: factionsK } };
@@ -2261,12 +2299,28 @@ export async function queryIndex(question, opts) {
   if (VECTOR_BACKEND === 'local') return queryIndexLocal(question, opts);
   const cfg = (opts && opts.cfg) || vectorConfig();
   const ns = (opts && opts.namespace) || '';
-  const r = await vectorRequest(cfg, '/query-data' + (ns ? '/' + ns : ''), {
+  // A hybrid index embeds the raw text with both halves and fuses them with RRF
+  // by default. Every knob Upstash exposes for that - the fusion algorithm, the
+  // sparse weighting, dense-only or sparse-only - is passed through when asked
+  // for, because which one is most reliable is a measurement, not a preference.
+  const o = opts || {};
+  const body = {
     data: String(question),
-    topK: (opts && opts.topK) || 12,
+    topK: o.topK || 12,
     includeMetadata: true,
-    includeData: (opts && opts.includeData) || false,
-  });
+    includeData: o.includeData || false,
+  };
+  if (o.fusionAlgorithm) body.fusionAlgorithm = o.fusionAlgorithm;
+  // Dense, not the index's own HYBRID default. The sparse half of the index is
+  // BM25 over the same text our grep leg already scans, so a hybrid query fuses
+  // an answer we already have with one we are about to compute anyway - and it
+  // measured worse: on the retrieval bank the dense-only query landed the
+  // expected section first 62.1% of the time (MRR 0.696) against the hybrid
+  // 58.6% (0.679), DBSF 51.7% (0.646), weighting IDF 51.7% (0.626) and
+  // sparse-only 41.4% (0.549). Pass queryMode to override.
+  body.queryMode = o.queryMode || 'DENSE';
+  if (o.weightingStrategy) body.weightingStrategy = o.weightingStrategy;
+  const r = await vectorRequest(cfg, '/query-data' + (ns ? '/' + ns : ''), body);
   if (r.status !== 200) throw new Error('query failed: HTTP ' + r.status + ' ' + r.text.slice(0, 200));
   return r.obj.result || [];
 }

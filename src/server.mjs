@@ -34,7 +34,7 @@ import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { ASK_MODES, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, looksForeign, readAllCorpus, translateQuestion } from './rules-corpus.mjs';
+import { ASK_MODES, VECTOR_BACKEND, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, indexInfo, looksForeign, readAllCorpus, translateQuestion } from './rules-corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -920,6 +920,26 @@ async function handleRulesAsk(req, res) {
   }
 }
 
+// The index counts, next to the corpus counts, with the difference spelled out:
+// 'ahead' means the namespace holds vectors the corpus does not have (a stale
+// rebuild), 'behind' means the corpus has sections the index never saw.
+async function vectorState() {
+  if (VECTOR_BACKEND === 'local') return { backend: VECTOR_BACKEND };
+  try {
+    const state = corpusState();
+    const info = await indexInfo();
+    const ns = (info && info.namespaces) || {};
+    const counts = {};
+    for (const k of Object.keys(ns)) counts[k || '(default)'] = ns[k].vectorCount;
+    const corpus = {};
+    for (const [set, n] of Object.entries(state.sets || {})) corpus[set] = n;
+    const out = { backend: VECTOR_BACKEND, indexType: info && info.indexType, model: info && info.denseIndex && info.denseIndex.embeddingModel, counts, corpus };
+    out.ahead = Object.entries(corpus).filter(([k, n]) => (counts[k] || 0) > n).map(([k, n]) => k + ' +' + ((counts[k] || 0) - n));
+    out.behind = Object.entries(corpus).filter(([k, n]) => (counts[k] || 0) < n).map(([k, n]) => k + ' -' + (n - (counts[k] || 0)));
+    return out;
+  } catch (e) { return { backend: VECTOR_BACKEND, error: String((e && e.message) || e) }; }
+}
+
 const server = http.createServer(async (req, res) => {
   let u;
   try { u = new URL(req.url, 'http://localhost'); }
@@ -955,15 +975,21 @@ const server = http.createServer(async (req, res) => {
         try {
           const state = corpusState();
           const c = corpora();
-          return {
+          const out = {
             rules: c.rules.length,
             factions: c.factions.length,
             updated: state.updated,
             sourceDate: state.sourceDate,
             edition: state.edition,
           };
+          return out;
         } catch (e) { return { error: String((e && e.message) || e) }; }
       })(),
+      // What the vector index holds against what is on disk. A vector leg that
+      // returns nothing looks exactly like a question whose answer is not there,
+      // so the one place a half-landed rebuild, a stale id or a query against the
+      // wrong namespace becomes visible is here.
+      vectors: await vectorState(),
     });
   }
   if (req.method === 'GET' && u.pathname === '/events') return handleEvents(req, res, u);
