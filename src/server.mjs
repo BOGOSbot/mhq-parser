@@ -826,7 +826,9 @@ async function handleRulesAsk(req, res) {
   // more than an English one, and the page needs the list to draw a bar with the
   // right segments rather than a fixed guess.
   const stages = (foreign ? ['translate'] : []).concat(['retrieve', 'judge', 'answer']);
-  emit({ type: 'start', lang: lang || 'und', stages, elapsedMs: Date.now() - started });
+  // The page needs the id to attach a thumb to the right record, and the id is
+  // the only handle it gets: eight random bytes that tie to nothing.
+  emit({ type: 'start', lang: lang || 'und', stages, traceId, elapsedMs: Date.now() - started });
 
   try {
     // The whole question is translated, not only its keywords: the retrieval
@@ -989,7 +991,7 @@ async function handleRulesAsk(req, res) {
       if (!tracesEnabled()) return;
       try {
         appendTrace(buildTrace({
-          id: newTraceId(),
+          id: traceId,
           at: new Date().toISOString(),
           edition: rulesEdition,
           corpusAt: corpusState().updated,
