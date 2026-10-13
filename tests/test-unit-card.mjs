@@ -91,8 +91,13 @@ t('the link is a real url', /^https:\/\//.test(leader.link.href || leader.link.u
 ok('the link carries the passage for the popup', String(leader.link.passage).length > 80);
 const focus = linked.abilities[1];
 t('Battle Focus is a Faction ability', focus.type, 'Faction');
-t('an ability with no corpus record gets no link', focus.link, null);
-ok('and keeps its text instead', focus.description.length > 100);
+// Phase C gave Battle Focus a record of its own - faction-rule#000009894, created
+// by the wiki rebuild - so the card links it. This used to be the no-record case
+// (text kept, no link); that path now lives on the resolver below and on the
+// no-corpora card, where nothing can resolve.
+ok('Battle Focus resolves to its new corpus record', focus.link);
+t('and the link names the record', focus.link.heading, 'Battle Focus - faction rule');
+ok('and carries the passage for the popup', String(focus.link.passage).length > 80);
 t('a Datasheet ability gets no link', linked.abilities.slice(2).map(a => [a.name, a.link]), [['Burning Lance', null], ['Unquenchable Resolve', null]]);
 ok('and keeps its text', linked.abilities[2].description.length > 50);
 // Without the corpora nothing links: the card degrades to text, never to a
