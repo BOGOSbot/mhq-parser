@@ -267,6 +267,15 @@ answer the same question differently.
   reading was never measured, so the two rows are not comparable on that column.
   Two questions that miss on the exact id ("what does the Advance move do", "what
   happens when a transport blows up") are reachable inside the top 20.
+- **Fix the writer before comparing two arms, not after.** Two arms whose writer
+  fails at different rates are not comparable, and subtracting the failed rows does
+  not repair it: dropping rows changes *which* questions are being compared, and the
+  writer's failure rate is itself context-sensitive - the same bank failed on 4 of
+  25 questions in one arm and 1 of 25 in another. The A2/B3 pair read as "curation
+  is accuracy-neutral and twice as fast" with four failures against one; with the
+  writer's reasoning off in both arms, zero failures each, the same pair read
+  **-10.0 points**. Repair the failure mode first, then measure the variable. This
+  cost the curation verdict two revisions.
 - `node tests/eval-retrieval.mjs --retriever vector --namespace auto` is an
   **oracle arm**: `auto` picks the half from the question's expected section,
   which the page cannot do - it searches both halves and merges. Its numbers

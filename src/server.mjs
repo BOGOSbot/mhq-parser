@@ -34,7 +34,7 @@ import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { ASK_MODES, VECTOR_BACKEND, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, indexInfo, looksForeign, readAllCorpus, translateQuestion } from './rules-corpus.mjs';
+import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, indexInfo, looksForeign, readAllCorpus, translateQuestion } from './rules-corpus.mjs';
 import { appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled } from './rules-traces.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -912,7 +912,7 @@ async function handleRulesAsk(req, res) {
 
     // The judge has already run; the answer waits on it rather than racing it,
     // because whether to write one at all depends on its verdict.
-    const DECLINED = 'The findings do not answer this question.';
+    const DECLINED = WRITER_DECLINED;
     // The writer fails in two modes that read the same to a reader: the call is
     // cut at the timeout, or it comes back with nothing because its own reasoning
     // ate the budget. One path, one ending - the findings are already on the page

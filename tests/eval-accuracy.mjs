@@ -41,7 +41,7 @@ import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { credential, fastCredential, jevKeyName, modelCredential, FAST_MODEL, MODEL } from '../src/rules.mjs';
-import { answerableFindings, compileFindings, entityAnchors, jevCalls, parseJsonObject, readAllCorpus, translateQuestion } from '../src/rules-corpus.mjs';
+import { answerableFindings, compileCascade, compileFindings, entityAnchors, jevCalls, parseJsonObject, readAllCorpus, translateQuestion } from '../src/rules-corpus.mjs';
 import { makeCurator } from './curate.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -56,6 +56,8 @@ const INCLUDE_EMPTY = flag('--all');
 // Arm B: curate the context the judge and the writer see. Off unless asked for -
 // the default path must stay the one the page runs.
 const CURATE = flag('--curate');
+// The writer cascade: reasoning off first, and a decline pays for thinking once.
+const CASCADE = flag('--cascade');
 const CURATE_CHARS = parseInt(value('--curate-chars') || '1200', 10);
 
 const GRADER_ENDPOINT = process.env.RULES_GRADER_ENDPOINT || 'https://api.deepseek.com/chat/completions';
@@ -156,7 +158,10 @@ export async function answerQuestion(question, lang) {
     onFindings: ({ findings: found }) => { findings = found; },
   });
   const tJudge = Date.now();
-  const answer = await compileFindings(asked, outcome.findings, modelKey, { lang: lang || ANSWER_LANG });
+  const cascade = CASCADE
+    ? await compileCascade(asked, outcome.findings, modelKey, { lang: lang || ANSWER_LANG })
+    : null;
+  const answer = cascade ? cascade.answer : await compileFindings(asked, outcome.findings, modelKey, { lang: lang || ANSWER_LANG });
   const tAnswer = Date.now();
   // The ids the judge and the writer were shown, and whether the record the
   // question names by title was among them. A flip between two arms is only
@@ -170,6 +175,7 @@ export async function answerQuestion(question, lang) {
     findingIds: outcome.findings.map(x => x.id),
     anchored: outcome.findings.some(x => anchoredIds.has(x.id)),
     answerChars: String(answer || '').length,
+    writerPath: cascade ? cascade.path : 'single',
     judge: { answered: outcome.judge.answered, confidence: outcome.judge.confidence, why: outcome.judge.why },
     unresolved: outcome.unresolved, escalated: outcome.escalated,
     ms: { translate: tRetrieve - t0, retrieveJudge: tJudge - tRetrieve, answer: tAnswer - tJudge, total: tAnswer - t0 },
@@ -226,6 +232,14 @@ async function main() {
   console.log('accuracy          ' + (accuracy * 100).toFixed(1) + '%');
   console.log('declined          ' + refused + ' answers said they did not know');
   console.log('mean answer time  ' + (graded ? (seconds / Math.max(1, graded + counts.wrong)).toFixed(1) : '0') + 's');
+  const slow = [];
+  if (CASCADE && fs.existsSync(OUT)) {
+    for (const line of fs.readFileSync(OUT, 'utf8').split('\n')) {
+      if (!line.trim()) continue;
+      try { const r = JSON.parse(line); if (r.writerPath === 'slow') slow.push(r.id); } catch { /* ignore */ }
+    }
+  }
+  if (CASCADE) console.log('writer cascade    ' + slow.length + ' of ' + questions.length + ' took the slow path' + (slow.length ? ': ' + slow.join(', ') : ''));
   const jc = jevCalls();
   console.log('jev calls         ' + jc.total + '  (rerank ' + jc.rerank + ', gate ' + jc.gate + ')  ' + (questions.length ? (jc.total / questions.length).toFixed(1) : '0') + ' per question');
   console.log('written to        ' + OUT);

@@ -2179,7 +2179,30 @@ export function compilePrompt(question, findings, opts) {
 // done, and only a call that would have been cut pays for it.
 export async function compileFindings(question, findings, key, opts) {
   if (!key || !findings.length) return '';
-  return String(await modelText(compilePrompt(question, findings, opts), key, 8000)).trim();
+  const o = opts || {};
+  // The route carries a reasoning default; a caller may override it for one call.
+  return String(await modelText(compilePrompt(question, findings, o), key, 8000, o.reasoning === undefined ? undefined : { reasoning: o.reasoning })).trim();
+}
+
+// What the writer says when it read the findings and will not answer from them.
+export const WRITER_DECLINED = 'The findings do not answer this question.';
+
+// The writer cascade: reasoning off first, and only a decline pays for thinking.
+// The decline is the cheap path's failure shape and the exact place the prose
+// sample showed the difference - the thinking writer reasoned from the
+// Not-on-the-Battlefield rule to an answer, the fast one refused. A refusal is
+// cheap to detect (the sentence is fixed) and cheap to re-ask; paying 85 seconds
+// on every question to fix the tail is not. It mirrors the escalation the judge
+// already has, one layer up.
+//
+// opts.write is for tests: (question, findings, reasoning) -> prose.
+export async function compileCascade(question, findings, key, opts) {
+  const o = opts || {};
+  const write = o.write || ((q, f, reasoning) => compileFindings(q, f, key, { lang: o.lang, reasoning }));
+  const fast = String(await write(question, findings, o.fastReasoning === undefined ? 'none' : o.fastReasoning) || '').trim();
+  if (fast && fast !== WRITER_DECLINED) return { answer: fast, path: 'fast', retried: false };
+  const slow = String(await write(question, findings, o.slowReasoning || 'medium') || '').trim();
+  return { answer: slow || fast, path: 'slow', retried: true };
 }
 
 // The finding as the page shows it: what it is, where it came from, and the
