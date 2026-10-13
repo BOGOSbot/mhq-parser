@@ -111,6 +111,28 @@ const skipped = await retrieveWide('can a unit embark after shooting?', {
 t('jevSkip is the pipeline a thrown rerank falls into', skipped.map(f => f.id), fallback.map(f => f.id));
 t('jevSkip spends no call at all', rerankCalls(), [0, 0, 0]);
 
+// --- the no-key path is the same path ----------------------------------------
+// A deployment with no Jev key used to return the fused top K before anchoring,
+// head protection and clarification, so the record the question names could sit
+// outside the findings. It is one pipeline now: the no-key list and the
+// key-present-with-the-call-skipped list must be the same, and the anchored
+// record and its clarification must both be in it.
+const anchorCorpus = [
+  { id: 'emb', set: 'rules', heading: 'Embarking', text: 'A unit can embark on a transport it is within 3" of.' },
+  { id: 'embq', set: 'rules', heading: 'Embarking > Able To Embark', text: 'A unit that disembarked this turn has made a set-up move and cannot embark again.' },
+  { id: 'shoot', set: 'rules', heading: 'Shooting Types', text: 'shooting shooting shooting the shooting types a unit can make when it shoots.' },
+  { id: 'move', set: 'rules', heading: 'NORMAL MOVE', text: 'Move the unit up to its Move characteristic.' },
+];
+const anchorQ = 'can a unit embark after shooting?';
+const anchorOpts = { corpus: anchorCorpus, namespace: 'rules', cfg: { url: 'http://127.0.0.1:1', token: 'none' }, terms: ['embark'], topK: 2, grepNet: 10 };
+jevCallsReset();
+const fromNoKey = await retrieveWide(anchorQ, anchorOpts);
+const fromSkip = await retrieveWide(anchorQ, Object.assign({ jevKey: 'key', jevSkip: true }, anchorOpts));
+t('no key and a skipped call run one path', fromNoKey.map(f => f.id), fromSkip.map(f => f.id));
+t('no key spends no call', rerankCalls(), [0, 0, 0]);
+ok('the record the question names reaches a no-key retrieval', fromNoKey.some(f => f.id === 'emb'));
+ok('its clarification travels with it', fromNoKey.some(f => f.id === 'embq'));
+
 replies.push({ status: 429, obj: { error: 'rate limited' } });
 jevCallsReset();
 process.env.RULES_JEV_STRICT = '1';

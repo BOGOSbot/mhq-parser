@@ -2208,16 +2208,16 @@ export async function retrieveWide(question, opts) {
   // provenance has to ride along on this path too - a page whose findings have
   // no leg is a page that cannot say where they came from.
   //
-  // A deployment with no key at all keeps the older short path (the fused top K
-  // and nothing else). The bank's control is o.jevSkip: it keeps the key and the
-  // whole downstream path - anchoring, the retriever head protection, a rule's
-  // clarifications - and skips only the call. That is the pipeline a rerank that
-  // throws falls into, so the control and the ranked arm are actually the same
-  // pipeline; passing no key is not, which the numbers show (37.9 against 27.6
-  // at hit@1 on the retrieval bank).
-  if (!o.jevKey && !o.jevSkip) return decorate(merged.slice(0, o.topK || 10));
+  // Skipping the call must not skip the path. Anchoring, the retriever head
+  // protection and a rule's clarifications are not reranker features, and this
+  // used to return early when no key was configured - so a no-key deployment
+  // served findings without them, and the Asurmen ability could sit outside the
+  // findings again, which is the failure the protection exists for. There is
+  // one post-processing path now, whether the ranker answered, threw or was
+  // skipped; o.jevSkip is how a caller that holds a key asks for the zero-call
+  // arm, and it lands on the same list a no-key deployment gets.
   let ranked = null;
-  if (!o.jevSkip) {
+  if (o.jevKey && !o.jevSkip) {
     try {
       ranked = await jevRank(question, merged, o.jevKey, { max: o.jevMax || 80, endpoint: o.jevEndpoint });
     } catch (e) {

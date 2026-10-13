@@ -208,11 +208,21 @@ is not inert: reachable hit@1 41.4 -> 48.3 and MRR 0.550 -> 0.648 at per-side 10
 one expected question out of the top 20 (exact hit@20 93.1 -> 89.7), and 29
 questions resolve 2-4 points, so the sweep settles the direction - the rerank
 helps the reader-facing head - and leaves the size of the gain open. What the rerank is graded against matters:
-`--rerank off` keeps the key and the whole downstream path and skips only the
-call, and it reproduces the recorded no-rerank rows exactly; passing no key
-never enters the anchored path at all (37.9 / 69 / 86.2 / 86.2 exact, MRR 0.508).
+`--rerank off` keeps the key and skips only the call, and it reproduces the
+recorded no-rerank rows exactly. Passing no key is the same path with no call at
+all - anchoring, head protection and clarification run either way - and measures
+the same row; the older no-key short path (37.9 / 69 / 86.2 / 86.2 exact, MRR
+0.508) returned before them and is gone.
 The cost side is real either way: a round trip per half per pass on a free tier
 that throttles. `RULES_JEV_GATEWAY=openrouter` is the paid fallback.
+
+**Three states of one path, differing only in whether the call happened.** No
+key (or `--rerank off`) runs anchoring, head protection and clarification with no
+call at all; a key whose call fails (a 429) runs them on the fusion order, and
+that is what the recorded no-rerank rows measure; a key whose call answers runs
+them on the rerank order. Before task-28 the no-key state returned the fused top
+K early and lost all three - which is how the ability a question names could sit
+outside the findings again.
 
 Three rules in that path exist because of one question - "Est-ce que Asurmen
 peut réembarquer avec son normal move après avoir tiré ?" - which was answered
@@ -459,7 +469,10 @@ answer the same question differently.
   shows `attempted 66  answered 66  failed 0` and `fallbacks 0/33  clean`. The
   OFF rows are the clean control (`--rerank off`: the key stays, only the call
   is skipped) and they reproduce the recorded no-rerank rows exactly, which is
-  what makes them the comparison. Same command throughout
+  what makes them the comparison. A no-key deployment now measures the same row
+  too (`--no-key`: attempted 0, 27.6 / 65.5 / 86.2 / 93.1, MRR 0.449), because
+  the no-key path runs the same post-processing; before task-28 it was a
+  different, shorter pipeline. Same command throughout
   (`--retriever dual --net 60 --topk 20 --per-side K`):
 
   | per-side | exact hit@1 / 5 / 10 / 20 | exact MRR | reachable hit@1 / 5 / 10 / 20 | reachable MRR | candidates |

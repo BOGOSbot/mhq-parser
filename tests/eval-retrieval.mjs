@@ -72,6 +72,10 @@ const GATE_MARGIN = parseFloat(value('--gate-margin') || '0');
 // taken by accident, while the free gateway was 429ing - that is the fallback
 // pipeline, not passing no key, and the two measure differently.
 const RERANK_OFF = (value('--rerank') || 'on') === 'off';
+// --no-key is the no-key deployment: the dual/wide arms get no Jev key at all.
+// It must land on the same list as --rerank off (the same pipeline, no call),
+// which is what makes the zero-call control representative.
+const NO_KEY = flag('--no-key');
 // A run in which any question fell back is not the arm it says it is. The bank
 // numbers are withheld unless this is passed on purpose.
 const ALLOW_DEGRADED = flag('--allow-degraded');
@@ -157,7 +161,7 @@ async function retrieve(question, item) {
   }
   if (RETRIEVER === 'dual') {
     const dual = await retrieveDual(question, {
-      rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: JEV_KEY, jevSkip: RERANK_OFF,
+      rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: NO_KEY ? '' : JEV_KEY, jevSkip: RERANK_OFF,
       terms: [], grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70),
       perSide: { rules: PER_SIDE, factions: PER_SIDE },
       fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
@@ -178,7 +182,7 @@ async function retrieve(question, item) {
     // and the run reports how often that happened instead of hiding it.
     if (!g.half) {
       const dual = await retrieveDual(question, {
-        rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: JEV_KEY, jevSkip: RERANK_OFF,
+        rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: NO_KEY ? '' : JEV_KEY, jevSkip: RERANK_OFF,
         terms: [], grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70),
         perSide: { rules: PER_SIDE, factions: PER_SIDE },
         fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
@@ -187,7 +191,7 @@ async function retrieve(question, item) {
     }
     const wide = await retrieveWide(question, {
       corpus: g.half === 'factions' ? FACTIONS_CORPUS : RULES_CORPUS,
-      namespace: g.half, jevKey: JEV_KEY, jevSkip: RERANK_OFF, terms: [],
+      namespace: g.half, jevKey: NO_KEY ? '' : JEV_KEY, jevSkip: RERANK_OFF, terms: [],
       grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70), topK: PER_SIDE,
       fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
     });
@@ -203,7 +207,7 @@ async function retrieve(question, item) {
     return asHits(await jevRank(question, net, JEV_KEY, { max: NET })).slice(0, TOPK);
   }
   const terms = RETRIEVER === 'union+expand' ? await expandQuery(question, SENSE_KEY) : null;
-  return asHits(await retrieveWide(question, { corpus: CORPUS, jevKey: JEV_KEY, jevSkip: RERANK_OFF, terms, grepNet: NET, jevMax: NET, topK: TOPK }));
+  return asHits(await retrieveWide(question, { corpus: CORPUS, jevKey: NO_KEY ? '' : JEV_KEY, jevSkip: RERANK_OFF, terms, grepNet: NET, jevMax: NET, topK: TOPK }));
 }
 
 const bank = JSON.parse(fs.readFileSync(QUESTIONS, 'utf8'));
@@ -277,7 +281,7 @@ function at(k) { return graded.filter(r => r.rank !== null && r.rank <= k).lengt
 console.log('');
 console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (graded ' + graded.length + ', out-of-corpus ' + declined.length + ')  topK ' + TOPK + (RETRIEVER === 'vector' ? '  ns ' + (NAMESPACE || '(default)') + [FUSION, QUERY_MODE, WEIGHTING].filter(Boolean).map(v => ' ' + v).join('') : '  net ' + NET) + (SPLIT_HALVES ? '  per-side ' + PER_SIDE + '  w ' + VECTOR_WEIGHT + '  protect ' + PROTECT_VECTOR + (QUERY_MODE ? '  ' + QUERY_MODE : '') : '')
   + (RETRIEVER === 'gate' ? '  gate ' + GATE + (GATE === 'lexical' ? ' margin ' + GATE_MARGIN : '') : '')
-  + (RERANK_OFF ? '  rerank off' : ''));
+  + (RERANK_OFF ? '  rerank off' : '') + (NO_KEY ? '  no key' : ''));
 if (resolveNotes.length) {
   console.log('');
   console.log('expectations the corpus does not name as written:');
