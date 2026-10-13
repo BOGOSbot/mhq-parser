@@ -25,7 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expandQuery, grepCorpus, grepTerms, grepWithTerms, jevRank, queryIndex, readAllCorpus, retrieveDual, retrieveWide } from '../src/rules-corpus.mjs';
+import { expandQuery, gateHalf, gateHalfLexical, gateVocabularies, grepCorpus, grepTerms, grepWithTerms, jevRank, queryIndex, readAllCorpus, retrieveDual, retrieveWide } from '../src/rules-corpus.mjs';
 import { anchorFor, credential, fastCredential, jevKeyName } from '../src/rules.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -46,6 +46,10 @@ const VERBOSE = flag('--verbose');
 // dual         the page's own two-half path: per half, vector + grep, Jev, the
 //              anchors and the children, then both halves concatenated. This is
 //              the arm whose numbers describe what the reader is actually shown.
+// gate         one Jev choice picks the half, then only that half is searched -
+//              the same path as dual, minus the half the question did not use.
+//              Reports its routing against the expectation and what a wrong
+//              route costs.
 const RETRIEVER = value('--retriever') || 'vector';
 const NET = parseInt(value('--net') || '40', 10);
 // The index holds one namespace per half. Queries used to go to the default
@@ -57,12 +61,18 @@ const QUERY_MODE = value('--query-mode');
 const WEIGHTING = value('--weighting');
 const VECTOR_WEIGHT = parseFloat(value('--vector-weight') || '1');
 const PROTECT_VECTOR = parseInt(value('--protect-vector') || '1', 10);
+// Which decider the gate arm uses: 'jev' is the closed-set call, 'lexical' is
+// the same decision made from the question's terms and the halves' headings,
+// with no call at all. --gate-margin is the lexical one's abstention threshold.
+const GATE = value('--gate') || 'jev';
+const GATE_MARGIN = parseFloat(value('--gate-margin') || '0');
 const corpusIds = ns => new Set(readAllCorpus(ns).map(s => s.id));
 const PER_SIDE = parseInt(value('--per-side') || '10', 10);
 const NEEDS_CORPUS = RETRIEVER !== 'vector';
-const CORPUS = NEEDS_CORPUS && RETRIEVER !== 'dual' ? readAllCorpus() : null;
-const RULES_CORPUS = RETRIEVER === 'dual' ? readAllCorpus('rules') : null;
-const FACTIONS_CORPUS = RETRIEVER === 'dual' ? readAllCorpus('factions') : null;
+const SPLIT_HALVES = RETRIEVER === 'dual' || RETRIEVER === 'gate';
+const CORPUS = NEEDS_CORPUS && !SPLIT_HALVES ? readAllCorpus() : null;
+const RULES_CORPUS = SPLIT_HALVES ? readAllCorpus('rules') : null;
+const FACTIONS_CORPUS = SPLIT_HALVES ? readAllCorpus('factions') : null;
 const JEV_KEY = credential(jevKeyName());
 const SENSE_KEY = fastCredential();
 const asHits = list => list.map(s => ({ id: s.id, metadata: s, score: s.jev !== undefined ? s.jev : s.score }));
@@ -116,11 +126,21 @@ function resolveExpectation(id, question) {
 }
 
 let rulesIdSet = null, factionsIdSet = null;
-function namespaceFor(item) {
-  if (NAMESPACE !== 'auto') return NAMESPACE;
+// The half a question's expectation lives in: the oracle the gate is scored
+// against, and the namespace the vector arm asks for under --namespace auto.
+function expectedHalf(item) {
   if (!rulesIdSet) { rulesIdSet = corpusIds('rules'); factionsIdSet = corpusIds('factions'); }
   return item && item.expect.some(e => rulesIdSet.has(e)) ? 'rules' : 'factions';
 }
+function namespaceFor(item) {
+  if (NAMESPACE !== 'auto') return NAMESPACE;
+  return expectedHalf(item);
+}
+
+// What the gate chose for the question just retrieved, so the row can carry it
+// without every arm having to return a shape it does not need.
+let lastGate = null;
+let gateVocab = null;
 
 async function retrieve(question, item) {
   if (RETRIEVER === 'vector') {
@@ -134,6 +154,35 @@ async function retrieve(question, item) {
       fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
     });
     return asHits(dual.all);
+  }
+  if (RETRIEVER === 'gate') {
+    let g;
+    if (GATE === 'lexical') {
+      if (!gateVocab) gateVocab = gateVocabularies({ rules: RULES_CORPUS, factions: FACTIONS_CORPUS });
+      const l = gateHalfLexical(question, gateVocab, { minMargin: GATE_MARGIN });
+      g = { half: l.half, confidence: null, error: l.half ? '' : l.abstain, score: l.score, margin: l.margin };
+    } else {
+      g = await gateHalf(question, JEV_KEY);
+    }
+    lastGate = g;
+    // No half from the gate means no route: searching both is the safe reading,
+    // and the run reports how often that happened instead of hiding it.
+    if (!g.half) {
+      const dual = await retrieveDual(question, {
+        rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: JEV_KEY,
+        terms: [], grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70),
+        perSide: { rules: PER_SIDE, factions: PER_SIDE },
+        fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
+      });
+      return asHits(dual.all);
+    }
+    const wide = await retrieveWide(question, {
+      corpus: g.half === 'factions' ? FACTIONS_CORPUS : RULES_CORPUS,
+      namespace: g.half, jevKey: JEV_KEY, terms: [],
+      grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70), topK: PER_SIDE,
+      fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
+    });
+    return asHits(wide);
   }
   if (RETRIEVER === 'grep') return asHits(grepCorpus(question, CORPUS, NET).slice(0, TOPK));
   if (RETRIEVER === 'grep+jev') return asHits(await jevRank(question, grepCorpus(question, CORPUS, NET), JEV_KEY, { max: NET })).slice(0, TOPK);
@@ -182,6 +231,12 @@ for (const item of questions) {
     found: found.length,
     foundReach: foundReach.length,
     needed: item.expect.length,
+    // What the reader is actually handed, and (on the gate arm) which half the
+    // question's expectation lives in against the half the gate chose.
+    candidates: hits.length,
+    expected: item.expect.length ? expectedHalf(item) : '',
+    gated: RETRIEVER === 'gate' && lastGate ? lastGate.half : '',
+    gateError: RETRIEVER === 'gate' && lastGate ? (lastGate.error || '') : '',
     top: hits.slice(0, 3).map(h => ({ id: h.id, heading: h.metadata && h.metadata.heading, score: h.score })),
   });
   if (VERBOSE) {
@@ -199,7 +254,8 @@ function pct(n, d) { return d ? Math.round((n / d) * 1000) / 10 : 0; }
 function at(k) { return graded.filter(r => r.rank !== null && r.rank <= k).length; }
 
 console.log('');
-console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (graded ' + graded.length + ', out-of-corpus ' + declined.length + ')  topK ' + TOPK + (RETRIEVER === 'vector' ? '  ns ' + (NAMESPACE || '(default)') + [FUSION, QUERY_MODE, WEIGHTING].filter(Boolean).map(v => ' ' + v).join('') : '  net ' + NET) + (RETRIEVER === 'dual' ? '  per-side ' + PER_SIDE + '  w ' + VECTOR_WEIGHT + '  protect ' + PROTECT_VECTOR + (QUERY_MODE ? '  ' + QUERY_MODE : '') : ''));
+console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (graded ' + graded.length + ', out-of-corpus ' + declined.length + ')  topK ' + TOPK + (RETRIEVER === 'vector' ? '  ns ' + (NAMESPACE || '(default)') + [FUSION, QUERY_MODE, WEIGHTING].filter(Boolean).map(v => ' ' + v).join('') : '  net ' + NET) + (SPLIT_HALVES ? '  per-side ' + PER_SIDE + '  w ' + VECTOR_WEIGHT + '  protect ' + PROTECT_VECTOR + (QUERY_MODE ? '  ' + QUERY_MODE : '') : '')
+  + (RETRIEVER === 'gate' ? '  gate ' + GATE + (GATE === 'lexical' ? ' margin ' + GATE_MARGIN : '') : ''));
 if (resolveNotes.length) {
   console.log('');
   console.log('expectations the corpus does not name as written:');
@@ -213,6 +269,14 @@ const mrr = graded.reduce((a, r) => a + (r.rank ? 1 / r.rank : 0), 0) / (graded.
 console.log('MRR     ' + Math.round(mrr * 1000) / 1000);
 const multi = graded.filter(r => r.needed > 1);
 console.log('multi-hop fully found  ' + multi.filter(r => r.found === r.needed).length + '/' + multi.length);
+// The cost side, in the same run as the recall side: how many passages the
+// reader is handed. A core-rules definition asked live was handed 21, 10 rules
+// and 11 factions, and cited six.
+{
+  const cand = graded.map(r => r.candidates);
+  const sum = cand.reduce((a, b) => a + b, 0);
+  console.log('candidates  mean ' + (Math.round((sum / (cand.length || 1)) * 10) / 10) + '  min ' + Math.min(...cand) + '  max ' + Math.max(...cand) + '  total ' + sum);
+}
 
 // The same list graded as "the rule the question needs is reachable": the
 // expected record itself, or one the splitter put under it. Shown next to the
@@ -229,6 +293,23 @@ console.log('hit@10  ' + atR(10) + '/' + graded.length + '  ' + pct(atR(10), gra
 console.log('hit@' + TOPK + '  ' + atR(TOPK) + '/' + graded.length + '  ' + pct(atR(TOPK), graded.length) + '%');
 console.log('MRR     ' + Math.round(mrrR * 1000) / 1000);
 console.log('multi-hop fully found  ' + multi.filter(r => r.foundReach === r.needed).length + '/' + multi.length);
+
+// The gate arm's own score: does a cheap choice pick the half the expectation
+// lives in, and what does a wrong route cost. An abstention is not a wrong
+// answer - it searched both - and is reported separately.
+if (RETRIEVER === 'gate') {
+  const routed = graded.filter(r => r.gated);
+  const right = routed.filter(r => r.gated === r.expected);
+  const wrong = routed.filter(r => r.gated !== r.expected);
+  console.log('\ngate routing (the half each expectation lives in)');
+  console.log('  correct   ' + right.length + '/' + graded.length + '  ' + pct(right.length, graded.length) + '%');
+  const abstained = graded.filter(r => !r.gated);
+  console.log('  abstained ' + abstained.length + '  (no half from the gate - searched both)');
+  for (const r of abstained) console.log('  abstain   ' + r.q);
+  for (const r of wrong) console.log('  wrong     ' + r.q + '  -> ' + r.gated + ', expected ' + r.expected);
+  console.log('  wrong route and nothing expected in the top ' + TOPK + ': ' + wrong.filter(r => r.rank === null).length);
+  for (const r of wrong.filter(x => x.rank === null)) console.log('      ' + r.q);
+}
 
 const byKind = {};
 for (const r of graded) {

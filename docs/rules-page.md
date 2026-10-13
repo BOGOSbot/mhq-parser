@@ -263,6 +263,15 @@ answer the same question differently.
   (58.6% exact hit@1 against the dual arm's 27.6%) bound what the vector leg
   could contribute; they are not a fair fight against the page's path. Use
   `--namespace rules|factions` to pin one half.
+- `node tests/eval-retrieval.mjs --retriever gate --gate lexical` - the same path
+  with one half chosen first. The gate is closed-set - one short item in, one
+  label out: `--gate jev` is the Jev choice, `--gate lexical` scores the
+  question's terms against each half's headings and takes the best single heading,
+  which costs no call at all. It abstains, searching both, rather than guessing.
+  On the promoted corpus the lexical gate routes 25/29 questions to the half their
+  expectation lives in, abstains on 4 and is never wrong; it hands the reader 13.4
+  passages instead of 23 and scores the same hit@k and MRR. `candidates` in the
+  output is the cost side of every arm.
 - `node tests/eval-reddit.mjs --limit 16` - judge coverage and latency on real
   questions, twice, to compare model routes.
 - `node tests/eval-accuracy.mjs --limit 25` - the page's own path, graded by a

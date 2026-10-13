@@ -1199,6 +1199,117 @@ export async function jevRank(question, candidates, key, opts) {
   }).sort((a, b) => b.jev - a.jev);
 }
 
+// --- the half gate ----------------------------------------------------------
+// Which half of the corpus answers this question. One short item in, one label
+// out: a choice rather than a judgement, which is the shape Jev is built for -
+// translate-fr-en.mjs asks the same shape for a term's kind. The reason to ask
+// at all is cost: a core-rules definition asked live pulled 21 candidates, 10
+// from the rules half and 11 from factions, and the answer cited six, all of
+// them rules. Half the context went to a half the question never used.
+//
+// The gate is measured, not trusted: `node tests/eval-retrieval.mjs --retriever
+// gate` scores its routing against the bank's expectations and reports what a
+// wrong route costs in sections lost. On any failure it returns no half rather
+// than a guess, because the safe route for the page is to search both.
+export const HALVES = ['rules', 'factions'];
+
+export function gatePrompt(question) {
+  return {
+    half: {
+      type: 'choice',
+      instructions: 'Which half of a Warhammer 40,000 11th edition rules corpus answers this question: ' + question,
+      criteria: {
+        rules: 'the core rules, the rules appendix or the event companion - phases, movement, shooting, charging, terrain, objectives, missions, and the stratagems every army shares',
+        factions: 'one army\'s own material - a datasheet, unit, weapon, stratagem, detachment or enhancement, anything that depends on which faction it is',
+      },
+    },
+  };
+}
+
+// The same gate without a model: score the question's terms against each half's
+// headings, weighted by how rare the term is in that half, and take the stronger
+// one. Nothing to call and nothing to rate-limit, and it is the same evidence the
+// retriever already uses - a question that names a datasheet names a heading in
+// the faction half, and one about how a phase works names a core heading. It
+// abstains rather than guessing when nothing matches or the two are too close,
+// and an abstention means "search both", which is the safe route.
+export function gateVocabularies(corpora) {
+  const out = {};
+  for (const half of Object.keys(corpora || {})) {
+    const df = new Map();
+    const headings = [];
+    for (const s of corpora[half] || []) {
+      const terms = new Set(grepTerms(s.heading));
+      headings.push(terms);
+      for (const t of terms) df.set(t, (df.get(t) || 0) + 1);
+    }
+    out[half] = { df, headings };
+  }
+  return out;
+}
+
+export function gateHalfLexical(question, vocab, opts) {
+  const o = opts || {};
+  const terms = grepTerms(question);
+  // A term's weight comes from how many headings of EITHER half carry it, and
+  // the score is the best SINGLE heading, not a scatter of words. Counting
+  // occurrences corpus-wide fails on size: one coincidental 'escape' in 6,575
+  // faction headings outscored the core heading that is actually called
+  // 'Desperate Escape Test', because a raw count cannot tell a rare match from a
+  // small corpus. A question names one rule, and that rule's words sit together
+  // in one heading.
+  const both = new Map();
+  for (const half of Object.keys(vocab || {})) for (const [t, n] of vocab[half].df) both.set(t, (both.get(t) || 0) + n);
+  const weight = t => 1 / Math.log(2 + (both.get(t) || 0));
+  const score = {};
+  for (const half of Object.keys(vocab || {})) {
+    let top = 0;
+    for (const set of vocab[half].headings) {
+      let sc = 0;
+      for (const t of terms) if (set.has(t)) sc += weight(t);
+      if (sc > top) top = sc;
+    }
+    score[half] = Math.round(top * 1000) / 1000;
+  }
+  const order = Object.keys(score).sort((a, b) => score[b] - score[a]);
+  const top = order[0], second = order[1];
+  const margin = top !== undefined && second !== undefined ? Math.round((score[top] - score[second]) * 1000) / 1000 : 0;
+  const minMargin = o.minMargin === undefined ? 0 : o.minMargin;
+  if (top === undefined || score[top] <= 0) return { half: '', score, margin, abstain: 'no term in either half' };
+  if (margin <= minMargin) return { half: '', score, margin, abstain: 'the two halves score within ' + minMargin };
+  return { half: top, score, margin };
+}
+
+export async function gateHalf(question, key, opts) {
+  const o = opts || {};
+  if (!key) return { half: '', confidence: null, error: 'no jev key' };
+  const body = JSON.stringify({
+    model: JEV_MODEL,
+    state: 'A reader asks a Warhammer 40,000 11th edition rules question. The corpus has two halves: the core rules (how the game works for every army) and faction rules (what one army\'s own units and cards do).',
+    questions: gatePrompt(question),
+  });
+  const res = await new Promise((resolve, reject) => {
+    const u = new URL(JEV_ENDPOINT);
+    const req = https.request({ method: 'POST', hostname: u.hostname, path: u.pathname, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, r => {
+      const c = []; r.on('data', d => c.push(d));
+      r.on('end', () => resolve({ status: r.statusCode, text: Buffer.concat(c).toString('utf8') }));
+    });
+    req.on('error', reject);
+    req.setTimeout(o.timeoutMs || 60000, () => req.destroy(new Error('jev timed out')));
+    req.end(body);
+  });
+  if (res.status !== 200) return { half: '', confidence: null, error: 'jev HTTP ' + res.status };
+  let obj = null;
+  try { obj = JSON.parse(res.text); } catch { return { half: '', confidence: null, error: 'jev returned non-JSON' }; }
+  const a = obj && obj.answers && obj.answers.half;
+  const choice = a && a.choice;
+  return {
+    half: HALVES.indexOf(choice) !== -1 ? choice : '',
+    confidence: (a && a.confidence) || null,
+    choice: choice || null,
+  };
+}
+
 // --- query expansion --------------------------------------------------------
 // Grep is exact, so it fails on exactly the questions people ask: a player says
 // "fell back", the rulebook says "fall-back move". The words are the problem,
