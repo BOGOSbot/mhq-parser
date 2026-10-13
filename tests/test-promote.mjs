@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { KINDS, bankQuestions, candidates, entryLine, insertEntry, loadTraces, norm, readerPick, traceStatus, validateExpectation } from './promote-traces.mjs';
+import { KINDS, bankQuestions, candidates, entryLine, insertEntry, loadTraces, norm, parseExpectation, readerPick, traceStatus, validateExpectation } from './promote-traces.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -48,6 +48,20 @@ t('the comma was added to the previous entry', grown.indexOf('"kind": "literal" 
 t('the closing bracket is still there', grown.endsWith('  ]\r\n}\r\n'), true);
 t('CRLF is preserved', grown.indexOf('\r\n') !== -1 && grown.indexOf('\n\n') === -1, true);
 t('a file that does not end in a questions array is refused', (() => { try { insertEntry('nope', line); return 'no throw'; } catch (e) { return 'threw'; } })(), 'threw');
+
+// --- an id may itself contain the separator ----------------------------------
+// The FAQ-derived corpus ids carry commas of their own, and --expect separates
+// ids with one: a comma that belongs to an id is escaped, and the escape is only
+// the CLI's - the fixture gets the id the corpus spells.
+t('plain ids split on the comma', parseExpectation('a,b'), ['a', 'b']);
+t('an escaped comma belongs to the id', parseExpectation('a\\,b,c'), ['a,b', 'c']);
+t('a comma-free id is unchanged', parseExpectation('core-rules#Shooting'), ['core-rules#Shooting']);
+t('whitespace around an id is trimmed', parseExpectation('  a  ,  b  '), ['a', 'b']);
+t('an empty --expect names no ids', parseExpectation(''), []);
+t('and neither does a missing one', parseExpectation(null), []);
+t('the real Secured-Objectives id survives the parser',
+  parseExpectation('unitrules#000002541~2,core-rules#Secured-Objectives->-Q:-If-my-unit-has-taken-control-of-an-objective-at-the-end-of-my-movement-phase-and-that-unit-has-as-an-ability-that-secures-an-objective-they-control\\,-can-they-secure-that-objective?'),
+  ['unitrules#000002541~2', 'core-rules#Secured-Objectives->-Q:-If-my-unit-has-taken-control-of-an-objective-at-the-end-of-my-movement-phase-and-that-unit-has-as-an-ability-that-secures-an-objective-they-control,-can-they-secure-that-objective?']);
 
 // --- expectations are checked against the corpus -----------------------------
 t('an id the corpus does not have is reported', validateExpectation(['nope#x'], [{ id: 'a#b' }]), ['nope#x']);

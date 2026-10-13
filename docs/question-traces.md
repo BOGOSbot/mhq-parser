@@ -98,6 +98,9 @@ node tests/promote-traces.mjs --list
 node tests/promote-traces.mjs --promote --id <traceId> --expect <id>[,<id>] --kind <label> [--dry-run]
 ```
 
+An id that itself contains a comma - the FAQ-derived ones do - escapes it as `\,`,
+so `--expect "a\,b,c"` is the ids `a,b` and `c`.
+
 `--harvest` is the labelling pass: read-only, one block per trace in the harvest
 order, with the question, the derived class, the thumb, the verdict and the top
 findings with their ids and headings. `--list` is the one-line summary of the

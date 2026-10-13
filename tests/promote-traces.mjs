@@ -40,6 +40,25 @@ export const BAD_WRITER = ['empty', 'timeout'];
 
 export const norm = s => String(s == null ? '' : s).toLowerCase().replace(/\s+/g, ' ').replace(/[\u2019']/g, "'").trim();
 
+// --expect takes one or more corpus ids, comma-separated - and a corpus id may
+// itself contain a comma: the FAQ-derived ids do, e.g.
+// 'core-rules#Secured-Objectives->-Q:-...,-can-they-...?'. A comma separates ids
+// unless it is escaped as '\,', and the escape never reaches the fixture: the id
+// is written the way the corpus spells it. Comma-free ids are unaffected.
+export function parseExpectation(value) {
+  const out = [];
+  const s = String(value == null ? '' : value);
+  let cur = '';
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '\\' && s[i + 1] === ',') { cur += ','; i++; continue; }
+    if (c === ',') { if (cur.trim()) out.push(cur.trim()); cur = ''; continue; }
+    cur += c;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+
 export function loadTraces(dir) {
   const d = dir || TRACES_DIR;
   const out = [];
@@ -241,11 +260,11 @@ async function main() {
   }
 
   const id = value('--id');
-  const expect = (value('--expect') || '').split(',').map(s => s.trim()).filter(Boolean);
+  const expect = parseExpectation(value('--expect'));
   const kind = value('--kind');
   const qOverride = value('--q');
   const dryRun = flag('--dry-run');
-  if (!id) { console.log('usage: node tests/promote-traces.mjs --harvest | --promote --id <traceId> --expect <id>[,<id>] --kind <label> [--q <english question>] [--dry-run]'); process.exitCode = 1; return; }
+  if (!id) { console.log('usage: node tests/promote-traces.mjs --harvest | --promote --id <traceId> --expect <id>[,<id>] --kind <label> [--q <english question>] [--dry-run]\n       an id that contains a comma escapes it: --expect "a\\,b,c" is the ids "a,b" and "c"'); process.exitCode = 1; return; }
   if (!KINDS.includes(kind)) { console.log('--kind must be one of: ' + KINDS.join(', ')); process.exitCode = 1; return; }
   const trace = traces.find(t => t.id === id);
   if (!trace) { console.log('no trace with id ' + id + ' in ' + dir); process.exitCode = 1; return; }
