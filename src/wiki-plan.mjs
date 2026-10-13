@@ -57,6 +57,19 @@ export function withHeading(rec, body) {
 }
 export const lastCrumb = h => { const p = String(h || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : String(h || ''); };
 
+// The input's links first, then the derived ones, deduped by target: the build may
+// not drop a link the record already carried, and may not duplicate one.
+export function mergeLinks(a, b) {
+  const out = [], seen = new Set();
+  for (const l of (a || []).concat(b || [])) {
+    const to = l && l.to;
+    if (!to || seen.has(to)) continue;
+    seen.add(to);
+    out.push(l);
+  }
+  return out;
+}
+
 export function renderLinks(links, max) {
   const list = links || [];
   const shown = list.slice(0, max === undefined ? LINK_BLOCK_MAX : max);
@@ -291,40 +304,27 @@ export function planWiki(data, opts) {
       // records); only the scraped rules are classified here.
       kind: r.kind || (r.source === 'core-stratagems' ? 'stratagem' : 'rule'),
       parent: isPart ? String(r.parent || '') : (parentIdOf.get(r.id) || ''),
-      children: resolved.links.map(l => l.to), links: resolved.links,
+      // The record's own links come first and the derived children are added to them:
+      // a link the extractor put in the text must survive the build, or the text and
+      // the array part company the moment the build runs.
+      children: resolved.links.map(l => l.to), links: mergeLinks(r.links, resolved.links),
       // Only a part the BUILD made keeps its part number; a scraped corpus's own
       // chunker parts are ordinary records here, which is what the live corpus
       // already holds (part 1/1 on every one of them).
       idFrom: 'source-key', part: isPart ? Number(r.part || 1) : 1, parts: isPart ? Number(r.parts || 1) : 1, text: stripBuiltBlock(r),
     });
-    if (resolved.links.length) {
-      stats.links += resolved.links.length;
-      if (blockInText) {
-      const block = renderLinks(resolved.links, LINK_BLOCK_MAX);
-      stats.linksOmitted += block.omitted;
-      // The same live cap decides whether the block fits beside the body: the
-      // body is what the live chunker measured, and the block is appended to it.
-      const body = bodyOf(rec);
-      if (chars(body) + chars(block.text) + 2 <= MAX_CHARS) {
-        rec.text = withHeading(rec, body) + '\n\n' + block.text;
-        stats.linksInText++;
-      } else {
-        // The body no longer fits beside its link list: the links stay with the
-        // lead-in and the rest of the body becomes its own chunk, so the parent
-        // still carries the names of what it owns.
-        const room = Math.max(200, MAX_CHARS - chars(block.text) - 2);
-        const lead = splitWithin(body, room, MIN_PART);
-        rec.text = (withHeading(rec, lead[0]) + '\n\n' + block.text).trim();
-        stats.linksInText++;
-        for (let i = 1; i < lead.length; i++) {
-          push(Object.assign({}, rec, { id: r.id + '~' + (i + 1), text: withHeading(rec, lead[i]), part: i + 1, parts: lead.length, links: [], children: [], created: true }));
-          stats.created.rules++;
-          stats.split++;
-        }
-      }
-      }
-    }
+    // The chunker sees the BODY only: the block is attached after the split, so a long
+    // link list cannot force a split that leaves the record naming links its text no
+    // longer shows. The block's own size is not the chunker's business.
+    if (rec.links.length) stats.links += rec.links.length;
+    if (blockInText && rec.links.length) { const b = renderLinks(rec.links, LINK_BLOCK_MAX); stats.linksOmitted += b.omitted; }
     fit(rec, 'rules');
+    // The block is appended AFTER the chunk decision: it is not part of the body the
+    // chunker measures, so a long link list cannot force a split that leaves the
+    // record naming links its text no longer shows.
+    if (rec.links.length && blockInText && String(rec.text).indexOf(renderLinks(rec.links, LINK_BLOCK_MAX).text) === -1) {
+      rec.text = String(rec.text).replace(/\s+$/, '') + '\n\n' + renderLinks(rec.links, LINK_BLOCK_MAX).text;
+    }
     rec.chars = chars(rec.text);
     push(rec);
   }
@@ -344,9 +344,8 @@ export function planWiki(data, opts) {
     stats.links += resolved.links.length;
     rec.links = resolved.links;
     rec.parent = resolved.links.length ? resolved.links[0].to : '';
-    const line = renderLinks(resolved.links, 1);
-    if (blockInText && chars(bodyOf(rec)) + chars(line.text) + 2 <= MAX_CHARS) { rec.text = withHeading(rec, bodyOf(rec)) + '\n\n' + line.text; stats.linksInText++; }
     fit(rec, 'factions');
+    if (blockInText && rec.links.length) { rec.text = String(rec.text).replace(/\s+$/, '') + '\n\n' + renderLinks(rec.links, 1).text; stats.linksInText++; }
     rec.chars = chars(rec.text);
     push(rec);
     stats.factionRules++;
@@ -370,10 +369,14 @@ export function planWiki(data, opts) {
       const head = baseRecord({ id: def.ids[p], source: 'factions-csv', heading: (factionName.get(faction) || faction) + ' - index' + (def.ids.length > 1 ? ' ' + (p + 1) + '/' + def.ids.length : ''), set: 'factions' }, {
         kind: 'index', parent: p === 0 ? '' : def.indexId, children: def.ids.slice(1), links: resolved.links,
         idFrom: 'faction-id', part: p + 1, parts: def.ids.length, created: true,
-        text: ((factionName.get(faction) || faction) + '\n' + renderLinks(resolved.links, 1000).text).trim(),
+        text: (factionName.get(faction) || faction).trim(),
       });
-      stats.linksInText += Math.min(resolved.links.length, 1000);
       fit(head, 'factions');
+      // The list is attached after the chunk decision, as everywhere else: the parts a
+      // split creates then carry no links, and the page that shows the list carries all
+      // of them.
+      head.text = String(head.text).replace(/\s+$/, '') + '\n' + renderLinks(resolved.links, 1000).text;
+      stats.linksInText += Math.min(resolved.links.length, 1000);
       head.chars = chars(head.text);
       push(head);
       stats.indexPages++;
@@ -384,13 +387,16 @@ export function planWiki(data, opts) {
     for (const r of def.list) {
       const wanted = [{ to: def.indexId, title: (factionName.get(faction) || faction), kind: 'faction' }];
       const rec = baseRecord(r, {
-        kind: String(r.id || '').split('#')[0], parent: def.indexId, children: [], links: wanted,
+        kind: String(r.id || '').split('#')[0], parent: def.indexId, children: [], links: mergeLinks(r.links, wanted),
         idFrom: 'csv-row-id', part: 1, parts: 1, text: stripBuiltBlock(r),
       });
-      const line = renderLinks(wanted, 1);
-      if (blockInText && chars(bodyOf(rec)) + chars(line.text) + 2 <= MAX_CHARS) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }
       stats.links++;
       fit(rec, 'factions');
+      // Same order as the rules half: chunk the body, then attach the block.
+      if (blockInText && rec.links.length && String(rec.text).indexOf(renderLinks(rec.links, LINK_BLOCK_MAX).text) === -1) {
+        rec.text = String(rec.text).replace(/\s+$/, '') + '\n\n' + renderLinks(rec.links, LINK_BLOCK_MAX).text;
+        stats.linksInText++;
+      }
       rec.chars = chars(rec.text);
       push(rec);
     }

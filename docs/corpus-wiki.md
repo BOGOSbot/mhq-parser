@@ -459,9 +459,12 @@ live namespace; every number is from `--dry-run` and the read-only parity check.
    question are the two the rewrite is for; check the anchored record is in the
    findings before trusting the bank.
 8. **Snapshot.** The off-disk Box snapshot is the recovery point taken after an
-   ingest (docs/corpus-storage.md). It is a Box-side step, there is no script for
-   it here, and it captures any key written to a file - keep keys out of the
-   corpus directory (docs/key-hygiene.md).
+   ingest (docs/corpus-storage.md). `node src/box-snapshot.mjs` tars the corpus and
+   prints its sha256, then the box recipe; write the snapshot id, the size and the
+   hash into docs/corpus-storage.md, because `box snapshot list` needs a box
+   selected and the id is the only handle once the box is deleted. The snapshot
+   captures any key written to a file - keep keys out of the corpus directory
+   (docs/key-hygiene.md).
 9. **Record it.** Flip this document from "not adopted" to adopted with the
    ledger's rebuild number and the parity line, and note the rules count the bank
    was measured against.
@@ -539,9 +542,11 @@ configuration effect in docs/question-traces.md, not a phase-C change: on the
 bank's fixed path (dual, rerank off) the same question retrieves it at **#9**,
 exactly as recorded before the rebuild.
 
-**Not done: the Box snapshot.** It is a Box-side step with no script in the tree
-(docs/corpus-storage.md), so this rebuild has a local rollback point
-(`workspace/rules-corpus-before-phasec/`) and no off-machine one.
+**The Box snapshot.** This rebuild had a local rollback point only
+(`workspace/rules-corpus-before-phasec/`). The off-disk one exists now: snapshot
+`5f703039-dc4f-4ae6-b7ed-9ede21a73eb8` (2026-10-14), taken by hand from a temporary
+box, restored into a fresh box and the sha256 compared - verified rather than
+assumed. See docs/corpus-storage.md for what it holds and for the recipe script.
 
 **Follow-up this leaves open:** the live corpus is now a wiki build, and
 `--scrape` writes the flat corpus into the same directory - a later scrape would
