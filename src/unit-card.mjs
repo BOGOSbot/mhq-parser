@@ -211,8 +211,17 @@ export function unitCardEnabled(env) {
 }
 
 // Does this question ask for a unit's own data? One half of the decision.
-export function wantsUnitCard(question, asked, terms) {
-  const hay = norm([question, asked, (terms || []).join(' ')].filter(Boolean).join(' '));
+//
+// The question and its translation ONLY, never the translator's search terms.
+// Those terms are a retrieval artefact: for 'est-ce que fuegan peut arriver de
+// reserves a portee de melta ?' the translator offered 'Melta weapons' among
+// them, CARD_INTENT matched "weapons", and the page answered a rules question
+// with a datasheet and ran no judge and no writer. The English wording of the
+// same question needed no translation, had no terms, and answered correctly -
+// which was the whole French-versus-English asymmetry. A term the search engine
+// wanted is not a question the reader asked.
+export function wantsUnitCard(question, asked) {
+  const hay = norm([question, asked].filter(Boolean).join(' '));
   return CARD_INTENT.test(hay);
 }
 
@@ -220,8 +229,8 @@ export function wantsUnitCard(question, asked, terms) {
 // phrase: 'captain' reaching every Captain datasheet would be right, but 'rhino'
 // reaching the five chaos datasheets that share the name is not - that is a
 // different unit per faction and the card would be a confident guess.
-export function findDatasheet(question, asked, terms) {
-  const hay = norm([question, asked, (terms || []).join(' ')].filter(Boolean).join(' '));
+export function findDatasheet(question, asked) {
+  const hay = norm([question, asked].filter(Boolean).join(' '));
   if (!hay) return null;
   const hits = [];
   for (const d of cardTables().datasheets) {
@@ -316,8 +325,8 @@ export function buildUnitCard(id, opts) {
 export function unitCard(question, opts) {
   const o = opts || {};
   if (!unitCardEnabled(o.env)) return null;
-  if (!wantsUnitCard(question, o.asked, o.terms)) return null;
-  const d = findDatasheet(question, o.asked, o.terms);
+  if (!wantsUnitCard(question, o.asked)) return null;
+  const d = findDatasheet(question, o.asked);
   return d ? buildUnitCard(d.id, { corpora: o.corpora }) : null;
 }
 

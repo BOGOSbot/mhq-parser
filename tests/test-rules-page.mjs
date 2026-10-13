@@ -51,7 +51,7 @@ t('and in the French table too', missingFr, []);
 // the tables like every other one.
 const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild', 'rankN', 'rankScore', 'rankScoreTitle', 'matchedWords', 'openPassage', 'moreFindings', 'close', 'openSource',
   'cardTitle', 'cardRanged', 'cardMelee', 'cardAbilities', 'cardKeywords', 'cardComposition', 'cardPoints', 'cardSourceNote', 'cardOpen',
-  'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes'];
+  'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'cardReady'];
 const absent = needed.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined);
 t('the new display labels exist in both languages', absent, []);
 
@@ -83,6 +83,14 @@ ok('a linked ability is rendered as a title', /if \(ab\.link\)/.test(box));
 ok('a linked ability has no body before it returns', box.indexOf("ab.link") !== -1 && box.indexOf("ab.link") < box.indexOf("uabtext"));
 ok('the truncation note belongs to the kept-text branch', box.indexOf("t('cardTruncated')") > box.indexOf("uabtext"));
 ok('the ability link opens the passage popup', /openPassage\(\{ heading: ab\.link\.heading/.test(box));
+
+// The card is additive: it previews at the top of the result and the search,
+// judge and writer still run. It used to replace them, which answered a French
+// rules question with a datasheet and no judge.
+ok('the card previews above the pipeline', code.indexOf('host.appendChild(cardSlot)') !== -1 && code.indexOf('host.appendChild(cardSlot)') < code.indexOf('host.appendChild(verdict)'));
+ok('the card renders into its own slot', /state\.cardSlot\.appendChild\(unitCardView/.test(code));
+ok('the card event no longer clears the result', /host\.textContent = '';\s*\n\s*host\.appendChild\(unitCardView/.test(code) === false);
+ok('done no longer short-circuits on a card', code.indexOf('if (state.card) { setStatus') === -1);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

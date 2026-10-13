@@ -369,6 +369,7 @@ var I18N = {
     confidence: 'confidence: ',
     passage: 'passage',
     cardTitle: 'Datasheet',
+    cardReady: 'datasheet shown - the search for the rule runs on',
     cardLoadout: 'Equipped with: ',
     cardRanged: 'Ranged weapons',
     cardMelee: 'Melee weapons',
@@ -497,6 +498,7 @@ var I18N = {
     confidence: 'confiance : ',
     passage: 'passage',
     cardTitle: 'Fiche technique',
+    cardReady: 'fiche affichée — la recherche de la règle continue',
     cardLoadout: 'Équipé de : ',
     cardRanged: 'Armes de tir',
     cardMelee: 'Armes de mêlée',
@@ -1253,6 +1255,10 @@ function startResult(lang) {
   host.textContent = '';
   host.classList.remove('hidden');
   $('#intro').classList.add('hidden');
+  // The unit card, when there is one, previews at the very top: it is
+  // mechanical and instant, and the pipeline below it still runs.
+  var cardSlot = el('div', 'cardslot');
+  host.appendChild(cardSlot);
   var verdict = el('div', 'card');
   verdict.appendChild(el('h2', null, t('judgeTitle')));
   verdict.appendChild(el('div', 'note waiting', t('waitingFindings')));
@@ -1269,7 +1275,7 @@ function startResult(lang) {
   host.appendChild(answerCard);
   var rest = el('div');
   host.appendChild(rest);
-  return { verdict: verdict, findingSlot: findingSlot, answer: answerCard, rest: rest, findings: [], terms: [], translation: null, card: false, judge: null, judge2: null, judgeAttempt: 0, disputed: false };
+  return { cardSlot: cardSlot, verdict: verdict, findingSlot: findingSlot, answer: answerCard, rest: rest, findings: [], terms: [], translation: null, card: false, judge: null, judge2: null, judgeAttempt: 0, disputed: false };
 }
 
 // --- stage progress ---------------------------------------------------------
@@ -1414,20 +1420,15 @@ function applyEvent(ev, state) {
   // keeps the state honest if the two ever disagree.
   if (ev.type === 'mode') { state.mode = ev.mode; setMode(ev.mode); return; }
   if (ev.type === 'card') {
-    // A datasheet lookup is answered by the card alone: the judge and answer
-    // slots drawn before the request were placeholders for a prose path that
-    // will not run, so they are dropped rather than left waiting.
+    // Additive, never instead of the search: the judge, the findings and the
+    // prose still run, so their slots stay where they are and the card takes the
+    // top of the result. It is instant, and that is the point - something to
+    // read while the pipeline works.
     state.card = true;
-    state.verdict.textContent = '';
-    state.answer.textContent = '';
-    if (ev.stages && ev.stages.length) startProgress(ev.stages);
-    var host = $('#result');
-    host.textContent = '';
-    host.appendChild(unitCardView(ev.card));
-    for (var ci = 0; ci < (ev.stages || []).length; ci++) doneStage(ev.stages[ci], ev.elapsedMs);
-    finishProgress();
-    setStatus('', '');
-    flash(host.firstChild);
+    state.cardSlot.textContent = '';
+    state.cardSlot.appendChild(unitCardView(ev.card));
+    flash(state.cardSlot);
+    setStatus(t('cardReady'), 'busy');
     return;
   }
   if (ev.type === 'escalate') { pAttribute('judge', ev.elapsedMs); addStage('widen', 'retrieve'); return; }
@@ -1501,7 +1502,6 @@ function applyEvent(ev, state) {
   }
   if (ev.type === 'done') {
     finishProgress();
-    if (state.card) { setStatus('', ''); return; }
     // A disagreement outlives the request: clearing it here would erase the one
     // line that says the answer is provisional.
     if (state.disputed) { setStatus(t('judgeDisagreeTitle'), 'warn'); return; }
@@ -1518,11 +1518,7 @@ function applyEvent(ev, state) {
 
 // The whole response at once, for anything that cannot stream.
 function showInto(state, j) {
-  if (j.card) {
-    applyEvent({ type: 'card', card: j.card, stages: j.stages || ['datasheet'], elapsedMs: j.elapsedMs }, state);
-    applyEvent({ type: 'done', elapsedMs: j.elapsedMs, card: true }, state);
-    return;
-  }
+  if (j.card) applyEvent({ type: 'card', card: j.card, elapsedMs: j.elapsedMs }, state);
   applyEvent({ type: 'findings', findings: j.findings || [], counts: j.counts, terms: j.terms, steps: j.steps, elapsedMs: j.elapsedMs }, state);
   if (j.judge) applyEvent({ type: 'judge', judge: j.judge, final: true, elapsedMs: j.elapsedMs }, state);
   applyEvent({ type: 'answer', answer: j.answer, elapsedMs: j.elapsedMs }, state);

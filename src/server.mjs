@@ -817,46 +817,28 @@ async function handleRulesAsk(req, res) {
     const modeName = askMode(body.mode);
     const mode = ASK_MODES[modeName];
 
-    // A unit card is a CLOSED-SET decision taken here, before anything is
-    // searched: the question names a datasheet and asks for its own data
-    // (profile, statline, weapons, abilities, keywords, points), or it is a
-    // rules question. src/unit-card.mjs renders every field from the CSV export;
-    // no model writes any of them. When the unit cannot be resolved - no name,
-    // a name several factions share, no statline - unitCard() returns null and
-    // the search runs exactly as it did before, silently. The index is never
-    // touched either way.
+    // A unit card is rendered here, before anything is searched, and it is
+    // ADDITIVE: the search, the judge and the writer always run, and the card
+    // arrives beside their answer rather than instead of it.
+    //
+    // It used to replace the pipeline when it fired, and that was a bug with a
+    // trace: 'est-ce que fuegan peut arriver de reserves a portee de melta ?'
+    // matched an intent word the TRANSLATOR had generated ('Melta weapons' among
+    // its terms - the terms are a retrieval artefact, never the reader's
+    // question), the card fired, and a rules question got a datasheet with no
+    // judge and no answer. The English wording needed no translation, had no
+    // terms, and answered correctly - the whole French-versus-English asymmetry.
+    // The gate now reads the question and its translation only (src/unit-card.mjs)
+    // and, because a question that literally says "melta weapons" still matches,
+    // the pipeline runs whatever the card does. The card is mechanical and costs
+    // 0.0s, so it is emitted at once as a preview: the reader gets something
+    // immediately and the prose follows.
+    //
     // The corpora are already in memory for the search; the card needs them to
-    // resolve a Base or Faction ability to the rule it names.
-    const card = unitCard(question, { asked, terms, corpora: corpora() });
-    if (card) {
-      const cardStages = (foreign ? ['translate'] : []).concat(['datasheet']);
-      const elapsedMs = Date.now() - started;
-      // The trace is still one line per question. A card carries no findings and
-      // no verdict, so it records the datasheet it resolved to instead, and the
-      // prose fields stay empty rather than borrowing something else's shape.
-      if (tracesEnabled()) {
-        try {
-          appendTrace(buildTrace({
-            id: newTraceId(), at: new Date().toISOString(), edition: rulesEdition,
-            corpusAt: corpusState().updated, mode: modeName, lang: lang || 'und',
-            question, asked, terms, signals: traceSignals(question, []),
-            counts: { rules: 0, factions: 0 }, findings: [], judge: null,
-            answer: '', card: { id: card.id, name: card.name },
-            steps, elapsedMs,
-          }));
-        } catch (e) { /* a trace must never break an answer */ }
-      }
-      if (stream) {
-        emit({ type: 'card', card, stages: cardStages, elapsedMs });
-        emit({ type: 'done', elapsedMs, steps, card: true });
-        return res.end();
-      }
-      return json(res, 200, {
-        question, asked, lang: lang || 'und', translation: translation.translated || '',
-        terms, card, stages: cardStages, findings: [], counts: { rules: 0, factions: 0 }, answer: '',
-        steps, elapsedMs, mode: modeName,
-      });
-    }
+    // resolve a Base or Faction ability to the rule it names. The index is never
+    // touched either way.
+    const card = unitCard(question, { asked, corpora: corpora() });
+    if (card) emit({ type: 'card', card, preview: true, elapsedMs: Date.now() - started });
 
     // The search keeps deepening while the judge says it cannot answer, and the
     // last pass is the last word. The judge's verdict is binding: a retrieval it
@@ -979,6 +961,7 @@ async function handleRulesAsk(req, res) {
           judge,
           judge2: secondJudge,
           judgeDisagreement,
+          card: card ? { id: card.id, name: card.name } : null,
           answer: answerText,
           failed: writer && writer.failed,
           declined: writer && writer.declined,
@@ -1000,7 +983,7 @@ async function handleRulesAsk(req, res) {
         emit({ type: 'done', elapsedMs, steps, notes });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: [], judge, answer: '', steps, elapsedMs, notes });
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: [], judge, answer: '', steps, elapsedMs, notes });
     }
 
     // The second judge starts here, beside the writer, and is only awaited after
@@ -1051,7 +1034,7 @@ async function handleRulesAsk(req, res) {
         emit({ type: 'done', elapsedMs, steps, failed: true, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDisagreement });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: payload, judge, judge2: secondJudge, judgeDisagreement, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, judge2: secondJudge, judgeDisagreement, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
     }
 
     emit({ type: 'answer', answer, unresolved: outcome.unresolved, elapsedMs: Date.now() - started });
@@ -1075,7 +1058,7 @@ async function handleRulesAsk(req, res) {
       return res.end();
     }
     return json(res, 200, {
-      question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: payload, judge, answer,
+      question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, answer,
       judge2: secondJudge, judgeDisagreement,
       counts, steps, elapsedMs: Date.now() - started, mode: modeName,
       unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,

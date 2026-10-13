@@ -269,6 +269,23 @@ not silently pick one of the five datasheets that share that name: a name severa
 factions share, with no faction named in the question, falls back to prose rather
 than guess.
 
+**The gate reads the question and its translation, never the search terms.** Those
+terms are a retrieval artefact - what the *index* was asked for - and they are not
+the question the reader asked. `wantsUnitCard(question, asked)` is the whole
+contract. It used to read the terms too, and that produced the French-versus-
+English asymmetry Mandal found: French "est-ce que fuegan peut arriver de reserves
+a portee de melta ?" was translated with `Melta weapons` among its generated
+terms, "weapons" matched the intent rule, and a **rules** question got a datasheet
+with no judge and no answer behind it; the English wording of the same question
+needed no translation, had no terms, and answered correctly.
+
+**The card is additive, never instead of the search.** A question that literally
+says "melta weapons" still matches the intent word, so the trigger can never be
+made safe on its own: retrieval, the judge and the writer always run, and the card
+renders beside their answer. It is mechanical and costs 0.0s, so the server emits
+it the moment the question is translated - a preview at the top of the page while
+the search works, and the prose follows underneath.
+
 The card carries the statline (M/T/Sv/inv/W/Ld/OC and base size) from
 `Datasheets_models`, the weapon profiles from `Datasheets_wargear` split ranged and
 melee, the abilities from `Datasheets_abilities` - the Core and Faction ones
@@ -293,13 +310,11 @@ faction half today, and a dead link is worse than a long card. The card only lin
 when it is given the corpora, so a caller without them degrades to text.
 
 When the unit cannot be resolved to a datasheet id, `unitCard()` returns null and
-the request runs the search, the judge and the writer exactly as it did before: the
-fallback is silent, and a half card is never shown. `RULES_UNIT_CARD=0` turns the
-path off for a deployment. A card question still writes a trace, with
-`card: { id, name }` and `writer: "card"` - no findings, no verdict, no answer and
-no writer call at all, so a Fuegan lookup answers in about six seconds, the
-translation only. The stream sends one `card` event with its own stage list instead
-of `findings`/`judge`/`answer`, and the bar shows `translate | datasheet`.
+nothing is shown: the fallback is silent, and a half card is never shown.
+`RULES_UNIT_CARD=0` turns the path off for a deployment. A trace carries
+`card: { id, name }` alongside the findings, the judge and the answer it shared
+the question with. The stream sends one `card` event before retrieval, and the
+usual `findings`/`judge`/`answer` follow it; the bar is the pipeline's, unchanged.
 
 The layout is one column at every width - the statline wraps into chips and the
 weapons table is fixed-layout so its seven columns fit a 360px phone - because the
@@ -307,9 +322,10 @@ page is mostly read on a phone.
 
 ## The two settings
 
-The page offers two, and the server fixes four things for each: the depth of the
-first pass, how many times a miss deepens it, how wide the reranker's net is,
-and whether the judge reasons.
+Each setting names its own judge, and each names the other's as the second
+opinion (see *Two judges, one answer*). The page offers two, and the server fixes
+four things for each: the depth of the first pass, how many times a miss deepens
+it, how wide the reranker's net is, and whether the judge reasons.
 
 | setting | first pass | widening | Jev net | judge |
 |---|---|---|---|---|

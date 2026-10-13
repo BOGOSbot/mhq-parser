@@ -22,11 +22,28 @@ t('a keywords question wants a card', wantsUnitCard('Le Tyrannofex a-t-il le mot
 t('a rules question does not', wantsUnitCard('can a unit shoot after it Fell Back?'), false);
 t('a rules question naming a unit does not', wantsUnitCard('Fuegan peut-il tirer après avoir battu en retraite ?'), false);
 
+// The gate reads the question and its translation, NEVER the translator's search
+// terms. Those are a retrieval artefact - for the French melta question the
+// translator generated 'Melta weapons', "weapons" matched, and a rules question
+// was answered with a datasheet and no judge. The English wording needed no
+// translation, had no terms, and answered correctly: the whole asymmetry.
+const meltaFr = 'est-ce que fuegan peut arriver de reserves a portee de melta ?';
+const meltaEn = 'Can fuegan arrive from reserves in melta range ?';
+const meltaTerms = ['FUEGAN', 'Reserves', 'Melta', 'Charge', 'Melta range', 'Deep Strike', 'Melta weapons'];
+t('the French melta question does not want a card', wantsUnitCard(meltaFr, 'Can Fuegan arrive from Reserves into Melta range?'), false);
+t('the generated terms cannot make it want one', wantsUnitCard(meltaFr, 'Can Fuegan arrive from Reserves into Melta range?', meltaTerms), false);
+t('the English variant is the same decision', wantsUnitCard(meltaEn, ''), false);
+// The name does resolve - Fuegan is named in the translation - and that is
+// exactly why intent and name are two halves of the decision: a name alone must
+// not turn a rules question into a card.
+t('the name resolves but the question is still not a card', [findDatasheet(meltaFr, 'Can Fuegan arrive from Reserves into Melta range?').id, unitCard(meltaFr, { asked: 'Can Fuegan arrive from Reserves into Melta range?', terms: meltaTerms })], ['000000574', null]);
+t('a profile question still does', wantsUnitCard('donne moi le profil de fuegan', 'Give me the profile of Fuegan.'), true);
+
 t('Fuegan = 000000574', buildUnitCard('000000574').id, '000000574');
-t('the question resolves to the datasheet id', findDatasheet('donne moi le profil de fuegan', 'Give me the profile of FUEGAN.', ['FUEGAN']).id, '000000574');
-t('the translated text resolves it too', findDatasheet('', 'Give me the profile of Fuegan.', []).id, '000000574');
-t('an unknown unit does not resolve', findDatasheet('donne moi le profil de Zorglub', '', []), null);
-t('a bare unit word does not match a longer name', findDatasheet('what is the profile of a rhino', '', []), null);
+t('the question resolves to the datasheet id', findDatasheet('donne moi le profil de fuegan', 'Give me the profile of FUEGAN.').id, '000000574');
+t('the translated text resolves it too', findDatasheet('', 'Give me the profile of Fuegan.').id, '000000574');
+t('an unknown unit does not resolve', findDatasheet('donne moi le profil de Zorglub', ''), null);
+t('a bare unit word does not match a longer name', findDatasheet('what is the profile of a rhino', ''), null);
 
 // --- the Fuegan card, field for field ---------------------------------------
 const c = buildUnitCard('000000574');
