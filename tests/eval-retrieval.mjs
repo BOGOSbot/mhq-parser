@@ -27,6 +27,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expandQuery, gateHalf, gateHalfLexical, gateVocabularies, grepCorpus, grepTerms, grepWithTerms, jevCalls, jevRank, queryIndex, readAllCorpus, retrieveDual, retrieveWide } from '../src/rules-corpus.mjs';
 import { anchorFor, credential, fastCredential, jevKeyName } from '../src/rules.mjs';
+import { expectGroups, missingGroupLine, missingGroups, partialHeadline, satisfiedGroups } from './expectation-groups.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const QUESTIONS = path.join(__dirname, 'fixtures', 'rules-questions.json');
@@ -149,7 +150,7 @@ let rulesIdSet = null, factionsIdSet = null;
 // against, and the namespace the vector arm asks for under --namespace auto.
 function expectedHalf(item) {
   if (!rulesIdSet) { rulesIdSet = corpusIds('rules'); factionsIdSet = corpusIds('factions'); }
-  return item && item.expect.some(e => rulesIdSet.has(e)) ? 'rules' : 'factions';
+  return item && item.expect.flat().some(e => rulesIdSet.has(e)) ? 'rules' : 'factions';
 }
 function namespaceFor(item) {
   if (NAMESPACE !== 'auto') return NAMESPACE;
@@ -220,7 +221,10 @@ async function retrieve(question, item) {
 
 const bank = JSON.parse(fs.readFileSync(QUESTIONS, 'utf8'));
 const questions = bank.questions.filter(q => !ONLY_KIND || q.kind === ONLY_KIND);
-for (const item of questions) item.expect = (item.expect || []).map(e => resolveExpectation(e, item.q));
+// An expectation is a list of groups (tests/expectation-groups.mjs): a plain list
+// is one group per id, a list of lists is the groups as written. Each member is
+// resolved on its own, so one the chunker moved is still named.
+for (const item of questions) item.expect = expectGroups(item.expect).map(g => g.map(e => resolveExpectation(e, item.q)));
 
 // reach=false is the fixture as written: the expected id and nothing else.
 // reach=true also accepts a record the splitter put under it, '<id>->-<title>'.
@@ -249,14 +253,20 @@ for (const item of questions) {
   const fellBack = (callsAfter.rerank.failed - callsBefore.rerank.failed) +
     (callsAfter.gate.failed - callsBefore.gate.failed);
   if (fellBack) fallbacks++;
-  const rank = item.expect.length ? rankOf(hits, item.expect) : null;
-  const rankReach = item.expect.length ? rankOf(hits, item.expect, true) : null;
-  const found = item.expect.filter(e => hits.some(h => h.id === e));
-  const foundReach = item.expect.filter(e => hits.some(h => h.id === e || h.id.startsWith(e + '->-')));
+  // The rank is the best rank among every member of every group - what hit@K and
+  // MRR already measured - while 'found' counts GROUPS: one member found satisfies
+  // its group, and a question is only partial when a whole group is missing.
+  const members = item.expect.flat();
+  const ids = hits.map(h => h.id);
+  const rank = members.length ? rankOf(hits, members) : null;
+  const rankReach = members.length ? rankOf(hits, members, true) : null;
+  const found = satisfiedGroups(item.expect, ids);
+  const foundReach = satisfiedGroups(item.expect, ids, true);
   rows.push({
     q: item.q,
     kind: item.kind,
-    expect: item.expect,
+    groups: item.expect,
+    expect: members,
     rank,
     rankReach,
     found: found.length,
@@ -271,7 +281,7 @@ for (const item of questions) {
     top: hits.slice(0, 3).map(h => ({ id: h.id, heading: h.metadata && h.metadata.heading, score: h.score })),
     // Every id the reader was handed, for the per-question partial line below:
     // which expectation entered the findings, and which did not.
-    ids: hits.map(h => h.id),
+    ids,
   });
   if (VERBOSE) {
     console.log('  ' + (rank ? '#' + rank : '  -') + '  [' + item.kind + '] ' + item.q);
@@ -383,23 +393,20 @@ for (const r of graded.filter(x => x.rank === null)) {
 }
 
 // Per-question partial findings, which the miss list above cannot show: that one
-// only catches rank === null, so an entry with two expectations and one record
-// missing reads as a hit at the best rank of the one that was found. The global
-// 'multi-hop fully found' column catches the ratio; this says which entry, and
-// which of its ids, is the one that never entered the findings - which is what a
-// corpus or chunker change has to be read on. An id the splitter moved under a
-// child is named as reachable, because that is a real hit for the reader and a
-// real miss for the fixture.
+// only catches rank === null, so an entry whose groups are not all covered reads
+// as a hit at the best rank of the ones that were. The global 'multi-hop fully
+// found' column catches the ratio; this says which entry, and which group, never
+// entered the findings - which is what a corpus or chunker change is read on. A
+// group is satisfied by any of its alternatives, so the line names the
+// alternatives that never appeared; one the splitter moved under a child is named
+// as reachable, a real hit for the reader and a real miss for the fixture.
 const partial = graded.filter(r => r.found < r.needed);
 if (partial.length) {
-  console.log('\npartial (' + partial.length + '/' + graded.length + ') - expected records not all found');
+  console.log('\npartial (' + partial.length + '/' + graded.length + ') - expectations not all covered');
   for (const r of partial) {
     console.log('  [' + r.kind + '] ' + r.q);
-    console.log('      expected ' + r.needed + ', found ' + r.found + (r.rank === null ? '  (nothing in the top ' + TOPK + ')' : '  (best rank #' + r.rank + ')'));
-    for (const e of r.expect.filter(x => r.ids.indexOf(x) === -1)) {
-      const under = r.ids.find(h => h.startsWith(e + '->-'));
-      console.log('      missing: ' + e + (under ? '   (reachable as ' + under + ')' : ''));
-    }
+    console.log(partialHeadline(r.needed, r.found, r.rank, TOPK));
+    for (const g of missingGroups(r.groups, r.ids)) console.log('      ' + missingGroupLine(g, r.ids));
   }
 }
 

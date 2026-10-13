@@ -446,7 +446,7 @@ answer the same question differently.
   silent miss.
 - `node tests/eval-retrieval.mjs --retriever dual --per-side 10 --net 60` - the
   page's own path, and the arm every chunking decision is measured on. It grades
-  the same 29 questions twice: **exact id** (the fixture as written) and **rule
+  every question twice: **exact id** (the fixture as written) and **rule
   reachable** (the expected record, or a record the splitter put under it,
   `<id>->-<TITLE>`). Both are printed and neither stands in for the other,
   because a rule the chunker moved is a real hit for the reader and a real miss
@@ -527,6 +527,30 @@ answer the same question differently.
   `retrieval-gate-paid-off.txt`, and the clean controls
   `retrieval-topk-off-clean-{5,10,15,20}.txt`. Cost: 370 Jev calls at $0.000634,
   about $0.23.
+- **The bank at 39 questions, after the first hand grouping pass (2026-10-13).**
+  The fixed path, 33 graded and 6 out-of-corpus, `0/39 fallbacks clean` and 0 Jev
+  calls with the rerank off: exact **27.3 / 60.6 / 84.8 / 93.9**, MRR **0.434**;
+  reachable **39.4 / 63.6 / 90.9 / 100**, MRR **0.523**; candidates mean 23.1.
+  Seven entries name the same answer twice and are now one group each, which takes
+  `partial` from 9/33 to **7/33**: the two that were false - "How do I put a unit
+  inside a transport?" via `Able-To-Embark`, "How close do my models have to stay
+  to each other?" via `What-Is-Coherency` - stop reading as retrieval failures.
+  The global `multi-hop fully found` moves 10/19 -> **5/12** for the same reason,
+  not as a regression: those seven questions are no longer multi-expect (five of
+  them were already fully found), so numerator and denominator drop together.
+  Artifact: `retrieval-dual-task31-groups.log`.
+- **An expectation is a group of alternatives.** The fixture's `expect` may write
+  `[["a", "b"], ["c"]]`: the group `[a, b]` is satisfied by either record, because
+  the two are the same answer in two places - a parent and its own child
+  (`core-rules#Coherency` against `core-rules#What-Is-Coherency`) or the core rule
+  and the appendix's copy (`core-rules#Engagement` against
+  `rules-appendix#What-Is-Engagement`). A plain list `["a", "b"]` still reads as
+  one group per id, so the bank migrates one entry at a time. **An alternative is
+  not a hop**: separate groups are separate answers, so a genuine hop keeps one
+  group per id and still counts as partial when one of them is missing, and the
+  `partial` block names the group and the alternatives that never appeared.
+  hit@K and MRR were already any-of and do not move; the grouping lands in the
+  partial and fully-found columns.
 - **A run that fell back is not reported.** The harness prints Jev calls as
   attempted / answered / failed and how many questions fell back, marks the run
   DEGRADED when any did, and withholds the bank numbers unless `--allow-degraded`

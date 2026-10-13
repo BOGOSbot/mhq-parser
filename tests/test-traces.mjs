@@ -4,6 +4,7 @@ import path from 'node:path';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
 import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, answeredTrace, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
 import { classifyTrace, harvestOrder, loadTraces, promotedQuestion, tracePriority } from './promote-traces.mjs';
+import { expectGroups } from './expectation-groups.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -148,12 +149,15 @@ const byId = new Map(all.map(s => [s.id, s]));
 const namedRule = q => /^(what (is|are)|how (does|do))\b/i.test(String(q).trim());
 let agree = 0, total = 0, crossCaught = 0, crossHand = 0;
 for (const item of bank.questions) {
-  const recs = item.expect.map(e => byId.get(e)).filter(Boolean);
-  const term = item.expect.length ? termMatch(item.q, recs.map(r => r.heading)) : false;
+  // An expectation may be a group of alternatives (same answer in two records);
+  // the derivation reads the records the entry names, whichever shape it uses.
+  const expIds = expectGroups(item.expect).flat();
+  const recs = expIds.map(e => byId.get(e)).filter(Boolean);
+  const term = expIds.length ? termMatch(item.q, recs.map(r => r.heading)) : false;
   const first = firstPerson(item.q);
   const nonCore = recs.some(r => r.source !== 'core-rules');
   let guess = 'unknown';
-  if (!item.expect.length) guess = 'out-of-corpus';
+  if (!expIds.length) guess = 'out-of-corpus';
   else if (namedRule(item.q) && term && !first) guess = 'literal';
   else if (first) guess = 'player';
   else if (nonCore && !term) guess = 'cross-source';
