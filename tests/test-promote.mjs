@@ -1,5 +1,11 @@
 import fs from 'node:fs';
-import { KINDS, bankQuestions, candidates, entryLine, insertEntry, loadTraces, norm, traceStatus, validateExpectation } from './promote-traces.mjs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { KINDS, bankQuestions, candidates, entryLine, insertEntry, loadTraces, norm, readerPick, traceStatus, validateExpectation } from './promote-traces.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -50,6 +56,33 @@ t('an id the corpus has passes', validateExpectation(['a#b'], [{ id: 'a#b' }]), 
 // --- the real bank -----------------------------------------------------------
 t('the bank parses and has questions', bankQuestions().length > 20, true);
 t('the trace directory is read', Array.isArray(loadTraces()), true);
+
+// --- the reader's pick reaches the harvest -----------------------------------
+// The pick is the strongest candidate a trace carries, and the harvest is where a
+// human reads the candidates: it is printed, and it does not become the
+// expectation on its own. The trace's kind is still unknown, and --promote still
+// demands a human --kind and --expect.
+t('no pick is shown when the reader made none', readerPick({ findings: [] }), '');
+t('the record the reader chose is shown', readerPick({ answeredBy: 'core-rules#Shooting' }), 'answeredBy: core-rules#Shooting');
+t('none of these is shown as its own candidate', readerPick({ answeredNone: true }), 'answeredNone: true');
+
+const harvestDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-harvest-'));
+try {
+  const base = { at: '2026-10-13T12:00:00.000Z', lang: 'en', mode: 'deep', writer: 'ok', answer: 'Yes [1].', kind: 'unknown',
+    judge: { answered: true, cited: [1] }, signals: { sources: ['core-rules'] },
+    findings: [{ n: 1, set: 'rules', source: 'core-rules', id: 'core-rules#Shooting' }] };
+  fs.writeFileSync(path.join(harvestDir, '2026-10.ndjson'),
+    JSON.stringify(Object.assign({}, base, { id: 'feedfacefeedface', question: 'Can a unit shoot after it Fell Back?', answeredBy: 'core-rules#Shooting' })) + '\n'
+    + JSON.stringify(Object.assign({}, base, { id: 'cafecafecafecafe', question: 'What is the Melta rule?', answeredNone: true })) + '\n');
+  const script = path.join(__dirname, 'promote-traces.mjs');
+  const h = spawnSync(process.execPath, [script, '--harvest', '--all', '--dir', harvestDir, '--limit', '10'], { encoding: 'utf8' });
+  t('the harvest runs on a trace that carries a pick', h.status, 0);
+  t('and prints the record the reader chose', /answeredBy: core-rules#Shooting/.test(h.stdout), true);
+  t('and prints none-of-these', /answeredNone: true/.test(h.stdout), true);
+  const noKind = spawnSync(process.execPath, [script, '--promote', '--id', 'feedfacefeedface', '--dir', harvestDir], { encoding: 'utf8' });
+  t('a pick promotes nothing on its own', noKind.status, 1);
+  t('and --kind is still the human\'s', /--kind must be one of/.test(noKind.stdout), true);
+} finally { fs.rmSync(harvestDir, { recursive: true, force: true }); }
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

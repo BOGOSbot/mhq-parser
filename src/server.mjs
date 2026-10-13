@@ -35,7 +35,7 @@ import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarni
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
-import { appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
+import { answeredTrace, appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 import { unitCard } from './unit-card.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -746,6 +746,27 @@ async function handleRulesVote(req, res) {
   return json(res, 200, { ok: true, saved });
 }
 
+// The reader's pick: an explicit 'this passage answered it', or 'none of these'.
+// It is an ASSERTION and not the manual rerank's kept set - the kept set is a
+// preference for the next answer, this is recorded with the question as a
+// candidate for the test bank, and the trace keeps kind: unknown either way. It
+// is written into the trace record the question's random id names, exactly like
+// the thumb, and the id is checked against the findings that record actually
+// holds: a pick can only name something the reader was shown. One pick per
+// question; a second replaces the first, whatever it was.
+async function handleRulesAnswered(req, res) {
+  let body = {};
+  try { body = JSON.parse((await readBody(req, 4096)) || '{}'); } catch (e) { return fail(res, 400, 'bad JSON body'); }
+  const id = typeof body.id === 'string' ? body.id : '';
+  const none = body.none === true;
+  const by = typeof body.by === 'string' ? body.by : '';
+  if (!id || (!none && !by)) return fail(res, 400, 'need { id, by } or { id, none: true }');
+  if (!tracesEnabled()) return json(res, 200, { ok: true, saved: false });
+  let saved = false;
+  try { saved = answeredTrace(id, { by, none }); } catch (e) { saved = false; }
+  return json(res, 200, { ok: true, saved });
+}
+
 async function handleRulesAsk(req, res) {
   let body;
   try { body = JSON.parse((await readBody(req, 128 * 1024)) || '{}'); }
@@ -905,8 +926,15 @@ async function handleRulesAsk(req, res) {
     // payload rather than being guessed from the question. `passage` is the
     // whole record - the popup shows the passage without a second request - and
     // `excerpt` stays the short form the list prints.
+    //
+    // `id` is the record's own id - the pointer, never the passage - and both
+    // controls that name a finding need it: the manual rerank sends the kept ids
+    // back and the server resolves them against the corpus, and the reader's pick
+    // is checked against the findings the trace holds. Without it the page has a
+    // list it cannot name a record in, and every keep/drop collapses onto one
+    // undefined key.
     const toPayload = list => list.map(f => ({
-      n: f.n, set: f.set, source: f.source, faction: f.faction, heading: f.heading,
+      id: f.id, n: f.n, set: f.set, source: f.source, faction: f.faction, heading: f.heading,
       ruleId: f.ruleId, url: f.url, href: f.href, excerpt: f.excerpt, passage: f.text || '',
       rank: f.rank || 0, leg: f.leg || '',
       vectorRank: f.vectorRank || 0, vectorScore: f.vectorScore,
@@ -1255,6 +1283,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/feedback') return handleFeedback(req, res);
   if (req.method === 'POST' && u.pathname === '/rules/ask') return handleRulesAsk(req, res);
   if (req.method === 'POST' && u.pathname === '/rules/vote') return handleRulesVote(req, res);
+  if (req.method === 'POST' && u.pathname === '/rules/answered') return handleRulesAnswered(req, res);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 

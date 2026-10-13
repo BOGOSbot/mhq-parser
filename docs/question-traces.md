@@ -101,7 +101,11 @@ node tests/promote-traces.mjs --promote --id <traceId> --expect <id>[,<id>] --ki
 `--harvest` is the labelling pass: read-only, one block per trace in the harvest
 order, with the question, the derived class, the thumb, the verdict and the top
 findings with their ids and headings. `--list` is the one-line summary of the
-same, and `--classify` counts the retained traces by class.
+same, and `--classify` counts the retained traces by class. A trace the reader
+marked prints `answeredBy: <record id>` or `answeredNone: true` beside the thumb -
+an assertion and not the rerank's kept set, a candidate for the expectation and
+never the label, so `--promote` still takes its `--expect` and `--kind` from the
+human.
 
 `--list` shows every trace with its question, when it was asked, the language, the
 setting, the writer's mode, how many findings it carries and the first few record

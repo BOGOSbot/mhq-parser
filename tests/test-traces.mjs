@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
-import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
+import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, answeredTrace, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
 import { classifyTrace, harvestOrder, loadTraces, promotedQuestion, tracePriority } from './promote-traces.mjs';
 
 let pass = 0, fail = 0;
@@ -183,6 +183,37 @@ t('a vote for a swept or unknown question is dropped', voteTrace('nope', 'up', v
 t('an invented vote value is refused', voteTrace('abc12345', 'maybe', voteDir), false);
 t('and it does not overwrite the real one', reload().vote, 'down');
 t('the trace holds no identifier but its random id', Object.keys(reload()).filter(k => /^(ip|useragent|cookie|session|account|address)$/i.test(k)).length, 0);
+
+// --- the pick: an assertion, not the rerank's preference ---------------------
+// The reader's explicit 'this passage answered it', or 'none of these', written
+// into the trace it names. It is checked against the findings that trace actually
+// holds, so it can only name something the reader was shown; one pick per
+// question, a second replaces the first; and it is a CANDIDATE, never a label -
+// kind stays unknown until a human promotes the trace.
+const pickDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-pick-'));
+try {
+  appendTrace(buildTrace({
+    id: 'pickpickpickpick', at: '2026-10-13T11:00:00.000Z', question: 'Can a unit shoot after it Fell Back?',
+    answer: 'Yes [1].', judge: { answered: true, passages: [1] },
+    findings: [finding, { n: 2, set: 'rules', source: 'core-rules', ruleId: '18.03', id: 'core-rules#Shooting', heading: 'Shooting', excerpt: 'A unit can shoot.' }],
+  }), pickDir);
+  appendTrace(buildTrace({ id: 'other999', at: '2026-10-13T11:01:00.000Z', question: 'q2', answer: 'a2' }), pickDir);
+  const picked = () => loadTraces(pickDir).find(x => x.id === 'pickpickpickpick');
+  t('no pick before anyone picks', [picked().answeredBy, picked().answeredNone], [undefined, undefined]);
+  t('a pick lands in the record it is about', answeredTrace('pickpickpickpick', { by: 'core-rules#Shooting' }, pickDir), true);
+  t('and names the record the reader chose', picked().answeredBy, 'core-rules#Shooting');
+  t('the pick is a candidate, never a label', picked().kind, KIND_UNKNOWN);
+  t('a second pick replaces the first', [answeredTrace('pickpickpickpick', { by: 'core-rules#Embarking' }, pickDir), picked().answeredBy], [true, 'core-rules#Embarking']);
+  t('one pick per question: the replaced one is gone', picked().answeredBy === 'core-rules#Shooting', false);
+  t('none of these is its own candidate', [answeredTrace('pickpickpickpick', { none: true }, pickDir), picked().answeredNone, picked().answeredBy], [true, true, undefined]);
+  t('a record pick replaces the none', [answeredTrace('pickpickpickpick', { by: 'core-rules#Embarking' }, pickDir), picked().answeredBy, picked().answeredNone], [true, 'core-rules#Embarking', undefined]);
+  t('an id that is not one of the findings is refused', answeredTrace('pickpickpickpick', { by: 'core-rules#NotShown' }, pickDir), false);
+  t('and the refused pick changes nothing', picked().answeredBy, 'core-rules#Embarking');
+  t('an empty pick is refused', answeredTrace('pickpickpickpick', {}, pickDir), false);
+  t('a pick for an unknown question is refused', answeredTrace('nope', { none: true }, pickDir), false);
+  t('the other record is untouched by the pick', loadTraces(pickDir).find(x => x.id === 'other999').answeredBy, undefined);
+  t('the pick adds no identifier either', Object.keys(picked()).filter(k => /^(ip|useragent|cookie|session|account|address)$/i.test(k)).length, 0);
+} finally { fs.rmSync(pickDir, { recursive: true, force: true }); }
 
 // --- the harvest order, for the promotion path -------------------------------
 // The listing a human labels from is ordered by what already carries a signal:

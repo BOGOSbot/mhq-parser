@@ -248,6 +248,16 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 .keepbtn{margin-left:8px;min-height:32px;font-size:.82em}
 .rerunfoot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
 .rerunbtn{min-height:44px}
+/* The reader's pick: an explicit 'this passage answered it', or 'none of these'.
+   An assertion about the answer above, not the keep/drop preference in the list:
+   one pick per question, kept with the question as a candidate for the test bank,
+   never a label. 44px so a phone can hit it. */
+.pickrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.pickrow .pickq{flex:1 1 240px;color:var(--dim);font:500 13px var(--sans)}
+.pickbtn{min-height:44px;margin-left:8px;padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--fg);font:600 13.5px var(--sans);cursor:pointer}
+.picknone{min-height:44px;padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--fg);font:600 13.5px var(--sans);cursor:pointer}
+.pickbtn.on,.picknone.on{border-color:var(--accent);color:var(--accent)}
+.pickrow .picknote{flex:1 1 100%;color:var(--dim);font:400 12.5px var(--sans);min-height:15px}
 </style>
 </head>
 <body>
@@ -409,6 +419,12 @@ var I18N = {
     voteUp: 'Useful',
     voteDown: 'Not useful',
     voteThanks: 'Thank you, recorded anonymously.',
+    pickHelp: 'Did one of these answer your question? Your pick is kept with the question as a candidate for the test bank - it is not a label.',
+    pickThis: 'This one answers it',
+    pickNone: 'None of these',
+    pickWaiting: 'Your pick will be recorded with the question when this run finishes.',
+    pickThanks: 'Kept as a candidate for the test bank - not as a label. Thank you.',
+    pickNoneThanks: 'Kept as an out-of-corpus candidate. Thank you.',
     cardLoadout: 'Equipped with: ',
     cardRanged: 'Ranged weapons',
     cardMelee: 'Melee weapons',
@@ -554,6 +570,12 @@ var I18N = {
     voteUp: 'Utile',
     voteDown: 'Pas utile',
     voteThanks: 'Merci, enregistré anonymement.',
+    pickHelp: 'L’une de ces règles a-t-elle répondu à votre question ? Votre choix est conservé avec la question comme candidat pour la banque de tests — ce n’est pas une étiquette.',
+    pickThis: 'Celle-ci répond',
+    pickNone: 'Aucune de celles-ci',
+    pickWaiting: 'Votre choix sera enregistré avec la question quand cette recherche sera terminée.',
+    pickThanks: 'Conservé comme candidat pour la banque de tests — pas comme étiquette. Merci.',
+    pickNoneThanks: 'Conservé comme candidat hors corpus. Merci.',
     cardLoadout: 'Équipé de : ',
     cardRanged: 'Armes de tir',
     cardMelee: 'Armes de mêlée',
@@ -910,6 +932,56 @@ function translationCard(tr) {
   return card;
 }
 
+// The reader's pick: an ASSERTION that a passage answered the question, written
+// into the trace record by the question's random id - not the keep/drop toggle in
+// the list, which is a preference about what a second answer should rest on. It
+// is a candidate for the test bank and never a label: the server records
+// answeredBy or answeredNone, and kind stays unknown until a human promotes it.
+//
+// The pick is sent only once the run has finished, because the trace it belongs
+// to is written after the prose: picking a passage while the answer is still
+// being written would name a record that does not exist yet, and the answer path
+// must not be reordered to hold it. The last pick made before the run ends is the
+// one sent, so one pick per question and a second replaces the first.
+function postPick(state) {
+  if (!state || !state.traceId || !state.pick) return;
+  var none = state.pick === 'none';
+  var body = none ? { id: state.traceId, none: true } : { id: state.traceId, by: state.pick };
+  fetch('/rules/answered', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function (r) { return r.json(); })
+    .then(function (out) { state.pickPending = false; state.pickSaved = !(out && out.saved === false); renderFindings(state); })
+    .catch(function () { state.pickPending = false; renderFindings(state); });
+}
+
+function sendPick(state, by, none) {
+  if (!state || !state.traceId) return;
+  state.pick = none ? 'none' : String(by || '');
+  state.pickSaved = undefined;
+  if (state.runDone) { state.pickPending = false; postPick(state); }
+  else state.pickPending = true;
+  renderFindings(state);
+}
+
+// The pick row, drawn under the findings - and under the 'nothing matched' note,
+// where 'none of these' is the whole answer and the out-of-corpus candidate the
+// bank is shortest of. It is not gated on the rerank selection: the reader may
+// pick whether or not they re-ask.
+function pickRow(state) {
+  if (!state || !state.traceId) return null;
+  var row = el('div', 'pickrow');
+  row.appendChild(el('div', 'pickq', t('pickHelp')));
+  var none = el('button', 'picknone' + (state.pick === 'none' ? ' on' : ''), t('pickNone'));
+  none.type = 'button';
+  none.setAttribute('aria-pressed', state.pick === 'none' ? 'true' : 'false');
+  none.addEventListener('click', function () { sendPick(state, '', true); });
+  row.appendChild(none);
+  var note = state.pickSaved === true
+    ? (state.pick === 'none' ? t('pickNoneThanks') : t('pickThanks'))
+    : (state.pickPending ? t('pickWaiting') : '');
+  row.appendChild(el('div', 'picknote', note));
+  return row;
+}
+
 function findingsCard(findings, counts, cited, state) {
   // Ordered by the rank the retrievers gave them, not by arrival: a widened
   // pass re-renders this card with the wider list, and the order is the whole
@@ -920,7 +992,14 @@ function findingsCard(findings, counts, cited, state) {
   var title = t('findingsTitle') + ' - ' + findings.length;
   if (counts) title += ' (' + counts.rules + t('findingsCounts') + counts.factions + t('findingsCountsTail') + ')';
   var card = sectionCard(title);
-  if (!findings.length) { card.appendChild(el('div', 'note warn', t('nothingMatchedCard'))); return card; }
+  if (!findings.length) {
+    card.appendChild(el('div', 'note warn', t('nothingMatchedCard')));
+    // Nothing to pick from, but 'none of these' is still an assertion the reader
+    // can make - and this is the out-of-corpus case the bank is shortest of.
+    var noneOnly = pickRow(state);
+    if (noneOnly) card.appendChild(noneOnly);
+    return card;
+  }
   // The top five are the answer-in-waiting: shown whole, above the prose. And a
   // passage the verdict rests on is shown whole wherever it ranked - the ability
   // that answered a question once sat at rank 15, inside the collapse, while the
@@ -963,6 +1042,8 @@ function findingsCard(findings, counts, cited, state) {
     foot.appendChild(again);
     card.appendChild(foot);
   }
+  var pickFoot = pickRow(state);
+  if (pickFoot) card.appendChild(pickFoot);
   return card;
 }
 
@@ -1058,6 +1139,17 @@ function findingItem(f, prominent, cited, state) {
   }
   if ((f.leg === 'lexical' || f.leg === 'both') && f.matchedTerms && f.matchedTerms.length) {
     meta.appendChild(el('span', 'words', t('matchedWords') + f.matchedTerms.join(', ')));
+  }
+  if (state && state.traceId && f.id) {
+    // The reader's own 'this passage answered it': an explicit assertion, one per
+    // question, replacing any earlier pick. It is not the keep/drop button in the
+    // head above - that one only changes what the second answer rests on.
+    var picked = state.pick === f.id;
+    var pickBtn = el('button', 'pickbtn' + (picked ? ' on' : ''), t('pickThis'));
+    pickBtn.type = 'button';
+    pickBtn.setAttribute('aria-pressed', picked ? 'true' : 'false');
+    pickBtn.addEventListener('click', function () { sendPick(state, f.id, false); });
+    meta.appendChild(pickBtn);
   }
   li.appendChild(meta);
   if (prominent) {
@@ -1437,7 +1529,12 @@ function newState() {
     // The manual rerank: what the reader asked, the English the pipeline ran,
     // the trace the first answer saved, the ids on screen and which of them the
     // reader is keeping. Only the first answer is selectable.
-    question: '', asked: '', traceId: '', shownIds: [], keep: {}, selectable: false, rerun: false };
+    question: '', asked: '', traceId: '', shownIds: [], keep: {}, selectable: false, rerun: false,
+    // The reader's pick - a record id, or 'none' - and whether it has landed.
+    // It is sent only once the run has finished writing its trace, so a pick made
+    // while the prose is still being written is not lost to a record that does not
+    // exist yet; runDone is that boundary, and it is not the answer path.
+    pick: '', pickSaved: undefined, pickPending: false, runDone: false };
 }
 
 function startResult(lang, options) {
@@ -1732,6 +1829,10 @@ function applyEvent(ev, state) {
   }
   if (ev.type === 'done') {
     finishProgress();
+    // The trace exists by now, so a pick made while the prose was still being
+    // written can land in its record; a later pick posts straight away.
+    state.runDone = true;
+    if (state.pickPending) postPick(state);
     // A disagreement outlives the request: clearing it here would erase the one
     // line that says the answer is provisional.
     if (state.disputed) { setStatus(t('judgeDisagreeTitle'), 'warn'); return; }

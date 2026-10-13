@@ -189,15 +189,13 @@ export function appendTrace(trace, dir) {
 // a line it cannot date is kept rather than deleted.
 export const TRACE_RETENTION_MONTHS = 12;
 
-// A reader's thumb, written into the trace record it belongs to, by question id.
-// The trace exists whether or not anyone votes - most readers never click - so
-// the vote is a bonus on top of the record, never the record itself. One id, one
-// vote: a second vote replaces the first. It returns false when there is no trace
-// to hold it (traces off, or the line already swept) and the page says nothing.
-// Nothing in it identifies the reader: it is one boolean beside a random id.
-export function voteTrace(id, vote, dir) {
-  const v = vote === 'up' || vote === 'down' ? vote : '';
-  if (!id || !v) return false;
+// Every post-hoc write into a trace goes through here: find the record by its
+// random id, apply the patch, write the file back. The whole scan-and-rewrite is
+// synchronous, so inside one process two patches cannot interleave - the server
+// that answered the question is the only writer. It is the read-modify-write
+// shape, and it is exposed only if a second process shares the traces dir.
+function patchTrace(id, patch, dir) {
+  if (!id) return false;
   const d = dir || TRACES_DIR;
   let names = [];
   try { names = fs.readdirSync(d); } catch { return false; }
@@ -209,11 +207,52 @@ export function voteTrace(id, vote, dir) {
       if (!lines[i].trim()) continue;
       let t = null;
       try { t = JSON.parse(lines[i]); } catch { continue; }
-      if (t && t.id === id) { t.vote = v; lines[i] = JSON.stringify(t); hit = true; break; }
+      if (!t || t.id !== id) continue;
+      if (patch(t) === false) return false;   // refused: the file is left alone
+      lines[i] = JSON.stringify(t);
+      hit = true;
+      break;
     }
     if (hit) { fs.writeFileSync(file, lines.join('\n')); return true; }
   }
   return false;
+}
+
+// A reader's thumb, written into the trace record it belongs to, by question id.
+// The trace exists whether or not anyone votes - most readers never click - so
+// the vote is a bonus on top of the record, never the record itself. One id, one
+// vote: a second vote replaces the first. It returns false when there is no trace
+// to hold it (traces off, or the line already swept) and the page says nothing.
+// Nothing in it identifies the reader: it is one boolean beside a random id.
+export function voteTrace(id, vote, dir) {
+  const v = vote === 'up' || vote === 'down' ? vote : '';
+  if (!v) return false;
+  return patchTrace(id, t => { t.vote = v; return true; }, dir);
+}
+
+// The reader's explicit 'this passage answered it', or 'none of these'. It is an
+// ASSERTION about the answer and not the manual rerank's kept set, which is a
+// preference about what the next answer should rest on: the two are different
+// signals and must not be read as each other. It is a CANDIDATE for the bank,
+// never a label - kind stays 'unknown' and only a human promotes it - and it adds
+// no identifier: a record id the trace already holds, or a boolean, beside the
+// question's random id.
+//
+// The record id is checked against the findings of the trace it names, so a pick
+// can only point at something the reader was actually shown. One pick per
+// question: a second replaces the first in either direction - a record after
+// 'none', or 'none' after a record.
+export function answeredTrace(id, pick, dir) {
+  const p = pick || {};
+  const none = p.none === true;
+  const by = typeof p.by === 'string' ? p.by : '';
+  if (!none && !by) return false;
+  return patchTrace(id, t => {
+    if (!none && !(t.findings || []).some(f => f && f.id === by)) return false;
+    if (none) { delete t.answeredBy; t.answeredNone = true; }
+    else { delete t.answeredNone; t.answeredBy = by; }
+    return true;
+  }, dir);
 }
 
 export function traceCutoff(months, now) {

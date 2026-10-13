@@ -53,6 +53,7 @@ const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild',
   'cardTitle', 'cardRanged', 'cardMelee', 'cardAbilities', 'cardKeywords', 'cardComposition', 'cardPoints', 'cardSourceNote', 'cardOpen',
   'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'judgeDissentTitle', 'judgeDissentWeaker', 'judgeDissentOther',
   'cardReady', 'streamCut', 'citedByJudge', 'verdictEvidence', 'voteHelp', 'voteUp', 'voteDown', 'voteThanks',
+  'pickHelp', 'pickThis', 'pickNone', 'pickWaiting', 'pickThanks', 'pickNoneThanks',
   'rerunTitle', 'rerunNote', 'rerankHelp', 'rerankButton', 'rerankDrop', 'rerankUse'];
 const absent = needed.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined);
 t('the new display labels exist in both languages', absent, []);
@@ -67,7 +68,7 @@ t('no reader-facing label is hardcoded in the script', hardcoded, []);
 // The passage popup reads the payload, never the network: one fetch of /health
 // is the only fetch outside /rules/ask on the page.
 const fetchCalls = Array.from(new Set(Array.from(PAGE.matchAll(/fetch\('([^']+)'/g)).map(m => m[1]))).sort();
-t('the page only fetches the three routes it needs', fetchCalls, ['/health', '/rules/ask', '/rules/vote']);
+t('the page only fetches the four routes it needs', fetchCalls, ['/health', '/rules/answered', '/rules/ask', '/rules/vote']);
 
 // The display the task asks for, asserted where it can be seen: findings above
 // the prose, re-rendered whenever a findings event lands, popup over payload.
@@ -128,6 +129,20 @@ ok('the vote is a tap target a phone can hit', PAGE.indexOf('.vote .vbtn{min-hei
 ok('the vote is fire and forget', /fetch\('\/rules\/vote'/.test(code));
 ok('a second vote replaces the first', /made\.sent/.test(code));
 ok('the page ignores a vote the server could not keep', /out\.saved === false/.test(code));
+
+// The pick: an explicit 'this passage answered it', or 'none of these', posted to
+// its own route and written beside the question's random id. It is an ASSERTION,
+// not the rerank's kept set, it is offered on every findings list whether or not
+// the reader re-asks, and it waits for the trace it belongs to - a pick made
+// while the prose is still being written must not be lost to a record that does
+// not exist yet.
+ok('the page posts the pick to its own route', /fetch\('\/rules\/answered'/.test(code));
+ok('a pick names a record, or none of them', /none \? \{ id: state\.traceId, none: true \} : \{ id: state\.traceId, by: state\.pick \}/.test(code));
+ok('the pick controls are phone-sized targets', /\.pickbtn\{min-height:44px/.test(PAGE) && /\.picknone\{min-height:44px/.test(PAGE));
+ok('the pick is offered with findings and with none', (code.match(/pickRow\(state\)/g) || []).length, 2);
+ok('the pick is not gated on the rerank selection', code.slice(code.indexOf('function pickRow'), code.indexOf('function findingsCard')).indexOf('selectable'), -1);
+ok('a pick waits for the run that writes its trace', /if \(state\.runDone\) \{ state\.pickPending = false; postPick\(state\); \}/.test(code));
+ok('one pick per question: a second replaces the first', /state\.pick = none \? 'none' : String\(by \|\| ''\)/.test(code));
 const server = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.mjs'), 'utf8');
 const jsonReplies = server.split('return json(res, 200,').slice(1);
 const withDisagreement = jsonReplies.filter(x => x.slice(0, 900).indexOf('judgeDisagreement') !== -1);
@@ -148,6 +163,18 @@ const traces = fs.readFileSync(path.join(__dirname, '..', 'src', 'rules-traces.m
 ok('the trace carries the human override', /if \(input\.override\) t\.override = input\.override;/.test(traces));
 ok('and points at the answer it overrides', /if \(input\.overrideOf\) t\.overrideOf = input\.overrideOf;/.test(traces));
 ok('the server records kept, dropped and added', /dropped: shownIds\.filter/.test(server) && /added: keepIds\.filter/.test(server));
+// The server side of the pick, where the server and trace text are in scope.
+ok('the server exposes the pick route', server.indexOf("'/rules/answered'") !== -1 && server.indexOf('handleRulesAnswered') !== -1);
+ok('the pick is written into the trace it names', server.indexOf('answeredTrace(id, { by, none })') !== -1 && traces.indexOf('export function answeredTrace') !== -1);
+ok('the pick is checked against the findings the trace holds', traces.indexOf('(t.findings || []).some(f => f && f.id === by)') !== -1);
+// The page can only name a finding the payload identifies. The rerank sends the
+// kept ids back and the pick names a record id, and both are the record's own id:
+// without it in the payload the page has a list it cannot name a record in.
+const payloadAt = server.indexOf('const toPayload = list');
+ok('the findings payload carries the record id both controls name', payloadAt !== -1 && server.slice(payloadAt, payloadAt + 900).indexOf('id: f.id') !== -1);
+ok('a record pick and none replace each other', traces.indexOf('t.answeredNone = true;') !== -1 && traces.indexOf('t.answeredBy = by;') !== -1);
+const promote = fs.readFileSync(path.join(__dirname, 'promote-traces.mjs'), 'utf8');
+ok('the harvest prints the reader pick', promote.indexOf('const reader = readerPick(t);') !== -1 && promote.indexOf("console.log('reader: ' + reader)") !== -1);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

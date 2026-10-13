@@ -66,6 +66,17 @@ export function candidates(trace, limit) {
   return (trace.findings || []).slice(0, limit || 6).map(f => f.id).filter(Boolean);
 }
 
+// What the reader asserted about the answer, when they asserted anything: the
+// record they said answered the question, or that none of them did. It is shown to
+// the human choosing the expectation - a candidate the pick strongly suggests,
+// never the expectation itself, which only that human writes.
+export function readerPick(trace) {
+  const t = trace || {};
+  if (typeof t.answeredBy === 'string' && t.answeredBy) return 'answeredBy: ' + t.answeredBy;
+  if (t.answeredNone === true) return 'answeredNone: true';
+  return '';
+}
+
 // The harvest order (task-27): the traces a human should label first are the ones
 // that already carry a signal. A thumbs-down is a reader saying the answer was
 // wrong; a verdict that cited a passage (judge.cited, or the writer's markers on
@@ -195,6 +206,10 @@ async function main() {
       console.log('=== ' + t.id + '  ' + String(t.at).slice(0, 16) + '  ' + (t.lang || '?') + '  ' + (t.mode || '?') + '  writer ' + (t.writer || 'unknown') + '  vote ' + (t.vote || '-') + '  class ' + classifyTrace(t) + (status === 'promotable' ? '' : '  [' + status + ']'));
       console.log('Q: ' + t.question);
       if (t.asked && t.asked !== t.question) console.log('EN: ' + t.asked);
+      // The reader's own candidate, when they picked one: the record they said
+      // answered it, or 'none of these'. A candidate to weigh, not the expectation.
+      const reader = readerPick(t);
+      if (reader) console.log('reader: ' + reader);
       console.log('judge: answered=' + (j.answered === true) + '  confidence=' + (j.confidence || '-') + '  cited=' + marked + (t.overrideOf ? '  override of ' + t.overrideOf : ''));
       console.log('answer: ' + String(t.answer || '').replace(/\s+/g, ' ').slice(0, 220));
       console.log('findings (' + (t.findings || []).length + ', top ' + Math.min(8, (t.findings || []).length) + '):');
