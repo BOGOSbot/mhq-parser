@@ -41,7 +41,7 @@ import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { credential, fastCredential, jevKeyName, modelCredential, FAST_MODEL, MODEL } from '../src/rules.mjs';
-import { answerableFindings, compileFindings, entityAnchors, parseJsonObject, readAllCorpus, translateQuestion } from '../src/rules-corpus.mjs';
+import { answerableFindings, compileFindings, entityAnchors, jevCalls, parseJsonObject, readAllCorpus, translateQuestion } from '../src/rules-corpus.mjs';
 import { makeCurator } from './curate.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -226,6 +226,8 @@ async function main() {
   console.log('accuracy          ' + (accuracy * 100).toFixed(1) + '%');
   console.log('declined          ' + refused + ' answers said they did not know');
   console.log('mean answer time  ' + (graded ? (seconds / Math.max(1, graded + counts.wrong)).toFixed(1) : '0') + 's');
+  const jc = jevCalls();
+  console.log('jev calls         ' + jc.total + '  (rerank ' + jc.rerank + ', gate ' + jc.gate + ')  ' + (questions.length ? (jc.total / questions.length).toFixed(1) : '0') + ' per question');
   console.log('written to        ' + OUT);
 }
 

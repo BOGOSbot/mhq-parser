@@ -41,5 +41,29 @@ const anchored = makeCurator({ corpora: { rules: [{ id: 'z', heading: 'Embarking
 const order = anchored([mk('a', 'A'), mk('z', 'Z')], { question: 'How do I embark?', attempt: 0 }).map(x => x.id);
 t('the anchored record is first', order[0], 'z');
 
+// --- what the curator must not touch -----------------------------------------
+// Anchoring must not depend on the reranker, and it must not depend on the
+// curator either: the record the question names by title is never dropped,
+// never capped and never reordered away.
+const corp = { rules: [{ id: 'z', heading: 'Embarking' }] };
+const keepAnchor = makeCurator({ corpora: corp, terms: [], passageChars: 5 });
+const ka = keepAnchor([
+  mk('a', 'A long text that would be capped.'),
+  mk('b', 'Charging and pile-in are a different subject entirely, with their own wording.'),
+  mk('z', 'A long text that would be capped.'),
+], { question: 'How do I embark?', attempt: 0 });
+t('an anchored record is not capped', ka.find(f => f.id === 'z').text.length > 5, true);
+t("the retriever's own first hit is not capped either", ka.find(f => f.id === 'a').text.length > 5, true);
+t('a plain record is still capped', ka.find(f => f.id === 'b').text.length <= 9, true);
+
+const dupGuard = makeCurator({ corpora: corp, terms: [], passageChars: 9999 });
+const dg = dupGuard([mk('a', 'The same text in both records.'), mk('z', 'The same text in both records.')], { question: 'How do I embark?', attempt: 0 });
+t('an anchored duplicate survives the dedupe', dg.some(f => f.id === 'z'), true);
+t('the plain duplicate is still dropped', dg.filter(f => f.text === 'The same text in both records.').length, 2);
+
+const passedGuard = makeCurator({ corpora: corp, terms: [], dropPassedOver: true, passageChars: 9999 });
+const pg = passedGuard([mk('z', 'Z', 1)], { question: 'How do I embark?', attempt: 1, previous: { judge: { why: 'Passage [9] only.' }, findings: [mk('z', 'Z', 1)] } });
+t('an anchored record survives the passed-over drop', pg.some(f => f.id === 'z'), true);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

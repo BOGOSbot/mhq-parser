@@ -50,11 +50,31 @@ export function makeCurator(opts) {
   const o = opts || {};
   const passageChars = o.passageChars || 1200;
   return function curate(findings, ctx) {
-    // 1. near-identical records
+    const all = findings || [];
+    // What the curator must not touch, computed before anything is dropped. The
+    // record the question names by title is the one the reader asked about, and
+    // the retriever's own first hit per half is its strongest evidence: the
+    // pipeline already learned once that anchoring must not depend on the
+    // reranker, and it must not depend on the curator either. A protected record
+    // is never dropped, never capped and never reordered away.
+    const anchored = new Set();
+    if (o.corpora) {
+      for (const half of Object.keys(o.corpora)) {
+        for (const a of entityAnchors(ctx.question, o.corpora[half], 2, o.terms)) anchored.add(a.id);
+      }
+    }
+    const firstHit = new Set();
+    for (const half of new Set(all.map(x => x.set))) {
+      const first = all.find(x => x.set === half);
+      if (first) firstHit.add(first.id);
+    }
+    const protectedId = x => anchored.has(x.id) || firstHit.has(x.id);
+
+    // 1. near-identical records, but never at the cost of a protected one
     const kept = [];
-    for (const f of findings || []) {
-      if (kept.some(k => nearDuplicate(k.text, f.text))) continue;
-      kept.push(f);
+    for (const x of all) {
+      if (!protectedId(x) && kept.some(k => nearDuplicate(k.text, x.text))) continue;
+      kept.push(x);
     }
     let list = kept;
 
@@ -68,26 +88,20 @@ export function makeCurator(opts) {
       let m;
       while ((m = re.exec(why)) !== null) cited.add(Number(m[1]));
       if (cited.size) {
-        const byId = new Map((ctx.previous.findings || []).map(f => [f.id, f.n]));
-        list = list.filter(f => !byId.has(f.id) || cited.has(byId.get(f.id)));
+        const byId = new Map((ctx.previous.findings || []).map(x => [x.id, x.n]));
+        list = list.filter(x => protectedId(x) || !byId.has(x.id) || cited.has(byId.get(x.id)));
       }
     }
 
     // 3. the record the question names by title, first
-    if (o.corpora && o.terms !== undefined) {
-      const anchored = new Set();
-      for (const half of Object.keys(o.corpora)) {
-        for (const a of entityAnchors(ctx.question, o.corpora[half], 2, o.terms)) anchored.add(a.id);
-      }
-      if (anchored.size) {
-        list = list.slice().sort((a, b) => (anchored.has(b.id) ? 1 : 0) - (anchored.has(a.id) ? 1 : 0));
-      }
+    if (anchored.size) {
+      list = list.slice().sort((a, b) => (anchored.has(b.id) ? 1 : 0) - (anchored.has(a.id) ? 1 : 0));
     }
 
-    // 2. cap what each passage may spend
-    return list.map(f => Object.assign({}, f, {
-      text: capPassage(f.text, passageChars),
-      excerpt: capPassage(f.excerpt, passageChars),
-    }));
+    // 2. cap what each passage may spend - a protected record is left whole
+    return list.map(x => (protectedId(x) ? x : Object.assign({}, x, {
+      text: capPassage(x.text, passageChars),
+      excerpt: capPassage(x.excerpt, passageChars),
+    })));
   };
 }

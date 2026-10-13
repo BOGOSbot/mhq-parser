@@ -1151,10 +1151,20 @@ export function defaultAsk(i, c, question) {
 // a wide net costs one request rather than forty.
 export const JEV_STATE_CHARS = Number(process.env.RULES_JEV_STATE_CHARS) || 40000;
 
+// How many Jev requests a process actually makes, by kind. A rerank-shaped call
+// costs $0.000634 on the paid fallback, so this stopped being curiosity and
+// became accounting: the page measured $0.005-0.007 a question, which is 8-11
+// calls where the code intends 2 per pass. A counter in the request path is the
+// only honest way to see where they come from - a credits delta is too coarse.
+const JEV_CALLS = { rerank: 0, gate: 0 };
+export function jevCalls() { return { rerank: JEV_CALLS.rerank, gate: JEV_CALLS.gate, total: JEV_CALLS.rerank + JEV_CALLS.gate }; }
+export function jevCallsReset() { JEV_CALLS.rerank = 0; JEV_CALLS.gate = 0; }
+
 export async function jevRank(question, candidates, key, opts) {
   const o = opts || {};
   const top = (candidates || []).slice(0, o.max || 50);
   if (!top.length) return [];
+  JEV_CALLS.rerank++;
   const questions = {};
   const ask = o.ask || defaultAsk;
   top.forEach((c, i) => {
@@ -1283,6 +1293,7 @@ export function gateHalfLexical(question, vocab, opts) {
 export async function gateHalf(question, key, opts) {
   const o = opts || {};
   if (!key) return { half: '', confidence: null, error: 'no jev key' };
+  JEV_CALLS.gate++;
   const body = JSON.stringify({
     model: JEV_MODEL,
     state: 'A reader asks a Warhammer 40,000 11th edition rules question. The corpus has two halves: the core rules (how the game works for every army) and faction rules (what one army\'s own units and cards do).',
