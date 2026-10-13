@@ -261,16 +261,32 @@ vectors reads them as misses and looks like drift - and every one deleted after,
   0 gone, 690/690 byte-identical to the live corpus, no link line in any text):
   the dense leg reproduces the live row on every column, exactly (58.6 / 72.4 /
   89.7 / 93.1, MRR 0.666; reachable 58.6 / 79.3 / 96.6 / 96.6, MRR 0.682).
+- **Variant D: the block in the text with the re-chunking fixed** (the budget at
+  the live chunker's own ceiling: 693 rules records, 3 block-forced chunks
+  instead of 37, 95 records carrying a link line). The dense leg: exact 62.1 /
+  75.9 / 86.2 / 93.1, MRR 0.691; reachable 62.1 / 82.8 / 93.1 / 96.6, MRR 0.707.
+  Against the block-out shape at the same budget (which is live, exactly): hit@1
+  +3.4, hit@5 +3.4, MRR +0.025, hit@20 equal, hit@10 one question worse (-3.4,
+  on the floor edge). **The head gain is the block's, not the chunks'** - +3.4 in
+  both block-in shapes, 0 in both block-out ones. The page's own path on variant
+  D: exact 34.5 / 69 / 86.2 / 93.1, MRR 0.495; reachable 41.4 / 72.4 / 93.1 /
+  **100**, MRR 0.553 - the best reachable hit@20 of any shape, the same head gain
+  as phase B, hit@10 and hit@20 unchanged from live.
 
-**So: a rules-neutral shape exists, and the decision is the faction half.** Links
-on the record, block out of the embedded text, planner budget matching the live
-chunker costs the rules half nothing; the block's own mechanism stays unproven
-(negative on the lexical leg, the dense leg and the targeted parent test). What
-is still unmeasured is the half the rewrite was actually built for - Battle
-Focus and the 58 other faction rules that no query can reach today, and the 191
-index pages - 6,829 records, minutes and under a cent hosted, but 6,829 upserts
-plus 6,829 deletes against a Free daily update budget these arms have largely
-spent. The live rebuild is not taken; the numbers are with Mandal. Artifacts:
+**So: the block earns its place, and the re-chunking is a blocker, not a detail.**
+With the budget fixed, the block in the text buys the dense head (+3.4 at hit@1,
++3.4 at hit@5, +0.025 MRR) for one question at hit@10, and the page's own path on
+that shape beats live at the head with hit@10/20 unchanged and reachable hit@20
+at 100%. The prediction this variant tested - "block out restores hit@10" -
+FAILED, and the cause is the planner: it budgets the whole record text while the
+live chunker caps the BODY at 2,000 and then prepends the heading, so 35 live
+records get re-split into 30 extra chunks. **A phase C that re-chunks 35 existing
+records is not the additive rewrite phase A promised** - phase A moved 0 ids,
+and a rebuild must not rewrite text nothing asked it to touch. Fix the budget (or
+exclude the heading from it) before anything is built. The faction half - Battle
+Focus and the 58 other faction rules no query can reach today, and the 191 index
+pages - is still unmeasured and runs after the daily update budget resets. The
+live rebuild is not taken; the numbers are with Mandal. Artifacts:
 `workspace/eval/retrieval-wiki-shape-arms.txt`.
 
 ## Open questions for the vector arm
@@ -297,12 +313,12 @@ halves) or a hosted faction-side arm (6,829 records, minutes).*
 
 ## Recommendation
 
-**Rebuild the rules half only in the neutral shape, and measure the faction half
-before adopting it.** The rules half in "links on the record, block out of the
-embedded text, planner budget matching the live chunker" is measured to cost
-nothing (the dense leg reproduces live exactly, the page's own path gains at the
-head), so this is no longer a question of the rules half's risk. What is missing
-is the benefit: the faction rules the corpus cannot reach today, Battle Focus
-among them, and the index pages. That is one more hosted arm after the daily
-update budget resets; the plan is one module (`src/wiki-plan.mjs`) with the
-block now a switch, so nothing has been written into the live corpus.
+**Build the rules half in the variant-D shape, after the faction arm and not
+before it.** Links on the record, the block in the embedded text, and the
+planner's budget at the live chunker's own ceiling: measured as the best
+reader-facing shape (head +6.9 against live, hit@10 and hit@20 unchanged,
+reachable hit@20 100%) with the dense leg's one-question hit@10 cost inside the
+floor. Fixing the budget is a prerequisite, not part of the adoption - the
+current planner re-chunks 35 live records, which phase A promised it would not.
+What is still missing is the benefit, the faction rules and the index pages, so
+the faction arm decides. Nothing has been written into the live corpus.
