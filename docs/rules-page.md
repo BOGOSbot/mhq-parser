@@ -305,6 +305,14 @@ answer the same question differently.
 
 ## Known limits
 
+- **The accuracy bank cannot resolve 2 to 4 points.** Two arms run with the writer
+  fixed and the same retrieval configuration still differ: on the 25-question bank,
+  21 of 25 answers differ in text and 7 of 25 differ in grade between two runs of
+  the same setup, while only 5 questions took a different path. Retrieval, writing
+  and grading are all stochastic, so the bank resolves a 17.6-point gap and a
+  10-point loss and it cannot resolve 2 to 4 points. Any future reading at that
+  scale needs a bigger bank or repeated runs per arm - the question traces are how
+  the bank grows.
 - The server reads the corpus once per process - `corpora()` and
   `corpusState()` cache it for the life of the server - while `--scrape` and
   `--ingest` rewrite it under a running one. A rebuild therefore needs a
