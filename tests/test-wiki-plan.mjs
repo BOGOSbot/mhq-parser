@@ -1,9 +1,10 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LINK_BLOCK_MAX, MIN_PART, WIKI_BUDGET, chars, distribution, idReport, planWiki, renderLinks, resolveLinks, splitWithin } from '../src/wiki-plan.mjs';
-import { carryStamps, toSection } from '../src/wiki-build.mjs';
-import { textHash } from '../src/rules-corpus.mjs';
+import { LINK_BLOCK_MAX, MIN_PART, WIKI_BUDGET, chars, distribution, idReport, planWiki, renderLinks, resolveLinks, splitWithin, stripBuiltBlock } from '../src/wiki-plan.mjs';
+import { carryStamps, toSection, writeWikiCorpus } from '../src/wiki-build.mjs';
+import { scrapeBuildsWiki, textHash } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -136,6 +137,48 @@ t('the source stamps ride along with the planned sections', stamped, {
 t('the record count is recomputed, not the scrape\'s', stamped.count, 2);
 t('and so is the anchored count', stamped.anchored, 1);
 t('a source with no payload still writes a countable file', carryStamps(null, []), { count: 0, anchored: 0, sections: [] });
+
+// --- the scrape cannot silently revert the shape ------------------------------
+// The live corpus is the wiki build; a scrape writes the FLAT corpus into the
+// same directory, so the scrape ends by building the wiki shape and --flat is
+// the only way to keep the raw scrape.
+t('a scrape builds the wiki shape by default', scrapeBuildsWiki(['--scrape']), true);
+t('--flat is the only opt-out', scrapeBuildsWiki(['--scrape', '--flat']), false);
+t('no scrape flag reports the default', scrapeBuildsWiki([]), true);
+const scrapeSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'rules-corpus.mjs'), 'utf8');
+const scrapeBranch = scrapeSrc.slice(scrapeSrc.indexOf("if (flag('--scrape'))"), scrapeSrc.indexOf("if (flag('--ingest'))"));
+ok('the scrape branch routes through the build, guarded by the flag',
+  scrapeBranch.indexOf('scrapeBuildsWiki(argv)') !== -1 && scrapeBranch.indexOf('buildWikiShape(CORPUS_DIR)') !== -1);
+
+// And the build lands the shape the scrape must keep: the link block inside the
+// text (that is what the vector sees), on a record that has children.
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-wiki-'));
+try {
+  const manifest = writeWikiCorpus(tmp, { rules, factions, abilities, factionsCsv }, { blockInText: true });
+  const written = JSON.parse(fs.readFileSync(path.join(tmp, 'core-rules.json'), 'utf8'));
+  ok('the written corpus carries the link block in the text',
+    written.sections.some(s => /- [a-z]+: /.test(String(s.text))));
+  t('and its count is what it wrote', written.count, manifest.written['core-rules']);
+} finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+
+// --- a re-build of a built corpus is a no-op ---------------------------------
+// The scrape ends by building the wiki shape in place, and a partial scrape
+// (--set factions, --source) leaves the other sources already built. So the build
+// has to be idempotent: re-building a built corpus must change nothing, or the
+// scrape would grow the very link blocks it exists to preserve. Measured on the
+// live corpus, the rebuild is now byte-identical on all five sources.
+t('the built block is stripped before it is rebuilt',
+  stripBuiltBlock({ text: 'H\nbody\n\n- section: Kid', links: [{ to: 'x', title: 'Kid', kind: 'section' }] }), 'H\nbody');
+t('a record with no links is left alone', stripBuiltBlock({ text: 'H\nbody', links: [] }), 'H\nbody');
+t('a text that does not end with the block is left alone',
+  stripBuiltBlock({ text: 'H\nbody', links: [{ to: 'x', title: 'Kid', kind: 'section' }] }), 'H\nbody');
+const built = planWiki({ rules, factions, abilities, factionsCsv });
+const roundTrip = planWiki({
+  rules: [built.index.get('r#parent'), built.index.get('r#parent->-Child')],
+  factions: [], abilities: [], factionsCsv: [],
+});
+t('a re-build reproduces the built parent text', roundTrip.index.get('r#parent').text, built.index.get('r#parent').text);
+t('and does not add a record', roundTrip.records.length, 2);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

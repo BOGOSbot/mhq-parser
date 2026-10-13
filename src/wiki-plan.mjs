@@ -67,6 +67,23 @@ export function renderLinks(links, max) {
   };
 }
 
+// A corpus that has already been built carries its link block inside the text,
+// and nothing marks it: re-building one appends the block again and re-splits the
+// records it grew (measured: a rebuild over the live rules half gave 392 sections
+// where there were 383). That is how a partial scrape - --set factions, --source
+// - would corrupt the live corpus on its way to the build. The block is exactly
+// what renderLinks rendered from the record's own links array, so it can be
+// removed exactly; a record whose text or links changed by hand is left alone.
+export function stripBuiltBlock(rec) {
+  const text = String((rec && rec.text) || '');
+  const links = (rec && rec.links) || [];
+  if (!links.length) return text;
+  const block = renderLinks(links, LINK_BLOCK_MAX).text;
+  if (!block) return text;
+  const suffix = '\n\n' + block;
+  return text.endsWith(suffix) ? text.slice(0, text.length - suffix.length) : text;
+}
+
 export function resolveLinks(links, has) {
   const kept = [];
   let dropped = 0;
@@ -166,9 +183,23 @@ export function planWiki(data, opts) {
   // link list built while the plan is half-pushed drops everything it points at
   // (which is exactly what happened to the first draft of this file - 6,575
   // index links resolved to nothing because their targets came later).
+  // The build's own records - the index pages, the faction rules, the parts it
+  // split out - are REGENERATED, not read back. Counting their ids here would
+  // suppress their own creation on a re-build (the faction rules are added only
+  // when their id is not already known) and hand a part back as an extra child
+  // of the parent whose heading it shares.
+  // A record the build itself created carries the wiki fields - the build writes a
+  // links array for every record it emits, and a scraped corpus has none. So
+  // "built" is: it has a links array AND is one of the records the build
+  // regenerates (an index page, a faction rule, or a part it split). A scraped
+  // corpus's own chunker parts have no links array and stay records like any
+  // other, which is what keeps a first build from a flat corpus identical to the
+  // live one.
+  const isBuiltRecord = r => Array.isArray(r.links) &&
+    (r.kind === 'index' || r.kind === 'faction-rule' || Number(r.part || 1) > 1);
   const known = new Set();
-  for (const r of rules) known.add(r.id);
-  for (const r of factions) known.add(r.id);
+  for (const r of rules) if (!isBuiltRecord(r)) known.add(r.id);
+  for (const r of factions) if (!isBuiltRecord(r)) known.add(r.id);
   const factionRuleIds = [];
   for (const a of abilities) {
     if (!a || !a.id || !a.faction_id) continue;
@@ -183,6 +214,11 @@ export function planWiki(data, opts) {
   const factionName = new Map(factionRows.map(f => [f.id, clean(f.name)]));
   const byFaction = new Map();
   for (const r of factions) {
+    // A record a previous build created is regenerated from the CSV, not read
+    // back as a card: the index pages, the faction rules, and the parts of a
+    // card that was split. Read back, they are listed twice, and the index
+    // pages' own source label invents a faction called 'factions-csv'.
+    if (isBuiltRecord(r)) continue;
     const f = String(r.faction || r.source || '').toLowerCase();
     if (!byFaction.has(f)) byFaction.set(f, []);
     byFaction.get(f).push(r);
@@ -212,6 +248,11 @@ export function planWiki(data, opts) {
   // --- the rules half: the tree the headings already describe -----------------
   const byHeading = new Map();
   for (const r of rules) {
+    // A part a previous build split out carries its parent's heading: counted
+    // here it would be handed back as an extra child of that parent, and the
+    // re-build would grow the parent's link list every time it ran. A scraped
+    // corpus's own chunker parts are not the build's and stay records here.
+    if (isBuiltRecord(r)) continue;
     const h = String(r.heading || '');
     if (!byHeading.has(h)) byHeading.set(h, []);
     byHeading.get(h).push(r);
@@ -237,14 +278,22 @@ export function planWiki(data, opts) {
     for (const kid of byHeading.get(h)) parentIdOf.set(kid.id, byHeading.get(parentHeading)[0].id);
   }
   for (const r of rules) {
-    const kids = childrenOf.get(String(r.heading || '')) || [];
+    // A part a previous build created is already a part of its parent: its heading
+    // is the parent's, so the heading lookup would hand it the parent's children
+    // and grow a block it must not have. It is emitted as it is.
+    const isPart = isBuiltRecord(r);
+    const kids = isPart ? [] : (childrenOf.get(String(r.heading || '')) || []);
     const wanted = kids.map(k => ({ to: k.id, title: lastCrumb(k.heading), kind: 'section' }));
     const resolved = resolveLinks(wanted, id => known.has(id));
     stats.linksDropped += resolved.dropped;
     const rec = baseRecord(r, {
       kind: r.source === 'core-stratagems' ? 'stratagem' : 'rule',
-      parent: parentIdOf.get(r.id) || '', children: resolved.links.map(l => l.to), links: resolved.links,
-      idFrom: 'source-key', part: 1, parts: 1, text: String(r.text || ''),
+      parent: isPart ? String(r.parent || '') : (parentIdOf.get(r.id) || ''),
+      children: resolved.links.map(l => l.to), links: resolved.links,
+      // Only a part the BUILD made keeps its part number; a scraped corpus's own
+      // chunker parts are ordinary records here, which is what the live corpus
+      // already holds (part 1/1 on every one of them).
+      idFrom: 'source-key', part: isPart ? Number(r.part || 1) : 1, parts: isPart ? Number(r.parts || 1) : 1, text: stripBuiltBlock(r),
     });
     if (resolved.links.length) {
       stats.links += resolved.links.length;
@@ -334,7 +383,7 @@ export function planWiki(data, opts) {
       const wanted = [{ to: def.indexId, title: (factionName.get(faction) || faction), kind: 'faction' }];
       const rec = baseRecord(r, {
         kind: String(r.id || '').split('#')[0], parent: def.indexId, children: [], links: wanted,
-        idFrom: 'csv-row-id', part: 1, parts: 1, text: String(r.text || ''),
+        idFrom: 'csv-row-id', part: 1, parts: 1, text: stripBuiltBlock(r),
       });
       const line = renderLinks(wanted, 1);
       if (blockInText && chars(bodyOf(rec)) + chars(line.text) + 2 <= MAX_CHARS) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }

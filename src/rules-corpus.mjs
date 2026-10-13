@@ -2890,6 +2890,25 @@ export function corpusAgeDays(now) {
   return Math.floor(((now ? now.getTime() : Date.now()) - at) / 86400000);
 }
 
+// The live corpus is the wiki build (phase C): links in the text, the 63 faction
+// rules, the 191 index pages. A scrape writes the FLAT corpus into the same
+// directory - one scrape would silently revert all of it, and the next --ingest
+// would re-embed 6,705 flat vectors. So the build runs here, at the only place
+// that writes the corpus; --flat is the escape hatch for a measurement corpus
+// that wants the raw scrape (the surgical arms).
+export function scrapeBuildsWiki(argv) {
+  return (argv || []).indexOf('--flat') === -1;
+}
+
+async function buildWikiShape(dir) {
+  // Dynamic import: wiki-build.mjs imports this module, so a static import would
+  // be a cycle at load time.
+  const { writeWikiCorpus } = await import('./wiki-build.mjs');
+  const m = writeWikiCorpus(dir, null, { blockInText: true });
+  console.log('wiki shape  ' + String(m.records).padStart(5) + ' records, ' + String(m.links).padStart(6) + ' links (block in text)');
+  return m;
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   const flag = n => argv.indexOf(n) !== -1;
@@ -2907,11 +2926,15 @@ async function main() {
       console.log('duplicate records collapsed: ' + built.dropped);
       console.log('export last update: ' + built.marker.lastUpdate);
       console.log('total ' + built.count + ' records from ' + CSV_FILES.length + ' CSV files');
+      if (scrapeBuildsWiki(argv)) await buildWikiShape(CORPUS_DIR);
+      else console.log('--flat: the corpus is NOT the shape the live index was built from.');
       return;
     }
     const done = await scrapeAll(only, set);
     for (const p of done) console.log(p.source.padEnd(17) + ' ' + String(p.count).padStart(4) + ' sections (' + p.anchored + ' anchored)  ' + Math.round(p.bytes / 1024) + ' KB');
     console.log('written to ' + CORPUS_DIR);
+    if (scrapeBuildsWiki(argv)) await buildWikiShape(CORPUS_DIR);
+    else console.log('--flat: the corpus is NOT the shape the live index was built from.');
     return;
   }
   if (flag('--ingest')) {
