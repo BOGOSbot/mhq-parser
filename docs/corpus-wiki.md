@@ -295,15 +295,71 @@ splits by the live chunker's own body cap, so the regression guard is measured i
 both directions: block out gives 690 records, 0 added, 0 gone and 690/690
 byte-identical text; block in gives 696 records and 6 block-forced chunks. The faction half - Battle
 Focus and the 58 other faction rules no query can reach today, and the 191 index
-pages - is still unmeasured and runs after the daily update budget resets. The
+pages - is measured in *Arm 3: the faction half* below. The
 live rebuild is not taken; the numbers are with Mandal. Artifacts:
 `workspace/eval/retrieval-wiki-shape-arms.txt`.
+
+### Arm 3: the faction half, hosted (2026-10-13)
+
+Built by the default CLI into `workspace/rules-corpus-wiki-c` (variant D - links
+on the record, the block in the embedded text, budget at the live chunker's body
+cap): **7,525 records**, rules 696, **factions 6,829** - 254 added (63 faction
+rules and **191 index pages**), 0 gone, `linkBlockInText: true`, 13,834 links.
+The faction half went into a scratch namespace on the hosted HYBRID index, DENSE,
+and the namespace was deleted after: `/info` is back to 7,266 vectors with only
+`""`, `rules` and `factions`, and the live namespaces were never written. **No
+quota or 429 error anywhere**: the 6,829 upserts (~90s), the drift writes and the
+delete all went through inside the UTC day the rules arms had already used.
+
+**The drift control, and one correction to it.** The recorded drift set - the
+first record of each faction source - is datasheets, which the rules-shaped bank
+never returns, so the pair population was 0 and the check was vacuous. The drift
+records were re-picked from the records the bank *does* return (unitrules,
+enhancements, stratagems, detachments), re-upserted with their live text, and the
+read-only pass then read **20/20 self-queries and 0 inversions in 171 comparable
+pairs**. A first one-pass run read 16/20: the fresh vectors were queried before
+the indexer had registered them - the same race the rules arm hit - and a re-query
+put all four at #1. The two-step write-then-check is the method, not one process.
+
+**The dense legs cannot measure this half, and that is a finding.** The
+33-question bank's **49 expectations are all rules-side; 0 are faction-side**, so
+a DENSE arm against `factions` scores 0/0 on both the live and the wiki namespace
+and says nothing. The page's own path can see the faction half, so the arm that
+was run is the dual path with only the faction VECTOR leg swapped (live rules both
+legs, live faction grep, wiki faction vectors), rerank off, per-side 10, net 60,
+topk 20, on today's bank (39 questions, 33 graded, 0 fallbacks, 0 Jev calls):
+
+| faction vector leg | exact hit@1 / 5 / 10 / 20 | exact MRR | reachable hit@1 / 5 / 10 / 20 | reachable MRR | candidates | multi-hop fully found |
+|---|---|---|---|---|---|---|
+| live, 6,575 records | 27.3 / 60.6 / 84.8 / 93.9 | 0.434 | 39.4 / 63.6 / 90.9 / 100 | 0.523 | 23.1 | 5/12 |
+| wiki, 6,829 records | 27.3 / 60.6 / 84.8 / 93.9 | 0.434 | 39.4 / 63.6 / 90.9 / 100 | 0.523 | 23.1 | **6/12** |
+
+Every aggregate column is **identical**: the 254 added records and the 191 index
+pages cost the reader nothing on this bank, and the candidate count does not move,
+so the index pages do not crowd anything out. One entry flips to fully found: the
+Starweaver re-embark question, whose second group is `unitrules#000002541~2` -
+absent from the live faction top 20, **#2** with the wiki half.
+
+**Targeted: Battle Focus** (`faction-rule#000009894`, no record anywhere in the
+live corpus; 786 characters in the wiki half). It is **#1** for "What does Battle
+Focus do?" and "How does Battle Focus work?", **#2** for the bare name "Battle
+Focus", and a miss for three conversational phrasings ("Does Battle Focus give the
+Aeldari extra movement or tokens?", "How do the Aeldari use Battle Focus tokens?",
+"What is the Aeldari army rule?"). The rule is reachable and uncrowded at its name
+query; the phrasing decides, and phase B's rank-1 claim on the conversational
+phrasing does not reproduce on this build.
+
+One anomaly for task-30: the built faction half has 13 records over the 2,000
+body cap (max 2,084), where the phase-A plan predicted 5 (max 2,061).
+
+Artifacts: `retrieval-faction-arm.txt`, `retrieval-faction-dual-control.txt`,
+`retrieval-faction-dual-wiki.txt`.
 
 ## Open questions for the vector arm
 
 *The hosted arm above answered the first bullet for the dense leg; the others
 still need the local index (13-25 hours full, 2.5-4.5 hours for the two rules
-halves) or a hosted faction-side arm (6,829 records, minutes).*
+halves) or a hosted faction-side arm (6,829 records, minutes) - run, see *Arm 3*.*
 
 - **Is the link block noise for retrieval? ANSWERED, for the two hosted legs.**
   A parent's vector now carries up to 40 names it does not discuss. On the dense
@@ -316,7 +372,9 @@ halves) or a hosted faction-side arm (6,829 records, minutes).*
   dropping those from the text is a one-line change and a different measurement.
 - **Index pages are synthetic records.** They contain no rules text - only names.
   They will rank for name-shaped queries. That is the intent, but 191 of them is
-  2.5% of the faction half, and the bank test should say whether they earn it.
+  2.5% of the faction half, and the bank test should say whether they earn it - Arm 3 says they cost
+  nothing on the page's path (every aggregate column of the dual arm is identical
+  and the candidate count does not move).
 - **Do the 37 forced rule chunks help or hurt?** They only exist because the link
   block pushed a parent over the budget. Alternative: cap the block harder and
   keep the parent whole.
