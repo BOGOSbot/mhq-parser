@@ -299,6 +299,30 @@ pages - is measured in *Arm 3: the faction half* below. The
 live rebuild is not taken; the numbers are with Mandal. Artifacts:
 `workspace/eval/retrieval-wiki-shape-arms.txt`.
 
+### What an arm on a scratch namespace can claim (2026-10-13)
+
+Arm 3 produced a rank that did not transfer, and the lesson is bigger than the
+record. `unitrules#000002541~2` answered **#2** for the Harlequin question in a
+namespace built from 6,829 fresh upserts. The same 6,829 records, reached by
+6,604 incremental upserts on top of the old 6,575, leave it **outside the top
+100** - stable across repeated queries, while the record's own self-query is #1,
+so the vector is there and the content is identical. Two namespaces, the same
+vectors, a different approximate ranking.
+
+**A scratch namespace is not a preview of the deployed index, and a rank claim
+from one does not transfer.** That is not only arm 3's problem: every rules-half
+shape arm was measured the same way, in a namespace built fresh, and their head
+gains (+3.4 hit@1, +0.025 MRR) rest on that method. What the method can still do
+is compare whole arms measured in the same conditions, and the drift control
+(self-queries plus rank agreement over records the bank actually returns) is what
+licenses that comparison; what it cannot do is certify a per-record rank or a
+single flip - and a single flip is exactly what was claimed for the Starweaver
+entry.
+
+So: **an arm that decides a shape is measured on the deployed namespace, with the
+rollback point as the way back.** That is what phase C did, and its reading is the
+one this document records.
+
 ### Arm 3: the faction half, hosted (2026-10-13)
 
 Built by the default CLI into `workspace/rules-corpus-wiki-c` (variant D - links
