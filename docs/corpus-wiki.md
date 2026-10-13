@@ -420,8 +420,9 @@ live namespace; every number is from `--dry-run` and the read-only parity check.
    `factions 6,829 | corpus 6,829 | 0 | 0`. Counts alone are not proof; this
    enumerates both sides.
 6. **Restart the server** per docs/HANDOFF.md §Restarting - it caches the corpus
-   for the life of the process. Do not set `RULES_TRACES=1` in that recipe: the
-   retention line is not on the page yet (docs/question-traces.md).
+   for the life of the process, and that recipe sets `RULES_TRACES=1`, which is
+   correct: the page carries the retention line in both languages
+   (docs/question-traces.md).
 7. **Read one answer by hand.** The FALL-BACK question and the Asurmen ability
    question are the two the rewrite is for; check the anchored record is in the
    findings before trusting the bank.

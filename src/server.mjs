@@ -1059,8 +1059,9 @@ async function handleRulesAsk(req, res) {
 
     // The trace is written after the answer exists, never in front of it: a
     // retention feature that can fail an answer is a worse bug than a lost trace.
-    // Off unless RULES_TRACES is set (src/rules-traces.mjs), and that switch stays
-    // off until the page carries the retention line the reader is owed.
+    // On only when RULES_TRACES says so (src/rules-traces.mjs), and the
+    // deployment sets it because the page carries the retention line the reader
+    // is owed - `#retention`, rendered in both languages.
     const trace = (answerText, writer) => {
       if (!tracesEnabled()) return;
       try {

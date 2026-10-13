@@ -66,12 +66,12 @@ corpus. It is deliberately **not** inside `workspace/rules-corpus/`: the corpus
 is third-party, the questions are the reader's, and neither belongs in the
 other's store. `RULES_TRACES_DIR` points it elsewhere.
 
-The writer is **off** unless `RULES_TRACES` is `1` / `on` / `true` / `yes`,
-and the switch is not flipped until the page carries the retention line in both
-languages. Keeping a question without telling the reader is the one thing that
-line exists to prevent, so the order is: disclaimer live, then the switch. The
-line is drafted in both languages and waiting on Mandal's wording; nothing is
-written until it is on the page.
+The writer is **off by default** - `RULES_TRACES` must be `1` / `on` / `true` /
+`yes` - and it is on in the deployment because the page carries the retention
+line in both languages (`#retention` in `src/rules.html`, the EN and FR strings,
+and the load-time i18n pass that assigns it). Keeping a question without telling
+the reader is the one thing that line exists to prevent, so the order was
+disclaimer live, then the switch - and that order was kept.
 
 ## Retention
 

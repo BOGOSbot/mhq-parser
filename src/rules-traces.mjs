@@ -6,7 +6,8 @@
  *
  * The reader is told first. The disclaimer on the page is what makes keeping a
  * question legitimate, so the writer is OFF by default - \`RULES_TRACES=1\` turns
- * it on - and the switch is deliberately not flipped until that line is live.
+ * it on - and the deployment sets it only because that line is live and rendered
+ * in both languages (docs/question-traces.md).
  *
  * What must never be in a trace:
  *   - no IP address, no user agent, no cookie, no account and no session id. The
