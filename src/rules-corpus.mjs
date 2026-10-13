@@ -36,6 +36,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import http from 'http';
 import https from 'https';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
@@ -1151,20 +1152,64 @@ export function defaultAsk(i, c, question) {
 // a wide net costs one request rather than forty.
 export const JEV_STATE_CHARS = Number(process.env.RULES_JEV_STATE_CHARS) || 40000;
 
-// How many Jev requests a process actually makes, by kind. A rerank-shaped call
-// costs $0.000634 on the paid fallback, so this stopped being curiosity and
-// became accounting: the page measured $0.005-0.007 a question, which is 8-11
-// calls where the code intends 2 per pass. A counter in the request path is the
-// only honest way to see where they come from - a credits delta is too coarse.
-const JEV_CALLS = { rerank: 0, gate: 0 };
-export function jevCalls() { return { rerank: JEV_CALLS.rerank, gate: JEV_CALLS.gate, total: JEV_CALLS.rerank + JEV_CALLS.gate }; }
-export function jevCallsReset() { JEV_CALLS.rerank = 0; JEV_CALLS.gate = 0; }
+// How many Jev requests a process actually makes, by kind, and how many of
+// them came back. A rerank-shaped call costs $0.000634 on the paid fallback, so
+// this stopped being curiosity and became accounting: the page measured
+// $0.005-0.007 a question, which is 8-11 calls where the code intends 2 per
+// pass. A counter in the request path is the only honest way to see where they
+// come from - a credits delta is too coarse.
+//
+// An ATTEMPT is the request leaving, an ANSWER is a response good enough to
+// rank with, and a FAILURE is a call that threw. The counter used to increment
+// before the request, so a 429 counted as a rerank: an arm measured while the
+// free gateway was rate-limiting printed '66 rerank calls' and reproduced the
+// recorded no-rerank row to the digit. Attempts alone cannot witness a success,
+// which is exactly what made that artifact unverifiable - the failed count is
+// the witness, and a bank arm must refuse to report numbers when it is set.
+const JEV_CALLS = { rerank: { attempted: 0, answered: 0, failed: 0 }, gate: { attempted: 0, answered: 0, failed: 0 } };
+const jevKind = k => ({ attempted: JEV_CALLS[k].attempted, answered: JEV_CALLS[k].answered, failed: JEV_CALLS[k].failed });
+export function jevCalls() {
+  const rerank = jevKind('rerank'), gate = jevKind('gate');
+  return {
+    rerank, gate,
+    attempted: rerank.attempted + gate.attempted,
+    answered: rerank.answered + gate.answered,
+    failed: rerank.failed + gate.failed,
+    total: rerank.answered + gate.answered,
+  };
+}
+export function jevCallsReset() {
+  for (const k of ['rerank', 'gate']) { JEV_CALLS[k].attempted = 0; JEV_CALLS[k].answered = 0; JEV_CALLS[k].failed = 0; }
+}
+
+// The page keeps its graceful fallback - a 429 must not take the question with
+// it - but a measurement arm must never degrade quietly. With RULES_JEV_STRICT
+// set, a Jev failure throws instead of being absorbed, so an arm that would
+// have fallen back stops loudly rather than printing a mixed number.
+export function jevStrict() {
+  const v = process.env.RULES_JEV_STRICT;
+  return !!v && v !== '0' && v !== 'false' && v !== 'no';
+}
 
 export async function jevRank(question, candidates, key, opts) {
   const o = opts || {};
   const top = (candidates || []).slice(0, o.max || 50);
   if (!top.length) return [];
-  JEV_CALLS.rerank++;
+  JEV_CALLS.rerank.attempted++;
+  try {
+    const ranked = await jevRankOnce(question, top, key, o);
+    JEV_CALLS.rerank.answered++;
+    return ranked;
+  } catch (e) {
+    JEV_CALLS.rerank.failed++;
+    throw e;
+  }
+}
+
+// Every attempt is counted where it leaves and every answer where it arrives;
+// a call that throws is an attempt and a failure, never an answer. The wrapper
+// exists so the counting cannot drift back above the request again.
+async function jevRankOnce(question, top, key, o) {
   const questions = {};
   const ask = o.ask || defaultAsk;
   top.forEach((c, i) => {
@@ -1185,8 +1230,10 @@ export async function jevRank(question, candidates, key, opts) {
   ).join('\n\n');
   const body = JSON.stringify({ model: JEV_MODEL, state, questions });
   const res = await new Promise((resolve, reject) => {
-    const u = new URL(JEV_ENDPOINT);
-    const req = https.request({ method: 'POST', hostname: u.hostname, path: u.pathname, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, r => {
+    const u = new URL(o.endpoint || JEV_ENDPOINT);
+    // The protocol the endpoint names: a custom RULES_JEV_ENDPOINT may be plain
+    // http, and a local test gateway is.
+    const req = (u.protocol === 'http:' ? http : https).request({ method: 'POST', hostname: u.hostname, port: u.port || undefined, path: u.pathname, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, r => {
       const chunks = []; r.on('data', d => chunks.push(d));
       r.on('end', () => {
         const text = Buffer.concat(chunks).toString('utf8');
@@ -1293,15 +1340,36 @@ export function gateHalfLexical(question, vocab, opts) {
 export async function gateHalf(question, key, opts) {
   const o = opts || {};
   if (!key) return { half: '', confidence: null, error: 'no jev key' };
-  JEV_CALLS.gate++;
+  JEV_CALLS.gate.attempted++;
+  let out;
+  try {
+    out = await gateHalfOnce(question, key, o);
+  } catch (e) {
+    JEV_CALLS.gate.failed++;
+    throw e;
+  }
+  // A response that came back but names no usable label is a real abstention,
+  // not a failure: the gate is built to say nothing rather than guess. An HTTP
+  // error, a non-JSON body or a timeout is the failure the counter is for, and
+  // it is what makes the gate arm's fallback (search both) visible.
+  if (out.error) {
+    JEV_CALLS.gate.failed++;
+    if (jevStrict()) throw new Error('jev gate failed: ' + out.error);
+  } else {
+    JEV_CALLS.gate.answered++;
+  }
+  return out;
+}
+
+async function gateHalfOnce(question, key, o) {
   const body = JSON.stringify({
     model: JEV_MODEL,
     state: 'A reader asks a Warhammer 40,000 11th edition rules question. The corpus has two halves: the core rules (how the game works for every army) and faction rules (what one army\'s own units and cards do).',
     questions: gatePrompt(question),
   });
   const res = await new Promise((resolve, reject) => {
-    const u = new URL(JEV_ENDPOINT);
-    const req = https.request({ method: 'POST', hostname: u.hostname, path: u.pathname, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, r => {
+    const u = new URL(o.endpoint || JEV_ENDPOINT);
+    const req = (u.protocol === 'http:' ? http : https).request({ method: 'POST', hostname: u.hostname, port: u.port || undefined, path: u.pathname, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, r => {
       const c = []; r.on('data', d => c.push(d));
       r.on('end', () => resolve({ status: r.statusCode, text: Buffer.concat(c).toString('utf8') }));
     });
@@ -2136,15 +2204,28 @@ export async function retrieveWide(question, opts) {
   // The ranker is optional; without it the fusion order is the answer, and the
   // provenance has to ride along on this path too - a page whose findings have
   // no leg is a page that cannot say where they came from.
-  if (!o.jevKey) return decorate(merged.slice(0, o.topK || 10));
+  //
+  // A deployment with no key at all keeps the older short path (the fused top K
+  // and nothing else). The bank's control is o.jevSkip: it keeps the key and the
+  // whole downstream path - anchoring, the retriever head protection, a rule's
+  // clarifications - and skips only the call. That is the pipeline a rerank that
+  // throws falls into, so the control and the ranked arm are actually the same
+  // pipeline; passing no key is not, which the numbers show (37.9 against 27.6
+  // at hit@1 on the retrieval bank).
+  if (!o.jevKey && !o.jevSkip) return decorate(merged.slice(0, o.topK || 10));
   let ranked = null;
-  try {
-    ranked = await jevRank(question, merged, o.jevKey, { max: o.jevMax || 80 });
-  } catch (e) {
-    // The ranker is a free-tier call one shared budget away from a 429, and it
-    // must not take the question with it: grep and the vector index already
-    // found passages, and the judge reads the model, not Jev. Unranked order is
-    // the rank fusion itself - what the two retrievers already agree on.
+  if (!o.jevSkip) {
+    try {
+      ranked = await jevRank(question, merged, o.jevKey, { max: o.jevMax || 80, endpoint: o.jevEndpoint });
+    } catch (e) {
+      // The ranker is a free-tier call one shared budget away from a 429, and it
+      // must not take the question with it: grep and the vector index already
+      // found passages, and the judge reads the model, not Jev. Unranked order is
+      // the rank fusion itself - what the two retrievers already agree on. A
+      // measurement arm turns that fallback into a stop instead of a mixed row;
+      // the page never sets the flag.
+      if (jevStrict()) throw e;
+    }
   }
   const topK = o.topK || 10;
   const picked = (ranked || merged).slice(0, topK);
@@ -2217,14 +2298,14 @@ export async function retrieveDual(question, opts) {
     retrieveWide(question, {
       corpus: o.rulesCorpus || readAllCorpus('rules'),
       namespace: 'rules',
-      jevKey: o.jevKey, cfg: o.cfg, terms: o.terms,
+      jevKey: o.jevKey, jevSkip: o.jevSkip, jevEndpoint: o.jevEndpoint, cfg: o.cfg, terms: o.terms,
       grepNet: Math.max(o.grepNet || 40, rulesK * 4), jevMax: netFor(rulesK), topK: rulesK,
       queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
     }),
     retrieveWide(question, {
       corpus: o.factionsCorpus || readAllCorpus('factions'),
       namespace: 'factions',
-      jevKey: o.jevKey, cfg: o.cfg, terms: o.terms,
+      jevKey: o.jevKey, jevSkip: o.jevSkip, jevEndpoint: o.jevEndpoint, cfg: o.cfg, terms: o.terms,
       grepNet: Math.max(o.grepNet || 40, factionsK * 4), jevMax: netFor(factionsK), topK: factionsK,
       queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
     }),

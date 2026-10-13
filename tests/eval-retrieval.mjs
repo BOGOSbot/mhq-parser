@@ -66,6 +66,15 @@ const PROTECT_VECTOR = parseInt(value('--protect-vector') || '1', 10);
 // with no call at all. --gate-margin is the lexical one's abstention threshold.
 const GATE = value('--gate') || 'jev';
 const GATE_MARGIN = parseFloat(value('--gate-margin') || '0');
+// The rerank control: --rerank off keeps the key and the whole downstream path
+// (anchoring, head protection, clarifications) and skips only the call, so the
+// control and the ranked arm are the same pipeline. The recorded OFF sweeps were
+// taken by accident, while the free gateway was 429ing - that is the fallback
+// pipeline, not passing no key, and the two measure differently.
+const RERANK_OFF = (value('--rerank') || 'on') === 'off';
+// A run in which any question fell back is not the arm it says it is. The bank
+// numbers are withheld unless this is passed on purpose.
+const ALLOW_DEGRADED = flag('--allow-degraded');
 const corpusIds = ns => new Set(readAllCorpus(ns).map(s => s.id));
 const PER_SIDE = parseInt(value('--per-side') || '10', 10);
 const NEEDS_CORPUS = RETRIEVER !== 'vector';
@@ -148,7 +157,7 @@ async function retrieve(question, item) {
   }
   if (RETRIEVER === 'dual') {
     const dual = await retrieveDual(question, {
-      rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: JEV_KEY,
+      rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: JEV_KEY, jevSkip: RERANK_OFF,
       terms: [], grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70),
       perSide: { rules: PER_SIDE, factions: PER_SIDE },
       fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
@@ -169,7 +178,7 @@ async function retrieve(question, item) {
     // and the run reports how often that happened instead of hiding it.
     if (!g.half) {
       const dual = await retrieveDual(question, {
-        rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: JEV_KEY,
+        rulesCorpus: RULES_CORPUS, factionsCorpus: FACTIONS_CORPUS, jevKey: JEV_KEY, jevSkip: RERANK_OFF,
         terms: [], grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70),
         perSide: { rules: PER_SIDE, factions: PER_SIDE },
         fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
@@ -178,7 +187,7 @@ async function retrieve(question, item) {
     }
     const wide = await retrieveWide(question, {
       corpus: g.half === 'factions' ? FACTIONS_CORPUS : RULES_CORPUS,
-      namespace: g.half, jevKey: JEV_KEY, terms: [],
+      namespace: g.half, jevKey: JEV_KEY, jevSkip: RERANK_OFF, terms: [],
       grepNet: NET, jevMax: Math.max(NET, PER_SIDE + 70), topK: PER_SIDE,
       fusionWeights: [VECTOR_WEIGHT, 1], protectVector: PROTECT_VECTOR, queryMode: QUERY_MODE,
     });
@@ -194,7 +203,7 @@ async function retrieve(question, item) {
     return asHits(await jevRank(question, net, JEV_KEY, { max: NET })).slice(0, TOPK);
   }
   const terms = RETRIEVER === 'union+expand' ? await expandQuery(question, SENSE_KEY) : null;
-  return asHits(await retrieveWide(question, { corpus: CORPUS, jevKey: JEV_KEY, terms, grepNet: NET, jevMax: NET, topK: TOPK }));
+  return asHits(await retrieveWide(question, { corpus: CORPUS, jevKey: JEV_KEY, jevSkip: RERANK_OFF, terms, grepNet: NET, jevMax: NET, topK: TOPK }));
 }
 
 const bank = JSON.parse(fs.readFileSync(QUESTIONS, 'utf8'));
@@ -216,8 +225,18 @@ function rankOf(hits, expect, reach) {
 }
 
 const rows = [];
+// How many questions took a lower-quality path instead of the arm's own: a
+// rerank or gate call that threw is a call the run did not get. Counted per
+// question, never averaged - a run is only as clean as its worst row, and this
+// is the number that proves the artifact was taken from the arm it names.
+let fallbacks = 0;
 for (const item of questions) {
+  const callsBefore = jevCalls();
   const hits = await retrieve(item.q, item);
+  const callsAfter = jevCalls();
+  const fellBack = (callsAfter.rerank.failed - callsBefore.rerank.failed) +
+    (callsAfter.gate.failed - callsBefore.gate.failed);
+  if (fellBack) fallbacks++;
   const rank = item.expect.length ? rankOf(hits, item.expect) : null;
   const rankReach = item.expect.length ? rankOf(hits, item.expect, true) : null;
   const found = item.expect.filter(e => hits.some(h => h.id === e));
@@ -247,6 +266,8 @@ for (const item of questions) {
   }
 }
 
+const jc = jevCalls();
+const fmtCalls = c => 'attempted ' + c.attempted + '  answered ' + c.answered + '  failed ' + c.failed;
 const graded = rows.filter(r => r.needed > 0);
 const declined = rows.filter(r => r.needed === 0);
 
@@ -255,12 +276,23 @@ function at(k) { return graded.filter(r => r.rank !== null && r.rank <= k).lengt
 
 console.log('');
 console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (graded ' + graded.length + ', out-of-corpus ' + declined.length + ')  topK ' + TOPK + (RETRIEVER === 'vector' ? '  ns ' + (NAMESPACE || '(default)') + [FUSION, QUERY_MODE, WEIGHTING].filter(Boolean).map(v => ' ' + v).join('') : '  net ' + NET) + (SPLIT_HALVES ? '  per-side ' + PER_SIDE + '  w ' + VECTOR_WEIGHT + '  protect ' + PROTECT_VECTOR + (QUERY_MODE ? '  ' + QUERY_MODE : '') : '')
-  + (RETRIEVER === 'gate' ? '  gate ' + GATE + (GATE === 'lexical' ? ' margin ' + GATE_MARGIN : '') : ''));
+  + (RETRIEVER === 'gate' ? '  gate ' + GATE + (GATE === 'lexical' ? ' margin ' + GATE_MARGIN : '') : '')
+  + (RERANK_OFF ? '  rerank off' : ''));
 if (resolveNotes.length) {
   console.log('');
   console.log('expectations the corpus does not name as written:');
   console.log(resolveNotes.join('\n'));
 }
+console.log('');
+console.log('jev calls   ' + fmtCalls(jc) + '  (rerank ' + fmtCalls(jc.rerank) + ', gate ' + fmtCalls(jc.gate) + ')  ' + (rows.length ? (jc.answered / rows.length).toFixed(1) : '0') + ' answered per question');
+console.log('fallbacks   ' + fallbacks + '/' + rows.length + ' questions' + (fallbacks ? '  DEGRADED' : '  clean'));
+const withhold = fallbacks > 0 && !ALLOW_DEGRADED;
+if (withhold) {
+  console.log('            bank numbers withheld: a run that fell back is not the arm it says it is.');
+  console.log('            Re-run it clean, or pass --allow-degraded to print them anyway.');
+  process.exitCode = 2;
+}
+if (!withhold) {
 console.log('hit@1   ' + at(1) + '/' + graded.length + '  ' + pct(at(1), graded.length) + '%');
 console.log('hit@5   ' + at(5) + '/' + graded.length + '  ' + pct(at(5), graded.length) + '%');
 console.log('hit@10  ' + at(10) + '/' + graded.length + '  ' + pct(at(10), graded.length) + '%');
@@ -320,8 +352,6 @@ for (const r of graded) {
   if (r.rank !== null) b.hk++;
   b.mrr += r.rank ? 1 / r.rank : 0;
 }
-const jc = jevCalls();
-console.log('jev calls   ' + jc.total + '  (rerank ' + jc.rerank + ', gate ' + jc.gate + ')  ' + (rows.length ? (jc.total / rows.length).toFixed(1) : '0') + ' per question');
 
 console.log('\nby kind');
 for (const k of Object.keys(byKind)) {
@@ -340,4 +370,5 @@ console.log('\nout-of-corpus (expected to be declined, not answered)');
 for (const r of declined) {
   console.log('  ' + r.q);
   console.log('      returned: ' + r.top.map(t => (t.metadata && t.metadata.heading) || t.id).join(' | '));
+}
 }

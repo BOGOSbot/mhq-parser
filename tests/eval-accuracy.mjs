@@ -58,6 +58,9 @@ const INCLUDE_EMPTY = flag('--all');
 const CURATE = flag('--curate');
 // The writer cascade: reasoning off first, and a decline pays for thinking once.
 const CASCADE = flag('--cascade');
+// A run in which any question fell back (a Jev rerank or gate call threw) is not
+// the arm it says it is; the summary is withheld unless this is passed.
+const ALLOW_DEGRADED = flag('--allow-degraded');
 const CURATE_CHARS = parseInt(value('--curate-chars') || '1200', 10);
 
 const GRADER_ENDPOINT = process.env.RULES_GRADER_ENDPOINT || 'https://api.deepseek.com/chat/completions';
@@ -200,12 +203,13 @@ async function main() {
   console.log('context ' + (CURATE ? 'CURATED (passages capped at ' + CURATE_CHARS + ' chars, near-duplicates dropped, anchored first, passed-over dropped)' : 'as today') + '   judge reasoning ' + (process.env.RULES_FAST_REASONING || 'model default'));
 
   const counts = { correct: 0, partial: 0, wrong: 0, ungraded: 0 };
-  let graded = 0, refused = 0, seconds = 0;
+  let graded = 0, refused = 0, seconds = 0, fallbacks = 0;
 
   for (const item of questions) {
     const id = item.thread + '/' + item.comment;
     if (done.has(id)) { continue; }
     const row = { id, q: item.q, url: item.url, thread: item.thread };
+    const callsBefore = jevCalls();
     try {
       Object.assign(row, await answerQuestion(item.q, ANSWER_LANG));
       const g = await grade(item.q, item.replies, row.answer);
@@ -213,6 +217,8 @@ async function main() {
     } catch (e) {
       row.verdict = 'ungraded'; row.gradeReason = 'failed: ' + (e && e.message);
     }
+    const callsAfter = jevCalls();
+    if ((callsAfter.rerank.failed - callsBefore.rerank.failed) + (callsAfter.gate.failed - callsBefore.gate.failed)) fallbacks++;
     counts[row.verdict] = (counts[row.verdict] || 0) + 1;
     if (row.verdict !== 'ungraded') graded++;
     if (/I do not know|do not answer this question/i.test(String(row.answer || ''))) refused++;
@@ -223,7 +229,18 @@ async function main() {
   }
 
   const accuracy = graded ? (counts.correct + counts.partial / 2) / graded : 0;
+  const jc = jevCalls();
+  const fmtCalls = c => 'attempted ' + c.attempted + ' answered ' + c.answered + ' failed ' + c.failed;
+  const withhold = fallbacks > 0 && !ALLOW_DEGRADED;
   console.log('');
+  console.log('jev calls         ' + fmtCalls(jc) + '  (rerank ' + fmtCalls(jc.rerank) + ', gate ' + fmtCalls(jc.gate) + ')  ' + (questions.length ? (jc.answered / questions.length).toFixed(1) : '0') + ' answered per question');
+  console.log('fallbacks         ' + fallbacks + '/' + questions.length + ' questions' + (fallbacks ? '  DEGRADED' : '  clean'));
+  if (withhold) {
+    console.log('                  summary withheld: a run that fell back is not the arm it says it is.');
+    console.log('                  Re-run it clean, or pass --allow-degraded to print it anyway.');
+    process.exitCode = 2;
+  }
+  if (!withhold) {
   console.log('graded            ' + graded + ' of ' + questions.length);
   console.log('correct           ' + counts.correct);
   console.log('partial           ' + counts.partial + '  (half credit)');
@@ -240,9 +257,8 @@ async function main() {
     }
   }
   if (CASCADE) console.log('writer cascade    ' + slow.length + ' of ' + questions.length + ' took the slow path' + (slow.length ? ': ' + slow.join(', ') : ''));
-  const jc = jevCalls();
-  console.log('jev calls         ' + jc.total + '  (rerank ' + jc.rerank + ', gate ' + jc.gate + ')  ' + (questions.length ? (jc.total / questions.length).toFixed(1) : '0') + ' per question');
   console.log('written to        ' + OUT);
+  }
 }
 
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('eval-accuracy.mjs')) main();
