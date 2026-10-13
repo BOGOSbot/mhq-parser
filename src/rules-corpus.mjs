@@ -2732,13 +2732,22 @@ export async function upsertSections(sections, opts) {
 // POST /delete-data/{namespace}, which Upstash answers 404 — it never ran,
 // because a rebuild had never needed a delete. The first one that did (splitting
 // a parent record into its sub-rules) failed on it.
+export const DELETE_BATCH = 500;
 export async function deleteIds(ids, cfg, namespace) {
   if (!ids.length) return 0;
   if (VECTOR_BACKEND === 'local') return deleteIdsLocal(ids, namespace);
   const ns = namespace || '';
-  const r = await vectorRequest(cfg || vectorConfig(), '/delete' + (ns ? '/' + ns : ''), { ids }, 'DELETE');
-  if (r.status !== 200) throw new Error('delete failed: HTTP ' + r.status + ' ' + r.text.slice(0, 200));
-  const deleted = r.obj && r.obj.result && typeof r.obj.result.deleted === 'number' ? r.obj.result.deleted : ids.length;
+  // The endpoint refuses more than 1,000 ids in one call - HTTP 400 "Exceeded max
+  // batch deletion limit: 1000" - and a restructure of this size hits it (task-30
+  // deletes 1,619). Batches of 500 stay clear of the limit and keep one bad batch
+  // from losing the whole delete; the count is summed across batches.
+  let deleted = 0;
+  for (let i = 0; i < ids.length; i += DELETE_BATCH) {
+    const slice = ids.slice(i, i + DELETE_BATCH);
+    const r = await vectorRequest(cfg || vectorConfig(), '/delete' + (ns ? '/' + ns : ''), { ids: slice }, 'DELETE');
+    if (r.status !== 200) throw new Error('delete failed: HTTP ' + r.status + ' ' + r.text.slice(0, 200));
+    deleted += r.obj && r.obj.result && typeof r.obj.result.deleted === 'number' ? r.obj.result.deleted : slice.length;
+  }
   return deleted;
 }
 

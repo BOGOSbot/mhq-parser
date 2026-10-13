@@ -287,7 +287,9 @@ export function planWiki(data, opts) {
     const resolved = resolveLinks(wanted, id => known.has(id));
     stats.linksDropped += resolved.dropped;
     const rec = baseRecord(r, {
-      kind: r.source === 'core-stratagems' ? 'stratagem' : 'rule',
+      // A record that arrives with its own kind keeps it (the extractor's ability
+      // records); only the scraped rules are classified here.
+      kind: r.kind || (r.source === 'core-stratagems' ? 'stratagem' : 'rule'),
       parent: isPart ? String(r.parent || '') : (parentIdOf.get(r.id) || ''),
       children: resolved.links.map(l => l.to), links: resolved.links,
       // Only a part the BUILD made keeps its part number; a scraped corpus's own

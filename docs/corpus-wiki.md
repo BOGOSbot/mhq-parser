@@ -540,7 +540,7 @@ exactly as recorded before the rebuild.
 silently revert the shape. The next session should make the build the scrape's
 output or gate the scrape behind it.
 
-### Task 30: the generic-ability restructure (dry run, not yet ingested)
+### Task 30: the generic-ability restructure (ingested 2026-10-14)
 
 A datasheet's ability record embedded the full text of every ability it has,
 including the ones that are the same on hundreds of datasheets. The corpus paid
@@ -599,6 +599,37 @@ The link line is `renderLinks(links)` and nothing else: a finding exposes
 `links: [{to, title, kind, anchor, url}]`, the page renders from that array and
 stops parsing `- ability: X` out of text. One format for the page slice and the
 corpus slice.
+
+**Landed.** Ingest **1,562 upserted, 1,619 deleted**, exit 0; parity id for id
+`rules 714 | 714 | 0 | 0` and `factions 5,998 | 5,998 | 0 | 0`; /health
+714 / 5,998 with `ahead`/`behind` empty; server restarted with `RULES_TRACES=1`
+(pid 6296). Rollback point: `workspace/rules-corpus-before-task30/`.
+
+The deployed reading, dual rerank-off per-side 10 net 60 topk 20, 39 questions /
+33 graded, 0 fallbacks, 0 Jev calls - before this change / after it: exact hit@1
+33.3 -> **30.3**, hit@5 63.6 unchanged, hit@10 84.8 unchanged, hit@20 93.9
+unchanged, MRR 0.475 -> **0.463**; reachable hit@1 39.4 -> **36.4**, hit@5 63.6 ->
+66.7, hit@10 90.9 unchanged, hit@20 100 unchanged, MRR 0.525 -> **0.514**;
+multi-hop fully found 5/12 -> **6/12**; candidates 23.1 unchanged. So the
+restructure costs a little at the head and gains a multi-hop.
+
+The case: `unitrules#000002541` is **reachable** for the Harlequin question at
+rank **#16** of 25 on the deployed namespace (its old `~2` sat at #7 before the
+change - the merged record is shorter and lost the army-rule text that was helping
+it match). It was verified reachable before the bank expectation moved, and the
+fixture entry now says in as many words that the id move was a re-addressing of a
+merged id, not a relaxation.
+
+Three deviations from the dry run, none rounded:
+- the build lands **6,712** records, not the payloads' 6,735: 25 index pages are
+  regenerated away (fewer cards after the merges) and 2 ability records are
+  chunked;
+- the first ingest failed on `delete failed: HTTP 400 {"error":"Exceeded max batch
+  deletion limit: 1000"}` - a real endpoint limit, not a quota error. `deleteIds`
+  now batches at `DELETE_BATCH = 500` (guarded in `tests/test-wiki-plan.mjs`), and
+  the retried ingest completed 1,562 / 1,619;
+- the index also carries 1 vector in the default namespace, which is outside both
+  halves and predates this change.
 
 ## Recommendation
 

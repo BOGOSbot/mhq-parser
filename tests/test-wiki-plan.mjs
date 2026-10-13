@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LINK_BLOCK_MAX, MIN_PART, WIKI_BUDGET, chars, distribution, idReport, planWiki, renderLinks, resolveLinks, splitWithin, stripBuiltBlock } from '../src/wiki-plan.mjs';
 import { carryStamps, toSection, writeWikiCorpus } from '../src/wiki-build.mjs';
-import { scrapeBuildsWiki, textHash } from '../src/rules-corpus.mjs';
+import { DELETE_BATCH, scrapeBuildsWiki, textHash } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -172,6 +172,16 @@ t('the built block is stripped before it is rebuilt',
 t('a record with no links is left alone', stripBuiltBlock({ text: 'H\nbody', links: [] }), 'H\nbody');
 t('a text that does not end with the block is left alone',
   stripBuiltBlock({ text: 'H\nbody', links: [{ to: 'x', title: 'Kid', kind: 'section' }] }), 'H\nbody');
+// The delete endpoint refuses more than 1,000 ids in one call; task-30 deletes
+// 1,619. The batch size must stay under the limit, and the ingest must go through
+// the batching helper rather than calling the endpoint once with the whole list.
+t('the delete batch stays under the endpoint limit', DELETE_BATCH < 1000, true);
+ok('the ingest deletes through deleteIds', /const deleted = await deleteIds\(vanished/.test(fs.readFileSync(path.join(__dirname, '..', 'src', 'rules-corpus.mjs'), 'utf8')));
+
+// A record that arrives with its own kind keeps it: the extractor's ability records
+// must not be reclassified as rules, nor become faction cards.
+t('an arriving kind survives the planner',
+  planWiki({ rules: [{ id: 'ability#000008334', set: 'rules', source: 'core-rules', heading: 'Deadly Demise', text: 'Deadly Demise\nFrom detonating ammo stores.', kind: 'ability' }], factions: [], abilities: [], factionsCsv: [] }).index.get('ability#000008334').kind, 'ability');
 const built = planWiki({ rules, factions, abilities, factionsCsv });
 const roundTrip = planWiki({
   rules: [built.index.get('r#parent'), built.index.get('r#parent->-Child')],
