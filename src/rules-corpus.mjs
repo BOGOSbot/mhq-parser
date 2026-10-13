@@ -149,7 +149,11 @@ export function namespaceFor(setName) {
 // longer than the judge is shown, or the judge ends up saying "no such ability
 // is in the visible text" about text it was not given - which is exactly how a
 // correct retrieval produced a wrong "I do not know".
-const MAX_CHARS = 2000;
+// The live chunker's cap, and the only rule that may decide whether an existing
+// record is split: it measures the BODY and then prepends the heading. Exported
+// so the corpus wiki plan splits by the same rule instead of a fitted whole-text
+// budget (which silently re-chunked 35 records).
+export const MAX_CHARS = 2000;
 const MIN_CHARS = 80;
 
 // --- fetching ---------------------------------------------------------------

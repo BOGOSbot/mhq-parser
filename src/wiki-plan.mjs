@@ -30,7 +30,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { CSV_DIR, csvRows, htmlToText, readAllCorpus, splitSection, trimAbilityTail } from './rules-corpus.mjs';
+import { CSV_DIR, MAX_CHARS, csvRows, htmlToText, readAllCorpus, splitSection, trimAbilityTail } from './rules-corpus.mjs';
 
 export const WIKI_BUDGET = 2000;
 export const LINK_BLOCK_MAX = 40;
@@ -38,6 +38,23 @@ const LINK_LINE = 46;
 
 const clean = s => htmlToText(String(s == null ? '' : s)).replace(/\s+/g, ' ').trim();
 export const chars = s => String(s || '').length;
+
+// The live chunker measures the BODY and then prepends the heading
+// (src/rules-corpus.mjs). The planner used to budget the WHOLE record text, a
+// different rule: a heading of any length pushed records the live chunker keeps
+// whole over it, and the rebuild re-split 35 of them into 30 chunks that the
+// live corpus never had. A corpus rewrite may not re-chunk a record nothing
+// asked it to touch, so the live rule lives here now.
+export function bodyOf(rec) {
+  const text = String(rec.text || '');
+  const h = String(rec.heading || '');
+  if (h && text.slice(0, h.length) === h) return text.slice(h.length).replace(/^\n+/, '');
+  return text;
+}
+export function withHeading(rec, body) {
+  const h = String(rec.heading || '');
+  return h ? h + '\n' + body : body;
+}
 export const lastCrumb = h => { const p = String(h || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : String(h || ''); };
 
 export function renderLinks(links, max) {
@@ -112,12 +129,15 @@ export function planWiki(data, opts) {
   const factions = (data && data.factions) || [];
   const abilities = (data && data.abilities) || [];
   const factionRows = (data && data.factionsCsv) || [];
+  // The budget sizes records this plan CREATES (the index pages) - there is no
+  // live rule for those. Whether an existing record is split is decided by the
+  // live chunker's own cap, MAX_CHARS, on the body alone.
   const budget = (data && data.budget) || WIKI_BUDGET;
 
   const planned = [];
   const index = new Map();
   const stats = {
-    budget, blockInText, links: 0, linksDropped: 0, linksOmitted: 0, linksInText: 0, split: 0,
+    budget, cap: MAX_CHARS, blockInText, links: 0, linksDropped: 0, linksOmitted: 0, linksInText: 0, split: 0,
     created: { rules: 0, factions: 0 }, largest: { chars: 0, id: '' },
     factionRules: 0, indexPages: 0,
   };
@@ -127,12 +147,16 @@ export function planWiki(data, opts) {
     if (chars(rec.text) > stats.largest.chars) stats.largest = { chars: chars(rec.text), id: rec.id };
     return rec;
   };
+  // Split by the live rule: when the BODY is over MAX_CHARS, and reassemble each
+  // piece the way the live chunker does (heading, newline, body). A record whose
+  // whole text is over WIKI_BUDGET because of its heading is left alone.
   const fit = (rec, set) => {
-    if (chars(rec.text) <= budget) return rec;
-    const parts = splitWithin(rec.text, budget, MIN_PART);
-    rec.text = parts[0];
+    const body = bodyOf(rec);
+    if (chars(body) <= MAX_CHARS) return rec;
+    const parts = splitWithin(body, MAX_CHARS, MIN_PART);
+    rec.text = withHeading(rec, parts[0]);
     for (let i = 1; i < parts.length; i++) {
-      push(Object.assign({}, rec, { id: rec.id + '~' + (i + 1), text: parts[i], part: i + 1, parts: parts.length, links: [], children: [], created: true }));
+      push(Object.assign({}, rec, { id: rec.id + '~' + (i + 1), text: withHeading(rec, parts[i]), part: i + 1, parts: parts.length, links: [], children: [], created: true }));
       stats.created[set]++;
       stats.split++;
     }
@@ -227,20 +251,22 @@ export function planWiki(data, opts) {
       if (blockInText) {
       const block = renderLinks(resolved.links, LINK_BLOCK_MAX);
       stats.linksOmitted += block.omitted;
-      const withLinks = rec.text + '\n\n' + block.text;
-      if (chars(withLinks) <= budget) {
-        rec.text = withLinks;
+      // The same live cap decides whether the block fits beside the body: the
+      // body is what the live chunker measured, and the block is appended to it.
+      const body = bodyOf(rec);
+      if (chars(body) + chars(block.text) + 2 <= MAX_CHARS) {
+        rec.text = withHeading(rec, body) + '\n\n' + block.text;
         stats.linksInText++;
       } else {
         // The body no longer fits beside its link list: the links stay with the
         // lead-in and the rest of the body becomes its own chunk, so the parent
         // still carries the names of what it owns.
-        const room = Math.max(200, budget - chars(block.text) - 2);
-        const lead = splitWithin(rec.text, room, MIN_PART);
-        rec.text = (lead[0] + '\n\n' + block.text).trim();
+        const room = Math.max(200, MAX_CHARS - chars(block.text) - 2);
+        const lead = splitWithin(body, room, MIN_PART);
+        rec.text = (withHeading(rec, lead[0]) + '\n\n' + block.text).trim();
         stats.linksInText++;
         for (let i = 1; i < lead.length; i++) {
-          push(Object.assign({}, rec, { id: r.id + '~' + (i + 1), text: lead[i], part: i + 1, parts: lead.length, links: [], children: [], created: true }));
+          push(Object.assign({}, rec, { id: r.id + '~' + (i + 1), text: withHeading(rec, lead[i]), part: i + 1, parts: lead.length, links: [], children: [], created: true }));
           stats.created.rules++;
           stats.split++;
         }
@@ -268,7 +294,7 @@ export function planWiki(data, opts) {
     rec.links = resolved.links;
     rec.parent = resolved.links.length ? resolved.links[0].to : '';
     const line = renderLinks(resolved.links, 1);
-    if (blockInText && chars(rec.text) + chars(line.text) + 2 <= budget) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }
+    if (blockInText && chars(bodyOf(rec)) + chars(line.text) + 2 <= MAX_CHARS) { rec.text = withHeading(rec, bodyOf(rec)) + '\n\n' + line.text; stats.linksInText++; }
     fit(rec, 'factions');
     rec.chars = chars(rec.text);
     push(rec);
@@ -311,7 +337,7 @@ export function planWiki(data, opts) {
         idFrom: 'csv-row-id', part: 1, parts: 1, text: String(r.text || ''),
       });
       const line = renderLinks(wanted, 1);
-      if (blockInText && chars(rec.text) + chars(line.text) + 2 <= budget) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }
+      if (blockInText && chars(bodyOf(rec)) + chars(line.text) + 2 <= MAX_CHARS) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }
       stats.links++;
       fit(rec, 'factions');
       rec.chars = chars(rec.text);
