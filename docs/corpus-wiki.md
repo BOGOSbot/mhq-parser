@@ -321,10 +321,16 @@ pairs**. A first one-pass run read 16/20: the fresh vectors were queried before
 the indexer had registered them - the same race the rules arm hit - and a re-query
 put all four at #1. The two-step write-then-check is the method, not one process.
 
-**The dense legs cannot measure this half, and that is a finding.** The
-33-question bank's **49 expectations are all rules-side; 0 are faction-side**, so
-a DENSE arm against `factions` scores 0/0 on both the live and the wiki namespace
-and says nothing. The page's own path can see the faction half, so the arm that
+**The bank measures this half thinly; the question set the rules-half arms used
+does not measure it at all.** That 33-question set has 49 expectations, every one
+rules-side; today's bank has 55, of which **3 are faction-side**
+(`unitrules#000000574`, `stratagem#000011205002`, `unitrules#000002541~2`) - all
+three entered with the five hand promotions and the Starweaver entry, after the
+rules arms ran. A DENSE arm against `factions` on the older set therefore reads
+0/0 (run to confirm), while today's bank carries a thin faction signal - three
+questions, one of them the flip below - so the aggregate is weak, not vacuous,
+and a single flip is about a third of the faction signal. On the live namespace
+all three are a **MISS** in the DENSE top 20. The page's own path can see the faction half, so the arm that
 was run is the dual path with only the faction VECTOR leg swapped (live rules both
 legs, live faction grep, wiki faction vectors), rerank off, per-side 10, net 60,
 topk 20, on today's bank (39 questions, 33 graded, 0 fallbacks, 0 Jev calls):
@@ -338,7 +344,9 @@ Every aggregate column is **identical**: the 254 added records and the 191 index
 pages cost the reader nothing on this bank, and the candidate count does not move,
 so the index pages do not crowd anything out. One entry flips to fully found: the
 Starweaver re-embark question, whose second group is `unitrules#000002541~2` -
-absent from the live faction top 20, **#2** with the wiki half.
+absent from the live faction top 20, **#2** with the wiki half. On three
+expectations that is thin evidence: it reads as "no harm, one gain", not as a
+measured improvement.
 
 **Targeted: Battle Focus** (`faction-rule#000009894`, no record anywhere in the
 live corpus; 786 characters in the wiki half). It is **#1** for "What does Battle
@@ -449,12 +457,15 @@ live namespace; every number is from `--dry-run` and the read-only parity check.
 
 ## Recommendation
 
-**Build the rules half in the variant-D shape, after the faction arm and not
-before it.** Links on the record, the block in the embedded text, and the
-planner's budget at the live chunker's own ceiling: measured as the best
-reader-facing shape (head +6.9 against live, hit@10 and hit@20 unchanged,
-reachable hit@20 100%) with the dense leg's one-question hit@10 cost inside the
-floor. The budget rule is fixed in the planner (the live chunker's body cap), so
-the shape phase C would build is the shape measured here.
-What is still missing is the benefit, the faction rules and the index pages, so
-the faction arm decides. Nothing has been written into the live corpus.
+**Both halves take the variant-D shape, decided 2026-10-13.** Links on the record,
+the block in the embedded text, the planner's budget at the live chunker's own
+ceiling. The rules half is measured as the best reader-facing shape (head +6.9
+against live, hit@10 and hit@20 unchanged, reachable hit@20 100%) with the dense
+leg's one-question hit@10 cost inside the floor. The faction half is measured in
+*Arm 3*: aggregates and candidate count unchanged (no crowding), the Starweaver
+question flips to fully found, Battle Focus becomes reachable at its name queries,
++63 faction-rule records and 191 index pages, 0 records lost. **The caveat
+recorded with the decision:** Battle Focus still misses on three conversational
+phrasings, so the wiki structure alone does not close the buried-ability problem -
+phrasing and reranking still carry part of it. Nothing had been written into the
+live corpus when the decision was taken.
