@@ -2443,10 +2443,12 @@ export function findingFor(section, n) {
 // and Upstash is only needed when a deployment is worth publishing to.
 // RULES_VECTOR_BACKEND=upstash | local. Upstash is the default: the local
 // backend works and costs nothing, but bge-m3 on this box's CPU embeds a
-// section every ~1.5s, which is hours for the faction half - fine for a
-// fallback, not for an index you want to rebuild. RULES_VECTOR_BACKEND=local
-// switches to it; both stores live side by side and neither is destroyed by
-// using the other.
+// section every 6-12s (measured 2026-10-13: 25.65s for 4 live rules records,
+// 169.7s and 188.0s for two 16-record batches, 98% CPU / 2% GPU on a GTX 660),
+// so the rules halves of the live and wiki corpora are 2.5-4.5 hours and the
+// whole 7,556-record wiki corpus 13-25 hours - fine for a fallback, not for an
+// index you want to rebuild. RULES_VECTOR_BACKEND=local switches to it; both
+// stores live side by side and neither is destroyed by using the other.
 export const VECTOR_BACKEND = String(process.env.RULES_VECTOR_BACKEND || 'upstash').toLowerCase();
 
 // One store per namespace, not one store with a namespace column: a rules

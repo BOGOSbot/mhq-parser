@@ -208,11 +208,15 @@ corpus that adds records rather than moving them should look like.
   parent. The link block is built; the retrieval benefit it was bet on is
   unproven for this pair, where the child is a strong hit in its own right.
 
-**The vector arm is not run.** Ollama and bge-m3 are on the machine, and the
-measured local embedding rate is 1.61s per record batched, so the full 7,556-record
-local index is **~3.4 hours** (the rules half alone is ~20 minutes) - free, but
-longer than a session. That is the price of the vector-arm numbers and of phase C's
-rebuild; it is measured, not estimated.
+**The vector arm is not run, and its price was measured wrong.** Ollama and
+bge-m3 are on the machine, at 98% CPU / 2% GPU (the GTX 660 takes no meaningful
+load). The local embedding rate measured on 2026-10-13 is **6-12s per record
+batched** - 25.65s for 4 live rules records, 169.7s and 188.0s for two 16-record
+batches - not the ~1.5s per record once recorded here, which was off by about
+7x. So the full 7,556-record local index is **13-25 hours**, and the rules halves
+of the live and wiki corpora alone (1,417 records) are **2.5-4.5 hours**: free,
+but not a session's work. That is the price of the vector-arm numbers and of
+phase C's rebuild; it is measured, not estimated.
 
 **So: a conditional go.** The rewrite is safe (0 ids moved), affordable (+291
 records), and it fixes a class of rule that cannot be retrieved today - the Battle
@@ -226,8 +230,9 @@ local numbers exist.
 
 ## Open questions for the vector arm
 
-*The four arms below all need the local vector index (measured: ~3.4 hours of
-embedding), which is why the lexical gate above is the only one that has run.*
+*The four arms below all need the local vector index (measured: 13-25 hours of
+embedding for the full corpus, 2.5-4.5 hours for the two rules halves), which is
+why the lexical gate above is the only one that has run.*
 
 - **Is the link block noise for retrieval?** A parent's vector now carries up to
   40 names it does not discuss. The bank test above answers it; if hit@1 drops
