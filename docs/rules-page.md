@@ -241,6 +241,18 @@ matched - the words it matched.
 - The display sorts each half by that rank - ranks are per-half positions, so
   interleaving two halves would invent an order - shows the top five overall
   whole above the prose, and puts the rest behind *more findings*.
+- **The evidence behind a verdict is never collapsed.** The list shown whole is
+  the union of the top five by rank and the passages the judge names in its
+  verdict, in rank order, the cited ones badged (`cité par le juge`), with no
+  duplicate when a cited passage is already in the top five. This is why: the
+  ability that answered "Can dragons with fuegan arrive from reserves in melta
+  range?" sat at rank 15, inside the collapse, while the writer cited it - a
+  verdict's reason must not be hidden behind a summary. On a widening the
+  citations are dropped until the new verdict reports its own, because a widened
+  list renumbers the findings and a stale number points at the wrong passage.
+- **A verdict links to its evidence.** The judge's `passages` are the same links
+  the answer's `[n]` markers are: each one opens the passage popup from the
+  payload. A reader who doubts a verdict can go and read what it was made from.
 - A lexical finding outlines the terms it matched, in the list and in the
   passage. The vector leg's similarity is shown as a **rank score**: it orders
   passages, and it is not a confidence that one answers the question. The judge

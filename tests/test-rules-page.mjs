@@ -51,7 +51,7 @@ t('and in the French table too', missingFr, []);
 // the tables like every other one.
 const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild', 'rankN', 'rankScore', 'rankScoreTitle', 'matchedWords', 'openPassage', 'moreFindings', 'close', 'openSource',
   'cardTitle', 'cardRanged', 'cardMelee', 'cardAbilities', 'cardKeywords', 'cardComposition', 'cardPoints', 'cardSourceNote', 'cardOpen',
-  'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'cardReady', 'streamCut'];
+  'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'cardReady', 'streamCut', 'citedByJudge', 'verdictEvidence'];
 const absent = needed.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined);
 t('the new display labels exist in both languages', absent, []);
 
@@ -91,6 +91,17 @@ ok('the card previews above the pipeline', code.indexOf('host.appendChild(cardSl
 ok('the card renders into its own slot', /state\.cardSlot\.appendChild\(unitCardView/.test(code));
 ok('the card event no longer clears the result', /host\.textContent = '';\s*\n\s*host\.appendChild\(unitCardView/.test(code) === false);
 ok('done no longer short-circuits on a card', code.indexOf('if (state.card) { setStatus') === -1);
+
+// The evidence behind a verdict is never collapsed: the list is the union of the
+// top five by rank and the passages the judge names, in rank order, cited ones
+// badged, no duplicate when a cited passage is already in the top five.
+ok('the card takes the cited passages', /function findingsCard\(findings, counts, cited\)/.test(code));
+ok('the union keeps the top five and promotes the cited ones', /i < 5 \|\| isCited\(findings\[i\]\)/.test(code));
+ok('a cited finding is badged and shown whole', /if \(cited\) head\.appendChild\(el\('span', 'leg cite'/.test(code));
+ok('the verdict links to the passages it rests on', /ev\.appendChild\(citeLink\(f, '\[' \+ cited\[c\] \+ '\]'\)\)/.test(code));
+ok('a widening drops the citations it renumbered', /if \(ev\.attempt > 0\) state\.cited = \[\];/.test(code));
+ok('citations show only against the list the verdict judged', /var samePass = /.test(code));
+ok('one place draws the findings list', /function renderFindings\(state\)/.test(code));
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

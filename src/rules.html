@@ -220,6 +220,11 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 .dispute{margin-top:12px;padding:10px 12px;border:1px solid rgba(232,180,74,.5);border-radius:8px;background:rgba(232,180,74,.06)}
 .dispute .dtitle{color:var(--warn);font:600 11.5px var(--mono);letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px}
 .dispute .note{margin-top:0}
+/* A passage the verdict rests on, and the verdict's own links to its evidence. */
+.leg.cite{color:var(--ok);border-color:rgba(95,191,127,.55);background:rgba(95,191,127,.10)}
+.vevidence{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.vevidence .vlabel{color:var(--dim);font:11px var(--mono)}
+.vevidence a.cite{font-size:11.5px}
 .corpusdate{color:var(--dim);font:11.5px system-ui;border-left:1px solid var(--line);padding-left:14px}
 .footlinks{display:flex;gap:10px;align-items:center}
 .footlinks a{display:inline-flex;color:var(--dim);padding:4px;border-radius:7px}
@@ -350,6 +355,8 @@ var I18N = {
     matchedWords: 'matched: ',
     openPassage: 'Passage',
     moreFindings: 'more findings',
+    citedByJudge: 'the judge cites this',
+    verdictEvidence: 'passages it rests on:',
     close: 'Close',
     openSource: 'Open on Wahapedia',
     findingsCounts: ' core, ',
@@ -480,6 +487,8 @@ var I18N = {
     matchedWords: 'correspondance : ',
     openPassage: 'Passage',
     moreFindings: 'autres constats',
+    citedByJudge: 'cité par le juge',
+    verdictEvidence: 'passages sur lesquels il s\u2019appuie :',
     close: 'Fermer',
     openSource: 'Ouvrir sur Wahapedia',
     findingsCounts: ' règles de base, ',
@@ -856,32 +865,50 @@ function translationCard(tr) {
   return card;
 }
 
-function findingsCard(findings, counts) {
+function findingsCard(findings, counts, cited) {
   // Ordered by the rank the retrievers gave them, not by arrival: a widened
   // pass re-renders this card with the wider list, and the order is the whole
   // point of showing it. Each half keeps its own rank order, and the halves
   // stay in the order the server sent them.
   findings = sortedFindings(findings);
+  cited = cited || [];
   var title = t('findingsTitle') + ' - ' + findings.length;
   if (counts) title += ' (' + counts.rules + t('findingsCounts') + counts.factions + t('findingsCountsTail') + ')';
   var card = sectionCard(title);
   if (!findings.length) { card.appendChild(el('div', 'note warn', t('nothingMatchedCard'))); return card; }
-  // The top five are the answer-in-waiting: shown whole, above the prose.
-  var top = findings.slice(0, 5);
-  var rest = findings.slice(5);
+  // The top five are the answer-in-waiting: shown whole, above the prose. And a
+  // passage the verdict rests on is shown whole wherever it ranked - the ability
+  // that answered a question once sat at rank 15, inside the collapse, while the
+  // writer cited it: the evidence behind a verdict is never hidden. That is the
+  // union of the two, kept in rank order, a citation never duplicated.
+  var isCited = function (f) { return cited.indexOf(f.n) !== -1; };
+  var shown = [];
+  var rest = [];
+  for (var i = 0; i < findings.length; i++) {
+    if (i < 5 || isCited(findings[i])) shown.push(findings[i]);
+    else rest.push(findings[i]);
+  }
   var ol = el('ol', 'cites');
-  for (var c = 0; c < top.length; c++) ol.appendChild(findingItem(top[c], true));
+  for (var c = 0; c < shown.length; c++) ol.appendChild(findingItem(shown[c], true, isCited(shown[c])));
   card.appendChild(ol);
   if (rest.length) {
     var det = document.createElement('details');
     det.className = 'moref';
     det.appendChild(el('summary', null, t('moreFindings') + ' (' + rest.length + ')'));
     var ol2 = el('ol', 'cites');
-    for (var r = 0; r < rest.length; r++) ol2.appendChild(findingItem(rest[r], false));
+    for (var r = 0; r < rest.length; r++) ol2.appendChild(findingItem(rest[r], false, isCited(rest[r])));
     det.appendChild(ol2);
     card.appendChild(det);
   }
   return card;
+}
+
+// One place that draws the list, so a new verdict can re-draw it with its
+// citations without the findings event and the judge event disagreeing about
+// what is on screen.
+function renderFindings(state) {
+  state.findingSlot.textContent = '';
+  state.findingSlot.appendChild(findingsCard(state.findings, state.counts, state.cited));
 }
 
 // Sorting is per half: ranks are per-half positions, so a rules rank 3 and a
@@ -935,11 +962,12 @@ function markTerms(text, terms) {
   return frag;
 }
 
-function findingItem(f, prominent) {
+function findingItem(f, prominent, cited) {
   var li = el('li', 'fitem' + (prominent ? ' top' : ''));
   var head = el('div', 'fhead');
   head.appendChild(el('span', 'num', '[' + f.n + ']'));
   if (f.leg) head.appendChild(el('span', 'leg ' + legClass(f.leg), legLabel(f.leg)));
+  if (cited) head.appendChild(el('span', 'leg cite', t('citedByJudge')));
   var parts = crumbs(f.heading);
   var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + (parts.length ? parts[parts.length - 1] : f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
   a.href = f.href || f.url; a.target = '_blank'; a.rel = 'noopener';
@@ -1046,19 +1074,23 @@ function renderVerdicts(state) {
   card.textContent = '';
   card.appendChild(el('h2', null, t('judgeTitle')));
   if (!state.judge) { card.appendChild(el('div', 'note waiting', t('readingFindings'))); return; }
-  card.appendChild(verdictLine(state.judge, state.judgeAttempt));
+  // A verdict's passage numbers only mean something against the list it judged:
+  // a widening renumbers the findings, so citations are shown only while the
+  // verdict and the list on screen are the same pass.
+  var samePass = (state.judgeAttempt || 0) === (state.pass || 0);
+  card.appendChild(verdictLine(state.judge, state.judgeAttempt, samePass ? state.findings : null));
   if (state.judge2) {
     var box = el('div', 'secondv');
     var head = el('div', 'secondhead');
     head.appendChild(el('span', 'leg anchor', t('secondJudge')));
     head.appendChild(el('span', 'sreason', state.judge2.reasoning === 'none' ? t('judgeNoReasoning') : t('judgeReasoning')));
     box.appendChild(head);
-    box.appendChild(verdictLine(state.judge2.judge, 0));
+    box.appendChild(verdictLine(state.judge2.judge, 0, null));
     card.appendChild(box);
   }
 }
 
-function verdictLine(judge, attempt) {
+function verdictLine(judge, attempt, findings) {
   var wrap = el('div');
   // The verdict after a widening is a second verdict, and saying so stops it
   // reading as the only one there was - which is how a re-evaluation looks like
@@ -1083,6 +1115,22 @@ function verdictLine(judge, attempt) {
   // already printed beside it.
   if (why) line.appendChild(inlineNodes(why, {}));
   wrap.appendChild(line);
+  // The evidence, one click away. The judge names the passages it rests on by
+  // number; each becomes the same link the answer's [n] markers are, opening the
+  // passage popup from the payload - so a verdict can always be followed to what
+  // it was made from, and the reader can disagree with it.
+  var cited = judge && Array.isArray(judge.passages) ? judge.passages : [];
+  if (cited.length && findings && findings.length) {
+    var byN = {};
+    for (var i = 0; i < findings.length; i++) byN[findings[i].n] = findings[i];
+    var ev = el('div', 'vevidence');
+    ev.appendChild(el('span', 'vlabel', t('verdictEvidence')));
+    for (var c = 0; c < cited.length; c++) {
+      var f = byN[cited[c]];
+      if (f) ev.appendChild(citeLink(f, '[' + cited[c] + ']'));
+    }
+    wrap.appendChild(ev);
+  }
   return wrap;
 }
 
@@ -1277,7 +1325,7 @@ function startResult(lang) {
   host.appendChild(answerCard);
   var rest = el('div');
   host.appendChild(rest);
-  return { cardSlot: cardSlot, verdict: verdict, findingSlot: findingSlot, answer: answerCard, rest: rest, findings: [], terms: [], translation: null, card: false, judge: null, judge2: null, judgeAttempt: 0, disputed: false, events: 0, answered: false };
+  return { cardSlot: cardSlot, verdict: verdict, findingSlot: findingSlot, answer: answerCard, rest: rest, findings: [], counts: null, cited: [], pass: 0, terms: [], translation: null, card: false, judge: null, judge2: null, judgeAttempt: 0, disputed: false, events: 0, answered: false };
 }
 
 // --- stage progress ---------------------------------------------------------
@@ -1439,14 +1487,19 @@ function applyEvent(ev, state) {
   if (ev.type === 'terms') { state.terms = ev.terms || []; doneStage('translate', ev.elapsedMs); return; }
   if (ev.type === 'findings') {
     state.findings = ev.findings || [];
+    state.counts = ev.counts || null;
+    state.pass = ev.attempt || 0;
+    // A widening renumbers the findings, so the verdict that judged the previous
+    // list can no longer name them: its citations are dropped until the new
+    // verdict reports its own, rather than pointing at the wrong passages.
+    if (ev.attempt > 0) state.cited = [];
     state.terms = (ev.terms && ev.terms.length) ? ev.terms : state.terms;
     state.rest.textContent = '';
     if (state.translation) state.rest.appendChild(translationCard(state.translation));
     if (state.terms.length) state.rest.appendChild(termsCard(state.terms));
     // Re-rendered on every pass, so a widened search replaces the narrower list
     // rather than leaving one list under the other.
-    state.findingSlot.textContent = '';
-    state.findingSlot.appendChild(findingsCard(state.findings, ev.counts));
+    renderFindings(state);
     if (ev.attempt > 0) flash(state.findingSlot);
     doneStage(ev.attempt > 0 ? 'widen' : 'retrieve', ev.elapsedMs);
     if (ev.attempt > 0) setStageActive('judge');
@@ -1464,7 +1517,15 @@ function applyEvent(ev, state) {
     // Two verdicts, two slots. The second is never allowed to overwrite the
     // first: it is a second opinion, and the reader is owed both.
     if (ev.second) state.judge2 = { judge: ev.judge, reasoning: ev.reasoning || '' };
-    else { state.judge = ev.judge; state.judgeAttempt = ev.attempt || 0; }
+    else {
+      state.judge = ev.judge;
+      state.judgeAttempt = ev.attempt || 0;
+      // The verdict names the passages it rests on. They are promoted out of the
+      // collapse and badged, so the evidence behind a verdict is never hidden in
+      // the collapsed remainder.
+      state.cited = Array.isArray(ev.judge && ev.judge.passages) ? ev.judge.passages.slice() : [];
+      if (state.findings.length) renderFindings(state);
+    }
     renderVerdicts(state);
     flash(state.verdict);
     // Only a final verdict closes the judge stage; an interim one is about to be
