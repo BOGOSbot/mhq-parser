@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
-import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled } from '../src/rules-traces.mjs';
+import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, writerMode } from '../src/rules-traces.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -63,6 +63,18 @@ t('kind is unknown, not a guess', trace.kind, KIND_UNKNOWN);
 t('the signals travel', trace.signals, { firstPerson: false, termMatch: false, sources: ['core-rules'], halves: ['rules'], rules: 1 });
 const plain = buildTrace({ id: 'x', at: '2026-10-13T09:00:00.000Z', question: 'What is Engagement?', signals: traceSignals('What is Engagement?', []), answer: '' });
 t('an English question carries no asked', 'asked' in plain, false);
+
+// --- how the writer ended ----------------------------------------------------
+// Empty and timeout read the same to a reader and are covered by one sentence on
+// the page, but they are different defects: the trace has to say which one, or
+// the page's real failure rate is invisible in the data.
+t('a real answer is ok', writerMode({ answer: 'A rule [1].' }), 'ok');
+t('an empty answer is empty', writerMode({ answer: '' }), 'empty');
+t('whitespace is empty too', writerMode({ answer: '   ' }), 'empty');
+t('a cut call is a timeout', writerMode({ answer: '', failed: 'timeout' }), 'timeout');
+t('a refusal is a decline', writerMode({ answer: 'The findings do not answer this question.', declined: true }), 'declined');
+t('the trace carries the mode', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: '', failed: 'timeout' }).writer, 'timeout');
+t('an answered trace is ok', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: 'A rule [1].' }).writer, 'ok');
 
 // --- where it is written -----------------------------------------------------
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-traces-'));

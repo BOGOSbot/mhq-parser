@@ -86,6 +86,20 @@ export function traceFindings(findings) {
   }));
 }
 
+// How the writer ended, as its own field: 'ok', 'empty' (it came back with
+// nothing), 'timeout' (the call was cut) or 'declined' (it read the findings and
+// refused). Empty and timeout read the same to a reader - one sentence covers
+// both - but they are different defects and a trace has to be filterable by which
+// one happened, or the page's real failure rate stays invisible in the data we
+// just started collecting.
+export function writerMode(input) {
+  const o = input || {};
+  if (o.failed) return o.failed;
+  if (o.declined) return 'declined';
+  if (!String(o.answer == null ? '' : o.answer).trim()) return 'empty';
+  return 'ok';
+}
+
 export function buildTrace(input) {
   const t = {
     id: input.id,
@@ -105,6 +119,7 @@ export function buildTrace(input) {
     findings: traceFindings(input.findings),
     judge: { answered: !!(input.judge && input.judge.answered), confidence: (input.judge && input.judge.confidence) || '' },
     answer: input.answer || '',
+    writer: writerMode(input),
     steps: input.steps || [],
     elapsedMs: input.elapsedMs || 0,
     unresolved: !!input.unresolved,

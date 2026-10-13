@@ -869,7 +869,7 @@ async function handleRulesAsk(req, res) {
     // retention feature that can fail an answer is a worse bug than a lost trace.
     // Off unless RULES_TRACES is set (src/rules-traces.mjs), and that switch stays
     // off until the page carries the retention line the reader is owed.
-    const trace = answerText => {
+    const trace = (answerText, writer) => {
       if (!tracesEnabled()) return;
       try {
         appendTrace(buildTrace({
@@ -887,6 +887,8 @@ async function handleRulesAsk(req, res) {
           findings,
           judge,
           answer: answerText,
+          failed: writer && writer.failed,
+          declined: writer && writer.declined,
           steps,
           elapsedMs: Date.now() - started,
           unresolved: outcome.unresolved,
@@ -911,9 +913,21 @@ async function handleRulesAsk(req, res) {
     // The judge has already run; the answer waits on it rather than racing it,
     // because whether to write one at all depends on its verdict.
     const DECLINED = 'The findings do not answer this question.';
-    let answer = await timed('answer', () => (outcome.unresolved
-      ? Promise.resolve(dontKnowAnswer(judge, lang))
-      : compileFindings(asked, outcome.findings, keys.model, { lang: answerLang })));
+    // The writer fails in two modes that read the same to a reader: the call is
+    // cut at the timeout, or it comes back with nothing because its own reasoning
+    // ate the budget. One path, one ending - the findings are already on the page
+    // and they stay, so the answer card says the prose failed rather than waiting
+    // forever, and the provider's raw string never reaches the reader.
+    let writerFailed = '';
+    let answer = '';
+    try {
+      answer = await timed('answer', () => (outcome.unresolved
+        ? Promise.resolve(dontKnowAnswer(judge, lang))
+        : compileFindings(asked, outcome.findings, keys.model, { lang: answerLang })));
+    } catch (e) {
+      writerFailed = 'timeout';
+    }
+    if (!writerFailed && !outcome.unresolved && !String(answer).trim()) writerFailed = 'empty';
     // The writer's refusal beats the judge's boolean. The judge once marked a
     // question answered on a passage it then quoted as NOT applying - 'answer:
     // true' with a why that argued against itself - and the writer, reading the
@@ -921,10 +935,21 @@ async function handleRulesAsk(req, res) {
     // refusal, so the reader gets the statement of absence instead of a page
     // that says both things at once.
     let writerDeclined = false;
-    if (!outcome.unresolved && String(answer).trim() === DECLINED) {
+    if (!writerFailed && !outcome.unresolved && String(answer).trim() === DECLINED) {
       answer = dontKnowAnswer(judge, lang);
       outcome.unresolved = true;
       writerDeclined = true;
+    }
+
+    if (writerFailed) {
+      const elapsedMs = Date.now() - started;
+      trace('', { failed: writerFailed });
+      if (stream) {
+        emit({ type: 'answer', answer: '', failed: true, elapsedMs });
+        emit({ type: 'done', elapsedMs, steps, failed: true, unresolved: outcome.unresolved, escalated: outcome.escalated });
+        return res.end();
+      }
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: payload, judge, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
     }
 
     emit({ type: 'answer', answer, unresolved: outcome.unresolved, elapsedMs: Date.now() - started });
@@ -937,7 +962,7 @@ async function handleRulesAsk(req, res) {
       emit({ type: 'judge', judge: Object.assign({}, judge, { answered: false, confidence: judge && judge.confidence, why: ((judge && judge.why) || '') + ' - the writer declined these findings' }), final: true, attempt: 0, elapsedMs: Date.now() - started });
     }
 
-    trace(answer);
+    trace(answer, { declined: writerDeclined });
     if (stream) {
       emit({ type: 'done', elapsedMs: Date.now() - started, steps, unresolved: outcome.unresolved, escalated: outcome.escalated });
       return res.end();
