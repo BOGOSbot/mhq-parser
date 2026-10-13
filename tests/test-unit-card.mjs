@@ -1,6 +1,7 @@
 import {
-  ABILITY_CHARS, buildUnitCard, cardTables, findDatasheet, resetCardTables, unitCard, unitCardEnabled, wantsUnitCard,
+  ABILITY_CHARS, abilityRuleIds, buildUnitCard, cardTables, findAbilityRecord, findDatasheet, resetCardTables, unitCard, unitCardEnabled, wantsUnitCard,
 } from '../src/unit-card.mjs';
+import { readAllCorpus } from '../src/rules-corpus.mjs';
 import { buildTrace } from '../src/rules-traces.mjs';
 
 let pass = 0, fail = 0;
@@ -56,6 +57,47 @@ ok('the card cites the datasheet page', /^https:\/\/wahapedia\.ru\//.test(c.url)
 const asText = JSON.stringify(c);
 t('no tag survives into the card', /<[a-z/][^>]*>/i.test(asText), false);
 t('no HTML entity survives into the card', /&(?:amp|nbsp|lt|gt|#\d+);/.test(asText), false);
+
+// --- the abilities that are rules, not datasheet data ----------------------
+// Mandal's change: a Base (Core) or Faction ability is a rule defined elsewhere
+// in the corpus, so the card links to its record and does not reprint it; a
+// Datasheet ability is the unit's own and keeps its text. An ability whose
+// record cannot be found keeps its text too - a dead link is worse than a long
+// card.
+const corpora = { rules: readAllCorpus('rules'), factions: readAllCorpus('factions') };
+const linked = buildUnitCard('000000574', { corpora });
+const leader = linked.abilities[0];
+t('Leader is a Core ability', leader.type, 'Core');
+ok('Leader resolves to its corpus record', leader.link);
+t('the link names the rule it resolved to', /LEADER/i.test(leader.link.heading), true);
+t('the link is a real url', /^https:\/\//.test(leader.link.href || leader.link.url), true);
+ok('the link carries the passage for the popup', String(leader.link.passage).length > 80);
+const focus = linked.abilities[1];
+t('Battle Focus is a Faction ability', focus.type, 'Faction');
+t('an ability with no corpus record gets no link', focus.link, null);
+ok('and keeps its text instead', focus.description.length > 100);
+t('a Datasheet ability gets no link', linked.abilities.slice(2).map(a => [a.name, a.link]), [['Burning Lance', null], ['Unquenchable Resolve', null]]);
+ok('and keeps its text', linked.abilities[2].description.length > 50);
+// Without the corpora nothing links: the card degrades to text, never to a
+// dead link.
+t('no corpora, no links', buildUnitCard('000000574').abilities.map(a => a.link), [null, null, null, null]);
+
+// The rule id the ability's own card cites is what separates the Leader rule
+// from a section that merely begins with the same word.
+t('the rule id is read off the export', abilityRuleIds('<div class="abName">LEADER<span class="h_number">24.22</span></div>'), ['24.22']);
+t('an ability with no cited id yields none', abilityRuleIds('<div>no heading here</div>'), []);
+const fake = [
+  { heading: 'Leadership Rolls', ruleId: '01.06', url: 'u', text: 't' },
+  { heading: 'Muster Armies > FAQ > Do rules that affect a keyword include it? > LEADER', ruleId: '24.22', url: 'u', text: 't' },
+  { heading: 'Forming Attached Units > LEADER 24.22 / SUPPORT', ruleId: '24.34', url: 'u', text: 't' },
+];
+// The FAQ also carries the rule id and ends with the ability's name; the rule
+// whose own title carries the id is the one the reader wants.
+t('the rule id in the title picks the ability own record, not the FAQ', findAbilityRecord({ type: 'Core', name: 'Leader', ruleIds: ['24.22'] }, fake, []).heading, 'Forming Attached Units > LEADER 24.22 / SUPPORT');
+t('a bare name match still resolves', findAbilityRecord({ type: 'Core', name: 'Leadership', ruleIds: [] }, fake, []).heading, 'Leadership Rolls');
+t('a name nothing starts with does not resolve', findAbilityRecord({ type: 'Core', name: 'Battle Focus', ruleIds: [] }, fake, []), null);
+t('a Datasheet ability never resolves to a rule', findAbilityRecord({ type: 'Datasheet', name: 'Leader', ruleIds: ['24.22'] }, fake, []), null);
+t('a Faction ability looks in the factions half', findAbilityRecord({ type: 'Faction', name: 'Leader', ruleIds: [] }, fake, [{ heading: 'Leader', url: 'u', text: 't' }]).heading, 'Leader');
 
 // --- the silent fallback ----------------------------------------------------
 t('a rules question gets no card', unitCard('can a unit shoot after it Fell Back?'), null);

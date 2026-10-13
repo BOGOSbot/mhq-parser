@@ -825,7 +825,9 @@ async function handleRulesAsk(req, res) {
     // a name several factions share, no statline - unitCard() returns null and
     // the search runs exactly as it did before, silently. The index is never
     // touched either way.
-    const card = unitCard(question, { asked, terms });
+    // The corpora are already in memory for the search; the card needs them to
+    // resolve a Base or Faction ability to the rule it names.
+    const card = unitCard(question, { asked, terms, corpora: corpora() });
     if (card) {
       const cardStages = (foreign ? ['translate'] : []).concat(['datasheet']);
       const elapsedMs = Date.now() - started;

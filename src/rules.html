@@ -163,6 +163,8 @@ table.uw th:not(:first-child),table.uw td:not(:first-child){width:11%;text-align
 .uab{margin-top:9px}
 .uabhead{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap}
 .uabname{font-weight:600;color:var(--txt)}
+a.uabname.ulink{color:var(--acc);text-decoration:underline;text-decoration-color:rgba(110,168,254,.45);text-underline-offset:2px}
+a.uabname.ulink:hover{text-decoration-color:var(--acc)}
 .uabtext{margin:3px 0 0;font-size:13px;color:var(--txt)}
 .ukw{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .ukw .klabel{color:var(--dim);font:11px var(--mono);align-self:center}
@@ -397,6 +399,7 @@ var I18N = {
     cardPoints: 'pts',
     cardDamaged: 'Damaged',
     cardTruncated: 'shortened - the full text is on Wahapedia',
+    cardAbilityLink: 'this ability is a rule of its own - open its record',
     cardSourceNote: 'Every field on this card is copied from the CSV export. No model wrote any of them.',
     cardOpen: 'Open the datasheet on Wahapedia',
     cardUpdated: 'export of ',
@@ -524,6 +527,7 @@ var I18N = {
     cardPoints: 'pts',
     cardDamaged: 'Endommagé',
     cardTruncated: 'raccourci — le texte complet est sur Wahapedia',
+    cardAbilityLink: 'cette aptitude est une règle à part — ouvrir sa fiche',
     cardSourceNote: 'Chaque champ de cette fiche est copié de l\u2019export CSV. Aucun modèle n\u2019en a écrit un seul.',
     cardOpen: 'Ouvrir la fiche sur Wahapedia',
     cardUpdated: 'export du ',
@@ -1125,6 +1129,37 @@ function kwRow(label, list) {
   return row;
 }
 
+// One ability. A Core or Faction ability is a rule defined elsewhere in the
+// corpus and is shown as its title, linked to that record - its body is not
+// reprinted on a card about the unit. A Datasheet ability is the unit's own and
+// keeps its text. An ability the server could not resolve carries no link and
+// falls into the same branch as the datasheet's own: never a dead link.
+function abilityBox(ab) {
+  var box = el('div', 'uab');
+  var head = el('div', 'uabhead');
+  var ty = ab.type === 'Core' ? t('cardCore') : ab.type === 'Faction' ? t('cardFaction') : t('cardDatasheet');
+  head.appendChild(el('span', 'tag', ty));
+  if (ab.link) {
+    var a = el('a', 'uabname ulink', ab.name);
+    a.href = ab.link.href || ab.link.url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.title = t('cardAbilityLink');
+    a.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      openPassage({ heading: ab.link.heading, passage: ab.link.passage, href: ab.link.href, url: ab.link.url, leg: '' });
+    });
+    head.appendChild(a);
+    box.appendChild(head);
+    return box;
+  }
+  head.appendChild(el('span', 'uabname', ab.name));
+  box.appendChild(head);
+  box.appendChild(el('p', 'uabtext', ab.description));
+  if (ab.truncated) box.appendChild(el('div', 'note', t('cardTruncated')));
+  return box;
+}
+
 function unitCardView(c) {
   var card = el('div', 'card unitcard');
   card.appendChild(el('h2', null, t('cardTitle')));
@@ -1165,18 +1200,7 @@ function unitCardView(c) {
 
   if (c.abilities && c.abilities.length) {
     card.appendChild(el('h3', null, t('cardAbilities')));
-    for (var a = 0; a < c.abilities.length; a++) {
-      var ab = c.abilities[a];
-      var box = el('div', 'uab');
-      var head = el('div', 'uabhead');
-      var ty = ab.type === 'Core' ? t('cardCore') : ab.type === 'Faction' ? t('cardFaction') : t('cardDatasheet');
-      head.appendChild(el('span', 'tag', ty));
-      head.appendChild(el('span', 'uabname', ab.name));
-      box.appendChild(head);
-      box.appendChild(el('p', 'uabtext', ab.description));
-      if (ab.truncated) box.appendChild(el('div', 'note', t('cardTruncated')));
-      card.appendChild(box);
-    }
+    for (var a = 0; a < c.abilities.length; a++) card.appendChild(abilityBox(c.abilities[a]));
   }
 
   var kws = c.keywords || { faction: [], other: [] };

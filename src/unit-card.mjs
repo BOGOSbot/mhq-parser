@@ -80,6 +80,68 @@ function cap(text, max) {
   return { text: (at > max * 0.6 ? cut.slice(0, at) : cut).replace(/[\s,;:.]+$/, '') + '...', truncated: true };
 }
 
+// --- the abilities that are rules, not datasheet data ------------------------
+// A Core or Faction ability is a rule defined elsewhere in the corpus - LEADER,
+// Battle Focus - and the card links to that record instead of reprinting it. A
+// Datasheet ability belongs to the unit and keeps its text. When the record
+// cannot be found the text is kept: a dead link is worse than a long card.
+const ABILITY_HALF = { Core: 'rules', Faction: 'factions' };
+
+// The rule id the ability's own card cites, read off the export's HTML: LEADER
+// carries 24.22 in an <span class="h_number">. It is what tells the Leader rule
+// apart from a section that merely starts with the same word.
+export function abilityRuleIds(raw) {
+  const out = [];
+  const re = /h_number[^>]*>\s*([0-9]{1,2}(?:\.[0-9]{1,2})*)/g;
+  let m;
+  while ((m = re.exec(String(raw || ''))) !== null) out.push(m[1]);
+  return Array.from(new Set(out));
+}
+
+// The record an ability names, in its own half, or null. Matching is mechanical:
+// the heading must start with the ability's name (word-start, so LEADER does not
+// reach Leadership Rolls), and a heading that also carries the rule id the
+// ability cites wins over one that does not.
+export function findAbilityRecord(ability, rules, factions) {
+  const half = ABILITY_HALF[ability && ability.type];
+  if (!half) return null;
+  const sections = (half === 'rules' ? rules : factions) || [];
+  if (!sections.length || !ability.name) return null;
+  const name = norm(ability.name);
+  const words = name.split(' ').filter(Boolean);
+  const ids = (ability.ruleIds || []).map(norm).filter(Boolean);
+  let best = null;
+  for (const sec of sections) {
+    // The corpus writes a child's ancestry in front of its own title
+    // ('Forming Attached Units > LEADER 24.22 / SUPPORT'), so the ability's name
+    // is matched against the last segment as well as the whole heading.
+    const raw = String(sec.heading || '');
+    const path = raw.split(' > ').filter(Boolean);
+    const leaf = norm(path[path.length - 1] || '');
+    const whole = norm(raw);
+    const starts = leaf === name || leaf.indexOf(name + ' ') === 0 || whole === name || whole.indexOf(name + ' ') === 0;
+    if (!starts) continue;
+    const hay = whole + ' ' + norm(sec.anchor || '') + ' ' + norm(sec.ruleId || '');
+    const own = leaf || whole;
+    const withId = ids.length ? ids.some(id => hay.indexOf(id) !== -1) : false;
+    // The ability's own record carries the cited id in its title
+    // ('LEADER 24.22 / SUPPORT'); an FAQ that merely ends with the ability's
+    // name does not. That is a stronger signal than a short leaf, and without it
+    // the FAQ wins and the reader lands on someone else's question.
+    const idInTitle = ids.length ? ids.some(id => own.indexOf(id) !== -1) : false;
+    const extra = own.split(' ').length - words.length;
+    const score = [withId ? 0 : 1, idInTitle ? 0 : 1, extra];
+    if (!best || score[0] < best.score[0] || (score[0] === best.score[0] && score[1] < best.score[1])
+      || (score[0] === best.score[0] && score[1] === best.score[1] && score[2] < best.score[2])) best = { sec, score };
+  }
+  return best ? best.sec : null;
+}
+
+function hrefFor(section) {
+  const url = String((section && section.url) || '').split('#')[0];
+  return section && section.anchor ? url + '#' + section.anchor : url;
+}
+
 let TABLES = null;
 
 // Read once per process, like the corpus. The export is 20 files and the card
@@ -182,7 +244,9 @@ export function findDatasheet(question, asked, terms) {
 
 // The card, field for field, from the export. Null when the datasheet has no
 // statline to render: an id alone is not a card.
-export function buildUnitCard(id) {
+export function buildUnitCard(id, opts) {
+  const o = opts || {};
+  const corpora = o.corpora || {};
   const t = cardTables();
   const d = t.byId.get(String(id == null ? '' : id));
   if (!d) return null;
@@ -201,9 +265,19 @@ export function buildUnitCard(id) {
   const abilities = (t.abilities.get(d.id) || []).map(ab => {
     const ref = ab.ability_id ? t.abilityById.get(ab.ability_id) : null;
     const name = clean(ab.name) || clean(ref && ref.name);
-    const raw = clean(ab.description) || clean(ref && ref.description);
+    const source = ab.description || (ref && ref.description) || '';
+    const raw = clean(source) || clean(ref && ref.description);
     const body = cap(stripAbilityHead(name, trimAbilityTail(raw)), ABILITY_CHARS);
-    return { type: clean(ab.type), name, description: body.text, truncated: body.truncated };
+    const type = clean(ab.type);
+    // A rule defined elsewhere: link it, or keep the text.
+    const record = findAbilityRecord({ type, name, ruleIds: abilityRuleIds(source) }, corpora.rules, corpora.factions);
+    return {
+      type, name, description: body.text, truncated: body.truncated,
+      link: record ? {
+        heading: record.heading || '', url: record.url || '', href: hrefFor(record),
+        passage: record.text || '', source: record.source || '', ruleId: record.ruleId || '',
+      } : null,
+    };
   }).filter(a => a.name || a.description);
   const kws = (t.keywords.get(d.id) || []).map(k => ({ keyword: clean(k.keyword), faction: String(k.is_faction_keyword) === 'true' })).filter(k => k.keyword);
   const points = (t.costs.get(d.id) || [])
@@ -244,7 +318,7 @@ export function unitCard(question, opts) {
   if (!unitCardEnabled(o.env)) return null;
   if (!wantsUnitCard(question, o.asked, o.terms)) return null;
   const d = findDatasheet(question, o.asked, o.terms);
-  return d ? buildUnitCard(d.id) : null;
+  return d ? buildUnitCard(d.id, { corpora: o.corpora }) : null;
 }
 
-export default { CARD_INTENT, ABILITY_CHARS, cardTables, resetCardTables, unitCardEnabled, wantsUnitCard, findDatasheet, buildUnitCard, unitCard };
+export default { CARD_INTENT, ABILITY_CHARS, cardTables, resetCardTables, unitCardEnabled, wantsUnitCard, findDatasheet, buildUnitCard, unitCard, abilityRuleIds, findAbilityRecord };

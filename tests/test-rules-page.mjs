@@ -75,5 +75,14 @@ ok('a widening flashes the rebuilt list', /if \(ev\.attempt > 0\) flash\(state\.
 ok('the popup reads the passage from the payload', /f\.passage \|\| f\.excerpt/.test(code));
 ok('the similarity is labelled a rank score', /rankScoreTitle/.test(code));
 
+// The unit card's abilities: a Base or Faction ability is a rule defined
+// elsewhere and is a linked title with no body; a Datasheet ability, or one that
+// could not be resolved, keeps its text.
+const box = code.slice(code.indexOf('function abilityBox'), code.indexOf('function unitCardView'));
+ok('a linked ability is rendered as a title', /if \(ab\.link\)/.test(box));
+ok('a linked ability has no body before it returns', box.indexOf("ab.link") !== -1 && box.indexOf("ab.link") < box.indexOf("uabtext"));
+ok('the truncation note belongs to the kept-text branch', box.indexOf("t('cardTruncated')") > box.indexOf("uabtext"));
+ok('the ability link opens the passage popup', /openPassage\(\{ heading: ab\.link\.heading/.test(box));
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

@@ -279,6 +279,19 @@ carry a table and six sub-rules (Battle Focus does), so ability text is cut at
 `ABILITY_CHARS` (600) and the card says so; the full text is one click away. Every
 value is cleaned of the export's HTML, and none is written by a model.
 
+**An ability that is a rule elsewhere is a link, not a reprint.** A Core ability
+(LEADER) and a Faction ability (Battle Focus) are rules the corpus holds in their
+own right, so the card shows the title only, linked to that record, and opens it
+in the same passage popup the findings use. The record is found mechanically: the
+ability's own card cites a rule id (LEADER carries 24.22 in the export's
+`h_number`), the heading's last segment must start with the ability's name
+(word-start, so LEADER does not reach Leadership Rolls), and a heading carrying
+the cited id wins over one that does not. A Datasheet ability (Burning Lance,
+Unquenchable Resolve) is the unit's own and keeps its text, and **an ability whose
+record cannot be found keeps its text too** - Battle Focus has no record in the
+faction half today, and a dead link is worse than a long card. The card only links
+when it is given the corpora, so a caller without them degrades to text.
+
 When the unit cannot be resolved to a datasheet id, `unitCard()` returns null and
 the request runs the search, the judge and the writer exactly as it did before: the
 fallback is silent, and a half card is never shown. `RULES_UNIT_CARD=0` turns the
