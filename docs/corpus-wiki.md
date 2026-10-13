@@ -376,8 +376,15 @@ live namespace; every number is from `--dry-run` and the read-only parity check.
   `tests/test-wiki-plan.mjs`.
 - **OPEN, a cost decision: the faction cards carry a back-link line in their
   text.** That is 6,575 records whose text changes, so adopting the rewrite
-  re-embeds 6,604 faction vectors - about $4.2 on pay-as-you-go, or most of one
-  Free plan day, against the 700-vector rules arms. The card back-link is the
+  re-embeds 6,604 faction vectors. Priced at Upstash's update rate, $0.40 per
+  100,000 update operations, that is 6,604 x $0.000004 = **about $0.03**, plus
+  roughly 0.03 GB of storage (~$0.007/month at $0.25/GB); on the Free plan it is
+  66% of one day's 10,000-update quota. Any token-based embedding charge is
+  **unpriced** here: Upstash's upsert takes the raw text and embeds it
+  server-side, and no separate line for it appears in the pricing read for this
+  decision. (The $0.000634 per call quoted elsewhere in this repository is the
+  Jev rerank model call on OpenRouter - a different service, it does not apply to
+  upserts.) Against the ~700-vector rules arms. The card back-link is the
   nearly-meaningless line the open questions already flag ("- faction: Aeldari");
   dropping it from the embedded text is the one-line switch that would cut the
   re-embed to the 254 genuinely new records. Decide it with arm 3's numbers.
