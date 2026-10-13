@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
-import { KIND_UNKNOWN, appendTrace, buildTrace, firstPerson, newTraceId, termMatch, traceSignals, tracesEnabled } from '../src/rules-traces.mjs';
+import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled } from '../src/rules-traces.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -74,6 +74,33 @@ try {
   appendTrace(trace, dir);
   t('a second question appends', fs.readFileSync(file, 'utf8').trim().split('\n').length, 2);
 } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+
+// --- retention ---------------------------------------------------------------
+// Raw traces expire; the bank does not. A promoted question lives in
+// tests/fixtures, which is tracked and never swept, so the raw line can go.
+t('the window is 12 months', TRACE_RETENTION_MONTHS, 12);
+t('the cutoff is 12 months back', new Date(traceCutoff(12, '2026-10-13T00:00:00.000Z')).toISOString().slice(0, 10), '2025-10-13');
+
+const sweepDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-sweep-'));
+try {
+  appendTrace(buildTrace({ id: 'old', at: '2025-09-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: 'a' }), sweepDir);
+  appendTrace(buildTrace({ id: 'fresh', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: 'a' }), sweepDir);
+  const dry = sweepTraces({ dir: sweepDir, now: '2026-10-13T00:00:00.000Z', dryRun: true });
+  t('a dry run reports the expired line', dry.removed, 1);
+  t('a dry run deletes nothing', fs.readdirSync(sweepDir).length, 2);
+  const done = sweepTraces({ dir: sweepDir, now: '2026-10-13T00:00:00.000Z' });
+  t('the expired line goes', done.removed, 1);
+  t('the fresh line stays', done.kept, 1);
+  t('the emptied file is removed', fs.existsSync(path.join(sweepDir, '2025-09.ndjson')), false);
+  t('the surviving line is the fresh one', JSON.parse(fs.readFileSync(path.join(sweepDir, '2026-10.ndjson'), 'utf8').trim()).id, 'fresh');
+} finally { fs.rmSync(sweepDir, { recursive: true, force: true }); }
+
+const undated = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-undated-'));
+try {
+  fs.writeFileSync(path.join(undated, '2025-01.ndjson'), '{not json at all\n');
+  sweepTraces({ dir: undated, now: '2026-10-13T00:00:00.000Z' });
+  t('a line that cannot be dated is kept, not deleted', fs.existsSync(path.join(undated, '2025-01.ndjson')), true);
+} finally { fs.rmSync(undated, { recursive: true, force: true }); }
 
 // --- the taxonomy, measured rather than assumed ------------------------------
 // The bank's labels name the failure mode a question was put IN THE BANK to

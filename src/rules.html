@@ -172,6 +172,7 @@ details pre{background:var(--panel2);border:1px solid var(--line);border-radius:
       <option value="en">EN</option>
     </select>
   </form>
+  <p class="note" id="retention"></p>
   <div id="status" class="status"></div>
     <div id="progress" class="progress hidden"><div class="psegs" id="psegs"></div><span id="pelapsed" class="pelapsed"></span></div>
 </header>
@@ -280,6 +281,7 @@ var I18N = {
       'Does the Tyrannofex have the FRAME keyword?'
     ],
     intro: '<p>The question is searched against an indexed copy of the <span id="edlabel">current-edition</span> rules, not answered from memory. Both halves are searched — core rules, and faction datasheets, stratagems, detachments and enhancements:</p><ol><li><b>translate</b> — a question in another language is translated in full into English first, because the corpus is English, and the translation is shown so you can correct it;</li><li><b>retrieve</b> — each half is searched separately, then <b>jev</b> reranks the union. Jev decides; it does not write;</li><li><b>judge + answer</b> — the findings below are the product; a small model writes alongside them and judges whether they answer the question, and the two need not be the same model;</li><li><b>voice</b> is optional: the <b>Voice</b> button transcribes in your browser and needs https or localhost. The text is left in the box to correct — speech recognition mangles unit names, and the wrong unit retrieves the wrong rule.</li></ol><p>Every citation below links to the section it came from — <code>.../core-rules/#1.-Hit-Roll</code> or a datasheet page. The anchor is derived by the server from the heading, never written by the model, so a citation cannot point at a source that was not indexed.</p>',
+    retention: 'What you type is kept, anonymously, to make this page better: the question, what it found, and the answer. No IP address, no browser, no account — just a random number for the question.',
     footline: 'Rules text from <a id="wahafoot" href="https://wahapedia.ru/" target="_blank" rel="noopener">Wahapedia</a><span id="edfoot">, the current edition</span>.'
   },
   fr: {
@@ -350,6 +352,7 @@ var I18N = {
       'Le Tyrannofex a-t-il le mot-clé FRAME ?'
     ],
     intro: '<p>La question est cherchée dans une copie indexée des règles <span id="edlabel">de l\u2019édition en cours</span>, jamais répondue de mémoire. Les deux moitiés sont cherchées — règles de base, et fiches techniques, stratagèmes, détachements et optimisations de faction :</p><ol><li><b>traduction</b> — une question dans une autre langue est d\u2019abord traduite en entier en anglais, car le corpus est anglais, et la traduction est affichée pour être corrigée ;</li><li><b>recherche</b> — chaque moitié est cherchée séparément, puis <b>jev</b> reclasse l\u2019union. Jev décide ; il n\u2019écrit pas ;</li><li><b>juge + réponse</b> — les constats ci-dessous sont le produit ; un petit modèle écrit à côté et juge s\u2019ils répondent à la question, et les deux ne sont pas forcément le même ;</li><li><b>voix</b> est optionnel : le bouton <b>Voix</b> transcrit dans votre navigateur et exige https ou localhost. Le texte reste dans le champ pour être corrigé — la reconnaissance vocale abîme les noms d\u2019unités, et la mauvaise unité fait chercher la mauvaise règle.</li></ol><p>Chaque citation renvoie à la section d\u2019où elle vient — <code>.../core-rules/#1.-Hit-Roll</code> ou une page de fiche technique. L\u2019ancre est dérivée par le serveur à partir du titre, jamais écrite par le modèle : une citation ne peut pas pointer vers une source non indexée.</p>',
+    retention: 'Ce que vous écrivez est conservé, anonymement, pour améliorer cette page : la question, ce qu’elle a trouvé et la réponse. Ni adresse IP, ni navigateur, ni compte — juste un numéro tiré au hasard pour la question.',
     footline: 'Textes de règles issus de <a id="wahafoot" href="https://wahapedia.ru/" target="_blank" rel="noopener">Wahapedia</a><span id="edfoot">, l\u2019édition en cours</span>.'
   }
 };
@@ -401,6 +404,7 @@ function applyLang() {
   labelModes();
   var it = $('#introtext'); if (it) it.innerHTML = t('intro');
   var fl = $('#footline'); if (fl) fl.innerHTML = t('footline');
+  var rt = $('#retention'); if (rt) rt.textContent = t('retention');
   renderExamples();
   applyEdition();
   try { localStorage.setItem('rulesLang', LANG); } catch (e) { /* private mode */ }

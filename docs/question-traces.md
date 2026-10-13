@@ -61,9 +61,17 @@ written until it is on the page.
 
 ## Retention
 
-Raw traces are kept **12 months** and swept as part of the monthly ingest, so the
-sweep cannot be forgotten; a question promoted into the eval bank is kept forever.
-The sweep reads `at`, not the file's age. (The number is Mandal's to confirm.)
+Raw traces are kept **12 months**, and the sweep rides the monthly ingest so it
+cannot be forgotten: `--ingest` prints a `traces` line (files, kept, past the
+window) and `--ingest --dry-run` reports it without deleting anything. The sweep
+reads each line's `at`, not the file's age, and a line it cannot date is kept
+rather than deleted - deleting what cannot be dated is how a sweep loses data it
+was never meant to touch.
+
+The bank is a different store and is never swept. A question promoted into
+`tests/fixtures/rules-questions.json` is tracked and kept forever, so the raw
+trace that produced it can expire without losing the question; the sweep only
+ever touches `workspace/rules-traces/`.
 
 ## The taxonomy
 

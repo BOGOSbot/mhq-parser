@@ -127,3 +127,45 @@ export function appendTrace(trace, dir) {
   fs.appendFileSync(file, JSON.stringify(trace) + '\n');
   return file;
 }
+
+// --- retention ---------------------------------------------------------------
+// Raw traces expire; the bank does not. A question promoted into the eval bank
+// lives in tests/fixtures, which is tracked and never swept, so the raw line that
+// produced it can go - and the sweep must never reach into the bank. The sweep
+// rides the monthly ingest (src/rules-corpus.mjs) so it cannot be forgotten, and
+// a line it cannot date is kept rather than deleted.
+export const TRACE_RETENTION_MONTHS = 12;
+
+export function traceCutoff(months, now) {
+  const m = months === undefined ? TRACE_RETENTION_MONTHS : months;
+  const n = now ? new Date(now) : new Date();
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth() - m, n.getUTCDate())).getTime();
+}
+
+export function sweepTraces(opts) {
+  const o = opts || {};
+  const dir = o.dir || TRACES_DIR;
+  const months = o.months === undefined ? TRACE_RETENTION_MONTHS : o.months;
+  const cutoff = traceCutoff(months, o.now);
+  const out = { dir, months, cutoff: new Date(cutoff).toISOString(), files: 0, kept: 0, removed: 0, expired: [], deleted: [] };
+  let names = [];
+  try { names = fs.readdirSync(dir); } catch { return out; }
+  for (const name of names.filter(n => /^\d{4}-\d{2}\.ndjson$/.test(n)).sort()) {
+    out.files++;
+    const file = path.join(dir, name);
+    const lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean);
+    const keep = [];
+    for (const line of lines) {
+      let at = NaN;
+      try { at = new Date(JSON.parse(line).at).getTime(); } catch { at = NaN; }
+      if (isNaN(at) || at >= cutoff) { keep.push(line); continue; }
+      out.removed++;
+      if (out.expired.length < 20) { try { out.expired.push(JSON.parse(line).id); } catch { out.expired.push('?'); } }
+    }
+    out.kept += keep.length;
+    if (keep.length === lines.length || o.dryRun) continue;
+    if (!keep.length) { fs.unlinkSync(file); out.deleted.push(name); }
+    else fs.writeFileSync(file, keep.join('\n') + '\n');
+  }
+  return out;
+}

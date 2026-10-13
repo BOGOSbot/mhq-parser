@@ -40,6 +40,7 @@ import https from 'https';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_ENDPOINT, MODEL, MODEL_REASONING, MODEL_TIMEOUT_MS, JEV_ENDPOINT, JEV_MODEL, anchorFor, credential } from './rules.mjs';
+import { TRACE_RETENTION_MONTHS, sweepTraces } from './rules-traces.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const CORPUS_DIR = process.env.RULES_CORPUS_DIR || path.join(__dirname, '..', 'workspace', 'rules-corpus');
@@ -2474,6 +2475,11 @@ export async function ingest(only, opts) {
     report.deleted += deleted;
     report.sources.push({ source: source.name, sections: payload.sections.length, upserted, deleted, unchanged, rebuild: ledger.length });
   }
+  // The retention sweep rides the monthly ingest: the corpus is refreshed on a
+  // cadence, so the raw traces past their retention go at the same time and the
+  // sweep cannot be forgotten. The bank is not touched - it is tracked, and a
+  // promoted question lives there, not here.
+  report.traces = sweepTraces({ dryRun });
   return report;
 }
 
@@ -2562,6 +2568,8 @@ async function main() {
       console.log(s.source.padEnd(17) + ' ' + String(s.sections).padStart(5) + ' sections, ' + String(s.upserted).padStart(5) + ' embedded, ' + String(s.unchanged).padStart(5) + ' unchanged, ' + String(s.deleted).padStart(3) + ' deleted  (' + rebuild + ')');
     }
     console.log(dryRun ? 'would upsert ' + (r.planned || 0) : 'total upserted ' + r.upserted + ', deleted ' + r.deleted);
+    const tr = r.traces || {};
+    console.log('traces     ' + String(tr.files || 0).padStart(5) + ' file(s), ' + String(tr.kept || 0).padStart(5) + ' kept, ' + String(tr.removed || 0).padStart(3) + ' past ' + (tr.months || TRACE_RETENTION_MONTHS) + ' months' + (dryRun ? '  (dry run - nothing deleted)' : (tr.deleted && tr.deleted.length ? '  files removed: ' + tr.deleted.join(', ') : '')));
     return;
   }
   if (flag('--prune')) {
