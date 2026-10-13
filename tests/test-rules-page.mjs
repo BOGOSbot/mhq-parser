@@ -103,5 +103,14 @@ ok('a widening drops the citations it renumbered', /if \(ev\.attempt > 0\) state
 ok('citations show only against the list the verdict judged', /var samePass = /.test(code));
 ok('one place draws the findings list', /function renderFindings\(state\)/.test(code));
 
+// The non-stream JSON replies carry the same reconciliation the trace and the
+// stream do, or a JSON consumer cannot tell a dissent from a downgrade.
+const server = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.mjs'), 'utf8');
+const jsonReplies = server.split('return json(res, 200,').slice(1);
+const withDisagreement = jsonReplies.filter(x => x.slice(0, 900).indexOf('judgeDisagreement') !== -1);
+const withBoth = withDisagreement.filter(x => x.slice(0, 900).indexOf('judgeDowngrade') !== -1 && x.slice(0, 900).indexOf('judgeDissentFrom') !== -1);
+t('every JSON reply that reports a disagreement reports the downgrade and the dissenter', withBoth.length, withDisagreement.length);
+ok('and there is more than one such reply', withBoth.length >= 2);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

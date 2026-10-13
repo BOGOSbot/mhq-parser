@@ -1061,7 +1061,7 @@ async function handleRulesAsk(req, res) {
         emit({ type: 'done', elapsedMs, steps, failed: true, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, judge2: secondJudge, judgeDisagreement, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
     }
 
     emit({ type: 'answer', answer, unresolved: outcome.unresolved, elapsedMs: Date.now() - started });
@@ -1086,7 +1086,7 @@ async function handleRulesAsk(req, res) {
     }
     return json(res, 200, {
       question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, answer,
-      judge2: secondJudge, judgeDisagreement,
+      judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom,
       counts, steps, elapsedMs: Date.now() - started, mode: modeName,
       unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,
     });
