@@ -218,7 +218,7 @@ export function planWiki(data, opts) {
     // back as a card: the index pages, the faction rules, and the parts of a
     // card that was split. Read back, they are listed twice, and the index
     // pages' own source label invents a faction called 'factions-csv'.
-    if (isBuiltRecord(r)) continue;
+    if (isBuiltRecord(r) || r.kind === 'ability') continue;
     const f = String(r.faction || r.source || '').toLowerCase();
     if (!byFaction.has(f)) byFaction.set(f, []);
     byFaction.get(f).push(r);
@@ -395,6 +395,11 @@ export function planWiki(data, opts) {
       push(rec);
     }
   }
+
+  // An ability record the extractor created is not a card of any faction: it is
+  // emitted unchanged, keeping its id, kind and text. Without this it either
+  // became a card of a pseudo-faction named after its source, or vanished.
+  for (const r of factions) if (r.kind === 'ability') push(Object.assign({}, r, { text: String(r.text || '') }));
 
   return { records: planned, index, stats };
 }

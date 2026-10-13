@@ -323,6 +323,14 @@ So: **an arm that decides a shape is measured on the deployed namespace, with th
 rollback point as the way back.** That is what phase C did, and its reading is the
 one this document records.
 
+And the same lesson's second half, from task 30: **a measurement taken immediately
+after an ingest is not the measurement.** Re-run it and compare before recording a
+number, or the record carries an index state nobody can reproduce. The first
+task-30 after-reading (MRR 0.463 / 0.514) was taken during settling and did not
+reproduce; the settled reading is 0.458 / 0.508, identical across two runs minutes
+apart. Phase C's before-reading was taken the same way, so it carries the same
+caveat.
+
 ### Arm 3: the faction half, hosted (2026-10-13)
 
 Built by the default CLI into `workspace/rules-corpus-wiki-c` (variant D - links
@@ -606,19 +614,48 @@ corpus slice.
 (pid 6296). Rollback point: `workspace/rules-corpus-before-task30/`.
 
 The deployed reading, dual rerank-off per-side 10 net 60 topk 20, 39 questions /
-33 graded, 0 fallbacks, 0 Jev calls - before this change / after it: exact hit@1
-33.3 -> **30.3**, hit@5 63.6 unchanged, hit@10 84.8 unchanged, hit@20 93.9
-unchanged, MRR 0.475 -> **0.463**; reachable hit@1 39.4 -> **36.4**, hit@5 63.6 ->
-66.7, hit@10 90.9 unchanged, hit@20 100 unchanged, MRR 0.525 -> **0.514**;
-multi-hop fully found 5/12 -> **6/12**; candidates 23.1 unchanged. So the
-restructure costs a little at the head and gains a multi-hop.
+33 graded, 0 fallbacks, 0 Jev calls. **After, settled** (two runs minutes apart,
+identical): exact hit@1 **30.3**, hit@5 60.6, hit@10 84.8, hit@20 93.9, MRR
+**0.458**; reachable hit@1 **36.4**, hit@5 63.6, hit@10 90.9, hit@20 100, MRR
+**0.508**; multi-hop fully found **6/12**; candidates 23.1.
+
+**Before, with the same caveat**: 33.3 / 63.6 / 84.8 / 93.9, MRR 0.475 exact and
+39.4 / 66.7 / 90.9 / 100, MRR 0.525 reachable - but those numbers were read right
+after phase C's ingest, so they were taken during settling too. Two things follow
+and neither should be smoothed over:
+
+- the first after-reading recorded here (0.463 / 0.514) was taken while the index
+  was still settling, minutes after the ingest - it is not the state the reader
+  gets, and it is kept only as the example of the mistake;
+- the before/after is therefore less precise than it looks, and with the case
+  corrected below the head movement is **one question**. It cannot be attributed to
+  the strip. The honest label is: **a small head loss, inside the bank's 2-4 point
+  floor, with a plausible cause** - and one measured gain, the multi-hop, which is
+  the one the change was for.
+
+The index was also rebuilt twice between the two readings (the first ingest
+attempt re-upserted all 6,712 records before its delete failed), and insertion
+history is exactly the thing that moved ranks in the scratch-namespace lesson
+above. Both confounds are named here rather than argued away.
 
 The case: `unitrules#000002541` is **reachable** for the Harlequin question at
-rank **#16** of 25 on the deployed namespace (its old `~2` sat at #7 before the
-change - the merged record is shorter and lost the army-rule text that was helping
-it match). It was verified reachable before the bank expectation moved, and the
-fixture entry now says in as many words that the id move was a re-addressing of a
-merged id, not a relaxation.
+rank **#16** of 25 on the deployed namespace, and the entry is **fully found** where
+it used to be partial. The correction matters: before this change the harness line
+read `expected 2 groups, found 1 (best rank #7)` and the missing group was the
+ability - the #7 was the FAQ's rank and `unitrules#000002541~2` was not in the top
+20 at all. So the movement is **missing -> #16**, a gain, corroborated by multi-hop
+5/12 -> 6/12. There is no #7 -> #16 slide. It was verified reachable before the
+bank expectation moved, and the fixture entry now says in as many words that the id
+move was a re-addressing of a merged id, not a relaxation.
+
+**What the strip actually traded.** The duplicated generic text was doing retrieval
+work: it carried the words a question about a datasheet shares with its faction
+(here, "Harlequin" and the army rule), so removing it costs a little head precision
+and buys the multi-hop case. The link line preserves the NAME and nothing else, so
+the dense leg loses bridging text the lexical leg keeps - the grep leg still sees
+`- ability: Deadly Demise` and reaches the datasheet. That is the lever for the
+next slice: a record could carry a short "what this links to" context line - the
+target's name plus a phrase of its own text - without duplicating anyone's text.
 
 Three deviations from the dry run, none rounded:
 - the build lands **6,712** records, not the payloads' 6,735: 25 index pages are

@@ -2795,6 +2795,20 @@ export async function pruneIndex(opts) {
   return report;
 }
 
+// A rebuild that would delete most of a namespace is a bug wearing a rebuild's
+// clothes: a corpus read from the wrong directory, a payload grouped by the wrong
+// field, a scrape that half-wrote. One of tonight's two bugs would have deleted
+// 5,769 of 6,829 faction records had only the diff been right about it, and only
+// a hand-written diff caught it. The guard stops the run instead, and the way past
+// it is a flag someone has to type on purpose.
+export const MAX_DELETE_FRACTION = 0.25;
+export function massDeleteGuard(name, vanished, known) {
+  if (!known || !vanished) return null;
+  if (vanished <= known * MAX_DELETE_FRACTION) return null;
+  return 'refusing to delete ' + vanished + ' of ' + known + ' ids in ' + name +
+    ' (more than ' + Math.round(MAX_DELETE_FRACTION * 100) + '%): pass --allow-mass-delete if that is intended';
+}
+
 // --- ingest -----------------------------------------------------------------
 // Only what changed. A dataslate moves a handful of rules; re-embedding every
 // section to pick them up would spend the daily update budget on text that did
@@ -2825,6 +2839,11 @@ export async function ingest(only, opts) {
     const vanished = Object.keys(state).filter(id => !currentIds.has(id));
     const ns = namespaceFor(source.set);
     const unchanged = payload.sections.length - changed.length;
+    const guard = massDeleteGuard(ns + ' (' + source.name + ')', vanished.length, Object.keys(state).length);
+    if (guard) {
+      if (dryRun) { report.guard = report.guard || []; report.guard.push(guard); }
+      else if (!(opts && opts.allowMassDelete)) throw new Error(guard);
+    }
     if (dryRun) {
       report.sources.push({ source: source.name, sections: payload.sections.length, upserted: 0, deleted: 0, unchanged, planned: changed.length, vanishedPlanned: vanished.length, rebuild: ledger.length + 1, dryRun: true });
       report.upserted += 0;
@@ -2949,7 +2968,7 @@ async function main() {
   if (flag('--ingest')) {
     const dryRun = flag('--dry-run');
     if (dryRun) console.log('dry run - nothing is written to the index or to the state files');
-    const r = await ingest(only, { set, dryRun });
+    const r = await ingest(only, { set, dryRun, allowMassDelete: flag('--allow-mass-delete') });
     for (const s of r.sources) {
       if (s.skipped) { console.log(s.source.padEnd(17) + ' skipped: ' + s.skipped); continue; }
       const rebuild = 'rebuild #' + s.rebuild;
@@ -2959,6 +2978,7 @@ async function main() {
       }
       console.log(s.source.padEnd(17) + ' ' + String(s.sections).padStart(5) + ' sections, ' + String(s.upserted).padStart(5) + ' embedded, ' + String(s.unchanged).padStart(5) + ' unchanged, ' + String(s.deleted).padStart(3) + ' deleted  (' + rebuild + ')');
     }
+    for (const g of (r.guard || [])) console.log((dryRun ? 'GUARD ' : '') + g);
     console.log(dryRun ? 'would upsert ' + (r.planned || 0) : 'total upserted ' + r.upserted + ', deleted ' + r.deleted);
     const tr = r.traces || {};
     console.log('traces     ' + String(tr.files || 0).padStart(5) + ' file(s), ' + String(tr.kept || 0).padStart(5) + ' kept, ' + String(tr.removed || 0).padStart(3) + ' past ' + (tr.months || TRACE_RETENTION_MONTHS) + ' months' + (dryRun ? '  (dry run - nothing deleted)' : (tr.deleted && tr.deleted.length ? '  files removed: ' + tr.deleted.join(', ') : '')));

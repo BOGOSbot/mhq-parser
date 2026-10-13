@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LINK_BLOCK_MAX, MIN_PART, WIKI_BUDGET, chars, distribution, idReport, planWiki, renderLinks, resolveLinks, splitWithin, stripBuiltBlock } from '../src/wiki-plan.mjs';
 import { carryStamps, toSection, writeWikiCorpus } from '../src/wiki-build.mjs';
-import { DELETE_BATCH, scrapeBuildsWiki, textHash } from '../src/rules-corpus.mjs';
+import { DELETE_BATCH, MAX_DELETE_FRACTION, massDeleteGuard, scrapeBuildsWiki, textHash } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -176,6 +176,18 @@ t('a text that does not end with the block is left alone',
 // 1,619. The batch size must stay under the limit, and the ingest must go through
 // the batching helper rather than calling the endpoint once with the whole list.
 t('the delete batch stays under the endpoint limit', DELETE_BATCH < 1000, true);
+// The guard that would have stopped tonight's 5,769-record deletion.
+ok('a quarter of a namespace is allowed', massDeleteGuard('factions', 1700, 6829) === null);
+ok('just over a quarter is refused', massDeleteGuard('factions', 1800, 6829) !== null);
+ok('and the refusal names the flag', /--allow-mass-delete/.test(massDeleteGuard('factions', 5769, 6829)));
+ok('an empty state is not a mass delete', massDeleteGuard('factions', 5, 0) === null);
+t('the fraction stays at a quarter', MAX_DELETE_FRACTION, 0.25);
+ok('the ingest asks the guard before it deletes', /const guard = massDeleteGuard\(/.test(fs.readFileSync(path.join(__dirname, '..', 'src', 'rules-corpus.mjs'), 'utf8')));
+// An ability record is not a card of a pseudo-faction, and is not lost either.
+const abilityPlan = planWiki({ rules: [], factions: [{ id: 'ability#x', set: 'factions', source: 'factions-csv', heading: 'Deadly Demise', text: 'Deadly Demise\nFrom detonating ammo stores.', kind: 'ability' }], abilities: [], factionsCsv: [] });
+t('an ability record makes no pseudo-faction index', abilityPlan.records.filter(r => /^faction-index#/.test(r.id)).length, 0);
+t('and it is emitted unchanged', abilityPlan.records.map(r => r.id), ['ability#x']);
+t('with its kind', abilityPlan.index.get('ability#x').kind, 'ability');
 ok('the ingest deletes through deleteIds', /const deleted = await deleteIds\(vanished/.test(fs.readFileSync(path.join(__dirname, '..', 'src', 'rules-corpus.mjs'), 'utf8')));
 
 // A record that arrives with its own kind keeps it: the extractor's ability records
