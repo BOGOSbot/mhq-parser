@@ -210,6 +210,14 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 .psource{display:inline-block;margin-top:10px;color:var(--acc);text-decoration:none;font-size:12.5px}
 .psource:hover{text-decoration:underline}
 @media (min-width:560px){.pop{align-items:center;padding:20px}.popsheet{border-radius:12px}}
+/* Two judges: the binding verdict first, the second opinion under it, and the
+   annotation that says which one stands when they disagree. */
+.secondv{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.secondhead{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:5px}
+.sreason{color:var(--dim);font:11px var(--mono)}
+.dispute{margin-top:12px;padding:10px 12px;border:1px solid rgba(232,180,74,.5);border-radius:8px;background:rgba(232,180,74,.06)}
+.dispute .dtitle{color:var(--warn);font:600 11.5px var(--mono);letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px}
+.dispute .note{margin-top:0}
 .corpusdate{color:var(--dim);font:11.5px system-ui;border-left:1px solid var(--line);padding-left:14px}
 .footlinks{display:flex;gap:10px;align-items:center}
 .footlinks a{display:inline-flex;color:var(--dim);padding:4px;border-radius:7px}
@@ -319,6 +327,12 @@ var I18N = {
     readingFindings: 'reading the findings...',
     writingAnswer: 'writing the answer...',
     judgeTitle: 'Judge',
+    secondJudge: 'Second judge',
+    judgeNoReasoning: 'without reasoning',
+    judgeReasoning: 'with reasoning',
+    judgeDisagreeTitle: 'The two judges disagree',
+    judgeDisagreeNo: 'The second judge does not think these findings answer the question. That is the more cautious verdict, so the answer above is not confirmed.',
+    judgeDisagreeYes: 'The second judge would answer from these findings, but the first judge found them insufficient. The cautious verdict stands: the answer above stays a statement of absence.',
     answerTitle: 'Answer',
     termsTitle: 'Searched for',
     termsNote: 'The corpus is English, so these terms were searched alongside the translated question. They are search input, not a translation of the rules.',
@@ -440,6 +454,12 @@ var I18N = {
     readingFindings: 'lecture des constats...',
     writingAnswer: 'rédaction de la réponse...',
     judgeTitle: 'Juge',
+    secondJudge: 'Second juge',
+    judgeNoReasoning: 'sans raisonnement',
+    judgeReasoning: 'avec raisonnement',
+    judgeDisagreeTitle: 'Les deux juges ne sont pas d\u2019accord',
+    judgeDisagreeNo: 'Le second juge estime que ces constats ne répondent pas à la question. C\u2019est l\u2019avis le plus prudent : la réponse ci-dessus n\u2019est pas confirmée.',
+    judgeDisagreeYes: 'Le second juge répondrait à partir de ces constats, mais le premier les a jugés insuffisants. L\u2019avis prudent l\u2019emporte : la réponse ci-dessus reste une absence de réponse.',
     answerTitle: 'Réponse',
     termsTitle: 'Termes cherchés',
     termsNote: 'Le corpus est en anglais : ces termes ont été cherchés en plus de la question traduite. Ce sont des termes de recherche, pas une traduction des règles.',
@@ -1010,6 +1030,26 @@ function citeLink(c, label) {
   return a;
 }
 
+// The judge card, drawn from both verdicts. The binding one is always first; the
+// second judge is appended under it with its own reasoning setting, so the
+// reader can see which verdict gated the prose and which arrived afterwards.
+function renderVerdicts(state) {
+  var card = state.verdict;
+  card.textContent = '';
+  card.appendChild(el('h2', null, t('judgeTitle')));
+  if (!state.judge) { card.appendChild(el('div', 'note waiting', t('readingFindings'))); return; }
+  card.appendChild(verdictLine(state.judge, state.judgeAttempt));
+  if (state.judge2) {
+    var box = el('div', 'secondv');
+    var head = el('div', 'secondhead');
+    head.appendChild(el('span', 'leg anchor', t('secondJudge')));
+    head.appendChild(el('span', 'sreason', state.judge2.reasoning === 'none' ? t('judgeNoReasoning') : t('judgeReasoning')));
+    box.appendChild(head);
+    box.appendChild(verdictLine(state.judge2.judge, 0));
+    card.appendChild(box);
+  }
+}
+
 function verdictLine(judge, attempt) {
   var wrap = el('div');
   // The verdict after a widening is a second verdict, and saying so stops it
@@ -1205,7 +1245,7 @@ function startResult(lang) {
   host.appendChild(answerCard);
   var rest = el('div');
   host.appendChild(rest);
-  return { verdict: verdict, findingSlot: findingSlot, answer: answerCard, rest: rest, findings: [], terms: [], translation: null, card: false };
+  return { verdict: verdict, findingSlot: findingSlot, answer: answerCard, rest: rest, findings: [], terms: [], translation: null, card: false, judge: null, judge2: null, judgeAttempt: 0, disputed: false };
 }
 
 // --- stage progress ---------------------------------------------------------
@@ -1393,16 +1433,34 @@ function applyEvent(ev, state) {
     return;
   }
   if (ev.type === 'judge') {
-    state.verdict.textContent = '';
-    state.verdict.appendChild(el('h2', null, t('judgeTitle')));
-    state.verdict.appendChild(verdictLine(ev.judge, ev.attempt));
+    // Two verdicts, two slots. The second is never allowed to overwrite the
+    // first: it is a second opinion, and the reader is owed both.
+    if (ev.second) state.judge2 = { judge: ev.judge, reasoning: ev.reasoning || '' };
+    else { state.judge = ev.judge; state.judgeAttempt = ev.attempt || 0; }
+    renderVerdicts(state);
     flash(state.verdict);
     // Only a final verdict closes the judge stage; an interim one is about to be
     // superseded, so closing it would show progress that has not happened.
     if (ev.final !== false) doneStage('judge', ev.elapsedMs);
     else setStageActive('judge');
+    // The status line keeps the binding verdict's wording; the second judge is
+    // reported in the card and, when it disagrees, in the annotation.
+    if (ev.second) return;
     var no = ev.judge && ev.judge.answered === false;
     setStatus(t('judgeIn') + (ev.elapsedMs / 1000).toFixed(1) + 's - ' + (no ? t('judgeNo') : t('judgeYes')), no ? 'warn' : 'ok');
+    return;
+  }
+  if (ev.type === 'reconcile') {
+    // The prose was written before this verdict landed and may already have been
+    // read, so the contradiction is annotated on top of it - never a silent
+    // replacement. The conservative verdict is named in both directions.
+    state.disputed = true;
+    var dispute = el('div', 'dispute');
+    dispute.appendChild(el('div', 'dtitle', t('judgeDisagreeTitle')));
+    dispute.appendChild(el('div', 'note', ev.conservative === 'second' ? t('judgeDisagreeNo') : t('judgeDisagreeYes')));
+    state.answer.appendChild(dispute);
+    flash(state.answer);
+    setStatus(t('judgeDisagreeTitle'), 'warn');
     return;
   }
   if (ev.type === 'answer') {
@@ -1420,6 +1478,9 @@ function applyEvent(ev, state) {
   if (ev.type === 'done') {
     finishProgress();
     if (state.card) { setStatus('', ''); return; }
+    // A disagreement outlives the request: clearing it here would erase the one
+    // line that says the answer is provisional.
+    if (state.disputed) { setStatus(t('judgeDisagreeTitle'), 'warn'); return; }
     var pending = state.verdict.querySelector('.waiting') || state.answer.querySelector('.waiting');
     // A finished request says nothing here: the timings are in the bar and the
     // count is the findings card's own title. A stream that ended without a part

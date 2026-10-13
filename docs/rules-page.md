@@ -14,8 +14,9 @@ functionality document for that page; the army-list parser has its own in
   "english": true, "stream": true }` and answers with the findings, the judge's
   verdict and the compiled answer. `stream: true` sends one JSON object per line
   (`start`, `translation`, `terms`, `findings`, `escalate`, `judge`, `answer`,
-  `done`) so the page can draw the findings before the prose exists. A datasheet
-  question replaces that run with a single `card` event - see *The unit card*.
+  `done`), plus `card` for a datasheet question and `reconcile` when the two
+  judges disagree - see *The unit card* and *Two judges, one answer*. The stream
+  is what lets the page draw the findings before the prose exists.
 - `GET /health` publishes `corpus` (sections per half, build date, edition),
   the edition, and both inference routes. The page no longer prints the key
   state: which models a deployment uses is not the reader's business, and a
@@ -121,6 +122,36 @@ those.
    only. Every `[n]` marker resolves to a finding that was really retrieved; the
    server builds the citation link from the record, so a marker and a link
    cannot drift apart.
+
+## Two judges, one answer
+
+The judge decides whether the findings answer the question, and its verdict is
+binding. It is also the step accuracy leans on hardest: the same judge without
+its reasoning scored 61.8% where thinking it scored 79.4%. So the page runs both.
+
+- The **binding** judge is the one the setting names - fast mode asks it not to
+  reason, deep lets it think (`medium`). It gates the widening and whether the
+  writer writes at all.
+- The **second** judge is the other setting, fired beside the writer. The prose
+  never waits for it: `findings`, `judge`, `answer`, then the second `judge`. In
+  fast mode the reader keeps the fast answer and the careful verdict arrives
+  after it, as information rather than as a delay; in deep mode the careful
+  verdict is already the binding one and the quick second opinion cannot upgrade
+  anything.
+- The **conservative** verdict stands. A second judge saying `insufficient`
+  when the first said `answered` downgrades the answer that was already sent; a
+  second judge saying `answered` never turns a refusal into prose. Neither
+  replaces the prose - the reader may already have read it - so the
+  contradiction is an annotation on the answer (the stream's `reconcile` event),
+  naming both verdicts. `reconcileVerdicts` is that rule, on its own, and
+  `tests/test-judge.mjs` holds it.
+- Both verdicts are printed with their confidence and their reasoning setting
+  (`second judge - with reasoning`).
+- The verdict is a model call read by the reader, so **it follows the reader's
+  language**; the passages stay exactly as the corpus writes them.
+- A trace carries `judge2` and `judgeDisagreement`, so the disagreement rate is
+  `count(judgeDisagreement) / count(traces with judge2)` - measurable from the
+  traces without a separate benchmark run.
 
 ## Retrieval
 
@@ -271,6 +302,9 @@ and whether the judge reasons.
 |---|---|---|---|---|
 | fast | 5 a side | 2 passes | 60 | no reasoning |
 | deep | 10 a side | 3 passes | 80 | reasons (`medium`) |
+
+Each setting also names the other's judge as its second opinion (`second` in
+`ASK_MODES`: fast pairs its quick judge with the thinking one, deep the reverse).
 
 `ASK_MODES` in `rules-corpus.mjs` is the only place they are written down;
 `askMode()` maps an unknown or missing value to `deep`, so a client that does

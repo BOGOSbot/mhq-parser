@@ -74,6 +74,21 @@ t('whitespace is empty too', writerMode({ answer: '   ' }), 'empty');
 t('a cut call is a timeout', writerMode({ answer: '', failed: 'timeout' }), 'timeout');
 t('a refusal is a decline', writerMode({ answer: 'The findings do not answer this question.', declined: true }), 'declined');
 t('the trace carries the mode', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: '', failed: 'timeout' }).writer, 'timeout');
+
+// --- two judges, and the disagreement rate they exist to measure -------------
+// The second verdict and the flag are the whole measurement: without both in the
+// trace, the rate would need the benchmark Mandal does not want yet.
+const twoJudges = buildTrace({
+  id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []),
+  answer: 'A rule [1].', judge: { answered: true, confidence: 'high' },
+  judge2: { answered: false, confidence: 'med', reasoning: 'medium' }, judgeDisagreement: true,
+});
+t('the trace carries the second verdict', twoJudges.judge2, { answered: false, confidence: 'med', reasoning: 'medium' });
+t('the trace carries the disagreement flag', twoJudges.judgeDisagreement, true);
+t('the binding verdict is unchanged beside it', twoJudges.judge, { answered: true, confidence: 'high' });
+const oneJudge = buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: 'A rule [1].', judge: { answered: true, confidence: 'high' } });
+t('a single-judge trace has no second verdict', oneJudge.judge2 === undefined, true);
+t('and no disagreement', oneJudge.judgeDisagreement, false);
 t('an answered trace is ok', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: 'A rule [1].' }).writer, 'ok');
 
 // --- where it is written -----------------------------------------------------

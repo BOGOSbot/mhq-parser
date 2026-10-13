@@ -1,5 +1,5 @@
 import {
-  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, normalizeConfidence, normalizeWiden, parseJsonObject, termCount, termPresent, widenPlan,
+  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, judgePrompt, normalizeConfidence, normalizeWiden, parseJsonObject, reconcileVerdicts, termCount, termPresent, widenPlan,
 } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
@@ -114,6 +114,32 @@ t('deep lets the judge reason', ASK_MODES.deep.reasoning, 'medium');
 t('fast looks shallower', ASK_MODES.fast.first < ASK_MODES.deep.first, true);
 t('fast widens fewer times', ASK_MODES.fast.passes < ASK_MODES.deep.passes, true);
 t('fast gives the reranker a smaller net', ASK_MODES.fast.jevMax < ASK_MODES.deep.jevMax, true);
+// Both judges always run, and they are always two different settings: the one
+// the reader picked gates the prose, the other is the second opinion.
+t('fast mode pairs its quick judge with the thinking one', ASK_MODES.fast.second, 'medium');
+t('deep mode pairs its thinking judge with the quick one', ASK_MODES.deep.second, 'none');
+t('the two judges never run the same setting', ASK_MODES.fast.reasoning !== ASK_MODES.fast.second && ASK_MODES.deep.reasoning !== ASK_MODES.deep.second, true);
+
+// --- two verdicts on the same findings --------------------------------------
+// The conservative verdict stands. A second judge saying 'insufficient'
+// downgrades the answer that was already written; a second judge saying
+// 'answered' never turns a refusal into prose.
+t('two yeses agree', reconcileVerdicts({ answered: true }, { answered: true }), { disagreement: false, conservative: 'binding' });
+t('two nos agree', reconcileVerdicts({ answered: false }, { answered: false }), { disagreement: false, conservative: 'binding' });
+t('the second refusing what the first accepted is the binding one', reconcileVerdicts({ answered: true }, { answered: false }), { disagreement: true, conservative: 'second' });
+t('the first refusing keeps the binding even when the second would answer', reconcileVerdicts({ answered: false }, { answered: true }), { disagreement: true, conservative: 'binding' });
+t('an unparseable verdict raises no disagreement', reconcileVerdicts({ answered: null }, { answered: true }), { disagreement: false, conservative: 'binding' });
+t('a missing second verdict raises no disagreement', reconcileVerdicts({ answered: true }, null), { disagreement: false, conservative: 'binding' });
+
+// --- the verdict follows the reader's language ------------------------------
+// The passages are the corpus's English and stay that way; the verdict is a
+// model call read by the reader, so it is asked in the page's language.
+const passages = [{ set: 'rules', heading: 'Fall Back', text: 'Until the end of the turn, unless otherwise stated, your unit is not eligible to shoot.' }];
+const promptEn = judgePrompt('a question', passages);
+const promptFr = judgePrompt('a question', passages, { lang: 'fr' });
+t('the English prompt asks for the verdict in English', /it is shown to the reader in full, so do not trail off\./.test(promptEn), true);
+t('the French prompt asks for the verdict in French', /in French/.test(promptFr), true);
+t('the French prompt keeps the passages untouched', promptFr.indexOf('Until the end of the turn') !== -1, true);
 
 // --- the escalation policy --------------------------------------------------
 const at = n => ({

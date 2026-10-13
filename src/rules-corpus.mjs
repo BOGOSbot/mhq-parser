@@ -1667,6 +1667,12 @@ export function judgePrompt(question, passages, opts) {
   // A long list must not starve each passage, and a long passage must not starve
   // the rest of the list.
   const cap = Math.max(400, Math.min(per, Math.floor(total / Math.max(1, passages.length))));
+  // The passages stay in the corpus's English; the verdict is read by the reader
+  // and is therefore written in the page's language. The rule names quoted inside
+  // it are still the rule names.
+  const why = String(o.lang || '').slice(0, 2) === 'fr'
+    ? '- why: say which passage states what, and what is missing when it is not answered. Two or three sentences on one line, in French (the passages and the rule names quoted from them stay in English); it is shown to the reader in full, so do not trail off.'
+    : '- why: say which passage states what, and what is missing when it is not answered. Two or three sentences on one line; it is shown to the reader in full, so do not trail off.';
   return [
     'You are grading a retrieval system for Warhammer 40,000 11th edition rules.',
     '',
@@ -1684,8 +1690,22 @@ export function judgePrompt(question, passages, opts) {
     '- confidence: how sure you are of that verdict. "high" when a passage states the rule outright, "med" when the passages are about the right subject but do not settle it, "low" when the retrieval looks off-topic or the question names something absent from the passages. Always give one of the three.',
     '- widen: only when answered is false, which half to search deeper next. "rules" if it is the core rules that are missing, "faction" if it is a datasheet, stratagem or enhancement, "both" if you cannot tell which. Always give one of the three.',
     '- passages: the numbers that carry the answer, best first; [] if none do.',
-    '- why: say which passage states what, and what is missing when it is not answered. Two or three sentences on one line; it is shown to the reader in full, so do not trail off.',
+    why,
   ].join('\n');
+}
+
+// Two verdicts on the same findings. The page runs a second judge beside the
+// writer, and when the two disagree the CONSERVATIVE one stands: an
+// 'insufficient' from either verdict is the answer, and a second 'answered'
+// never overturns a refusal. The caller annotates the answer it already sent
+// rather than replacing it, so this only decides which verdict is doing the
+// binding and whether anything needs saying at all.
+export function reconcileVerdicts(binding, second) {
+  const a = binding ? binding.answered : null;
+  const b = second ? second.answered : null;
+  if (a === null || a === undefined || b === null || b === undefined) return { disagreement: false, conservative: 'binding' };
+  if (a === b) return { disagreement: false, conservative: 'binding' };
+  return { disagreement: true, conservative: b === false ? 'second' : 'binding' };
 }
 
 // 'medium' and 'normal' are what a model reaches for when it is not given the
@@ -1711,7 +1731,7 @@ export function normalizeWiden(value) {
 export async function judgeCoverage(question, passages, key, opts) {
   const o = opts || {};
   const callOpts = o.reasoning === undefined ? { json: true } : { json: true, reasoning: o.reasoning };
-  const prompt = judgePrompt(question, passages);
+  const prompt = judgePrompt(question, passages, o);
   let obj = parseJsonObject(await fastText(prompt, key, 4000, callOpts));
   // A small model sometimes answers the judgement in prose instead of the object
   // it was asked for. The verdict is binding - an unparseable one is read as
@@ -1775,8 +1795,8 @@ export const MAX_PASSES = Math.max(1, Number(process.env.RULES_MAX_PASSES) || 3)
 // prompt, and the recall the benchmark puts at 93.1% against 96.6%, with the
 // anchoring still guaranteeing the rule the question names.
 export const ASK_MODES = {
-  fast: { first: 5, passes: 2, reasoning: 'none', grepNet: 50, jevMax: 60 },
-  deep: { first: 10, passes: 3, reasoning: 'medium', grepNet: 60, jevMax: 80 },
+  fast: { first: 5, passes: 2, reasoning: 'none', second: 'medium', grepNet: 50, jevMax: 60 },
+  deep: { first: 10, passes: 3, reasoning: 'medium', second: 'none', grepNet: 60, jevMax: 80 },
 };
 export function askMode(value) {
   const s = String(value == null ? '' : value).toLowerCase().trim();

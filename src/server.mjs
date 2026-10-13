@@ -34,7 +34,7 @@ import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, indexInfo, looksForeign, readAllCorpus, translateQuestion } from './rules-corpus.mjs';
+import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, indexInfo, judgeCoverage, looksForeign, readAllCorpus, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled } from './rules-traces.mjs';
 import { unitCard } from './unit-card.mjs';
 
@@ -884,7 +884,9 @@ async function handleRulesAsk(req, res) {
       fastKey: keys.fast,
       topKs: [mode.first],
       passes: mode.passes,
-      judgeOpts: { reasoning: mode.reasoning },
+      // The verdict is shown to the reader, so both judges write it in the
+      // reader's language; the passages stay as the corpus writes them.
+      judgeOpts: { reasoning: mode.reasoning, lang: answerLang },
       dual: {
         rulesCorpus: corpora().rules,
         factionsCorpus: corpora().factions,
@@ -918,6 +920,40 @@ async function handleRulesAsk(req, res) {
     const judge = outcome.judge;
     const payload = toPayload(outcome.findings);
 
+    // The SECOND judge: the reasoning setting the reader did not pick, fired
+    // beside the writer so the prose never waits for it. In fast mode that is the
+    // thinking judge - the reader keeps the fast answer and the careful verdict
+    // lands after, as information rather than as a delay. In deep mode the
+    // binding judge is already the careful one and the second opinion is the
+    // quick one, which cannot upgrade anything.
+    //
+    // Either way the CONSERVATIVE verdict stands: a second judge saying
+    // 'insufficient' downgrades the answer visibly and is never outvoted by the
+    // first, and a second judge saying 'answered' never turns a refusal into
+    // prose. Nothing here replaces the answer - the reader may already have read
+    // it - so a disagreement is annotated on top of it.
+    const secondReasoning = mode.second === undefined ? (modeName === 'fast' ? 'medium' : 'none') : mode.second;
+    let secondJudge = null;
+    let judgeDisagreement = false;
+    const emitSecond = () => {
+      if (!secondJudge) return;
+      const reconciled = reconcileVerdicts(judge, secondJudge);
+      judgeDisagreement = reconciled.disagreement;
+      emit({ type: 'judge', judge: secondJudge, final: true, attempt: 0, second: true, reasoning: secondReasoning, elapsedMs: Date.now() - started });
+      if (judgeDisagreement) {
+        emit({
+          type: 'reconcile',
+          // Which verdict is doing the binding now. 'second' when the second
+          // judge refused what the first accepted; 'binding' when the first
+          // refused and the second would have answered.
+          conservative: reconciled.conservative,
+          binding: { answered: judge ? judge.answered : null, confidence: (judge && judge.confidence) || '' },
+          second: { answered: secondJudge.answered, confidence: secondJudge.confidence || '' },
+          elapsedMs: Date.now() - started,
+        });
+      }
+    };
+
     // The trace is written after the answer exists, never in front of it: a
     // retention feature that can fail an answer is a worse bug than a lost trace.
     // Off unless RULES_TRACES is set (src/rules-traces.mjs), and that switch stays
@@ -939,6 +975,8 @@ async function handleRulesAsk(req, res) {
           counts,
           findings,
           judge,
+          judge2: secondJudge,
+          judgeDisagreement,
           answer: answerText,
           failed: writer && writer.failed,
           declined: writer && writer.declined,
@@ -962,6 +1000,13 @@ async function handleRulesAsk(req, res) {
       }
       return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: [], judge, answer: '', steps, elapsedMs, notes });
     }
+
+    // The second judge starts here, beside the writer, and is only awaited after
+    // the answer has been sent. It starts after the empty-retrieval return above
+    // so a question that matched nothing does not spend a call judging nothing.
+    const secondRun = judgeCoverage(asked, outcome.findings, keys.fast, { reasoning: secondReasoning, lang: answerLang })
+      .then(v => { secondJudge = v; })
+      .catch(() => { /* a second opinion that never arrives leaves the first standing */ });
 
     // The judge has already run; the answer waits on it rather than racing it,
     // because whether to write one at all depends on its verdict.
@@ -996,13 +1041,15 @@ async function handleRulesAsk(req, res) {
 
     if (writerFailed) {
       const elapsedMs = Date.now() - started;
+      if (stream) emit({ type: 'answer', answer: '', failed: true, elapsedMs });
+      await secondRun;
+      emitSecond();
       trace('', { failed: writerFailed });
       if (stream) {
-        emit({ type: 'answer', answer: '', failed: true, elapsedMs });
-        emit({ type: 'done', elapsedMs, steps, failed: true, unresolved: outcome.unresolved, escalated: outcome.escalated });
+        emit({ type: 'done', elapsedMs, steps, failed: true, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDisagreement });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: payload, judge, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: payload, judge, judge2: secondJudge, judgeDisagreement, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
     }
 
     emit({ type: 'answer', answer, unresolved: outcome.unresolved, elapsedMs: Date.now() - started });
@@ -1015,13 +1062,19 @@ async function handleRulesAsk(req, res) {
       emit({ type: 'judge', judge: Object.assign({}, judge, { answered: false, confidence: judge && judge.confidence, why: ((judge && judge.why) || '') + ' - the writer declined these findings' }), final: true, attempt: 0, elapsedMs: Date.now() - started });
     }
 
+    // The second verdict lands after the prose, which is the whole point: the
+    // reader keeps the fast answer and a later contradiction is information.
+    await secondRun;
+    emitSecond();
+
     trace(answer, { declined: writerDeclined });
     if (stream) {
-      emit({ type: 'done', elapsedMs: Date.now() - started, steps, unresolved: outcome.unresolved, escalated: outcome.escalated });
+      emit({ type: 'done', elapsedMs: Date.now() - started, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDisagreement });
       return res.end();
     }
     return json(res, 200, {
       question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: payload, judge, answer,
+      judge2: secondJudge, judgeDisagreement,
       counts, steps, elapsedMs: Date.now() - started, mode: modeName,
       unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,
     });

@@ -120,6 +120,11 @@ export function buildTrace(input) {
     counts: input.counts || { rules: 0, factions: 0 },
     findings: traceFindings(input.findings),
     judge: { answered: !!(input.judge && input.judge.answered), confidence: (input.judge && input.judge.confidence) || '' },
+    // The second judge, and whether the two disagreed. The rate this exists to
+    // make measurable is count(judgeDisagreement) / count(traces with judge2): a
+    // question the binding judge accepted and the careful one refused is the
+    // reader's one signal that the prose is provisional.
+    judgeDisagreement: !!input.judgeDisagreement,
     answer: input.answer || '',
     writer: writerMode(input),
     steps: input.steps || [],
@@ -135,6 +140,13 @@ export function buildTrace(input) {
   // records which datasheet, so card questions are filterable instead of looking
   // like an answer whose writer came back empty.
   if (input.card) t.card = { id: input.card.id, name: input.card.name };
+  if (input.judge2) {
+    t.judge2 = {
+      answered: input.judge2.answered === true,
+      confidence: input.judge2.confidence || '',
+      reasoning: input.judge2.reasoning || '',
+    };
+  }
   return t;
 }
 
