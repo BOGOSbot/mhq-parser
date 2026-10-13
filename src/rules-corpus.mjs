@@ -1895,7 +1895,10 @@ export const MAX_PASSES = Math.max(1, Number(process.env.RULES_MAX_PASSES) || 3)
 // buys its seconds where the seconds are - the judge does not think - and pays
 // for them where the benchmark says the thinking is worth it (79.4% -> 61.8% on
 // the real bank). Taking fewer findings is the second half of it: a smaller
-// prompt, and the recall the benchmark puts at 93.1% against 96.6%, with the
+// prompt that costs no recall once the rerank is on - on the 29-question bank
+// per-side 5 is at least as good as 10 on every reported column (reachable
+// 51.7 / 86.2 / 93.1 / 93.1 against 48.3 / 86.2 / 93.1 / 93.1, MRR 0.670 against
+// 0.648) while handing the judge 13.1 passages instead of 23.4 - with the
 // anchoring still guaranteeing the rule the question names.
 export const ASK_MODES = {
   fast: { first: 5, passes: 2, reasoning: 'none', second: 'medium', grepNet: 50, jevMax: 60 },

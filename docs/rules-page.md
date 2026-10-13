@@ -388,12 +388,14 @@ Why the split falls where it does, measured:
 - Turning the judge's reasoning off takes the judge from a mean 33.0s / median
   20.6s to 7.1s / 6.0s, and costs accuracy: 79.4% to 61.8% on the same 17
   questions.
-- Taking 5 a side instead of 10 does not cost recall on the retrieval bank once
-  the rerank is on: reachable hit@10 and hit@20 are 93.1% at both, and 5 leads
-  reachable hit@1 (51.7% against 48.3%) and MRR (0.670 against 0.648) at 13.1
-  passages a question against 23.4. Both deltas sit inside the bank's 2-4 point
-  floor, so this is "5 is not the depth that loses recall", not "5 is better".
-  The retired 27/29 against 28/29 reading came from fallback rows.
+- Taking 5 a side instead of 10 costs no recall once the rerank is on: on the
+  29-question bank 5 is at least as good as 10 on all eight columns (exact
+  31.0 / 82.8 / 89.7 / 89.7 against 27.6 / 79.3 / 89.7 / 89.7; reachable
+  51.7 / 86.2 / 93.1 / 93.1 against 48.3 / 86.2 / 93.1 / 93.1; MRR 0.670 against
+  0.648) while handing the judge 13.1 passages instead of 23.4. The retired
+  27/29 against 28/29 reading came from fallback rows. Each arm is a single run,
+  so the run-to-run spread is unmeasured: the direction is what the sweep shows,
+  not a fixed margin.
 
 End to end on the Asurmen question, same server, same moment: fast judged in
 about 2 seconds where deep judged in about 49, both answering `high` on the
@@ -475,11 +477,20 @@ answer the same question differently.
   hit@1 +10.3 at 5, +6.9 at 10, +17.3 at 15, +10.4 at 20, MRR +0.098 to +0.157 -
   and it moves hit@5 sharply at 5 and 10 (65.5 -> 82.8 and 65.5 -> 79.3 exact)
   and hit@20 negatively at 10 and 20 (93.1 -> 89.7, one expected question out of
-  the top 20 each). Every delta is the order of the bank's 2-4 point floor, so
-  **the sweep picks no default**: per-side 20 buys the best exact hit@1 (37.9) at
-  the worst hit@10 (82.8) and 43.7 passages, per-side 15 has the best reachable
-  head and hit@20 (55.2, 96.6) at 33.5 passages, and 5 reaches the same
-  hit@10/20 as 10 with half the passages. The paired table
+  the top 20 each). The head gain is therefore evidence in one direction: it is
+  consistent at all four depths and larger than the 2-4 point floor. What the
+  sweep cannot do is separate the depths from one another - their differences
+  sit inside the floor - so it picks no default. One comparison is not close,
+  though: **per-side 5 with the rerank on is at least as good as per-side 10 on
+  all eight columns** (exact 31.0 / 82.8 / 89.7 / 89.7 against 27.6 / 79.3 /
+  89.7 / 89.7; reachable 51.7 / 86.2 / 93.1 / 93.1 against 48.3 / 86.2 / 93.1 /
+  93.1; MRR 0.670 against 0.648) while handing the judge 13.1 passages instead
+  of 23.4, so the smaller prompt costs the reader nothing on this bank. Per-side
+  20 buys the best exact hit@1 (37.9) at the worst hit@10 (82.8) and 43.7
+  passages; per-side 15 has the best reachable head and hit@20 (55.2, 96.6) at
+  33.5. Each arm is a single run, so the rerank's run-to-run spread is
+  unmeasured and the depth differences could come from that rather than from
+  depth. The paired table
   (`retrieval-topk-sweep-paid-paired.txt`) shows how the aggregate moves: at
   per-side 10 the rerank ranks 10 questions higher and 7 lower, recovering one
   miss and losing two.
