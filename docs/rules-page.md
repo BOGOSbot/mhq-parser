@@ -140,6 +140,16 @@ Per half, `retrieveWide` does this:
   front of them, together with each retriever's own first hit, and a rule's own
   clarifications (`Heading > Child`) travel with it.
 
+**The reranker's measured effect on the retrieval bank is zero.** When the free
+Jev gateway answered 429 on every call, the dual arm was re-measured on the
+promoted corpus and reproduced the earlier Jev-on run to the digit: hit@1 27.6,
+hit@5 65.5, hit@10 86.2, hit@20 93.1, MRR 0.449, and every per-kind MRR. On these
+29 questions the rerank changed no aggregate. That is not the same as changing
+nothing - a per-question reordering that cancels out at the aggregate would look
+identical, and per-question effects are not measured here. What is measured is
+the cost: a round trip per half per pass, on a free tier that throttles, for no
+aggregate gain on this bank. `RULES_JEV_GATEWAY=openrouter` is the paid fallback.
+
 Three rules in that path exist because of one question - "Est-ce que Asurmen
 peut réembarquer avec son normal move après avoir tiré ?" - which was answered
 without the Embarking rule ever being shown to the judge:

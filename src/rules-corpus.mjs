@@ -1827,7 +1827,13 @@ export async function answerableFindings(question, opts) {
   let plan = { rules: base, factions: base };
   for (let i = 0; i < passes; i++) {
     const dual = await retrieve(question, plan);
-    const findings = dual.all.map((s, idx) => findingFor(s, idx + 1));
+    let findings = dual.all.map((s, idx) => findingFor(s, idx + 1));
+    // A curator, when one is given, sees the list the judge and the writer are
+    // about to see and may drop, cap and reorder it. The previous attempt travels
+    // with it, so a passage an earlier pass already passed over can be dropped
+    // rather than judged again. Nothing changes by default: with no curator the
+    // list is exactly what it always was.
+    if (o.curate) findings = o.curate(findings, { question, plan, attempt: i, previous: attempts[attempts.length - 1] });
     if (o.onFindings) o.onFindings({ plan, findings, dual, attempt: i });
     const verdict = await judge(question, findings);
     const final = verdict.answered === true || i === passes - 1;

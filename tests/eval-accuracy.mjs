@@ -41,7 +41,8 @@ import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { credential, fastCredential, jevKeyName, modelCredential, FAST_MODEL, MODEL } from '../src/rules.mjs';
-import { answerableFindings, compileFindings, parseJsonObject, readAllCorpus, translateQuestion } from '../src/rules-corpus.mjs';
+import { answerableFindings, compileFindings, entityAnchors, parseJsonObject, readAllCorpus, translateQuestion } from '../src/rules-corpus.mjs';
+import { makeCurator } from './curate.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -52,6 +53,10 @@ const ONLY_THREAD = value('--thread');
 const OUT = value('--out') || 'accuracy.ndjson';
 const ONLY_IDS = (value('--ids') || '').split(',').map(s => s.trim()).filter(Boolean);
 const INCLUDE_EMPTY = flag('--all');
+// Arm B: curate the context the judge and the writer see. Off unless asked for -
+// the default path must stay the one the page runs.
+const CURATE = flag('--curate');
+const CURATE_CHARS = parseInt(value('--curate-chars') || '1200', 10);
 
 const GRADER_ENDPOINT = process.env.RULES_GRADER_ENDPOINT || 'https://api.deepseek.com/chat/completions';
 const GRADER_MODEL = process.env.RULES_GRADER_MODEL || 'deepseek-chat';
@@ -147,13 +152,24 @@ export async function answerQuestion(question, lang) {
   const outcome = await answerableFindings(asked, {
     fastKey,
     dual: { rulesCorpus, factionsCorpus, jevKey, terms: translation.terms, grepNet: 60, jevMax: 80 },
+    curate: CURATE ? makeCurator({ passageChars: CURATE_CHARS, corpora: { rules: rulesCorpus, factions: factionsCorpus }, terms: translation.terms, dropPassedOver: true }) : undefined,
     onFindings: ({ findings: found }) => { findings = found; },
   });
   const tJudge = Date.now();
   const answer = await compileFindings(asked, outcome.findings, modelKey, { lang: lang || ANSWER_LANG });
   const tAnswer = Date.now();
+  // The ids the judge and the writer were shown, and whether the record the
+  // question names by title was among them. A flip between two arms is only
+  // readable next to that.
+  const anchoredIds = new Set();
+  for (const half of [rulesCorpus, factionsCorpus]) {
+    for (const a of entityAnchors(asked, half, 2, translation.terms)) anchoredIds.add(a.id);
+  }
   return {
     asked, answer, findings: outcome.findings.length,
+    findingIds: outcome.findings.map(x => x.id),
+    anchored: outcome.findings.some(x => anchoredIds.has(x.id)),
+    answerChars: String(answer || '').length,
     judge: { answered: outcome.judge.answered, confidence: outcome.judge.confidence, why: outcome.judge.why },
     unresolved: outcome.unresolved, escalated: outcome.escalated,
     ms: { translate: tRetrieve - t0, retrieveJudge: tJudge - tRetrieve, answer: tAnswer - tJudge, total: tAnswer - t0 },
@@ -175,6 +191,7 @@ async function main() {
   }
   console.log('questions ' + questions.length + '  (' + done.size + ' already in ' + OUT + ')');
   console.log('bank ' + BANK + '  answer language ' + ANSWER_LANG + '   writer ' + MODEL + '   judge/translate ' + FAST_MODEL + '   grader ' + GRADER_MODEL + (GRADER_KEY ? '' : '  GRADER KEY MISSING'));
+  console.log('context ' + (CURATE ? 'CURATED (passages capped at ' + CURATE_CHARS + ' chars, near-duplicates dropped, anchored first, passed-over dropped)' : 'as today') + '   judge reasoning ' + (process.env.RULES_FAST_REASONING || 'model default'));
 
   const counts = { correct: 0, partial: 0, wrong: 0, ungraded: 0 };
   let graded = 0, refused = 0, seconds = 0;
