@@ -16,8 +16,15 @@ functionality document for that page; the army-list parser has its own in
   (`start`, `translation`, `terms`, `findings`, `escalate`, `judge`, `answer`,
   `done`) so the page can draw the findings before the prose exists. A datasheet
   question replaces that run with a single `card` event - see *The unit card*.
-- `GET /health` publishes `corpus` (sections per half, build date, edition) and
-  both inference routes, which the page's badge shows.
+- `GET /health` publishes `corpus` (sections per half, build date, edition),
+  the edition, and both inference routes. The page no longer prints the key
+  state: which models a deployment uses is not the reader's business, and a
+  missing key still says so in the status line rather than in the header.
+- The footer is chrome, not prose: three icons (source code, issue tracker,
+  Wahapedia) and the provenance line `Données de : 2026-10-13 (aujourd'hui) ·
+  11e édition`. The build date comes from `corpus.updated`; the edition is
+  localised by the page from the `wh40k11ed` slug, because the server's label is
+  English and it was the one English string left on the French page.
 
 ## The corpus
 

@@ -92,7 +92,7 @@ Le raisonnement, c'est l'attente du début, et le **juge le garde** : sur les m�
 
 Le corpus se rafraîchit hors ligne : `node src/rules-corpus.mjs --check` compare le marqueur d'édition et de version de chaque source à ce qui est stocké, `--scrape --set factions` retélécharge l'export CSV, `--ingest` réindexe, `--prune` supprime de l'index les vecteurs que le corpus n'a plus. C'est le marqueur qui dit si notre copie a vieilli, pas la date du dernier passage.
 
-**Quand cette copie a-t-elle été faite ?** `GET /health` publie `corpus.updated` — la date de construction de notre copie, tirée de la copie elle-même — et non un verdict sur ce qu'un autre site aurait ou non publié. Le pied de page /rules l'affiche. Une date exacte qu'on peut vérifier vaut mieux qu'une comparaison grossière qui date trois choses différentes.
+**Quand cette copie a-t-elle été faite ?** `GET /health` publie `corpus.updated` — la date de construction de notre copie, tirée de la copie elle-même — et non un verdict sur ce qu'un autre site aurait ou non publié. Le pied de page /rules l'affiche — « Données de : <date> (<âge>) · 11e édition » — à côté de trois icônes (code source, suivi des bogues, Wahapedia). L'édition y reste visible parce que la 10e et la 11e répondent différemment à la même question, et elle est traduite par la page, pas reprise du libellé anglais du serveur. Une date exacte qu'on peut vérifier vaut mieux qu'une comparaison grossière qui date trois choses différentes.
 
 
 ## Options
@@ -367,7 +367,7 @@ Reasoning is the upfront wait, and the **judge keeps it**: on the same 17 questi
 
 The corpus refreshes offline: `node src/rules-corpus.mjs --check` compares each source's edition-and-version marker against what is stored, `--scrape --set factions` re-downloads the CSV export, `--ingest` re-indexes, `--prune` deletes index vectors the corpus no longer has. It is the marker that says whether our copy has gone stale, not the date we last looked.
 
-**When was this copy made?** `GET /health` publishes `corpus.updated` — the build date of our own copy, read from the corpus itself — rather than a verdict on what some other site may or may not have published. The /rules footer shows it. An exact date a reader can check beats a coarse comparison dating three different things.
+**When was this copy made?** `GET /health` publishes `corpus.updated` — the build date of our own copy, read from the corpus itself — rather than a verdict on what some other site may or may not have published. The /rules footer shows it — "Data from: <date> (<age>) · 11th edition" — beside three icons (source code, issue tracker, Wahapedia). The edition stays visible because 10th and 11th answer the same question differently, and the page localises it rather than reusing the server's English label. An exact date a reader can check beats a coarse comparison dating three different things.
 
 
 ## Flags

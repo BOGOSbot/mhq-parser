@@ -46,8 +46,9 @@ default â€” free). The fast route is everything that only decides or rewrites â€
 translated question, the search terms, the judge (`RULES_FAST_*`; with none of the
 three set it IS the writer's route). Any OpenAI-compatible endpoint will do; a
 custom endpoint is taken at its word about auth (no key unless `RULES_*_KEY`).
-`/health` and the page badge report both, and the badge shows one name when the
-two routes are the same.
+``/health` reports both, and reports one name when the two routes are the same.
+The header no longer prints them: the key state is a deployment fact, not the
+reader's.
 
 **Reasoning** (`RULES_FAST_REASONING`, `RULES_MODEL_REASONING`). Sent as
 `reasoning_effort`, only where chosen and never to a custom endpoint unless asked.
