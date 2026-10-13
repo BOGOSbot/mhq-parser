@@ -40,6 +40,11 @@
     { "q": "How many points does a Space Marine Captain cost?", "expect": [], "kind": "out-of-corpus" },
     { "q": "What does the Oath of Moment ability do?", "expect": [], "kind": "out-of-corpus" },
     { "q": "Which detachments can Space Marines take?", "expect": [], "kind": "out-of-corpus" },
-    { "q": "What is the best paint scheme for Ultramarines?", "expect": [], "kind": "out-of-corpus" }
+    { "q": "What is the best paint scheme for Ultramarines?", "expect": [], "kind": "out-of-corpus" },
+    {"q":"Can a unit shoot after it Fell Back?","expect":["core-rules#3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"],"kind":"player"},
+    {"q":"Can dragons with fuegan arrive from reserves in melta range ?","expect":["core-rules#Arriving-from-Strategic-Reserves->-INGRESS-MOVE","unitrules#000000574"],"kind":"player"},
+    {"q":"Does armour of contempt work on a 2+ save in 11th edition? Or is it still the rule where you cannot keep a 2+?","expect":["stratagem#000011205002"],"kind":"cross-source"},
+    {"q":"How many VP does a datasheet cost?","expect":[],"kind":"out-of-corpus"},
+    {"q":"What are the football rules in Warhammer 40,000?","expect":[],"kind":"out-of-corpus"}
   ]
 }

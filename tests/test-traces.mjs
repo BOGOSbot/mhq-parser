@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
 import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
-import { classifyTrace, harvestOrder, loadTraces, tracePriority } from './promote-traces.mjs';
+import { classifyTrace, harvestOrder, loadTraces, promotedQuestion, tracePriority } from './promote-traces.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -199,6 +199,9 @@ t('the harvest order is down, cited, then the rest',
     { id: 'b', at: '2026-10-02T00:00:00.000Z', answer: 'x [1]' },
     { id: 'c', at: '2026-10-03T00:00:00.000Z', vote: 'down' },
   ]).map(x => x.id), ['c', 'b', 'a']);
+t('the promoted question defaults to the trace\'s own', promotedQuestion({ question: 'Can a unit shoot?' }, null), 'Can a unit shoot?');
+t('--q overrides it, trimmed', promotedQuestion({ question: 'Une unite peut-elle tirer ?' }, '  Can a unit shoot?  '), 'Can a unit shoot?');
+t('an empty override leaves nothing to promote', promotedQuestion({ question: 'FR ?' }, '   '), '');
 t('a cited verdict stores the numbers, not the prose',
   buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', answer: 'a', judge: { answered: true, passages: [2, 5], why: 'Passage [2] says so.' } }).judge.cited, [2, 5]);
 

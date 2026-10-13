@@ -97,6 +97,15 @@ export function traceStatus(trace, bankQs) {
   return 'promotable';
 }
 
+// The bank is English and the trace's question may not be. The question text is a
+// human judgement like the expectation is, so --q overrides it; it defaults to the
+// trace's own, and an empty override is refused upstream rather than shipping a
+// blank question into the bank.
+export function promotedQuestion(trace, override) {
+  if (override === undefined || override === null) return String((trace && trace.question) || '');
+  return String(override).trim();
+}
+
 // One line, the way the fixture writes them: a single JSON object per line.
 export function entryLine(entry) {
   return JSON.stringify({ q: entry.q, expect: entry.expect, kind: entry.kind });
@@ -219,21 +228,25 @@ async function main() {
   const id = value('--id');
   const expect = (value('--expect') || '').split(',').map(s => s.trim()).filter(Boolean);
   const kind = value('--kind');
+  const qOverride = value('--q');
   const dryRun = flag('--dry-run');
-  if (!id) { console.log('usage: node tests/promote-traces.mjs --list | --promote --id <traceId> --expect <id>[,<id>] --kind <label> [--dry-run]'); process.exitCode = 1; return; }
+  if (!id) { console.log('usage: node tests/promote-traces.mjs --harvest | --promote --id <traceId> --expect <id>[,<id>] --kind <label> [--q <english question>] [--dry-run]'); process.exitCode = 1; return; }
   if (!KINDS.includes(kind)) { console.log('--kind must be one of: ' + KINDS.join(', ')); process.exitCode = 1; return; }
   const trace = traces.find(t => t.id === id);
   if (!trace) { console.log('no trace with id ' + id + ' in ' + dir); process.exitCode = 1; return; }
   const status = traceStatus(trace, bankQs);
   if (status !== 'promotable') { console.log('refusing: ' + status + '  (' + String(trace.question).slice(0, 70) + ')'); process.exitCode = 1; return; }
+  const question = promotedQuestion(trace, qOverride);
+  if (!question) { console.log('refusing: the promoted question is empty (--q overrides the trace)'); process.exitCode = 1; return; }
+  if (new Set((bankQs || []).map(norm)).has(norm(question))) { console.log('refusing: already-in-bank  (' + question + ')'); process.exitCode = 1; return; }
   const unknown = validateExpectation(expect, readAllCorpus());
   if (unknown.length) { console.log('these expectation ids are not in the corpus: ' + unknown.join(', ')); process.exitCode = 1; return; }
 
-  const line = entryLine({ q: trace.question, expect, kind });
+  const line = entryLine({ q: question, expect, kind });
   const text = fs.readFileSync(bankPath, 'utf8');
   const next = insertEntry(text, line);
   console.log('trace    ' + trace.id + '  writer ' + (trace.writer || 'unknown'));
-  console.log('question ' + trace.question);
+  console.log('question ' + question + (qOverride !== null ? '   (--q override of: ' + trace.question + ')' : ''));
   console.log('entry    ' + line);
   if (dryRun) { console.log('dry run - nothing written'); return; }
   fs.writeFileSync(bankPath, next);
