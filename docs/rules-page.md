@@ -215,7 +215,7 @@ writes the answer the reader sees. The **fast route** (`RULES_FAST_*`) is
 everything that only decides or rewrites - the translation, the search terms,
 the judge - and with none of the three set it is the writer's own route. Keys
 come from the environment first, then from the DSH credential store at
-`.dsh/.credentials.yaml`; `RULES_CREDENTIALS` points at another file.
+`.dsh/.credentials.yaml`; `DSH_CREDENTIALS` points at another file.
 
 The judge keeps its reasoning (`RULES_FAST_REASONING`, `medium` by default):
 without it the same judge scored 61.8% where thinking it scored 79.4%. A call
