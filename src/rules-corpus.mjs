@@ -2059,6 +2059,10 @@ export async function compileFindings(question, findings, key, opts) {
 export function findingFor(section, n) {
   return {
     n,
+    // The record's own key, so a consumer can point back at the section without
+    // copying its text - the question traces keep the pointer and drop the
+    // passage (src/rules-traces.mjs).
+    id: section.id || '',
     set: section.set || 'rules',
     source: section.source,
     faction: section.faction || '',

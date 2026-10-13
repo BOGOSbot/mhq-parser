@@ -35,6 +35,7 @@ import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarni
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
 import { ASK_MODES, VECTOR_BACKEND, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, indexInfo, looksForeign, readAllCorpus, translateQuestion } from './rules-corpus.mjs';
+import { appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled } from './rules-traces.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -864,7 +865,39 @@ async function handleRulesAsk(req, res) {
     const judge = outcome.judge;
     const payload = toPayload(outcome.findings);
 
+    // The trace is written after the answer exists, never in front of it: a
+    // retention feature that can fail an answer is a worse bug than a lost trace.
+    // Off unless RULES_TRACES is set (src/rules-traces.mjs), and that switch stays
+    // off until the page carries the retention line the reader is owed.
+    const trace = answerText => {
+      if (!tracesEnabled()) return;
+      try {
+        appendTrace(buildTrace({
+          id: newTraceId(),
+          at: new Date().toISOString(),
+          edition: rulesEdition,
+          corpusAt: corpusState().updated,
+          mode: modeName,
+          lang: lang || 'und',
+          question,
+          asked,
+          terms,
+          signals: traceSignals(question, findings),
+          counts,
+          findings,
+          judge,
+          answer: answerText,
+          steps,
+          elapsedMs: Date.now() - started,
+          unresolved: outcome.unresolved,
+          escalated: outcome.escalated,
+          attempts: outcome.attempts,
+        }));
+      } catch (e) { /* a trace must never break an answer */ }
+    };
+
     if (!findings.length) {
+      trace('');
       const notes = ['nothing in the corpus matched that question'];
       const elapsedMs = Date.now() - started;
       if (stream) {
@@ -904,6 +937,7 @@ async function handleRulesAsk(req, res) {
       emit({ type: 'judge', judge: Object.assign({}, judge, { answered: false, confidence: judge && judge.confidence, why: ((judge && judge.why) || '') + ' - the writer declined these findings' }), final: true, attempt: 0, elapsedMs: Date.now() - started });
     }
 
+    trace(answer);
     if (stream) {
       emit({ type: 'done', elapsedMs: Date.now() - started, steps, unresolved: outcome.unresolved, escalated: outcome.escalated });
       return res.end();

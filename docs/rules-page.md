@@ -3,7 +3,8 @@
 The page that answers a Warhammer 40,000 11th-edition rules question by citing
 the rules, rather than by trusting what a model already believes. This is the
 functionality document for that page; the army-list parser has its own in
-`docs/developer-doc.md`.
+`docs/developer-doc.md`. What the page keeps about a question is in
+`docs/question-traces.md`.
 
 ## Routes
 
