@@ -73,6 +73,42 @@ The bank is a different store and is never swept. A question promoted into
 trace that produced it can expire without losing the question; the sweep only
 ever touches `workspace/rules-traces/`.
 
+## Promoting a trace into the bank
+
+The bank grows from real questions, and a trace is the raw material. Two commands
+(`tests/promote-traces.mjs`):
+
+```
+node tests/promote-traces.mjs --list
+node tests/promote-traces.mjs --promote --id <traceId> --expect <id>[,<id>] --kind <label> [--dry-run]
+```
+
+`--list` shows every trace with its question, when it was asked, the language, the
+setting, the writer's mode, how many findings it carries and the first few record
+ids it retrieved - so a human has something to pick from. `--promote` appends one
+entry to `tests/fixtures/rules-questions.json`.
+
+- **The label is the human's, never derived.** The bank's kinds name the failure
+  mode a question is put in the bank to catch; the derivation agreed with 63.6% of
+  the hand labels and caught none of the cross-source or multi-hop ones, which is
+  why a trace writes `kind: unknown`. Promotion is where the judgement is made.
+- **The expectation is the human's too**, but the trace offers candidates: the
+  records it really retrieved, in the order the page put them, which is already the
+  anchoring order. `--expect` is validated against the corpus, so a typo is caught
+  before it becomes a fixture.
+- **A broken run cannot be promoted.** A trace whose `writer` is `empty` or
+  `timeout` is refused, and a trace written before that field existed is judged on
+  its answer instead - an empty answer is a writer failure whatever the field says.
+- **A question already in the bank is not promoted twice**, matched on the question
+  text, case- and space-insensitive.
+- **Existing entries are never touched.** The new one is appended as text before
+  the closing bracket, so the fixture's own formatting and every line above it
+  survive byte for byte.
+- **Promoting copies what the bank needs and nothing else** - the question, the
+  expectation, the label. The raw trace still expires on its own clock (12 months,
+  swept with the monthly ingest) and the trace id is not stored in the fixture: the
+  bank is the durable record.
+
 ## The taxonomy
 
 The eval bank labels a question `literal`, `paraphrase`, `player` or
