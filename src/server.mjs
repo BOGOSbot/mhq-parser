@@ -35,7 +35,7 @@ import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarni
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, indexInfo, judgeCoverage, looksForeign, readAllCorpus, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
-import { appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled } from './rules-traces.mjs';
+import { appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 import { unitCard } from './unit-card.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -729,6 +729,23 @@ export function looksFrench(text) {
   return /[àâçéèêëîïôûùüÿœ]|\b(le|la|les|des|une|un|est|que|qui|pour|avec|sur|dans|je|peut|doit|figurine|unité|règle|test|combien)\b/i.test(String(text));
 }
 
+// A thumb on one answer. The vote is written into the trace record it belongs to,
+// by question id, and only when traces are on: the record exists whether or not
+// anyone votes, so a vote for a question nobody kept is dropped silently instead
+// of starting a second store. Boolean, one id one vote, and nothing in it
+// identifies the reader - it is one value beside a random id.
+async function handleRulesVote(req, res) {
+  let body = {};
+  try { body = JSON.parse((await readBody(req, 4096)) || '{}'); } catch (e) { return fail(res, 400, 'bad JSON body'); }
+  const id = typeof body.id === 'string' ? body.id : '';
+  const vote = body.vote === 'up' || body.vote === 'down' ? body.vote : '';
+  if (!id || !vote) return fail(res, 400, 'need { id, vote: up|down }');
+  if (!tracesEnabled()) return json(res, 200, { ok: true, saved: false });
+  let saved = false;
+  try { saved = voteTrace(id, vote); } catch (e) { saved = false; }
+  return json(res, 200, { ok: true, saved });
+}
+
 async function handleRulesAsk(req, res) {
   let body;
   try { body = JSON.parse((await readBody(req, 128 * 1024)) || '{}'); }
@@ -757,6 +774,8 @@ async function handleRulesAsk(req, res) {
   const keys = { jev: credential(jevKeyName()), model: modelCredential(), fast: fastCredential() };
   const steps = [];
   const started = Date.now();
+  // One id per question, made once: the trace and the thumb have to agree on it.
+  const traceId = tracesEnabled() ? newTraceId() : '';
   const timed = async (name, fn) => {
     const at = Date.now();
     const value = await fn();
@@ -1177,6 +1196,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/parse-list') return handleParseList(req, res, u);
   if (req.method === 'POST' && u.pathname === '/feedback') return handleFeedback(req, res);
   if (req.method === 'POST' && u.pathname === '/rules/ask') return handleRulesAsk(req, res);
+  if (req.method === 'POST' && u.pathname === '/rules/vote') return handleRulesVote(req, res);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 

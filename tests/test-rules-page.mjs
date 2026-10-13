@@ -51,7 +51,8 @@ t('and in the French table too', missingFr, []);
 // the tables like every other one.
 const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild', 'rankN', 'rankScore', 'rankScoreTitle', 'matchedWords', 'openPassage', 'moreFindings', 'close', 'openSource',
   'cardTitle', 'cardRanged', 'cardMelee', 'cardAbilities', 'cardKeywords', 'cardComposition', 'cardPoints', 'cardSourceNote', 'cardOpen',
-  'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'cardReady', 'streamCut', 'citedByJudge', 'verdictEvidence'];
+  'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'judgeDissentTitle', 'judgeDissentWeaker', 'judgeDissentOther',
+  'cardReady', 'streamCut', 'citedByJudge', 'verdictEvidence', 'voteHelp', 'voteUp', 'voteDown', 'voteThanks'];
 const absent = needed.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined);
 t('the new display labels exist in both languages', absent, []);
 
@@ -65,7 +66,7 @@ t('no reader-facing label is hardcoded in the script', hardcoded, []);
 // The passage popup reads the payload, never the network: one fetch of /health
 // is the only fetch outside /rules/ask on the page.
 const fetchCalls = Array.from(new Set(Array.from(PAGE.matchAll(/fetch\('([^']+)'/g)).map(m => m[1]))).sort();
-t('the page only fetches /health and /rules/ask', fetchCalls, ['/health', '/rules/ask']);
+t('the page only fetches the three routes it needs', fetchCalls, ['/health', '/rules/ask', '/rules/vote']);
 
 // The display the task asks for, asserted where it can be seen: findings above
 // the prose, re-rendered whenever a findings event lands, popup over payload.
@@ -105,6 +106,13 @@ ok('one place draws the findings list', /function renderFindings\(state\)/.test(
 
 // The non-stream JSON replies carry the same reconciliation the trace and the
 // stream do, or a JSON consumer cannot tell a dissent from a downgrade.
+// The thumb: drawn from the trace id, fired without ever delaying the answer, one
+// vote per id, and the same in both languages.
+ok('the page builds the vote row from the trace id', /if \(ev\.traceId\) voteRow\(ev\.traceId\);/.test(code));
+ok('the vote is a tap target a phone can hit', PAGE.indexOf('.vote .vbtn{min-height:44px') !== -1);
+ok('the vote is fire and forget', /fetch\('\/rules\/vote'/.test(code));
+ok('a second vote replaces the first', /made\.sent/.test(code));
+ok('the page ignores a vote the server could not keep', /out\.saved === false/.test(code));
 const server = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.mjs'), 'utf8');
 const jsonReplies = server.split('return json(res, 200,').slice(1);
 const withDisagreement = jsonReplies.filter(x => x.slice(0, 900).indexOf('judgeDisagreement') !== -1);

@@ -178,6 +178,33 @@ export function appendTrace(trace, dir) {
 // a line it cannot date is kept rather than deleted.
 export const TRACE_RETENTION_MONTHS = 12;
 
+// A reader's thumb, written into the trace record it belongs to, by question id.
+// The trace exists whether or not anyone votes - most readers never click - so
+// the vote is a bonus on top of the record, never the record itself. One id, one
+// vote: a second vote replaces the first. It returns false when there is no trace
+// to hold it (traces off, or the line already swept) and the page says nothing.
+// Nothing in it identifies the reader: it is one boolean beside a random id.
+export function voteTrace(id, vote, dir) {
+  const v = vote === 'up' || vote === 'down' ? vote : '';
+  if (!id || !v) return false;
+  const d = dir || TRACES_DIR;
+  let names = [];
+  try { names = fs.readdirSync(d); } catch { return false; }
+  for (const name of names.filter(n => /^\d{4}-\d{2}\.ndjson$/.test(n)).sort().reverse()) {
+    const file = path.join(d, name);
+    const lines = fs.readFileSync(file, 'utf8').split('\n');
+    let hit = false;
+    for (let i = 0; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      let t = null;
+      try { t = JSON.parse(lines[i]); } catch { continue; }
+      if (t && t.id === id) { t.vote = v; lines[i] = JSON.stringify(t); hit = true; break; }
+    }
+    if (hit) { fs.writeFileSync(file, lines.join('\n')); return true; }
+  }
+  return false;
+}
+
 export function traceCutoff(months, now) {
   const m = months === undefined ? TRACE_RETENTION_MONTHS : months;
   const n = now ? new Date(now) : new Date();

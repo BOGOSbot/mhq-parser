@@ -229,6 +229,13 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 .dissent{margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
 .dissent .dtitle{color:var(--dim);font:600 11.5px var(--mono);letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px}
 .dissent .note{margin-top:0}
+/* The thumb: a tap target, not a form. Never in front of the answer. */
+.vote{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.vote .vq{color:var(--dim);font:500 13px var(--sans);margin-bottom:8px}
+.vote .vbtns{display:flex;gap:10px}
+.vote .vbtn{min-height:44px;min-width:112px;padding:10px 16px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--fg);font:600 14px var(--sans);cursor:pointer}
+.vote .vbtn[aria-pressed='true']{border-color:var(--accent);color:var(--accent)}
+.vote .vnote{margin-top:8px;color:var(--dim);font:400 12.5px var(--sans);min-height:15px}
 .corpusdate{color:var(--dim);font:11.5px system-ui;border-left:1px solid var(--line);padding-left:14px}
 .footlinks{display:flex;gap:10px;align-items:center}
 .footlinks a{display:inline-flex;color:var(--dim);padding:4px;border-radius:7px}
@@ -384,6 +391,10 @@ var I18N = {
     passage: 'passage',
     cardTitle: 'Datasheet',
     cardReady: 'datasheet shown - the search for the rule runs on',
+    voteHelp: 'Was this answer useful?',
+    voteUp: 'Useful',
+    voteDown: 'Not useful',
+    voteThanks: 'Thank you, recorded anonymously.',
     cardLoadout: 'Equipped with: ',
     cardRanged: 'Ranged weapons',
     cardMelee: 'Melee weapons',
@@ -519,6 +530,10 @@ var I18N = {
     passage: 'passage',
     cardTitle: 'Fiche technique',
     cardReady: 'fiche affichée — la recherche de la règle continue',
+    voteHelp: 'Cette réponse vous a-t-elle été utile ?',
+    voteUp: 'Utile',
+    voteDown: 'Pas utile',
+    voteThanks: 'Merci, enregistré anonymement.',
     cardLoadout: 'Équipé de : ',
     cardRanged: 'Armes de tir',
     cardMelee: 'Armes de mêlée',
@@ -1309,6 +1324,39 @@ function unitCardView(c) {
 // until the slowest one finishes. Every slot is created up front, so nothing
 // moves when a later piece arrives. The judge sits at the top even though it
 // arrives last: it says whether the findings below it are worth reading.
+// One thumb up, one thumb down, on the answer that is about to arrive. Both are
+// tap targets a phone can hit, the POST is fire-and-forget, and a second vote
+// replaces the first: one id, one vote, and the server keeps the last one.
+function voteRow(id) {
+  var rest = document.getElementById('rest');
+  if (!rest || rest.querySelector('.vote')) return;
+  var row = el('div', 'vote');
+  row.appendChild(el('div', 'vq', t('voteHelp')));
+  var box = el('div', 'vbtns');
+  var made = {};
+  ['up', 'down'].forEach(function (v) {
+    var b = el('button', 'vbtn');
+    b.type = 'button';
+    b.textContent = v === 'up' ? t('voteUp') : t('voteDown');
+    b.setAttribute('aria-label', v === 'up' ? t('voteUp') : t('voteDown'));
+    b.onclick = function () {
+      if (made.sent) return;
+      made.sent = true;
+      if (made[v]) made[v].setAttribute('aria-pressed', 'true');
+      if (made[v === 'up' ? 'down' : 'up']) made[v === 'up' ? 'down' : 'up'].removeAttribute('aria-pressed');
+      fetch('/rules/vote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: id, vote: v }) })
+        .then(function (r) { return r.json(); })
+        .then(function (out) { made.sent = false; if (out && out.saved === false) return; row.querySelector('.vnote').textContent = t('voteThanks'); })
+        .catch(function () { made.sent = false; });
+    };
+    made[v] = b;
+    box.appendChild(b);
+  });
+  row.appendChild(box);
+  row.appendChild(el('div', 'vnote', ''));
+  rest.appendChild(row);
+}
+
 function startResult(lang) {
   resetProgress();
   var host = $('#result');
@@ -1475,7 +1523,15 @@ function flash(node) {
 function applyEvent(ev, state) {
   if (!ev || !ev.type) return;
   state.events = (state.events || 0) + 1;
-  if (ev.type === 'start') { startProgress(ev.stages); return; }
+  if (ev.type === 'start') {
+    startProgress(ev.stages);
+    // The thumb. It is drawn here, before the answer exists, so it can never
+    // delay or block the answer - and it is the only use of the trace id. When
+    // the trace is off the server sends no id and the page shows no vote: the
+    // vote is a bonus on top of a saved trace, never a store of its own.
+    if (ev.traceId) voteRow(ev.traceId);
+    return;
+  }
   // The server echoes the setting it actually ran, which is also what a shared
   // link or a curl says: the page draws it from its own toggle, so this only
   // keeps the state honest if the two ever disagree.

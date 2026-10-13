@@ -43,8 +43,20 @@ One JSON line per question (`src/rules-traces.mjs`):
 | `judge2` | the second judge's `answered`, `confidence`, `reasoning` |
 | `judgeDisagreement`, `judgeDowngrade`, `judgeDissentFrom` | whether the two disagreed, whether the dissent was allowed to downgrade the answer, and which judge it came from |
 | `answer` | the cited prose the reader saw |
+| `vote` | `up` or `down`, written after the fact by the thumb on the answer - absent until someone votes, and one vote per trace |
 | `steps`, `elapsedMs` | per-stage timing |
 | `unresolved`, `escalated`, `attempts` | how the search ended |
+
+## The thumb
+
+Every answer carries one thumb up and one thumb down. The vote is a boolean
+written **into the trace record it is about**, by question id, through
+`POST /rules/vote`; a second vote replaces the first. The trace is written
+whether or not anyone votes - most readers never click - so the vote is a bonus
+on top of the saved record, never the signal itself: a vote for a question whose
+line has been swept is dropped (`{ saved: false }`) rather than starting a
+second store. It adds no identifier: it is one value beside the question's random
+id, and it is stored with the question, apart from the corpus.
 
 ## Where it is written
 

@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
-import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, writerMode } from '../src/rules-traces.mjs';
+import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
+import { classifyTrace, loadTraces } from './promote-traces.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -165,6 +166,29 @@ console.log('taxonomy: best derivation agrees ' + agree + '/' + total + ' with t
 t('the derivation catches none of the bank cross-source questions', crossCaught, 0);
 t('the bank has cross-source questions to catch', crossHand > 0, true);
 t('the derivation is not good enough to store as the bank label', agree / total < 0.8, true);
+
+
+// --- the thumb: one vote per trace, written into the record ------------------
+const voteDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-vote-'));
+appendTrace(buildTrace({ id: 'abc12345', at: '2026-10-13T10:00:00.000Z', question: 'q', answer: 'a', judge: { answered: true } }), voteDir);
+appendTrace(buildTrace({ id: 'other999', at: '2026-10-13T10:01:00.000Z', question: 'q2', answer: 'a2', judge: { answered: true } }), voteDir);
+const reload = () => loadTraces(voteDir).find(x => x.id === 'abc12345');
+t('no vote before anyone clicks', reload().vote, undefined);
+t('a vote lands in the record it is about', voteTrace('abc12345', 'up', voteDir), true);
+t('the record carries it', reload().vote, 'up');
+t('a second vote replaces the first', [voteTrace('abc12345', 'down', voteDir), reload().vote], [true, 'down']);
+t('one id, one vote', loadTraces(voteDir).filter(x => x.id === 'abc12345').length, 1);
+t('the other record is untouched by the vote', loadTraces(voteDir).find(x => x.id === 'other999').vote, undefined);
+t('a vote for a swept or unknown question is dropped', voteTrace('nope', 'up', voteDir), false);
+t('an invented vote value is refused', voteTrace('abc12345', 'maybe', voteDir), false);
+t('and it does not overwrite the real one', reload().vote, 'down');
+t('the trace holds no identifier but its random id', Object.keys(reload()).filter(k => /^(ip|useragent|cookie|session|account|address)$/i.test(k)).length, 0);
+
+// --- the taxonomy label, for the promotion path -----------------------------
+t('the taxonomy labels a player question', classifyTrace({ question: 'can I shoot with my unit', findings: [{ id: 'x' }], signals: { firstPerson: true, termMatch: true, sources: ['core-rules'] } }), 'player');
+t('and a literal one', classifyTrace({ question: 'What is the Melta rule?', findings: [{ id: 'x' }], signals: { firstPerson: false, termMatch: true, sources: ['core-rules'] } }), 'literal');
+t('and a cross-source one', classifyTrace({ question: 'how does that detachment work', findings: [{ id: 'x' }], signals: { firstPerson: false, termMatch: false, sources: ['faction-sm'] } }), 'cross-source');
+t('and an out-of-corpus one', classifyTrace({ question: 'q', findings: [], signals: {} }), 'out-of-corpus');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
