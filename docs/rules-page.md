@@ -198,24 +198,21 @@ Per half, `retrieveWide` does this:
   front of them, together with each retriever's own first hit, and a rule's own
   clarifications (`Heading > Child`) travel with it.
 
-**The reranker's effect on the retrieval bank is not measured - and the
-pipeline it is graded against is not the page's path without a key.** The
-number that used to be quoted here (hit@1 27.6, hit@5 65.5, hit@10 86.2,
-hit@20 93.1, MRR 0.449) came from dual-arm runs taken while the free Jev
-gateway was answering 429 on every call. That is not a rerank-off measurement:
-the dual path makes the ranker optional and catches its throw, so the run fell
-back to the rank fusion order, and the counter incremented before the request,
-so every attempt was reported as a call. What those runs measure is the
-fallback pipeline, and it is reproducible deliberately: `--rerank off` keeps
-the key, keeps the whole downstream path - anchoring, the retriever head
-protection, a rule's clarifications - and skips only the call, and it
-reproduces those rows exactly at per-side 10 (27.6 / 65.5 / 86.2 / 93.1, MRR
-0.449, reachable 41.4 / 69 / 93.1 / 100, MRR 0.550, 23 passages a question).
-Passing no key is a different path: the no-key branch returns the fused top K
-before anchoring and clarification, and it scores 37.9 / 69 / 86.2 / 86.2 exact,
-MRR 0.508 (reachable 44.8 / 79.3 / 96.6 / 96.6, MRR 0.585) on the same 29
-questions. The cost side is real either way: a round trip per half per pass on a
-free tier that throttles. `RULES_JEV_GATEWAY=openrouter` is the paid fallback.
+**The rerank is measured now, on the paid route.** The numbers below come from
+dual-arm runs in which every call was answered - attempted 66, answered 66,
+failed 0, fallbacks 0 - which the harness prints itself, and it withholds the
+numbers entirely when any question falls back. Against a clean `--rerank off` control at the same depth, the rerank
+is not inert: reachable hit@1 41.4 -> 48.3 and MRR 0.550 -> 0.648 at per-side 10,
+51.7 against 41.4 and 0.670 against 0.515 at per-side 5, 55.2 against 37.9 and
+0.682 against 0.525 at per-side 15. It also costs: at per-side 10 and 20 it drops
+one expected question out of the top 20 (exact hit@20 93.1 -> 89.7), and 29
+questions resolve 2-4 points, so the sweep settles the direction - the rerank
+helps the reader-facing head - and leaves the size of the gain open. What the rerank is graded against matters:
+`--rerank off` keeps the key and the whole downstream path and skips only the
+call, and it reproduces the recorded no-rerank rows exactly; passing no key
+never enters the anchored path at all (37.9 / 69 / 86.2 / 86.2 exact, MRR 0.508).
+The cost side is real either way: a round trip per half per pass on a free tier
+that throttles. `RULES_JEV_GATEWAY=openrouter` is the paid fallback.
 
 Three rules in that path exist because of one question - "Est-ce que Asurmen
 peut réembarquer avec son normal move après avoir tiré ?" - which was answered
@@ -391,10 +388,12 @@ Why the split falls where it does, measured:
 - Turning the judge's reasoning off takes the judge from a mean 33.0s / median
   20.6s to 7.1s / 6.0s, and costs accuracy: 79.4% to 61.8% on the same 17
   questions.
-- Taking 5 a side instead of 10 costs recall: 27/29 questions retrieving an
-  expected section against 28/29 (93.1% against 96.6%) on the retrieval bank.
-  The anchoring is what keeps that cost small - the rule the question names
-  reaches the judge at either depth.
+- Taking 5 a side instead of 10 does not cost recall on the retrieval bank once
+  the rerank is on: reachable hit@10 and hit@20 are 93.1% at both, and 5 leads
+  reachable hit@1 (51.7% against 48.3%) and MRR (0.670 against 0.648) at 13.1
+  passages a question against 23.4. Both deltas sit inside the bank's 2-4 point
+  floor, so this is "5 is not the depth that loses recall", not "5 is better".
+  The retired 27/29 against 28/29 reading came from fallback rows.
 
 End to end on the Asurmen question, same server, same moment: fast judged in
 about 2 seconds where deep judged in about 49, both answering `high` on the
@@ -454,29 +453,56 @@ answer the same question differently.
   reading was never measured, so the two rows are not comparable on that column.
   Two questions that miss on the exact id ("what does the Advance move do", "what
   happens when a transport blows up") are reachable inside the top 20.
-- **The top-K sweep with the Jev rerank on is retracted; the recorded no-rerank
-  rows stand.** The sweep committed as "re-taken with the rerank on" fell back:
-  the free gateway was rate-limiting, the dual path swallowed every throw, and
-  the counter counted attempts as calls. Its "rerank on" rows are therefore
-  retracted - per-side 5 (31.0 / 72.4 / 79.3 / 79.3, MRR 0.494) and per-side 10,
-  15 and 20 reproducing the recorded no-rerank rows to the digit - along with
-  the conclusions drawn from them ("the rerank moves the small net and nothing
-  else", "per-side 10 is depth-true and head-false"), because those rows are the
-  fallback pipeline, not a ranked arm. What does hold, verified with the
-  counter: `--rerank off` reproduces the recorded per-side 10 row exactly
-  (27.6 / 65.5 / 86.2 / 93.1, MRR 0.449, reachable 41.4 / 69 / 93.1 / 100, MRR
-  0.550, candidates mean 23), and so does a rate-limited run that falls back -
-  they are the same path. The ON sweep at per-side 5/10/15/20 and the gate arm
-  on against off are re-run on the paid route (`RULES_JEV_GATEWAY=openrouter`),
-  and every reported row must show fallbacks 0: the harness prints attempted /
-  answered / fallbacks, marks a run DEGRADED when any question fell back, and
-  refuses to print bank numbers from it unless `--allow-degraded` is passed
-  (`RULES_JEV_STRICT=1` makes the throw propagate instead). Artifacts: the
-  retracted run is `workspace/eval/retrieval-topk-sweep-rerank-clean.txt` (raw,
-  mixed-encoding: `retrieval-topk-sweep-rerank.txt`, per-question table
-  `retrieval-topk-sweep-rerank-paired.txt`). The recorded gate rows
-  (`retrieval-gate.txt`, `retrieval-gate-lexical.txt`) are no-rerank and still
-  stand as such.
+- **The top-K sweep, taken clean on the paid Jev route (2026-10-13).** Every row
+  shows `attempted 66  answered 66  failed 0` and `fallbacks 0/33  clean`. The
+  OFF rows are the clean control (`--rerank off`: the key stays, only the call
+  is skipped) and they reproduce the recorded no-rerank rows exactly, which is
+  what makes them the comparison. Same command throughout
+  (`--retriever dual --net 60 --topk 20 --per-side K`):
+
+  | per-side | exact hit@1 / 5 / 10 / 20 | exact MRR | reachable hit@1 / 5 / 10 / 20 | reachable MRR | candidates |
+  |---|---|---|---|---|---|
+  | 5, rerank off (recorded, reproduced) | 24.1 / 65.5 / 72.4 / 72.4 | 0.403 | 41.4 / 69 / 75.9 / 75.9 | 0.515 | 12.7 |
+  | 5, rerank on | 31.0 / 82.8 / 89.7 / 89.7 | 0.534 | 51.7 / 86.2 / 93.1 / 93.1 | 0.670 | 13.1 |
+  | 10, rerank off (recorded, reproduced) | 27.6 / 65.5 / 86.2 / 93.1 | 0.449 | 41.4 / 69 / 93.1 / 100 | 0.550 | 23.0 |
+  | 10, rerank on | 27.6 / 79.3 / 89.7 / 89.7 | 0.501 | 48.3 / 86.2 / 93.1 / 93.1 | 0.648 | 23.4 |
+  | 15, rerank off (recorded, reproduced) | 27.6 / 62.1 / 82.8 / 93.1 | 0.433 | 37.9 / 72.4 / 93.1 / 100 | 0.525 | 32.6 |
+  | 15, rerank on | 34.5 / 79.3 / 89.7 / 93.1 | 0.535 | 55.2 / 86.2 / 93.1 / 96.6 | 0.682 | 33.5 |
+  | 20, rerank off (recorded, reproduced) | 27.6 / 62.1 / 82.8 / 93.1 | 0.445 | 37.9 / 72.4 / 93.1 / 96.6 | 0.534 | 42.5 |
+  | 20, rerank on | 37.9 / 82.8 / 82.8 / 89.7 | 0.545 | 48.3 / 89.7 / 89.7 / 93.1 | 0.644 | 43.7 |
+
+  The rerank improves the reader-facing head at every depth taken - reachable
+  hit@1 +10.3 at 5, +6.9 at 10, +17.3 at 15, +10.4 at 20, MRR +0.098 to +0.157 -
+  and it moves hit@5 sharply at 5 and 10 (65.5 -> 82.8 and 65.5 -> 79.3 exact)
+  and hit@20 negatively at 10 and 20 (93.1 -> 89.7, one expected question out of
+  the top 20 each). Every delta is the order of the bank's 2-4 point floor, so
+  **the sweep picks no default**: per-side 20 buys the best exact hit@1 (37.9) at
+  the worst hit@10 (82.8) and 43.7 passages, per-side 15 has the best reachable
+  head and hit@20 (55.2, 96.6) at 33.5 passages, and 5 reaches the same
+  hit@10/20 as 10 with half the passages. The paired table
+  (`retrieval-topk-sweep-paid-paired.txt`) shows how the aggregate moves: at
+  per-side 10 the rerank ranks 10 questions higher and 7 lower, recovering one
+  miss and losing two.
+  **The gate arm, on against off** (per-side 10, rerank on, paid): the Jev gate
+  routes 28/29 questions to the half their expectation lives in, never abstains
+  and is wrong once (Rapid Disembark -> factions, and that question is the miss);
+  it scores 34.5 / 79.3 / 86.2 / 86.2 exact, MRR 0.534, reachable 51.7 / 86.2 /
+  89.7 / 89.7, MRR 0.664, handing over 12.3 passages. The lexical gate abstains
+  on 4, is never wrong, routes 25/29, costs no call, and scores 27.6 / 79.3 /
+  89.7 / 89.7 exact, MRR 0.489, reachable 44.8 / 86.2 / 93.1 / 93.1, MRR 0.618
+  with 13.9 passages. The Jev gate wins reachable hit@1 (+6.9) and MRR (+0.046)
+  and loses hit@10/20 (89.7 against 93.1) to its one wrong route; the lexical
+  gate matches the dual arm's reachable hit@10/20 (93.1) with 13.9 passages
+  against 23.4. **The retracted run** - the free gateway answering 429, every
+  throw swallowed, attempts counted as calls - stays at
+  `retrieval-topk-sweep-rerank-clean.txt` with a header saying what it is; its
+  "rerank on" rows and the conclusions drawn from them ("the rerank moves the
+  small net and nothing else", "per-side 10 is depth-true and head-false") are
+  not used. Artifacts: `retrieval-topk-sweep-paid.txt`,
+  `retrieval-topk-sweep-paid-paired.txt`, `retrieval-gate-paid-on.txt`,
+  `retrieval-gate-paid-off.txt`, and the clean controls
+  `retrieval-topk-off-clean-{5,10,15,20}.txt`. Cost: 370 Jev calls at $0.000634,
+  about $0.23.
 - **A run that fell back is not reported.** The harness prints Jev calls as
   attempted / answered / failed and how many questions fell back, marks the run
   DEGRADED when any did, and withholds the bank numbers unless `--allow-degraded`
