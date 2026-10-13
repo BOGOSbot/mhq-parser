@@ -51,13 +51,21 @@ anchor and the text before the first boundary, so citations that already exist
 still resolve. core-rules went from 285 records to 339, rules-appendix from 149
 to 168, and the longest record from 1,938 to 2,000 characters.
 
-Known weaknesses of the current chunker, both measured:
+**A card is a record, not a paragraph inside someone else's record.** The FAQ
+and the errata are tables and divs, not headings - a `<td class="faq_Q">` cell
+and a `<div class="errata_H">` title - and the extractor only cuts at headings,
+so one card's question became the heading for every card after it. 96 FAQ cards
+and 9 errata entries in the core rules alone sat inside a 2,000-character record
+whose heading described a different rule, and the vector built from it described
+none of them well. `promoteFaqCards` turns each card's own title into a heading
+before the extractor runs, so the heading stack and the splitter see what a real
+heading would have given them. Records holding two or more answers went from 26
+to 0 in the rules half (15 of them over 700 characters), core-rules from 339 to
+377 records, rules-appendix from 168 to 178, event-companion from 75 to 81, and
+the spoiler toggles (`Show`, `Hide`) no longer appear as ancestors.
 
-- **Derived-title buckets run across cards.** 38 core-rules and 31
-  rules-appendix records take their heading from the first question in a body
-  that then spans several unrelated cards. The splitter now pulls the numbered
-  rules out of them, but the container's own label is still the first question
-  its body happened to start with.
+Moving records changes ids, so the benchmark grades two readings of every
+question - see *Measuring it*.
 
 The on-disk corpus, the CSV export and the index state live in
 `workspace/rules-corpus/` (untracked):
@@ -73,6 +81,17 @@ node src/rules-corpus.mjs --prune --set rules  # delete index vectors the corpus
 
 `RULES_CORPUS_DIR` points the whole thing elsewhere; `RULES_VECTOR_BACKEND=local`
 switches from Upstash to the local bge-m3 store.
+
+The index is kept in step with the corpus **by id**, not by count: `--ingest`
+embeds what changed and deletes what the corpus no longer has, `--stats` prints
+the two counts side by side, and `GET /health` publishes them with the difference
+(`ahead` / `behind`), so drift is visible without a shell. To prove it id for id,
+enumerate a namespace (`rangeIds`) and compare against the sections on disk. On
+2026-10-13 that was rules 690 vectors against 690 sections and factions 6,575
+against 6,575, nothing missing on either side, every rules vector from rebuild #3
+at 00:56Z. What `--ingest` cannot see is a vector whose id an older build
+dropped, because its own state agrees with the corpus; `--prune` is what catches
+those.
 
 ## The four steps
 
@@ -97,7 +116,19 @@ switches from Upstash to the local bge-m3 store.
 
 Per half, `retrieveWide` does this:
 
-- vector search, 20 hits;
+- vector search, 20 hits, asked DENSE (`queryMode` in `queryIndex`). The
+  index's own default is HYBRID - BM25 over the same text our grep leg already
+  scans, fused with the dense result we want - and on the retrieval bank
+  (pre-promotion corpus) dense-only put the expected section first 62.1% of the
+  time, MRR 0.696, against HYBRID's 58.6% / 0.679, DBSF 51.7% and sparse-only
+  41.4%. Through the page's merged path it still wins where it counts: on the
+  promoted corpus, reachable hit@10 93.1% against HYBRID's 89.7%. On the vector
+  leg *alone* HYBRID is now at least as good (reachable hit@1 65.5% against
+  58.6%), which is worth knowing but is not the page's path. `queryMode`,
+  `fusionAlgorithm` and `weightingStrategy` are all passed through when asked
+  for; the merge weights and the vector head protection default to the measured
+  values (1 and 1 - weighting 2 and 3, and protecting the top 3, all measured
+  worse);
 - a lexical pass over the whole corpus with the question's terms plus the
   translation's terms, net `max(60, K * 4)`;
 - reciprocal rank fusion of the two lists (their scores are not comparable, so
@@ -199,15 +230,37 @@ answer the same question differently.
   against `tests/fixtures/rules-questions.json`, whose expectations are section
   ids. This is the number the corpus and the retriever are graded on. This
   harness predates the two-half split and reads the whole corpus as one index.
+  Every expectation is checked against the corpus before grading: an id the
+  corpus does not name is reported, and resolved through the corpus's own id
+  function when the same heading still exists, instead of being scored as a
+  silent miss.
 - `node tests/eval-retrieval.mjs --retriever dual --per-side 10 --net 60` - the
-  page's own path. That is the arm the chunking was measured with: before, 29
-  graded questions at hit@1 31% / hit@5 69% / hit@10 86.2% / hit@20 89.7%, MRR
-  0.472; after, the same exact-id numbers 27.6% / 62.1% / 86.2% / 89.7%, MRR
-  0.437, and 41.4% / 69% / 93.1% / 96.6%, MRR 0.540 when a record the split put
-  under the expected one counts - which is what the reader actually gets. Two
-  questions that used to miss entirely ("what does the Advance move do", "what
-  happens when a transport blows up") now find the rule at #3 and #7 under its
-  parent.
+  page's own path, and the arm every chunking decision is measured on. It grades
+  the same 29 questions twice: **exact id** (the fixture as written) and **rule
+  reachable** (the expected record, or a record the splitter put under it,
+  `<id>->-<TITLE>`). Both are printed and neither stands in for the other,
+  because a rule the chunker moved is a real hit for the reader and a real miss
+  for the fixture.
+
+  | corpus | exact hit@1 / 5 / 10 / 20 | exact MRR | reachable hit@1 / 5 / 10 / 20 | reachable MRR |
+  |---|---|---|---|---|
+  | before the card promotion (DENSE) | 44.8 / 79.3 / 89.7 / 89.7 | 0.586 | not measured | - |
+  | after the card promotion (DENSE) | 27.6 / 65.5 / 86.2 / 93.1 | 0.449 | 41.4 / 69 / 93.1 / 100 | 0.550 |
+
+  The promotion moves content into records of its own, so the exact-id head
+  drops - a finer corpus puts the exact expected id first less often - while
+  reachable recall at the judge's cutoff is unchanged or better (hit@10 93.1%,
+  hit@20 100% against 96.6%). It was **kept for the correctness fix and the
+  judge-cutoff recall, with the head cost recorded**. The before arm's reachable
+  reading was never measured, so the two rows are not comparable on that column.
+  Two questions that miss on the exact id ("what does the Advance move do", "what
+  happens when a transport blows up") are reachable inside the top 20.
+- `node tests/eval-retrieval.mjs --retriever vector --namespace auto` is an
+  **oracle arm**: `auto` picks the half from the question's expected section,
+  which the page cannot do - it searches both halves and merges. Its numbers
+  (58.6% exact hit@1 against the dual arm's 27.6%) bound what the vector leg
+  could contribute; they are not a fair fight against the page's path. Use
+  `--namespace rules|factions` to pin one half.
 - `node tests/eval-reddit.mjs --limit 16` - judge coverage and latency on real
   questions, twice, to compare model routes.
 - `node tests/eval-accuracy.mjs --limit 25` - the page's own path, graded by a
@@ -222,13 +275,17 @@ answer the same question differently.
 
 ## Known limits
 
-- Derived-title buckets, above: the splitter empties the numbered rules out of
-  them, but a bucket's own heading is still whatever question its body started
-  with.
+- The server reads the corpus once per process - `corpora()` and
+  `corpusState()` cache it for the life of the server - while `--scrape` and
+  `--ingest` rewrite it under a running one. A rebuild therefore needs a
+  restart, or the page keeps serving the previous corpus against the new index:
+  on 2026-10-13 the server still held 636 rules records after the corpus had
+  moved to 690. The index itself was in step throughout.
 - The same rule can appear twice in one answer when the core rules and the rules
   appendix both carry it (two `Able To Embark` records, one per source), and a
   split rule can appear both under its real parent and under a bucket that also
   contained it.
-- The rules namespace is in step with the corpus (`--prune` saw to that), but
-  nothing prunes `factions` automatically: run `--prune` without `--set` after a
-  big rebuild.
+- Both namespaces were in step with the corpus when this was measured (rules
+  690/690, factions 6,575/6,575, no strays on either side), but a rebuild that
+  drops sections still needs `--prune` afterwards: `--ingest` deletes what its
+  own state knows about, and a vector an older build dropped is invisible to it.
