@@ -550,25 +550,35 @@ rule before Rapid Embarkation began.
 
 The fix is a **labelled-segment extractor**, not a text heuristic: the scrape
 already marks every ability `Ability (Core|Faction|Datasheet): <name> - <text>`. A
-Core or Faction segment is a rule defined elsewhere, so it is dropped whole and
-replaced by a link line naming its record; a Datasheet segment is the unit's own
-and stays. The extractor works on the CONCATENATED record, because the live
-chunker can split a segment across `~1`/`~2` - which is exactly what happened to
-Battle Focus here. It removes a segment by its own boundaries, so there is no span
-heuristic and no rule-dependent offset.
+Datasheet segment is the unit's own and stays. A Core or Faction segment is a rule
+defined elsewhere and is dropped whole, replaced by a link line naming its record -
+**but only when its text is contained in the owner's canonical text or is a
+rendition of it** (>=60% of its 100-char windows present in the canonical text). A
+materially different variant STAYS in the datasheet: it is that record's own text,
+and the link line is added anyway. Under that rule 3,198 segments are stripped and
+37 (17,528c, in 36 records) stay - Super-heavy Walker keeps 3 distinct variants in
+10 records, Combat Doctrines keeps three 107-char fragments, Synapse keeps none.
+
+The extractor runs **detect -> strip -> chunk**: the parts are joined back to the
+logical record first, so the chunker never sees a segment split across parts and
+the orphan-tail class cannot exist. The merge of `~1`/`~2` is a consequence of the
+shrink, not a step of its own. Verified against the pre-order run: same total
+(6,731), same added (808) and removed (1,602), same 1,602 migration rows; `changed`
+is 656 rather than 672, and the 16-record difference is exactly the owner
+absorption this rule removed, not an effect of the order.
 
 Dry run (`workspace/task30-dryrun/`, no writes to the corpus or the index):
 
 | measure | value |
 |---|---|
 | records with a segment label and no text after it (the debris class) | **0** |
-| removed ids | **1,602**, every one mapped in `id-migration.tsv` |
-| base ids created | 792 |
+| shared segments stripped | 3,198 |
+| segments kept as materially different renditions | 37 (17,528c) in 36 records |
+| removed ids | **1,594**, every one mapped in `id-migration.tsv` |
+| base ids created | 788 |
 | new ability records | 16 |
-| changed records | 672 |
-| proposed total | **6,731** (was 7,525) |
-| owner records absorbing a variant they lacked | 16, 27,055 chars total (one text per near-identical cluster) |
-| owners with a materially different variant pair | 3 - Super-heavy Walker, Synapse, Combat Doctrines |
+| changed records | 664 |
+| proposed total | **6,735** (was 7,525) |
 | the case, merged | `unitrules#000002541`, 822c, Rapid Embarkation at **228** |
 | the case, unmerged | `unitrules#000002541~2`, 1,054c, Rapid Embarkation at **590** |
 
