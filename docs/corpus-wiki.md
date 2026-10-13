@@ -224,7 +224,10 @@ pages, the 37 forced chunks) are all vector-arm arms. Phase C should therefore b
 scheduled with the local build first, and the live rebuild asked for only once the
 local numbers exist.
 
-## Open questions before phase B
+## Open questions for the vector arm
+
+*The four arms below all need the local vector index (measured: ~3.4 hours of
+embedding), which is why the lexical gate above is the only one that has run.*
 
 - **Is the link block noise for retrieval?** A parent's vector now carries up to
   40 names it does not discuss. The bank test above answers it; if hit@1 drops

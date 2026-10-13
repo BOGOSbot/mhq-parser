@@ -100,6 +100,25 @@ export function validateExpectation(ids, corpus) {
   return (ids || []).filter(Boolean).filter(id => !have.has(id));
 }
 
+// The eval's own taxonomy, derived from the SIGNALS the trace already carries -
+// no corpus lookup, no second opinion about what the reader meant. It labels a
+// retained trace for the human who decides whether to promote it; it never writes
+// the label, because the trace's kind stays 'unknown' until a human says what it
+// is. Agreement with the hand labels measured 63.6% (tests/test-traces.mjs),
+// which is a sorting aid, not an authority.
+export function classifyTrace(trace) {
+  const signals = (trace && trace.signals) || {};
+  const q = String((trace && trace.question) || '');
+  const findings = (trace && trace.findings) || [];
+  if (!findings.length) return 'out-of-corpus';
+  const named = /^(what (is|are)|how (does|do))\b/i.test(q.trim());
+  if (named && signals.termMatch && !signals.firstPerson) return 'literal';
+  if (signals.firstPerson) return 'player';
+  const nonCore = (signals.sources || []).some(s => s !== 'core-rules');
+  if (nonCore && !signals.termMatch) return 'cross-source';
+  return 'paraphrase';
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   const value = n => { const i = argv.indexOf(n); return i === -1 ? null : argv[i + 1]; };
@@ -108,6 +127,23 @@ async function main() {
   const bankPath = value('--bank') || BANK_PATH;
   const traces = loadTraces(dir);
   const bankQs = bankQuestions(bankPath);
+
+  // --classify: label the retained traces with the eval's taxonomy. Read only.
+  if (flag('--classify')) {
+    const traces = loadTraces(dir);
+    const id = value('--id');
+    if (id) {
+      const t = traces.find(x => x.id === id);
+      if (!t) { console.log('no retained trace with id ' + id); return; }
+      console.log(JSON.stringify({ id: t.id, class: classifyTrace(t), signals: t.signals, counts: t.counts, question: t.question }, null, 2));
+      console.log('read only: the trace keeps kind=unknown until a human supplies the label at promotion.');
+      return;
+    }
+    const byClass = {};
+    for (const t of traces) { const k = classifyTrace(t); byClass[k] = (byClass[k] || 0) + 1; }
+    console.log(JSON.stringify({ traces: traces.length, byClass }, null, 2));
+    return;
+  }
 
   if (flag('--list') || !flag('--promote')) {
     const rows = traces.map(t => ({ t, status: traceStatus(t, bankQs) }));
