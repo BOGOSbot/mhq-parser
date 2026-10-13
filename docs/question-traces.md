@@ -39,7 +39,7 @@ One JSON line per question (`src/rules-traces.mjs`):
 | `kind` | `unknown` - see *The taxonomy* |
 | `signals` | `firstPerson`, `termMatch`, `sources`, `halves`, `rules` |
 | `counts`, `findings` | how many per half, and the pointers |
-| `judge` | `answered`, `confidence`, `reasoning` (the binding judge's setting) |
+| `judge` | `answered`, `confidence`, `reasoning` (the binding judge's setting), `cited` (the finding numbers the verdict rested on - pointers, no prose) |
 | `judge2` | the second judge's `answered`, `confidence`, `reasoning` |
 | `judgeDisagreement`, `judgeDowngrade`, `judgeDissentFrom` | whether the two disagreed, whether the dissent was allowed to downgrade the answer, and which judge it came from |
 | `answer` | the cited prose the reader saw |
@@ -93,9 +93,15 @@ The bank grows from real questions, and a trace is the raw material. Two command
 (`tests/promote-traces.mjs`):
 
 ```
+node tests/promote-traces.mjs --harvest [--limit N] [--all]
 node tests/promote-traces.mjs --list
 node tests/promote-traces.mjs --promote --id <traceId> --expect <id>[,<id>] --kind <label> [--dry-run]
 ```
+
+`--harvest` is the labelling pass: read-only, one block per trace in the harvest
+order, with the question, the derived class, the thumb, the verdict and the top
+findings with their ids and headings. `--list` is the one-line summary of the
+same, and `--classify` counts the retained traces by class.
 
 `--list` shows every trace with its question, when it was asked, the language, the
 setting, the writer's mode, how many findings it carries and the first few record
@@ -125,6 +131,34 @@ entry to `tests/fixtures/rules-questions.json`.
   expectation, the label. The raw trace still expires on its own clock (12 months,
   swept with the monthly ingest) and the trace id is not stored in the fixture: the
   bank is the durable record.
+
+### Who writes an expectation, and what checks it
+
+The question and the label come from the reader; **the expectation is ours**, and
+it is never the trace's own top finding. A trace's findings are the retriever's
+own output, so an expectation copied from the first of them is circular: the
+expected record is in the findings by construction, and hit@K for that question
+reads 100% whatever the retriever does. The expectation is the record that
+actually answers the question - chosen by reading the question and the candidates
+`--list` prints, not by trusting the order - and it may be none of them (an empty
+`--expect` with `kind: out-of-corpus`).
+
+What the tool checks: every `--expect` id is validated against the corpus, so a
+typo fails before it becomes a fixture; `--kind` must be one of the bank's labels
+(the derivation's 63.6% agreement is a sorting aid, never the label); a trace whose
+writer failed is refused; a question already in the bank is refused; and the entry
+is appended, so every existing byte of the fixture survives. What no tool can check
+is whether the expectation is right. That is the human's, and it is the one part
+of the bank a machine must not write.
+
+### The harvest order
+
+`--harvest` prints in the order a human should work: traces whose thumb is down
+first (a reader said the answer was wrong), then the ones whose verdict cited a
+passage (`judge.cited`, or the writer's `[n]` markers on a trace older than the
+field), then the rest, newest first - and each line carries the derived class as a
+sorting aid. Neither command writes anything; the expectation comes back through
+`--promote` with a human's ids and label, one question at a time.
 
 ## The taxonomy
 

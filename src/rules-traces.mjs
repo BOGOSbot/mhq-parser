@@ -106,6 +106,11 @@ export function writerMode(input) {
   return 'ok';
 }
 
+// Which findings the verdict rested on. The passages array names positions in
+// the findings list, never prose, so the trace keeps the pointers and still keeps
+// no judge reasoning - and the harvest reads them to put a checkable trace first.
+const citedPassages = j => (j && Array.isArray(j.passages) ? j.passages : []).filter(n => typeof n === 'number').slice(0, 24);
+
 export function buildTrace(input) {
   const t = {
     id: input.id,
@@ -123,7 +128,7 @@ export function buildTrace(input) {
     signals: input.signals,
     counts: input.counts || { rules: 0, factions: 0 },
     findings: traceFindings(input.findings),
-    judge: { answered: !!(input.judge && input.judge.answered), confidence: (input.judge && input.judge.confidence) || '', reasoning: input.judgeReasoning || '' },
+    judge: { answered: !!(input.judge && input.judge.answered), confidence: (input.judge && input.judge.confidence) || '', reasoning: input.judgeReasoning || '', cited: citedPassages(input.judge) },
     // The second judge, and whether the two disagreed. The rate this exists to
     // make measurable is count(judgeDisagreement) / count(traces with judge2): a
     // question the binding judge accepted and the careful one refused is the

@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
 import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
-import { classifyTrace, loadTraces } from './promote-traces.mjs';
+import { classifyTrace, harvestOrder, loadTraces, tracePriority } from './promote-traces.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -57,7 +57,7 @@ t('the English actually searched travels with it', trace.asked, 'Can Asurmen re-
 t('a finding is a pointer', trace.findings[0], { n: 1, set: 'rules', source: 'core-rules', ruleId: '18.02', id: 'core-rules#Embarking' });
 t('no passage text in the trace', JSON.stringify(trace).includes('A unit can embark'), false);
 t('no judge why in the trace', JSON.stringify(trace).includes('Passage [1] says'), false);
-t('the verdict keeps its answer, confidence and reasoning setting', trace.judge, { answered: true, confidence: 'high', reasoning: '' });
+t('the verdict keeps its answer, confidence and reasoning setting', trace.judge, { answered: true, confidence: 'high', reasoning: '', cited: [] });
 t('the answer is kept - the bank grades on it', trace.answer, 'Oui [1].');
 t('the corpus build travels with it', trace.corpusAt, '2026-10-13T00:55:31.597Z');
 t('kind is unknown, not a guess', trace.kind, KIND_UNKNOWN);
@@ -87,7 +87,7 @@ const twoJudges = buildTrace({
 });
 t('the trace carries the second verdict', twoJudges.judge2, { answered: false, confidence: 'med', reasoning: 'medium' });
 t('the trace carries the disagreement flag', twoJudges.judgeDisagreement, true);
-t('the binding verdict is unchanged beside it', twoJudges.judge, { answered: true, confidence: 'high', reasoning: 'none' });
+t('the binding verdict is unchanged beside it', twoJudges.judge, { answered: true, confidence: 'high', reasoning: 'none', cited: [] });
 // Which judge dissented and whether it was allowed to downgrade: the two fields
 // task-16's rule is measured from.
 t('the dissent and its effect are recorded', [twoJudges.judgeDissentFrom, twoJudges.judgeDowngrade], ['second', true]);
@@ -183,6 +183,24 @@ t('a vote for a swept or unknown question is dropped', voteTrace('nope', 'up', v
 t('an invented vote value is refused', voteTrace('abc12345', 'maybe', voteDir), false);
 t('and it does not overwrite the real one', reload().vote, 'down');
 t('the trace holds no identifier but its random id', Object.keys(reload()).filter(k => /^(ip|useragent|cookie|session|account|address)$/i.test(k)).length, 0);
+
+// --- the harvest order, for the promotion path -------------------------------
+// The listing a human labels from is ordered by what already carries a signal:
+// a thumb down is a reader saying the answer was wrong, a verdict that cited a
+// passage is one whose evidence can be checked. The tracing of a cited verdict
+// keeps the numbers only - pointers, never the reasoning.
+t('a thumbs-down is labelled first', tracePriority({ vote: 'down' }), 0);
+t('a cited verdict comes next', tracePriority({ judge: { cited: [1, 2] } }), 1);
+t('an older answer with writer markers counts as cited', tracePriority({ answer: 'A rule [1].' }), 1);
+t('everything else waits', tracePriority({ answer: 'A rule.' }), 2);
+t('the harvest order is down, cited, then the rest',
+  harvestOrder([
+    { id: 'a', at: '2026-10-01T00:00:00.000Z', answer: 'x' },
+    { id: 'b', at: '2026-10-02T00:00:00.000Z', answer: 'x [1]' },
+    { id: 'c', at: '2026-10-03T00:00:00.000Z', vote: 'down' },
+  ]).map(x => x.id), ['c', 'b', 'a']);
+t('a cited verdict stores the numbers, not the prose',
+  buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', answer: 'a', judge: { answered: true, passages: [2, 5], why: 'Passage [2] says so.' } }).judge.cited, [2, 5]);
 
 // --- the taxonomy label, for the promotion path -----------------------------
 t('the taxonomy labels a player question', classifyTrace({ question: 'can I shoot with my unit', findings: [{ id: 'x' }], signals: { firstPerson: true, termMatch: true, sources: ['core-rules'] } }), 'player');
