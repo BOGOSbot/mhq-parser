@@ -342,11 +342,16 @@ topk 20, on today's bank (39 questions, 33 graded, 0 fallbacks, 0 Jev calls):
 
 Every aggregate column is **identical**: the 254 added records and the 191 index
 pages cost the reader nothing on this bank, and the candidate count does not move,
-so the index pages do not crowd anything out. One entry flips to fully found: the
-Starweaver re-embark question, whose second group is `unitrules#000002541~2` -
-absent from the live faction top 20, **#2** with the wiki half. On three
-expectations that is thin evidence: it reads as "no harm, one gain", not as a
-measured improvement.
+so the index pages do not crowd anything out. One entry flipped to fully found in
+the scratch arm - the Starweaver re-embark question, `unitrules#000002541~2` at
+#2 - **and that flip does not reproduce on the deployed corpus**: after the
+rebuild the same question leaves the record out of the DENSE top 100 and
+multi-hop fully found stays 5/12. Both namespaces held the same 6,829 records, so
+the scratch's #2 is a property of that namespace's index state at that moment
+(freshly built in one pass, against a namespace the ingest had just churned), not
+of the corpus. With three faction-side expectations the honest reading is **no
+measurable change from the faction half**, and the deployed head gain belongs to
+the rules half.
 
 **Targeted: Battle Focus** (`faction-rule#000009894`, no record anywhere in the
 live corpus; 786 characters in the wiki half). It is **#1** for "What does Battle
@@ -455,6 +460,61 @@ live namespace; every number is from `--dry-run` and the read-only parity check.
   dropping it from the embedded text is the one-line switch that would cut the
   re-embed to the 254 genuinely new records. Decide it with arm 3's numbers.
 
+### Phase C: landed (2026-10-13)
+
+Variant D is the live corpus. The runbook above ran as written except for two
+steps it does not name, both caught by the parity and /health checks:
+
+- **The ingest updates the index, not the corpus directory.** The server reads
+  `workspace/rules-corpus`, so landing the rebuild means promoting the five
+  `<source>.json` files (with their `.index.json` state and `.rebuilds.json`
+  ledger) from the build directory into it. Before that the server served 690 /
+  6,575 against an index of 696 / 6,829 - /health said
+  `ahead: ["rules +6","factions +254"]`. A full copy of the old directory is kept
+  at `workspace/rules-corpus-before-phasec/`; re-ingesting it puts the old corpus
+  back.
+- **The build dropped the corpus's provenance.** `writeWikiCorpus` wrote only
+  `{ sections }`, while /health's `updated` and every trace's `corpusAt` come from
+  the source payload's `scrapedAt` and `marker`. The first restart served
+  `updated: null` - an undated corpus reads like a stale one. `carryStamps` now
+  rides those stamps through the build (count and anchored recomputed, never
+  carried; guarded in `tests/test-wiki-plan.mjs`).
+
+The rebuild itself: build 7,525 records (rules 696, factions 6,829); dry run
+**embed 6,705, delete 0** (core-rules 84, rules-appendix 12, event-companion 5,
+core-stratagems 0, factions-csv 6,604; leave 820); ingest **6,705 upserted, 0
+deleted**; parity `rules 696 | corpus 696 | 0 | 0` and `factions 6,829 | corpus
+6,829 | 0 | 0`; ledger rebuild #1 per source at 2026-10-13T21:42-21:43Z; **no
+quota, 429 or write-limit error**. The server was restarted only after parity and
+now reports corpus 696 / 6,829, `ahead`/`behind` empty, `updated`
+2026-10-13T00:55:31.597Z, `sourceDate` June 2026.
+
+**The reader-facing effect, measured on the deployed corpus** (dual, rerank off,
+per-side 10, net 60, topk 20, today's 39-question bank, 33 graded, 0 fallbacks, 0
+Jev calls): exact hit@1 **27.3 -> 33.3**, hit@5 60.6 -> 63.6, hit@10 84.8
+unchanged, hit@20 93.9 unchanged, MRR **0.434 -> 0.475**; reachable hit@5
+63.6 -> 66.7 with hit@1/10/20 unchanged (39.4 / 90.9 / 100), MRR 0.523 -> 0.525;
+candidates 23.1 -> 23.1; multi-hop fully found 5/12 unchanged. The direction and
+size match the rules-half variant-D arm (+6.9 hit@1, +0.043 MRR on the
+29-question set), and that is the half the gain belongs to.
+
+Hand-reads on the deployed corpus: the Asurmen question carries its anchored
+record (`Asurmen - keywords and abilities`, holding the Tactical Acumen passage)
+at finding [20], and the judge cites it. The FALL-BACK question's 25 findings on
+`tests/ask.mjs` do not include the FALL-BACK MOVE record, but that is the known
+configuration effect in docs/question-traces.md, not a phase-C change: on the
+bank's fixed path (dual, rerank off) the same question retrieves it at **#9**,
+exactly as recorded before the rebuild.
+
+**Not done: the Box snapshot.** It is a Box-side step with no script in the tree
+(docs/corpus-storage.md), so this rebuild has a local rollback point
+(`workspace/rules-corpus-before-phasec/`) and no off-machine one.
+
+**Follow-up this leaves open:** the live corpus is now a wiki build, and
+`--scrape` writes the flat corpus into the same directory - a later scrape would
+silently revert the shape. The next session should make the build the scrape's
+output or gate the scrape behind it.
+
 ## Recommendation
 
 **Both halves take the variant-D shape, decided 2026-10-13.** Links on the record,
@@ -462,10 +522,11 @@ the block in the embedded text, the planner's budget at the live chunker's own
 ceiling. The rules half is measured as the best reader-facing shape (head +6.9
 against live, hit@10 and hit@20 unchanged, reachable hit@20 100%) with the dense
 leg's one-question hit@10 cost inside the floor. The faction half is measured in
-*Arm 3*: aggregates and candidate count unchanged (no crowding), the Starweaver
-question flips to fully found, Battle Focus becomes reachable at its name queries,
-+63 faction-rule records and 191 index pages, 0 records lost. **The caveat
+*Arm 3*: aggregates and candidate count unchanged (no crowding; the scratch arm's
+Starweaver flip did not reproduce on the deployed corpus - see *Arm 3*), Battle
+Focus becomes reachable at its name queries, +63 faction-rule records and 191
+index pages, 0 records lost. **The caveat
 recorded with the decision:** Battle Focus still misses on three conversational
 phrasings, so the wiki structure alone does not close the buried-ability problem -
-phrasing and reranking still carry part of it. Nothing had been written into the
-live corpus when the decision was taken.
+phrasing and reranking still carry part of it. The rebuild landed the same day -
+see *Phase C: landed*.

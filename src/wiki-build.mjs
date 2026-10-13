@@ -18,7 +18,7 @@
 import fs from 'fs';
 import path from 'path';
 import { planWiki, readPlanInput, distribution, chars } from './wiki-plan.mjs';
-import { textHash } from './rules-corpus.mjs';
+import { readCorpus, textHash } from './rules-corpus.mjs';
 
 export const RULES_SOURCES = ['core-rules', 'rules-appendix', 'event-companion', 'core-stratagems'];
 export const FACTION_SOURCES = ['factions-csv'];
@@ -43,6 +43,26 @@ export function toSection(rec) {
   };
 }
 
+// The payload's own provenance, which the plan cannot know: /health publishes
+// scrapedAt (when the copy was read) and the marker's lastUpdate (when the source
+// said its data changed), and a trace records the same stamp - a trace against an
+// undated corpus cannot be told from one against a stale corpus. An earlier build
+// wrote only { sections }, so a rebuilt corpus served with updated:null.
+//
+// count and anchored are RECOMPUTED from the sections being written, not carried:
+// the build adds and splits records, so the scrape's own numbers would be a stale
+// claim about this corpus. bytes describes the raw page, which this does not touch.
+export const STAMP_KEYS = ['source', 'set', 'url', 'edition', 'marker', 'scrapedAt', 'bytes'];
+export function carryStamps(src, sections) {
+  const list = sections || [];
+  const out = {};
+  for (const k of STAMP_KEYS) if (src && src[k] !== undefined) out[k] = src[k];
+  out.count = list.length;
+  out.anchored = list.filter(s => s.hasAnchor).length;
+  out.sections = list;
+  return out;
+}
+
 export function writeWikiCorpus(dir, data, opts) {
   const input = data || readPlanInput();
   const plan = planWiki(input, opts);
@@ -62,7 +82,9 @@ export function writeWikiCorpus(dir, data, opts) {
   for (const source of RULES_SOURCES.concat(FACTION_SOURCES)) {
     const sections = byFile.get(source) || [];
     if (!sections.length) continue;
-    fs.writeFileSync(path.join(dir, source + '.json'), JSON.stringify({ sections }, null, 0));
+    // Read the source payload before writing it: the stamps are the only thing the
+    // build must carry from the corpus it is derived from.
+    fs.writeFileSync(path.join(dir, source + '.json'), JSON.stringify(carryStamps(readCorpus(source), sections), null, 0));
     written[source] = sections.length;
   }
   const manifest = {

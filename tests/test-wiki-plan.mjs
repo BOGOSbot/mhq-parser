@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LINK_BLOCK_MAX, MIN_PART, WIKI_BUDGET, chars, distribution, idReport, planWiki, renderLinks, resolveLinks, splitWithin } from '../src/wiki-plan.mjs';
-import { toSection } from '../src/wiki-build.mjs';
+import { carryStamps, toSection } from '../src/wiki-build.mjs';
 import { textHash } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
@@ -120,6 +120,22 @@ const rewritten = { id: 'r#x', set: 'rules', heading: 'X', text: 'X\nnew body', 
 t('the written hash describes the written text', toSection(rewritten).hash, textHash('X\nnew body'));
 t('and a rewritten record does not carry the source hash', toSection(rewritten).hash === 'stale', false);
 t('an unchanged record keeps the same hash', toSection({ id: 'r#y', set: 'rules', heading: 'Y', text: 'Y\nbody', hash: textHash('Y\nbody') }).hash, textHash('Y\nbody'));
+
+// --- the rebuilt corpus stays datable ----------------------------------------
+// /health publishes each source payload's scrapedAt and the marker's lastUpdate,
+// and a trace records the same stamp. A build that wrote only { sections } made
+// the served corpus say updated:null - indistinguishable from a stale one.
+const stamped = carryStamps(
+  { source: 'core-rules', set: 'rules', url: 'u', edition: '11', marker: { lastUpdate: 'June 2026' }, scrapedAt: '2026-10-13T00:55:31.036Z', bytes: 777918, count: 377, anchored: 159 },
+  [{ id: 'a', hasAnchor: false }, { id: 'b', hasAnchor: true }],
+);
+t('the source stamps ride along with the planned sections', stamped, {
+  source: 'core-rules', set: 'rules', url: 'u', edition: '11', marker: { lastUpdate: 'June 2026' },
+  scrapedAt: '2026-10-13T00:55:31.036Z', bytes: 777918, count: 2, anchored: 1, sections: [{ id: 'a', hasAnchor: false }, { id: 'b', hasAnchor: true }],
+});
+t('the record count is recomputed, not the scrape\'s', stamped.count, 2);
+t('and so is the anchored count', stamped.anchored, 1);
+t('a source with no payload still writes a countable file', carryStamps(null, []), { count: 0, anchored: 0, sections: [] });
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
