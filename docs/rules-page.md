@@ -14,7 +14,8 @@ functionality document for that page; the army-list parser has its own in
   "english": true, "stream": true }` and answers with the findings, the judge's
   verdict and the compiled answer. `stream: true` sends one JSON object per line
   (`start`, `translation`, `terms`, `findings`, `escalate`, `judge`, `answer`,
-  `done`) so the page can draw the findings before the prose exists.
+  `done`) so the page can draw the findings before the prose exists. A datasheet
+  question replaces that run with a single `card` event - see *The unit card*.
 - `GET /health` publishes `corpus` (sections per half, build date, edition) and
   both inference routes, which the page's badge shows.
 
@@ -182,6 +183,44 @@ per-passage cap from `JUDGE_PASSAGE_CHARS` (2,400) and `JUDGE_TOTAL_CHARS`
 (60,000), so a deeply widened pass shows the judge less of each passage - the
 ceiling is what keeps that from eating the evidence.
 
+## The unit card
+
+A datasheet question - "donne moi le profil de fuegan" - used to be answered with
+prose a model wrote about the unit. The numbers are in the CSV export, so the page
+renders them instead: `src/unit-card.mjs` builds the card from the export and
+`rules.html` draws it. **No model writes any field on it.**
+
+The decision is closed-set and taken before anything is searched: the question asks
+for the unit's own data (profile, statline, toughness, save, weapons, wargear,
+abilities, keywords, points) **and** it names a datasheet exactly. The name has to
+appear as a whole phrase, so `captain` reaches the Captains, but a bare `rhino` does
+not silently pick one of the five datasheets that share that name: a name several
+factions share, with no faction named in the question, falls back to prose rather
+than guess.
+
+The card carries the statline (M/T/Sv/inv/W/Ld/OC and base size) from
+`Datasheets_models`, the weapon profiles from `Datasheets_wargear` split ranged and
+melee, the abilities from `Datasheets_abilities` - the Core and Faction ones
+resolved through `Abilities.csv` - the keywords from `Datasheets_keywords` with the
+faction keywords kept apart, the composition, the options, the points from
+`Datasheets_models_cost`, and the link to the datasheet page. A Faction ability can
+carry a table and six sub-rules (Battle Focus does), so ability text is cut at
+`ABILITY_CHARS` (600) and the card says so; the full text is one click away. Every
+value is cleaned of the export's HTML, and none is written by a model.
+
+When the unit cannot be resolved to a datasheet id, `unitCard()` returns null and
+the request runs the search, the judge and the writer exactly as it did before: the
+fallback is silent, and a half card is never shown. `RULES_UNIT_CARD=0` turns the
+path off for a deployment. A card question still writes a trace, with
+`card: { id, name }` and `writer: "card"` - no findings, no verdict, no answer and
+no writer call at all, so a Fuegan lookup answers in about six seconds, the
+translation only. The stream sends one `card` event with its own stage list instead
+of `findings`/`judge`/`answer`, and the bar shows `translate | datasheet`.
+
+The layout is one column at every width - the statline wraps into chips and the
+weapons table is fixed-layout so its seven columns fit a 360px phone - because the
+page is mostly read on a phone.
+
 ## The two settings
 
 The page offers two, and the server fixes four things for each: the depth of the
@@ -307,6 +346,9 @@ answer the same question differently.
 - `node tests/test-rules.mjs`, `node tests/test-judge.mjs`,
   `node tests/test-corpus-build.mjs` - edition and anchors, the judge and the
   escalation policy, the CSV builder.
+- `node tests/test-unit-card.mjs` - the datasheet resolution, every field of the
+  Fuegan card against the CSV, the silent fallbacks (a rules question, an unknown
+  unit, a name several factions share) and the trace's card shape.
 
 ## Known limits
 

@@ -36,6 +36,7 @@ import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, row
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, indexInfo, looksForeign, readAllCorpus, translateQuestion } from './rules-corpus.mjs';
 import { appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled } from './rules-traces.mjs';
+import { unitCard } from './unit-card.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -810,6 +811,51 @@ async function handleRulesAsk(req, res) {
     }
     emit({ type: 'terms', terms, translated: translation.translated || '', elapsedMs: Date.now() - started });
 
+    // Which setting the reader chose. Read here rather than further down so the
+    // card branch below can put it in the trace; the event itself is still sent
+    // only on the prose path, where the setting actually changes what runs.
+    const modeName = askMode(body.mode);
+    const mode = ASK_MODES[modeName];
+
+    // A unit card is a CLOSED-SET decision taken here, before anything is
+    // searched: the question names a datasheet and asks for its own data
+    // (profile, statline, weapons, abilities, keywords, points), or it is a
+    // rules question. src/unit-card.mjs renders every field from the CSV export;
+    // no model writes any of them. When the unit cannot be resolved - no name,
+    // a name several factions share, no statline - unitCard() returns null and
+    // the search runs exactly as it did before, silently. The index is never
+    // touched either way.
+    const card = unitCard(question, { asked, terms });
+    if (card) {
+      const cardStages = (foreign ? ['translate'] : []).concat(['datasheet']);
+      const elapsedMs = Date.now() - started;
+      // The trace is still one line per question. A card carries no findings and
+      // no verdict, so it records the datasheet it resolved to instead, and the
+      // prose fields stay empty rather than borrowing something else's shape.
+      if (tracesEnabled()) {
+        try {
+          appendTrace(buildTrace({
+            id: newTraceId(), at: new Date().toISOString(), edition: rulesEdition,
+            corpusAt: corpusState().updated, mode: modeName, lang: lang || 'und',
+            question, asked, terms, signals: traceSignals(question, []),
+            counts: { rules: 0, factions: 0 }, findings: [], judge: null,
+            answer: '', card: { id: card.id, name: card.name },
+            steps, elapsedMs,
+          }));
+        } catch (e) { /* a trace must never break an answer */ }
+      }
+      if (stream) {
+        emit({ type: 'card', card, stages: cardStages, elapsedMs });
+        emit({ type: 'done', elapsedMs, steps, card: true });
+        return res.end();
+      }
+      return json(res, 200, {
+        question, asked, lang: lang || 'und', translation: translation.translated || '',
+        terms, card, stages: cardStages, findings: [], counts: { rules: 0, factions: 0 }, answer: '',
+        steps, elapsedMs, mode: modeName,
+      });
+    }
+
     // The search keeps deepening while the judge says it cannot answer, and the
     // last pass is the last word. The judge's verdict is binding: a retrieval it
     // has already called insufficient must not go on to produce a confident
@@ -824,8 +870,6 @@ async function handleRulesAsk(req, res) {
     // The reader picks the setting: fast asks the judge not to reason and takes
     // a narrower, shallower search; deep lets it think and looks wider for
     // longer. Both keep the anchoring, which is what makes the fast setting safe.
-    const modeName = askMode(body.mode);
-    const mode = ASK_MODES[modeName];
     emit({ type: 'mode', mode: modeName, first: mode.first, passes: mode.passes, reasoning: mode.reasoning || 'model default', elapsedMs: Date.now() - started });
     const outcome = await timed('retrieve+judge', () => answerableFindings(asked, {
       fastKey: keys.fast,

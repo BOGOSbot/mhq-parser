@@ -5,6 +5,30 @@ Everything below is on the `rules-page` branch, which carries the source layout
 running detached on 127.0.0.1:8787 (started with `node src/server.mjs`, logs under
 `workspace/logs/`). `GET /health` reports both inference routes.
 
+### Restarting the dev server
+
+A process serves what it loaded at start, so a change to `src/server.mjs` - or to
+a module it imports - needs a restart, and a start that failed to bind the port
+reports nothing. Three steps: find the port's OWNER, stop that pid, then start and
+**re-read the owner** to confirm the new pid is the one listening.
+
+```powershell
+$owner = (Get-NetTCPConnection -LocalPort 8787 -State Listen | Select-Object -First 1).OwningProcess
+Stop-Process -Id $owner -Force
+$env:RULES_TRACES = '1'
+Start-Process -PassThru -WindowStyle Hidden node -ArgumentList 'src/server.mjs' `
+  -WorkingDirectory 'C:\GitRepos\mhq-parser' `
+  -RedirectStandardOutput 'C:\GitRepos\mhq-parser\workspace\logs\server.log' `
+  -RedirectStandardError 'C:\GitRepos\mhq-parser\workspace\logs\server.err.log'
+Start-Sleep -Seconds 7
+(Get-NetTCPConnection -LocalPort 8787 -State Listen | Select-Object -First 1).OwningProcess
+```
+
+The last line must print the pid just started. If it prints nothing, or an older
+pid, the new process never got the port: stop whatever did not get it and read
+`workspace/logs/server.err.log`. A leftover server keeps serving the code it
+loaded, which is a detour this repository has already paid for twice.
+
 ## 1. What changed this session
 
 **The page** (`rules.html`). The progress bar is the record now: it stays after the

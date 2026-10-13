@@ -139,6 +139,39 @@ details pre{background:var(--panel2);border:1px solid var(--line);border-radius:
 .pseg.done span,.pseg.active span,.pseg.done em,.pseg.active em{color:var(--txt)}
 .pelapsed{font:11px var(--mono);color:var(--dim);min-width:34px;text-align:right}
 @keyframes pshimmer{0%,100%{opacity:.11}50%{opacity:.30}}
+/* The unit card: a datasheet from the CSV export, built to be read one-handed.
+   One column at every width; the statline wraps into chips instead of scrolling,
+   and the weapons table is fixed-layout so its seven columns fit a 360px phone. */
+.unitcard .uname{font-size:19px;font-weight:700;color:#fff;line-height:1.2}
+.unitcard h3{font-size:11.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--dim);margin:14px 0 6px;font-weight:600}
+.usub{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.urole{color:var(--dim);font-size:12.5px}
+.upoints{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.ustat{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:4px 9px;min-width:46px;text-align:center}
+.stat .k{display:block;font:600 9.5px var(--mono);letter-spacing:.5px;text-transform:uppercase;color:var(--dim)}
+.stat .v{display:block;font:700 14px var(--mono);color:var(--txt)}
+.stat.inv .v{color:var(--acc)}
+.umodel{margin-top:10px}
+.umodelname{font-size:13px;color:var(--txt);margin-bottom:2px}
+.unote{color:var(--dim);font-size:12px;margin-top:8px}
+.unote a{color:var(--acc);text-decoration:none}
+.unote a:hover{text-decoration:underline}
+table.uw{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11.5px;margin-top:2px}
+table.uw th{font:600 9.5px var(--mono);letter-spacing:.3px;text-transform:uppercase;color:var(--dim);text-align:left;padding:3px 3px;border-bottom:1px solid var(--line)}
+table.uw td{padding:5px 3px;border-bottom:1px solid var(--line);vertical-align:top;font-variant-numeric:tabular-nums}
+table.uw td.wn{overflow-wrap:anywhere}
+table.uw th:first-child,table.uw td:first-child{width:34%}
+table.uw th:not(:first-child),table.uw td:not(:first-child){width:11%;text-align:center}
+.wnote{display:block;color:var(--dim);font-size:10.5px;font-style:italic}
+.uab{margin-top:9px}
+.uabhead{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap}
+.uabname{font-weight:600;color:var(--txt)}
+.uabtext{margin:3px 0 0;font-size:13px;color:var(--txt)}
+.ukw{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.ukw .klabel{color:var(--dim);font:11px var(--mono);align-self:center}
+.ukw .src{font-size:11px}
+.ulegend{margin:14px 0 0;color:var(--dim);font-size:12.5px;font-style:italic}
 .corpusdate{color:var(--dim);font:11.5px system-ui;border-left:1px solid var(--line);padding-left:14px}
 .foot a{color:var(--dim)}
 .foot a:hover{color:var(--txt)}
@@ -260,6 +293,40 @@ var I18N = {
     afterWidening: 'after widening',
     confidence: 'confidence: ',
     passage: 'passage',
+    cardTitle: 'Datasheet',
+    cardLoadout: 'Equipped with: ',
+    cardRanged: 'Ranged weapons',
+    cardMelee: 'Melee weapons',
+    cardWeapon: 'Weapon',
+    cardRange: 'Range',
+    cardA: 'A',
+    cardBS: 'BS',
+    cardWS: 'WS',
+    cardS: 'S',
+    cardAP: 'AP',
+    cardD: 'D',
+    cardStatM: 'M',
+    cardStatT: 'T',
+    cardStatSv: 'Sv',
+    cardStatInv: 'Inv',
+    cardStatW: 'W',
+    cardStatLd: 'Ld',
+    cardStatOC: 'OC',
+    cardStatBase: 'Base: ',
+    cardAbilities: 'Abilities',
+    cardCore: 'Core',
+    cardFaction: 'Faction',
+    cardDatasheet: 'Datasheet',
+    cardKeywords: 'Keywords',
+    cardFactionKeywords: 'Faction keywords',
+    cardComposition: 'Composition',
+    cardOptions: 'Options',
+    cardPoints: 'pts',
+    cardDamaged: 'Damaged',
+    cardTruncated: 'shortened - the full text is on Wahapedia',
+    cardSourceNote: 'Every field on this card is copied from the CSV export. No model wrote any of them.',
+    cardOpen: 'Open the datasheet on Wahapedia',
+    cardUpdated: 'export of ',
     translationTitle: 'Translation',
     translationFrom: ' - ',
     translationTo: ' to English',
@@ -272,7 +339,7 @@ var I18N = {
     corpusDays: ' days ago',
     corpusCountsA: ' core + ',
     corpusCountsB: ' faction records',
-    stages: { translate: 'translate', retrieve: 'retrieve', judge: 'judge', answer: 'answer', widen: 'widen' },
+    stages: { translate: 'translate', retrieve: 'retrieve', judge: 'judge', answer: 'answer', widen: 'widen', datasheet: 'datasheet' },
     examples: [
       'Can a unit shoot after it Fell Back?',
       'How does Devastating Wounds interact with Anti-?',
@@ -333,6 +400,40 @@ var I18N = {
     afterWidening: 'après élargissement',
     confidence: 'confiance : ',
     passage: 'passage',
+    cardTitle: 'Fiche technique',
+    cardLoadout: 'Équipé de : ',
+    cardRanged: 'Armes de tir',
+    cardMelee: 'Armes de mêlée',
+    cardWeapon: 'Arme',
+    cardRange: 'Portée',
+    cardA: 'A',
+    cardBS: 'CT',
+    cardWS: 'CC',
+    cardS: 'F',
+    cardAP: 'PA',
+    cardD: 'D',
+    cardStatM: 'M',
+    cardStatT: 'E',
+    cardStatSv: 'Sv',
+    cardStatInv: 'Inv',
+    cardStatW: 'W',
+    cardStatLd: 'Cd',
+    cardStatOC: 'OC',
+    cardStatBase: 'Socle : ',
+    cardAbilities: 'Aptitudes',
+    cardCore: 'Base',
+    cardFaction: 'Faction',
+    cardDatasheet: 'Fiche',
+    cardKeywords: 'Mots-clés',
+    cardFactionKeywords: 'Mots-clés de faction',
+    cardComposition: 'Composition',
+    cardOptions: 'Options',
+    cardPoints: 'pts',
+    cardDamaged: 'Endommagé',
+    cardTruncated: 'raccourci — le texte complet est sur Wahapedia',
+    cardSourceNote: 'Chaque champ de cette fiche est copié de l\u2019export CSV. Aucun modèle n\u2019en a écrit un seul.',
+    cardOpen: 'Ouvrir la fiche sur Wahapedia',
+    cardUpdated: 'export du ',
     translationTitle: 'Traduction',
     translationFrom: ' — ',
     translationTo: ' vers l\u2019anglais',
@@ -345,7 +446,7 @@ var I18N = {
     corpusDays: ' jours',
     corpusCountsA: ' règles de base + ',
     corpusCountsB: ' fiches de faction',
-    stages: { translate: 'traduction', retrieve: 'recherche', judge: 'juge', answer: 'réponse', widen: 'élargissement' },
+    stages: { translate: 'traduction', retrieve: 'recherche', judge: 'juge', answer: 'réponse', widen: 'élargissement', datasheet: 'fiche' },
     examples: [
       'Une unité peut-elle tirer après avoir battu en retraite ?',
       'Comment les Blessures Dévastatrices interagissent-elles avec Anti- ?',
@@ -681,6 +782,146 @@ function verdictLine(judge, attempt) {
   return wrap;
 }
 
+// A datasheet, rendered from the CSV export. Every field below came out of a CSV
+// cell through the server's card payload; no model wrote one. The layout is one
+// column at every width because this page is mostly read on a phone: the
+// statline wraps into chips and the weapons table is fixed-layout so its seven
+// columns fit a narrow screen without a horizontal scroll.
+function cardStat(label, value, cls) {
+  var d = el('div', 'stat' + (cls ? ' ' + cls : ''));
+  d.appendChild(el('span', 'k', label));
+  d.appendChild(el('span', 'v', value));
+  return d;
+}
+
+function weaponsTable(rows, melee) {
+  var table = el('table', 'uw');
+  var hr = el('tr');
+  var heads = [t('cardWeapon'), t('cardRange'), t('cardA'), melee ? t('cardWS') : t('cardBS'), t('cardS'), t('cardAP'), t('cardD')];
+  for (var i = 0; i < heads.length; i++) hr.appendChild(el('th', null, heads[i]));
+  var thead = el('thead');
+  thead.appendChild(hr);
+  table.appendChild(thead);
+  var tbody = el('tbody');
+  for (var r = 0; r < rows.length; r++) {
+    var w = rows[r];
+    var tr = el('tr');
+    var nameCell = el('td', 'wn');
+    nameCell.appendChild(el('span', null, w.name));
+    if (w.notes) nameCell.appendChild(el('span', 'wnote', w.notes));
+    tr.appendChild(nameCell);
+    tr.appendChild(el('td', null, w.range));
+    tr.appendChild(el('td', null, w.A));
+    tr.appendChild(el('td', null, w.BS));
+    tr.appendChild(el('td', null, w.S));
+    tr.appendChild(el('td', null, w.AP));
+    tr.appendChild(el('td', null, w.D));
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  return table;
+}
+
+function kwRow(label, list) {
+  var row = el('div', 'ukw');
+  if (label) row.appendChild(el('span', 'klabel', label));
+  for (var i = 0; i < list.length; i++) row.appendChild(el('span', 'src', list[i]));
+  return row;
+}
+
+function unitCardView(c) {
+  var card = el('div', 'card unitcard');
+  card.appendChild(el('h2', null, t('cardTitle')));
+  card.appendChild(el('div', 'uname', c.name));
+  var sub = el('div', 'usub');
+  if (c.faction) sub.appendChild(el('span', 'src', c.faction));
+  if (c.role) sub.appendChild(el('span', 'urole', c.role));
+  card.appendChild(sub);
+
+  if (c.points && c.points.length) {
+    var pts = el('div', 'upoints');
+    for (var p = 0; p < c.points.length; p++) {
+      pts.appendChild(el('span', 'src', c.points[p].cost + ' ' + t('cardPoints') + (c.points[p].label ? ' - ' + c.points[p].label : '')));
+    }
+    card.appendChild(pts);
+  }
+
+  for (var m = 0; m < (c.models || []).length; m++) {
+    var md = c.models[m];
+    var block = el('div', 'umodel');
+    if ((c.models || []).length > 1 || md.name !== c.name) block.appendChild(el('div', 'umodelname', md.name));
+    var strip = el('div', 'ustat');
+    strip.appendChild(cardStat(t('cardStatM'), md.M));
+    strip.appendChild(cardStat(t('cardStatT'), md.T));
+    strip.appendChild(cardStat(t('cardStatSv'), md.Sv));
+    if (md.inv) strip.appendChild(cardStat(t('cardStatInv'), md.inv, 'inv'));
+    strip.appendChild(cardStat(t('cardStatW'), md.W));
+    strip.appendChild(cardStat(t('cardStatLd'), md.Ld));
+    strip.appendChild(cardStat(t('cardStatOC'), md.OC));
+    block.appendChild(strip);
+    if (md.base) block.appendChild(el('div', 'unote', t('cardStatBase') + md.base));
+    card.appendChild(block);
+  }
+
+  if (c.loadout) card.appendChild(el('div', 'unote', t('cardLoadout') + c.loadout));
+  if (c.ranged && c.ranged.length) { card.appendChild(el('h3', null, t('cardRanged'))); card.appendChild(weaponsTable(c.ranged, false)); }
+  if (c.melee && c.melee.length) { card.appendChild(el('h3', null, t('cardMelee'))); card.appendChild(weaponsTable(c.melee, true)); }
+
+  if (c.abilities && c.abilities.length) {
+    card.appendChild(el('h3', null, t('cardAbilities')));
+    for (var a = 0; a < c.abilities.length; a++) {
+      var ab = c.abilities[a];
+      var box = el('div', 'uab');
+      var head = el('div', 'uabhead');
+      var ty = ab.type === 'Core' ? t('cardCore') : ab.type === 'Faction' ? t('cardFaction') : t('cardDatasheet');
+      head.appendChild(el('span', 'tag', ty));
+      head.appendChild(el('span', 'uabname', ab.name));
+      box.appendChild(head);
+      box.appendChild(el('p', 'uabtext', ab.description));
+      if (ab.truncated) box.appendChild(el('div', 'note', t('cardTruncated')));
+      card.appendChild(box);
+    }
+  }
+
+  var kws = c.keywords || { faction: [], other: [] };
+  if (kws.faction.length || kws.other.length) {
+    card.appendChild(el('h3', null, t('cardKeywords')));
+    if (kws.faction.length) card.appendChild(kwRow(t('cardFactionKeywords') + ':', kws.faction));
+    if (kws.other.length) card.appendChild(kwRow(t('cardKeywords') + ':', kws.other));
+  }
+
+  if (c.composition && c.composition.length) {
+    card.appendChild(el('h3', null, t('cardComposition')));
+    for (var co = 0; co < c.composition.length; co++) card.appendChild(el('p', 'uabtext', c.composition[co]));
+  }
+  if (c.options && c.options.length) {
+    card.appendChild(el('h3', null, t('cardOptions')));
+    for (var op = 0; op < c.options.length; op++) card.appendChild(el('p', 'uabtext', c.options[op]));
+  }
+  if (c.damaged) {
+    card.appendChild(el('h3', null, t('cardDamaged')));
+    card.appendChild(el('p', 'uabtext', (c.damaged.w ? c.damaged.w + ' W - ' : '') + c.damaged.description));
+  }
+
+  // The datasheet's own flavour line, from the export, kept small and last: it
+  // is not a field a reader checks a rule against.
+  if (c.legend) card.appendChild(el('p', 'ulegend', c.legend));
+
+  var foot = el('div', 'unote');
+  foot.appendChild(el('div', null, t('cardSourceNote')));
+  var src = [];
+  if (c.source) src.push(c.source + (c.edition ? ' ' + c.edition + (c.version ? ' v' + c.version : '') : ''));
+  if (c.updated) src.push(t('cardUpdated') + String(c.updated).slice(0, 10));
+  if (src.length) foot.appendChild(el('div', null, src.join(' - ')));
+  if (c.url) {
+    var link = el('a', null, t('cardOpen'));
+    link.href = c.url; link.target = '_blank'; link.rel = 'noopener';
+    foot.appendChild(link);
+  }
+  card.appendChild(foot);
+  return card;
+}
+
 // Retrieval is ready in about two seconds and the judge and the prose take
 // twenty more, so the page is built up as each piece lands rather than held back
 // until the slowest one finishes. Every slot is created up front, so nothing
@@ -703,7 +944,7 @@ function startResult(lang) {
   host.appendChild(answerCard);
   var rest = el('div');
   host.appendChild(rest);
-  return { verdict: verdict, answer: answerCard, rest: rest, findings: [], terms: [], translation: null };
+  return { verdict: verdict, answer: answerCard, rest: rest, findings: [], terms: [], translation: null, card: false };
 }
 
 // --- stage progress ---------------------------------------------------------
@@ -847,6 +1088,23 @@ function applyEvent(ev, state) {
   // link or a curl says: the page draws it from its own toggle, so this only
   // keeps the state honest if the two ever disagree.
   if (ev.type === 'mode') { state.mode = ev.mode; setMode(ev.mode); return; }
+  if (ev.type === 'card') {
+    // A datasheet lookup is answered by the card alone: the judge and answer
+    // slots drawn before the request were placeholders for a prose path that
+    // will not run, so they are dropped rather than left waiting.
+    state.card = true;
+    state.verdict.textContent = '';
+    state.answer.textContent = '';
+    if (ev.stages && ev.stages.length) startProgress(ev.stages);
+    var host = $('#result');
+    host.textContent = '';
+    host.appendChild(unitCardView(ev.card));
+    for (var ci = 0; ci < (ev.stages || []).length; ci++) doneStage(ev.stages[ci], ev.elapsedMs);
+    finishProgress();
+    setStatus('', '');
+    flash(host.firstChild);
+    return;
+  }
   if (ev.type === 'escalate') { pAttribute('judge', ev.elapsedMs); addStage('widen', 'retrieve'); return; }
   if (ev.type === 'translation') { state.translation = ev; doneStage('translate', ev.elapsedMs); return; }
   if (ev.type === 'terms') { state.terms = ev.terms || []; doneStage('translate', ev.elapsedMs); return; }
@@ -896,6 +1154,7 @@ function applyEvent(ev, state) {
   }
   if (ev.type === 'done') {
     finishProgress();
+    if (state.card) { setStatus('', ''); return; }
     var pending = state.verdict.querySelector('.waiting') || state.answer.querySelector('.waiting');
     // A finished request says nothing here: the timings are in the bar and the
     // count is the findings card's own title. A stream that ended without a part
@@ -909,6 +1168,11 @@ function applyEvent(ev, state) {
 
 // The whole response at once, for anything that cannot stream.
 function showInto(state, j) {
+  if (j.card) {
+    applyEvent({ type: 'card', card: j.card, stages: j.stages || ['datasheet'], elapsedMs: j.elapsedMs }, state);
+    applyEvent({ type: 'done', elapsedMs: j.elapsedMs, card: true }, state);
+    return;
+  }
   applyEvent({ type: 'findings', findings: j.findings || [], counts: j.counts, terms: j.terms, steps: j.steps, elapsedMs: j.elapsedMs }, state);
   if (j.judge) applyEvent({ type: 'judge', judge: j.judge, final: true, elapsedMs: j.elapsedMs }, state);
   applyEvent({ type: 'answer', answer: j.answer, elapsedMs: j.elapsedMs }, state);

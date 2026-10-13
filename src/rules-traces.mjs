@@ -87,13 +87,15 @@ export function traceFindings(findings) {
 }
 
 // How the writer ended, as its own field: 'ok', 'empty' (it came back with
-// nothing), 'timeout' (the call was cut) or 'declined' (it read the findings and
-// refused). Empty and timeout read the same to a reader - one sentence covers
-// both - but they are different defects and a trace has to be filterable by which
-// one happened, or the page's real failure rate stays invisible in the data we
-// just started collecting.
+// nothing), 'timeout' (the call was cut), 'declined' (it read the findings and
+// refused) or 'card' (the question was a datasheet lookup and the card answered
+// it, so no writer ran at all). Empty and timeout read the same to a reader - one
+// sentence covers both - but they are different defects and a trace has to be
+// filterable by which one happened, or the page's real failure rate stays
+// invisible in the data we just started collecting.
 export function writerMode(input) {
   const o = input || {};
+  if (o.card) return 'card';
   if (o.failed) return o.failed;
   if (o.declined) return 'declined';
   if (!String(o.answer == null ? '' : o.answer).trim()) return 'empty';
@@ -129,6 +131,10 @@ export function buildTrace(input) {
   // The English the question was turned into, when it was not English already:
   // that is what was actually searched.
   if (input.asked && input.asked !== input.question) t.asked = input.asked;
+  // A datasheet lookup is answered from the CSV, not from the corpus: the trace
+  // records which datasheet, so card questions are filterable instead of looking
+  // like an answer whose writer came back empty.
+  if (input.card) t.card = { id: input.card.id, name: input.card.name };
   return t;
 }
 
