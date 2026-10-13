@@ -1670,9 +1670,20 @@ export function judgePrompt(question, passages, opts) {
   // The passages stay in the corpus's English; the verdict is read by the reader
   // and is therefore written in the page's language. The rule names quoted inside
   // it are still the rule names.
-  const why = String(o.lang || '').slice(0, 2) === 'fr'
+  //
+  // One clause at the end of a long prompt was not enough: measured live, a
+  // reasoning judge wrote its verdict in French on one call and in English on
+  // the next, same question, same server. The language is therefore said twice -
+  // in the JSON schema itself and in its own bullet - because a drifting call is
+  // the failure mode, not a wrong option.
+  const french = String(o.lang || '').slice(0, 2) === 'fr';
+  const why = french
     ? '- why: say which passage states what, and what is missing when it is not answered. Two or three sentences on one line, in French (the passages and the rule names quoted from them stay in English); it is shown to the reader in full, so do not trail off.'
     : '- why: say which passage states what, and what is missing when it is not answered. Two or three sentences on one line; it is shown to the reader in full, so do not trail off.';
+  const whyMust = french ? 'The "why" field is written in French. That is the field the reader reads.' : '';
+  const schema = french
+    ? '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "why": "la raison, en deux ou trois phrases"}'
+    : '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "why": "the reason, in two or three sentences"}';
   return [
     'You are grading a retrieval system for Warhammer 40,000 11th edition rules.',
     '',
@@ -1684,7 +1695,8 @@ export function judgePrompt(question, passages, opts) {
     'Judge only what is written above, not what you know about the game.',
     'A passage marked TRUNCATED has more text that is not shown; if the rule could be in the unseen part, say so in "why" instead of concluding it is absent.',
     'Reply with JSON only:',
-    '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "why": "the reason, in two or three sentences"}',
+    schema,
+    whyMust,
     '- rules_question: is this a question about 40k rules at all? Some are about tournaments, paint or the subreddit.',
     '- answered: do the passages state the rule needed to answer it? Partial coverage is not answered.',
     '- confidence: how sure you are of that verdict. "high" when a passage states the rule outright, "med" when the passages are about the right subject but do not settle it, "low" when the retrieval looks off-topic or the question names something absent from the passages. Always give one of the three.',

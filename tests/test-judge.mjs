@@ -139,6 +139,9 @@ const promptEn = judgePrompt('a question', passages);
 const promptFr = judgePrompt('a question', passages, { lang: 'fr' });
 t('the English prompt asks for the verdict in English', /it is shown to the reader in full, so do not trail off\./.test(promptEn), true);
 t('the French prompt asks for the verdict in French', /in French/.test(promptFr), true);
+t('the French prompt says it in the schema as well', /"why": "la raison/.test(promptFr), true);
+t('and gives it its own line', /The "why" field is written in French/.test(promptFr), true);
+t('the English prompt still carries the English schema', /"why": "the reason, in two or three sentences"/.test(promptEn), true);
 t('the French prompt keeps the passages untouched', promptFr.indexOf('Until the end of the turn') !== -1, true);
 
 // --- the escalation policy --------------------------------------------------
