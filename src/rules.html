@@ -622,7 +622,9 @@ function translationCard(tr) {
 }
 
 function findingsCard(findings, counts) {
-  var title = 'Findings - ' + findings.length;
+  // The key exists in both languages and was being bypassed, so the French
+  // page showed one English label among French ones.
+  var title = t('findingsTitle') + ' - ' + findings.length;
   if (counts) title += ' (' + counts.rules + t('findingsCounts') + counts.factions + t('findingsCountsTail') + ')';
   var card = sectionCard(title);
   if (!findings.length) { card.appendChild(el('div', 'note warn', t('nothingMatchedCard'))); return card; }
