@@ -269,6 +269,9 @@ for (const item of questions) {
     gated: RETRIEVER === 'gate' && lastGate ? lastGate.half : '',
     gateError: RETRIEVER === 'gate' && lastGate ? (lastGate.error || '') : '',
     top: hits.slice(0, 3).map(h => ({ id: h.id, heading: h.metadata && h.metadata.heading, score: h.score })),
+    // Every id the reader was handed, for the per-question partial line below:
+    // which expectation entered the findings, and which did not.
+    ids: hits.map(h => h.id),
   });
   if (VERBOSE) {
     console.log('  ' + (rank ? '#' + rank : '  -') + '  [' + item.kind + '] ' + item.q);
@@ -377,6 +380,27 @@ for (const r of graded.filter(x => x.rank === null)) {
   console.log('  [' + r.kind + '] ' + r.q);
   console.log('      expected: ' + r.expect.join(', '));
   console.log('      got     : ' + r.top.map(t => (t.metadata && t.metadata.heading) || t.id).join(' | '));
+}
+
+// Per-question partial findings, which the miss list above cannot show: that one
+// only catches rank === null, so an entry with two expectations and one record
+// missing reads as a hit at the best rank of the one that was found. The global
+// 'multi-hop fully found' column catches the ratio; this says which entry, and
+// which of its ids, is the one that never entered the findings - which is what a
+// corpus or chunker change has to be read on. An id the splitter moved under a
+// child is named as reachable, because that is a real hit for the reader and a
+// real miss for the fixture.
+const partial = graded.filter(r => r.found < r.needed);
+if (partial.length) {
+  console.log('\npartial (' + partial.length + '/' + graded.length + ') - expected records not all found');
+  for (const r of partial) {
+    console.log('  [' + r.kind + '] ' + r.q);
+    console.log('      expected ' + r.needed + ', found ' + r.found + (r.rank === null ? '  (nothing in the top ' + TOPK + ')' : '  (best rank #' + r.rank + ')'));
+    for (const e of r.expect.filter(x => r.ids.indexOf(x) === -1)) {
+      const under = r.ids.find(h => h.startsWith(e + '->-'));
+      console.log('      missing: ' + e + (under ? '   (reachable as ' + under + ')' : ''));
+    }
+  }
 }
 
 console.log('\nout-of-corpus (expected to be declined, not answered)');
