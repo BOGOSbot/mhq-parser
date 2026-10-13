@@ -83,6 +83,10 @@ the spoiler toggles (`Show`, `Hide`) no longer appear as ancestors.
 Moving records changes ids, so the benchmark grades two readings of every
 question - see *Measuring it*.
 
+The link-first rewrite of this corpus - a record's own text plus links to what
+sits under it, the overflow rule, and the id-stability rule - is designed and dry
+run in `docs/corpus-wiki.md` (phase A; nothing is built).
+
 The on-disk corpus, the CSV export and the index state live in
 `workspace/rules-corpus/` (untracked; the storage and copyright posture is in
 `docs/corpus-storage.md`):

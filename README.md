@@ -269,7 +269,7 @@ Le dépôt a une disposition simple : les sources dans **src/**, la documentatio
 
 - **src/** - tout ce qui s'exécute, et les deux pages que le serveur lit à chaque requête : `parse.mjs` (l'analyseur), `server.mjs`, `archive.mjs`, `formats.mjs`, `verify-points.mjs`, `glossary.mjs`, `translate-fr-en.mjs`, `rules.mjs` (édition, clés, ancres), `rules-corpus.mjs` (corpus, recherche, juge, rédaction), `index.html`, `rules.html`
 - **archive/** - les événements fermés déjà récoltés, un fichier JSON par tournoi (suivi : c'est le magasin que le site relit)
-- **docs/** - `developer-doc.md` (comment fonctionne l'analyseur et pourquoi), `rules-page.md` (la page /rules, de la question à la citation), `translate.md` (dictionnaire FR/EN), `formats.md`, `glossary-fr-en.md`, `HANDOFF.md`
+- **docs/** - `developer-doc.md` (comment fonctionne l'analyseur et pourquoi), `rules-page.md` (la page /rules, de la question à la citation), `corpus-wiki.md` (le corpus en wiki : schéma, règle d'identifiants, overflow, dry run), `translate.md` (dictionnaire FR/EN), `formats.md`, `glossary-fr-en.md`, `HANDOFF.md`
 - **tests/** - une suite par sujet ; `tests/fixtures/` porte les listes réelles, les questions reddit et françaises et leur clé de réponses
 - **workspace/** - le corpus de règles et l'export CSV, l'état de l'index vectoriel, les exécutions d'évaluation et les journaux du serveur. Non suivi, propre à la machine : `node src/rules-corpus.mjs --scrape` le reconstruit
 - **README.md** - ce fichier, la façade du dépôt (humain et agent)
@@ -546,7 +546,7 @@ The repository keeps one shape: sources in **src/**, documentation in **docs/**,
 
 - **src/** - everything that runs, plus the two pages the server reads on each request: `parse.mjs` (the parser), `server.mjs`, `archive.mjs`, `formats.mjs`, `verify-points.mjs`, `glossary.mjs`, `translate-fr-en.mjs`, `rules.mjs` (edition, keys, anchors), `rules-corpus.mjs` (corpus, retrieval, judge, writer), `index.html`, `rules.html`
 - **archive/** - the closed events harvested so far, one JSON file per tournament (tracked: the store the site reads back)
-- **docs/** - `developer-doc.md` (how the parser works and why), `rules-page.md` (the /rules page, from question to citation), `translate.md` (FR/EN dictionary), `formats.md`, `glossary-fr-en.md`, `HANDOFF.md`
+- **docs/** - `developer-doc.md` (how the parser works and why), `rules-page.md` (the /rules page, from question to citation), `corpus-wiki.md` (the corpus as a wiki: schema, id rule, overflow, dry run), `translate.md` (FR/EN dictionary), `formats.md`, `glossary-fr-en.md`, `HANDOFF.md`
 - **tests/** - one suite per subject; `tests/fixtures/` holds the real lists, the reddit and French question banks and their answer key
 - **workspace/** - the rules corpus and CSV export, the vector-index state, the eval runs and the server logs. Untracked and per-machine: `node src/rules-corpus.mjs --scrape` rebuilds it
 - **README.md** - this file, the repository's front page (human and agent)

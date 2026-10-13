@@ -1,0 +1,352 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * The corpus wiki plan: what a link-first corpus would look like, computed over
+ * the records already on disk.
+ *
+ * PHASE A IS A DRY RUN. This module never writes the corpus, never touches the
+ * vector index and never calls a model: it takes the corpus it is given and
+ * returns the records and links a rewrite would produce, with the id each one
+ * would carry. `node src/wiki-plan.mjs` prints the report docs/corpus-wiki.md
+ * records.
+ *
+ * The shape, as Mandal specified it:
+ *
+ *   - a record holds its OWN text and links to what sits under it, so a parent's
+ *     vector carries the NAMES of its children - that is the retrieval bet;
+ *   - overflow: try the whole section first. If it does not fit the budget, its
+ *     subsections are emitted as their own chunks and the parent keeps a link to
+ *     each; a child still too large is emitted as ANOTHER chunk rather than cut
+ *     between headings;
+ *   - a link is { to, title, kind }. `to` must resolve to a record in the same
+ *     plan; a link that does not resolve is dropped and counted, never emitted.
+ *
+ * Ids are the fragile part (docs/corpus-wiki.md states the rule): an id derived
+ * from a source key (a CSV row, an anchor) survives a re-chunk; an id derived
+ * from heading TEXT moves when the heading moves, which is what the FAQ
+ * promotion did to the bank. This plan renames nothing - it is additive - and
+ * every record says which key its id came from.
+ */
+
+import fs from 'fs';
+import path from 'path';
+import { CSV_DIR, csvRows, htmlToText, readAllCorpus, splitSection, trimAbilityTail } from './rules-corpus.mjs';
+
+export const WIKI_BUDGET = 2000;
+export const LINK_BLOCK_MAX = 40;
+const LINK_LINE = 46;
+
+const clean = s => htmlToText(String(s == null ? '' : s)).replace(/\s+/g, ' ').trim();
+export const chars = s => String(s || '').length;
+export const lastCrumb = h => { const p = String(h || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : String(h || ''); };
+
+export function renderLinks(links, max) {
+  const list = links || [];
+  const shown = list.slice(0, max === undefined ? LINK_BLOCK_MAX : max);
+  return {
+    text: shown.map(l => '- ' + (l.kind ? l.kind + ': ' : '') + l.title).join('\n'),
+    shown: shown.length,
+    omitted: list.length - shown.length,
+  };
+}
+
+export function resolveLinks(links, has) {
+  const kept = [];
+  let dropped = 0;
+  for (const l of links || []) {
+    if (l && l.to && has(l.to)) kept.push(l);
+    else dropped++;
+  }
+  return { links: kept, dropped };
+}
+
+export function splitBody(text, budget) {
+  const s = String(text || '');
+  if (chars(s) <= budget) return [s];
+  return splitSection(s, budget).map(p => p.text);
+}
+
+// A trailing fragment of a few characters is not a record, it is debris in a
+// vector index: the chunker leaves one behind when a body ends just past the
+// budget. A part under MIN_PART is joined back onto the part before it, even
+// though that one then runs a little over - the corpus's own floor is 32
+// characters today and 77 on the rules half.
+export const MIN_PART = 80;
+export function splitWithin(text, budget, min) {
+  const floor = min === undefined ? MIN_PART : min;
+  const out = [];
+  for (const p of splitBody(text, budget)) {
+    if (out.length && chars(p) < floor) out[out.length - 1] = (out[out.length - 1] + '\n' + p).trim();
+    else out.push(p);
+  }
+  return out;
+}
+
+function baseRecord(r, extra) {
+  return Object.assign({
+    id: r.id, set: r.set === 'rules' ? 'rules' : 'factions', source: r.source || '',
+    heading: r.heading || '', ruleId: r.ruleId || '', anchor: r.anchor || '', hasAnchor: !!r.hasAnchor,
+    url: r.url || '', hash: r.hash || '',
+  }, extra || {});
+}
+
+export function readPlanInput() {
+  const read = f => csvRows(fs.readFileSync(path.join(CSV_DIR, f), 'utf8'));
+  return {
+    rules: readAllCorpus('rules'),
+    factions: readAllCorpus('factions'),
+    abilities: read('Abilities.csv').map(a => ({ id: a.id, name: a.name, faction_id: a.faction_id || '', description: a.description || '', legend: a.legend || '' })),
+    factionsCsv: read('Factions.csv').map(f => ({ id: f.id, name: f.name })),
+  };
+}
+
+export function planWiki(data) {
+  const rules = (data && data.rules) || [];
+  const factions = (data && data.factions) || [];
+  const abilities = (data && data.abilities) || [];
+  const factionRows = (data && data.factionsCsv) || [];
+  const budget = (data && data.budget) || WIKI_BUDGET;
+
+  const planned = [];
+  const index = new Map();
+  const stats = {
+    budget, links: 0, linksDropped: 0, linksOmitted: 0, linksInText: 0, split: 0,
+    created: { rules: 0, factions: 0 }, largest: { chars: 0, id: '' },
+    factionRules: 0, indexPages: 0,
+  };
+  const push = rec => {
+    planned.push(rec);
+    index.set(rec.id, rec);
+    if (chars(rec.text) > stats.largest.chars) stats.largest = { chars: chars(rec.text), id: rec.id };
+    return rec;
+  };
+  const fit = (rec, set) => {
+    if (chars(rec.text) <= budget) return rec;
+    const parts = splitWithin(rec.text, budget, MIN_PART);
+    rec.text = parts[0];
+    for (let i = 1; i < parts.length; i++) {
+      push(Object.assign({}, rec, { id: rec.id + '~' + (i + 1), text: parts[i], part: i + 1, parts: parts.length, links: [], children: [], created: true }));
+      stats.created[set]++;
+      stats.split++;
+    }
+    return rec;
+  };
+  // Every id the plan will contain, known before a single link is resolved: a
+  // link list built while the plan is half-pushed drops everything it points at
+  // (which is exactly what happened to the first draft of this file - 6,575
+  // index links resolved to nothing because their targets came later).
+  const known = new Set();
+  for (const r of rules) known.add(r.id);
+  for (const r of factions) known.add(r.id);
+  const factionRuleIds = [];
+  for (const a of abilities) {
+    if (!a || !a.id || !a.faction_id) continue;
+    const text = clean(trimAbilityTail(clean(a.description)));
+    if (chars(text) < 80) continue;
+    const id = 'faction-rule#' + a.id;
+    if (known.has(id)) continue;
+    known.add(id);
+    factionRuleIds.push(id);
+  }
+  // Index pages, one per faction, sized so a page fits the budget.
+  const factionName = new Map(factionRows.map(f => [f.id, clean(f.name)]));
+  const byFaction = new Map();
+  for (const r of factions) {
+    const f = String(r.faction || r.source || '').toLowerCase();
+    if (!byFaction.has(f)) byFaction.set(f, []);
+    byFaction.get(f).push(r);
+  }
+  // The CSV names a faction 'AE'; the scraped half names it 'faction-ae'. One
+  // has to be turned into the other or a faction rule ends up belonging to no
+  // faction at all and never appears on its index.
+  const factionKeyOf = id => 'faction-' + String(id || '').toLowerCase();
+  const rulesByFaction = new Map();
+  for (const id of factionRuleIds) {
+    const ability = abilities.find(a => 'faction-rule#' + a.id === id);
+    const f = ability ? factionKeyOf(ability.faction_id) : '';
+    if (!rulesByFaction.has(f)) rulesByFaction.set(f, []);
+    rulesByFaction.get(f).push(id);
+  }
+  const pageDefs = new Map();
+  for (const [faction, list] of byFaction) {
+    const indexId = 'faction-index#' + faction;
+    const perPage = Math.max(8, Math.floor((budget - 200) / LINK_LINE));
+    const pages = Math.max(1, Math.ceil(list.length / perPage));
+    const ids = [];
+    for (let p = 0; p < pages; p++) ids.push(p === 0 ? indexId : indexId + '::' + (p + 1));
+    for (const id of ids) known.add(id);
+    pageDefs.set(faction, { indexId, ids, perPage, pages, list });
+  }
+
+  // --- the rules half: the tree the headings already describe -----------------
+  const byHeading = new Map();
+  for (const r of rules) {
+    const h = String(r.heading || '');
+    if (!byHeading.has(h)) byHeading.set(h, []);
+    byHeading.get(h).push(r);
+  }
+  const childrenOf = new Map();
+  for (const h of byHeading.keys()) {
+    const parts = String(h).split(' > ').filter(Boolean);
+    if (parts.length < 2) continue;
+    const parentHeading = parts.slice(0, -1).join(' > ');
+    if (!byHeading.has(parentHeading)) continue;
+    if (!childrenOf.has(parentHeading)) childrenOf.set(parentHeading, []);
+    for (const kid of byHeading.get(h)) if (!childrenOf.get(parentHeading).some(k => k.id === kid.id)) childrenOf.get(parentHeading).push(kid);
+  }
+  for (const r of rules) {
+    const kids = childrenOf.get(String(r.heading || '')) || [];
+    const wanted = kids.map(k => ({ to: k.id, title: lastCrumb(k.heading), kind: 'section' }));
+    const resolved = resolveLinks(wanted, id => known.has(id));
+    stats.linksDropped += resolved.dropped;
+    const rec = baseRecord(r, {
+      kind: r.source === 'core-stratagems' ? 'stratagem' : 'rule',
+      parent: '', children: resolved.links.map(l => l.to), links: resolved.links,
+      idFrom: 'source-key', part: 1, parts: 1, text: String(r.text || ''),
+    });
+    if (resolved.links.length) {
+      const block = renderLinks(resolved.links, LINK_BLOCK_MAX);
+      stats.linksOmitted += block.omitted;
+      stats.links += resolved.links.length;
+      const withLinks = rec.text + '\n\n' + block.text;
+      if (chars(withLinks) <= budget) {
+        rec.text = withLinks;
+        stats.linksInText++;
+      } else {
+        // The body no longer fits beside its link list: the links stay with the
+        // lead-in and the rest of the body becomes its own chunk, so the parent
+        // still carries the names of what it owns.
+        const room = Math.max(200, budget - chars(block.text) - 2);
+        const lead = splitWithin(rec.text, room, MIN_PART);
+        rec.text = (lead[0] + '\n\n' + block.text).trim();
+        stats.linksInText++;
+        for (let i = 1; i < lead.length; i++) {
+          push(Object.assign({}, rec, { id: r.id + '~' + (i + 1), text: lead[i], part: i + 1, parts: lead.length, links: [], children: [], created: true }));
+          stats.created.rules++;
+          stats.split++;
+        }
+      }
+    }
+    fit(rec, 'rules');
+    rec.chars = chars(rec.text);
+    push(rec);
+  }
+
+  // --- faction rules that have no record anywhere -----------------------------
+  for (const id of factionRuleIds) {
+    const ability = abilities.find(a => 'faction-rule#' + a.id === id);
+    const text = clean(trimAbilityTail(clean(ability.description)));
+    const rec = baseRecord({ id, source: 'factions-csv', heading: clean(ability.name) + ' - faction rule', set: 'factions' }, {
+      kind: 'faction-rule', parent: '', children: [], links: [], idFrom: 'csv-ability-id',
+      part: 1, parts: 1, text, created: true,
+    });
+    const factionKey = factionKeyOf(ability.faction_id);
+    const def = pageDefs.get(factionKey);
+    const wanted = def ? [{ to: def.indexId, title: factionName.get(factionKey) || factionKey, kind: 'faction' }] : [];
+    const resolved = resolveLinks(wanted, x => known.has(x));
+    stats.links += resolved.links.length;
+    rec.links = resolved.links;
+    rec.parent = resolved.links.length ? resolved.links[0].to : '';
+    const line = renderLinks(resolved.links, 1);
+    if (chars(rec.text) + chars(line.text) + 2 <= budget) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }
+    fit(rec, 'factions');
+    rec.chars = chars(rec.text);
+    push(rec);
+    stats.factionRules++;
+    stats.created.factions++;
+  }
+
+  // --- the faction indexes, then the cards that point back at them ------------
+  for (const [faction, def] of pageDefs) {
+    const sorted = def.list.slice().sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+    for (let p = 0; p < def.ids.length; p++) {
+      const slice = sorted.slice(p * def.perPage, (p + 1) * def.perPage);
+      const wanted = [];
+      if (p === 0) {
+        for (const id of (rulesByFaction.get(faction) || [])) wanted.push({ to: id, title: clean(index.has(id) ? index.get(id).heading : id), kind: 'rule' });
+      }
+      for (const r of slice) wanted.push({ to: r.id, title: clean(r.heading), kind: 'card' });
+      if (def.ids.length > 1 && p === 0) for (let q = 1; q < def.ids.length; q++) wanted.push({ to: def.ids[q], title: 'index ' + (q + 1) + '/' + def.ids.length, kind: 'index' });
+      const resolved = resolveLinks(wanted, x => known.has(x));
+      stats.linksDropped += resolved.dropped;
+      stats.links += resolved.links.length;
+      const head = baseRecord({ id: def.ids[p], source: 'factions-csv', heading: (factionName.get(faction) || faction) + ' - index' + (def.ids.length > 1 ? ' ' + (p + 1) + '/' + def.ids.length : ''), set: 'factions' }, {
+        kind: 'index', parent: p === 0 ? '' : def.indexId, children: def.ids.slice(1), links: resolved.links,
+        idFrom: 'faction-id', part: p + 1, parts: def.ids.length, created: true,
+        text: ((factionName.get(faction) || faction) + '\n' + renderLinks(resolved.links, 1000).text).trim(),
+      });
+      stats.linksInText += Math.min(resolved.links.length, 1000);
+      fit(head, 'factions');
+      head.chars = chars(head.text);
+      push(head);
+      stats.indexPages++;
+      stats.created.factions++;
+    }
+  }
+  for (const [faction, def] of pageDefs) {
+    for (const r of def.list) {
+      const wanted = [{ to: def.indexId, title: (factionName.get(faction) || faction), kind: 'faction' }];
+      const rec = baseRecord(r, {
+        kind: String(r.id || '').split('#')[0], parent: def.indexId, children: [], links: wanted,
+        idFrom: 'csv-row-id', part: 1, parts: 1, text: String(r.text || ''),
+      });
+      const line = renderLinks(wanted, 1);
+      if (chars(rec.text) + chars(line.text) + 2 <= budget) { rec.text = rec.text + '\n\n' + line.text; stats.linksInText++; }
+      stats.links++;
+      fit(rec, 'factions');
+      rec.chars = chars(rec.text);
+      push(rec);
+    }
+  }
+
+  return { records: planned, index, stats };
+}
+
+export function distribution(records) {
+  const sizes = (records || []).map(r => chars(r.text)).sort((a, b) => a - b);
+  const q = p => sizes.length ? sizes[Math.min(sizes.length - 1, Math.floor(sizes.length * p))] : 0;
+  const buckets = { '0-250': 0, '251-500': 0, '501-1000': 0, '1001-1500': 0, '1501-2000': 0, '2000+': 0 };
+  for (const s of sizes) {
+    if (s <= 250) buckets['0-250']++;
+    else if (s <= 500) buckets['251-500']++;
+    else if (s <= 1000) buckets['501-1000']++;
+    else if (s <= 1500) buckets['1001-1500']++;
+    else if (s <= 2000) buckets['1501-2000']++;
+    else buckets['2000+']++;
+  }
+  return { n: sizes.length, min: sizes[0] || 0, median: q(0.5), p90: q(0.9), max: sizes[sizes.length - 1] || 0, buckets };
+}
+
+export function idReport(existing, planned) {
+  const before = new Set((existing || []).map(r => r.id));
+  const after = new Set((planned || []).map(r => r.id));
+  const kept = [];
+  const moved = [];
+  const added = [];
+  for (const id of before) (after.has(id) ? kept : moved).push(id);
+  for (const id of after) if (!before.has(id)) added.push(id);
+  const newKinds = {};
+  for (const id of added) { const k = id.split('#')[0]; newKinds[k] = (newKinds[k] || 0) + 1; }
+  return { before: before.size, after: after.size, kept: kept.length, moved: moved.length, added: added.length, newKinds, movedSample: moved.slice(0, 10), addedSample: added.slice(0, 6) };
+}
+
+// Exact basename: 'test-wiki-plan.mjs' also ends with 'wiki-plan.mjs', and a
+// test that imports this module must not run its report.
+if (process.argv[1] && path.basename(process.argv[1]) === 'wiki-plan.mjs') {
+  const input = readPlanInput();
+  const plan = planWiki(input);
+  const existing = input.rules.concat(input.factions);
+  const afterRules = plan.records.filter(r => r.set === 'rules');
+  const afterFactions = plan.records.filter(r => r.set !== 'rules');
+  const battle = plan.records.find(r => r.heading === 'Battle Focus - faction rule');
+  console.log(JSON.stringify({
+    stats: plan.stats,
+    ids: idReport(existing, plan.records),
+    distBefore: { rules: distribution(input.rules), factions: distribution(input.factions) },
+    distAfter: { rules: distribution(afterRules), factions: distribution(afterFactions) },
+    createdKinds: plan.records.filter(r => r.created).reduce((m, r) => { const k = r.kind || r.id.split('#')[0]; m[k] = (m[k] || 0) + 1; return m; }, {}),
+    largest: plan.records.slice().sort((a, b) => chars(b.text) - chars(a.text)).slice(0, 5).map(r => ({ id: r.id, chars: chars(r.text) })),
+    battleFocus: battle ? { id: battle.id, chars: chars(battle.text), links: battle.links.map(l => l.to), head: battle.text.slice(0, 90) } : null,
+    indexSample: plan.records.filter(r => r.kind === 'index').slice(0, 2).map(r => ({ id: r.id, chars: chars(r.text), links: r.links.length })),
+  }, null, 2));
+}
