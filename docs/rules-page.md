@@ -445,6 +445,38 @@ answer the same question differently.
   reading was never measured, so the two rows are not comparable on that column.
   Two questions that miss on the exact id ("what does the Advance move do", "what
   happens when a transport blows up") are reachable inside the top 20.
+- **The top-K sweep was re-taken with the Jev rerank on (task-20).** The rows above and
+  the "per-side 10 is the sweet spot" reading were measured while Jev was
+  rate-limited, i.e. without the rerank - a path the page does not run. Re-run with
+  the free gateway answering (66 rerank calls per run; a 429 throws in the harness,
+  so no run fell back silently), same command:
+
+  | per-side | exact hit@1 / 5 / 10 / 20 | exact MRR | reachable hit@1 / 5 / 10 / 20 | reachable MRR |
+  |---|---|---|---|---|
+  | 5, no rerank (recorded) | 24.1 / 65.5 / 72.4 / 72.4 | 0.403 | 41.4 / 69 / 75.9 / 75.9 | 0.515 |
+  | 5, rerank on | **31.0 / 72.4 / 79.3 / 79.3** | **0.494** | **48.3 / 75.9 / 82.8 / 82.8** | **0.598** |
+  | 10, no rerank (recorded) | 27.6 / 65.5 / 86.2 / 93.1 | 0.449 | 41.4 / 69 / 93.1 / 100 | 0.550 |
+  | 10, rerank on | 27.6 / 65.5 / 86.2 / 93.1 | 0.449 | 41.4 / 69 / 93.1 / 100 | 0.550 |
+  | 15, rerank on | 27.6 / 62.1 / 82.8 / 93.1 | 0.433 | 37.9 / 72.4 / 93.1 / 100 | 0.525 |
+  | 20, rerank on | 27.6 / 62.1 / 82.8 / 93.1 | 0.445 | 37.9 / 72.4 / 93.1 / 96.6 | 0.534 |
+
+  The rerank moves the small net and nothing else: per-side 5 gains 6.9 points at
+  hit@1 and 0.091 exact MRR (beyond the 2-4 point floor), while per-side 10, 15 and
+  20 reproduce the recorded no-rerank rows exactly, MRR included. "Per-side 10 is
+  the sweet spot" is therefore depth-true and head-false: 10 still wins hit@10/20
+  (86.2 / 93.1, reachable hit@20 100%) and 5 now wins hit@1 and MRR. **No default is
+  moved** - the two configs win different columns and the head delta sits at the
+  floor's edge. Three identical rows remain an open question (the rerank may simply
+  not reorder expected records once the net is 20+ candidates, or parts of the
+  recorded sweep were taken with it on); settling it needs a rerank-off control that
+  skips instead of throwing, or the paid gateway. Artifacts:
+  `workspace/eval/retrieval-topk-sweep-rerank-clean.txt` (raw, mixed-encoding:
+  `retrieval-topk-sweep-rerank.txt`). The **gate arm was not re-measured**: the free
+  gateway 429ed after 264 answered calls plus the probes (a long-window budget, not
+  a per-minute one), and the notes price the remaining set at about **$0.40** on the
+  paid route, which needs Mandal's yes per use. The recorded gate rows
+  (`retrieval-gate.txt`, `retrieval-gate-lexical.txt`) are no-rerank and still
+  stand as such.
 - **Fix the writer before comparing two arms, not after.** Two arms whose writer
   fails at different rates are not comparable, and subtracting the failed rows does
   not repair it: dropping rows changes *which* questions are being compared, and the
@@ -460,6 +492,15 @@ answer the same question differently.
   (58.6% exact hit@1 against the dual arm's 27.6%) bound what the vector leg
   could contribute; they are not a fair fight against the page's path. Use
   `--namespace rules|factions` to pin one half.
+  Re-taken 2026-10-13 (no Jev on this leg, so it is free): **DENSE** (`--query-mode`
+  unset, the page's default) 58.6 / 72.4 / 89.7 / 93.1 exact, MRR 0.666, and
+  58.6 / 79.3 / 96.6 / 96.6 reachable, MRR 0.682; **HYBRID** (`--query-mode HYBRID`)
+  58.6 / 79.3 / 82.8 / 93.1 exact, MRR 0.668, and **65.5 / 93.1** / 93.1 / 96.6
+  reachable, MRR **0.731**. HYBRID wins the reader-facing head (reachable hit@1 +6.9,
+  hit@5 +13.8, MRR +0.049) and loses exact hit@10 (-6.9). The page keeps DENSE
+  because this is the **oracle arm** and not the page's path, and because the bank
+  has not grown yet; a flip needs the fair-fight arm and a bigger bank.
+  Artifact: `workspace/eval/retrieval-vector-dense-hybrid.txt`.
 - `node tests/eval-retrieval.mjs --retriever gate --gate lexical` - the same path
   with one half chosen first. The gate is closed-set - one short item in, one
   label out: `--gate jev` is the Jev choice, `--gate lexical` scores the
