@@ -25,7 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expandQuery, gateHalf, gateHalfLexical, gateVocabularies, grepCorpus, grepTerms, grepWithTerms, jevRank, queryIndex, readAllCorpus, retrieveDual, retrieveWide } from '../src/rules-corpus.mjs';
+import { expandQuery, gateHalf, gateHalfLexical, gateVocabularies, grepCorpus, grepTerms, grepWithTerms, jevCalls, jevRank, queryIndex, readAllCorpus, retrieveDual, retrieveWide } from '../src/rules-corpus.mjs';
 import { anchorFor, credential, fastCredential, jevKeyName } from '../src/rules.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -320,6 +320,9 @@ for (const r of graded) {
   if (r.rank !== null) b.hk++;
   b.mrr += r.rank ? 1 / r.rank : 0;
 }
+const jc = jevCalls();
+console.log('jev calls   ' + jc.total + '  (rerank ' + jc.rerank + ', gate ' + jc.gate + ')  ' + (rows.length ? (jc.total / rows.length).toFixed(1) : '0') + ' per question');
+
 console.log('\nby kind');
 for (const k of Object.keys(byKind)) {
   const b = byKind[k];
