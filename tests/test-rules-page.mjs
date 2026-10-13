@@ -52,7 +52,8 @@ t('and in the French table too', missingFr, []);
 const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild', 'rankN', 'rankScore', 'rankScoreTitle', 'matchedWords', 'openPassage', 'moreFindings', 'close', 'openSource',
   'cardTitle', 'cardRanged', 'cardMelee', 'cardAbilities', 'cardKeywords', 'cardComposition', 'cardPoints', 'cardSourceNote', 'cardOpen',
   'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'judgeDissentTitle', 'judgeDissentWeaker', 'judgeDissentOther',
-  'cardReady', 'streamCut', 'citedByJudge', 'verdictEvidence', 'voteHelp', 'voteUp', 'voteDown', 'voteThanks'];
+  'cardReady', 'streamCut', 'citedByJudge', 'verdictEvidence', 'voteHelp', 'voteUp', 'voteDown', 'voteThanks',
+  'rerunTitle', 'rerunNote', 'rerankHelp', 'rerankButton', 'rerankDrop', 'rerankUse'];
 const absent = needed.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined);
 t('the new display labels exist in both languages', absent, []);
 
@@ -96,13 +97,27 @@ ok('done no longer short-circuits on a card', code.indexOf('if (state.card) { se
 // The evidence behind a verdict is never collapsed: the list is the union of the
 // top five by rank and the passages the judge names, in rank order, cited ones
 // badged, no duplicate when a cited passage is already in the top five.
-ok('the card takes the cited passages', /function findingsCard\(findings, counts, cited\)/.test(code));
+ok('the card takes the cited passages', /function findingsCard\(findings, counts, cited, state\)/.test(code));
 ok('the union keeps the top five and promotes the cited ones', /i < 5 \|\| isCited\(findings\[i\]\)/.test(code));
 ok('a cited finding is badged and shown whole', /if \(cited\) head\.appendChild\(el\('span', 'leg cite'/.test(code));
 ok('the verdict links to the passages it rests on', /ev\.appendChild\(citeLink\(f, '\[' \+ cited\[c\] \+ '\]'\)\)/.test(code));
 ok('a widening drops the citations it renumbered', /if \(ev\.attempt > 0\) state\.cited = \[\];/.test(code));
 ok('citations show only against the list the verdict judged', /var samePass = /.test(code));
 ok('one place draws the findings list', /function renderFindings\(state\)/.test(code));
+
+// The manual rerank (task-21): the reader unticks passages, the request carries
+// their ids and nothing else, the server runs the judge and the writer over
+// exactly those records, and the second answer is appended rather than replacing
+// the first the reader may already have read.
+ok('each finding carries its own keep/drop', /el\('button', 'keepbtn'/.test(code));
+ok('the request carries the kept ids', /keep: Array\.isArray\(o\.keep\) \? o\.keep : undefined/.test(code));
+ok('and the ids the reader was shown', /shown: Array\.isArray\(o\.shown\) \? o\.shown : undefined/.test(code));
+ok('and the trace of the answer it overrides', /over: o\.over \|\| undefined/.test(code));
+ok('the rerun appends rather than replacing', /startResult\(answerLang, \{ append: o\.append === true \}\)/.test(code) && /el\('div', 'rerun'\)/.test(code));
+ok('the rerun does not translate again', /asked: o\.asked \|\| undefined/.test(code));
+ok('the rerun button is a phone-sized target', PAGE.indexOf('.rerunbtn{min-height:44px}') !== -1);
+ok('only the first answer is selectable', /state\.selectable = o\.append !== true;/.test(code));
+
 
 // The non-stream JSON replies carry the same reconciliation the trace and the
 // stream do, or a JSON consumer cannot tell a dissent from a downgrade.
@@ -119,6 +134,20 @@ const withDisagreement = jsonReplies.filter(x => x.slice(0, 900).indexOf('judgeD
 const withBoth = withDisagreement.filter(x => x.slice(0, 900).indexOf('judgeDowngrade') !== -1 && x.slice(0, 900).indexOf('judgeDissentFrom') !== -1);
 t('every JSON reply that reports a disagreement reports the downgrade and the dissenter', withBoth.length, withDisagreement.length);
 ok('and there is more than one such reply', withBoth.length >= 2);
+
+// The server side of the override, checked where the server text is in scope.
+const overrideHead = server.indexOf('if (override) {');
+const overrideRetrieve = server.indexOf('answerableFindings(asked, {');
+const overrideElse = server.indexOf('} else {', overrideHead);
+ok('the server has an override path', overrideHead !== -1);
+ok('the override path runs before the search call', overrideHead !== -1 && overrideElse !== -1 && overrideRetrieve > overrideElse);
+ok('the override resolves ids against the corpus', /keepIds\.map\(id => byId\.get\(id\)\)/.test(server));
+ok('the override refuses an unknown selection', /none of those passages is in the corpus/.test(server));
+ok('the override path emits findings without searching', /type: 'findings', findings: toPayload\(chosen\)/.test(server));
+const traces = fs.readFileSync(path.join(__dirname, '..', 'src', 'rules-traces.mjs'), 'utf8');
+ok('the trace carries the human override', /if \(input\.override\) t\.override = input\.override;/.test(traces));
+ok('and points at the answer it overrides', /if \(input\.overrideOf\) t\.overrideOf = input\.overrideOf;/.test(traces));
+ok('the server records kept, dropped and added', /dropped: shownIds\.filter/.test(server) && /added: keepIds\.filter/.test(server));
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

@@ -240,6 +240,14 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 .footlinks{display:flex;gap:10px;align-items:center}
 .footlinks a{display:inline-flex;color:var(--dim);padding:4px;border-radius:7px}
 .footlinks a:hover{color:var(--txt);background:var(--panel2)}
+/* The manual rerank: a second answer appended under the first, and the reader's
+   own keep/drop on the passages. Buttons stay 44px so a phone can hit them. */
+.rerun{margin-top:26px;border-top:1px solid rgba(0,0,0,.14);padding-top:14px}
+.rerun .card{margin-top:0}
+.fitem.dropped{opacity:.45}
+.keepbtn{margin-left:8px;min-height:32px;font-size:.82em}
+.rerunfoot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.rerunbtn{min-height:44px}
 </style>
 </head>
 <body>
@@ -369,6 +377,12 @@ var I18N = {
     matchedWords: 'matched: ',
     openPassage: 'Passage',
     moreFindings: 'more findings',
+  rerunTitle: 'Second answer - on the passages you chose',
+  rerunNote: 'This is a second answer to the same question. The first one stays above.',
+  rerankHelp: 'Untick a passage to leave it out, then ask again on what is left.',
+  rerankButton: 'Answer again on my selection',
+  rerankDrop: 'leave this passage out',
+  rerankUse: 'use this passage again',
     citedByJudge: 'the judge cites this',
     verdictEvidence: 'passages it rests on:',
     close: 'Close',
@@ -508,6 +522,12 @@ var I18N = {
     matchedWords: 'correspondance : ',
     openPassage: 'Passage',
     moreFindings: 'autres constats',
+  rerunTitle: 'Deuxième réponse - sur les passages que vous avez choisis',
+  rerunNote: 'Ceci est une deuxième réponse à la même question. La première reste ci-dessus.',
+  rerankHelp: 'Décochez un passage pour l\'écarter, puis redemandez sur ce qui reste.',
+  rerankButton: 'Répondre à nouveau sur ma sélection',
+  rerankDrop: 'écarter ce passage',
+  rerankUse: 'réutiliser ce passage',
     citedByJudge: 'cité par le juge',
     verdictEvidence: 'passages sur lesquels il s\u2019appuie :',
     close: 'Fermer',
@@ -890,7 +910,7 @@ function translationCard(tr) {
   return card;
 }
 
-function findingsCard(findings, counts, cited) {
+function findingsCard(findings, counts, cited, state) {
   // Ordered by the rank the retrievers gave them, not by arrival: a widened
   // pass re-renders this card with the wider list, and the order is the whole
   // point of showing it. Each half keeps its own rank order, and the halves
@@ -914,16 +934,34 @@ function findingsCard(findings, counts, cited) {
     else rest.push(findings[i]);
   }
   var ol = el('ol', 'cites');
-  for (var c = 0; c < shown.length; c++) ol.appendChild(findingItem(shown[c], true, isCited(shown[c])));
+  for (var c = 0; c < shown.length; c++) ol.appendChild(findingItem(shown[c], true, isCited(shown[c]), state));
   card.appendChild(ol);
   if (rest.length) {
     var det = document.createElement('details');
     det.className = 'moref';
     det.appendChild(el('summary', null, t('moreFindings') + ' (' + rest.length + ')'));
     var ol2 = el('ol', 'cites');
-    for (var r = 0; r < rest.length; r++) ol2.appendChild(findingItem(rest[r], false, isCited(rest[r])));
+    for (var r = 0; r < rest.length; r++) ol2.appendChild(findingItem(rest[r], false, isCited(rest[r]), state));
     det.appendChild(ol2);
     card.appendChild(det);
+  }
+  if (state && state.selectable && !state.rerun) {
+    // The manual rerank footer. The button only exists once the reader has
+    // actually changed the selection: a control that re-asks the same list is
+    // noise, and an accidental tap must not spend a judge and a writer.
+    var kept = [];
+    for (var k = 0; k < state.shownIds.length; k++) if (state.keep[state.shownIds[k]] !== false) kept.push(state.shownIds[k]);
+    var dropped = state.shownIds.length - kept.length;
+    var foot = el('div', 'rerunfoot');
+    foot.appendChild(el('div', 'note', t('rerankHelp')));
+    var again = el('button', 'rerunbtn', t('rerankButton'));
+    again.type = 'button';
+    again.disabled = !dropped || !kept.length;
+    again.addEventListener('click', function () {
+      ask({ question: state.question || $('#q').value, asked: state.asked, over: state.traceId, keep: kept, shown: state.shownIds, append: true, english: true });
+    });
+    foot.appendChild(again);
+    card.appendChild(foot);
   }
   return card;
 }
@@ -933,7 +971,7 @@ function findingsCard(findings, counts, cited) {
 // what is on screen.
 function renderFindings(state) {
   state.findingSlot.textContent = '';
-  state.findingSlot.appendChild(findingsCard(state.findings, state.counts, state.cited));
+  state.findingSlot.appendChild(findingsCard(state.findings, state.counts, state.cited, state));
 }
 
 // Sorting is per half: ranks are per-half positions, so a rules rank 3 and a
@@ -987,11 +1025,23 @@ function markTerms(text, terms) {
   return frag;
 }
 
-function findingItem(f, prominent, cited) {
+function findingItem(f, prominent, cited, state) {
   var li = el('li', 'fitem' + (prominent ? ' top' : ''));
+  var off = state && state.selectable && !state.rerun && state.keep[f.id] === false;
+  if (off) li.className += ' dropped';
   var head = el('div', 'fhead');
   head.appendChild(el('span', 'num', '[' + f.n + ']'));
   if (f.leg) head.appendChild(el('span', 'leg ' + legClass(f.leg), legLabel(f.leg)));
+  if (state && state.selectable && !state.rerun) {
+    // The reader's own keep/drop, per passage. A toggle rather than a checkbox so
+    // a phone can hit it, and rebuilt on every render so a verdict landing or a
+    // widening cannot quietly lose the selection.
+    var keep = el('button', 'keepbtn' + (off ? ' off' : ''), off ? t('rerankUse') : t('rerankDrop'));
+    keep.type = 'button';
+    keep.setAttribute('aria-pressed', off ? 'false' : 'true');
+    keep.addEventListener('click', function () { state.keep[f.id] = off; renderFindings(state); });
+    head.appendChild(keep);
+  }
   if (cited) head.appendChild(el('span', 'leg cite', t('citedByJudge')));
   var parts = crumbs(f.heading);
   var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + (parts.length ? parts[parts.length - 1] : f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
@@ -1357,12 +1407,7 @@ function voteRow(id) {
   rest.appendChild(row);
 }
 
-function startResult(lang) {
-  resetProgress();
-  var host = $('#result');
-  host.textContent = '';
-  host.classList.remove('hidden');
-  $('#intro').classList.add('hidden');
+function resultSlots(host, state) {
   // The unit card, when there is one, previews at the very top: it is
   // mechanical and instant, and the pipeline below it still runs.
   var cardSlot = el('div', 'cardslot');
@@ -1383,7 +1428,39 @@ function startResult(lang) {
   host.appendChild(answerCard);
   var rest = el('div');
   host.appendChild(rest);
-  return { cardSlot: cardSlot, verdict: verdict, findingSlot: findingSlot, answer: answerCard, rest: rest, findings: [], counts: null, cited: [], pass: 0, terms: [], translation: null, card: false, judge: null, judge2: null, judgeAttempt: 0, disputed: false, events: 0, answered: false };
+  state.cardSlot = cardSlot; state.verdict = verdict; state.findingSlot = findingSlot; state.answer = answerCard; state.rest = rest;
+  return state;
+}
+
+function newState() {
+  return { findings: [], counts: null, cited: [], pass: 0, terms: [], translation: null, card: false, judge: null, judge2: null, judgeAttempt: 0, disputed: false, events: 0, answered: false,
+    // The manual rerank: what the reader asked, the English the pipeline ran,
+    // the trace the first answer saved, the ids on screen and which of them the
+    // reader is keeping. Only the first answer is selectable.
+    question: '', asked: '', traceId: '', shownIds: [], keep: {}, selectable: false, rerun: false };
+}
+
+function startResult(lang, options) {
+  var o = options || {};
+  resetProgress();
+  var host = $('#result');
+  if (o.append) {
+    // A second answer to the same question, on the passages the reader chose. It
+    // is appended, never replacing the first: the reader may already have read
+    // that one, which is the rule the second judge set.
+    var wrap = el('div', 'rerun');
+    var title = sectionCard(t('rerunTitle'));
+    title.appendChild(el('div', 'note', t('rerunNote')));
+    wrap.appendChild(title);
+    host.appendChild(wrap);
+    var state = resultSlots(wrap, newState());
+    state.rerun = true;
+    return state;
+  }
+  host.textContent = '';
+  host.classList.remove('hidden');
+  $('#intro').classList.add('hidden');
+  return resultSlots(host, newState());
 }
 
 // --- stage progress ---------------------------------------------------------
@@ -1530,6 +1607,7 @@ function applyEvent(ev, state) {
     // the trace is off the server sends no id and the page shows no vote: the
     // vote is a bonus on top of a saved trace, never a store of its own.
     if (ev.traceId) voteRow(ev.traceId);
+    if (ev.traceId) state.traceId = ev.traceId;
     return;
   }
   // The server echoes the setting it actually ran, which is also what a shared
@@ -1550,9 +1628,23 @@ function applyEvent(ev, state) {
   }
   if (ev.type === 'escalate') { pAttribute('judge', ev.elapsedMs); addStage('widen', 'retrieve'); return; }
   if (ev.type === 'translation') { state.translation = ev; doneStage('translate', ev.elapsedMs); return; }
-  if (ev.type === 'terms') { state.terms = ev.terms || []; doneStage('translate', ev.elapsedMs); return; }
+  if (ev.type === 'terms') {
+    state.terms = ev.terms || [];
+    if (ev.translated) state.asked = ev.translated;
+    doneStage('translate', ev.elapsedMs);
+    return;
+  }
   if (ev.type === 'findings') {
     state.findings = ev.findings || [];
+    // The rereank selection starts as "everything the server sent", and the ids
+    // are kept in the order the server sent them so the rerun's request order is
+    // the order the reader is looking at.
+    state.shownIds = [];
+    state.keep = {};
+    for (var si = 0; si < state.findings.length; si++) {
+      var sid = state.findings[si].id;
+      if (typeof sid === 'string' && sid) { state.shownIds.push(sid); state.keep[sid] = true; }
+    }
     state.counts = ev.counts || null;
     state.pass = ev.attempt || 0;
     // A widening renumbers the findings, so the verdict that judged the previous
@@ -1786,16 +1878,25 @@ async function ask(over) {
     // language the question arrived in: French question under the FR switch gets
     // a French answer, and an English question does too.
     var answerLang = LANG;
-    var state = startResult(answerLang);
+    var state = startResult(answerLang, { append: o.append === true });
+    state.question = question;
+    state.selectable = o.append !== true;
     var r = await fetch('/rules/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question: question,
         answerLang: answerLang,
-        english: o.english === true,
+        english: o.asked ? true : o.english === true,
         mode: MODE,
-        stream: true
+        stream: true,
+        // A manual rerank: the ids to keep, the ids that were on screen, the
+        // English question the reader already read, and the trace of the first
+        // answer. Ids only - the server resolves them against its own corpus.
+        keep: Array.isArray(o.keep) ? o.keep : undefined,
+        shown: Array.isArray(o.shown) ? o.shown : undefined,
+        asked: o.asked || undefined,
+        over: o.over || undefined
       })
     });
     if (!r.ok) {

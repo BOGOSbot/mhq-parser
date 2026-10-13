@@ -34,7 +34,7 @@ import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, indexInfo, judgeCoverage, looksForeign, readAllCorpus, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
+import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 import { unitCard } from './unit-card.mjs';
 
@@ -754,6 +754,23 @@ async function handleRulesAsk(req, res) {
   if (question.length < 3) return fail(res, 400, 'ask a question (at least 3 characters)');
   if (question.length > 1000) return fail(res, 400, 'that question is too long (1000 characters max)');
 
+  // The manual rerank (task-21): the reader unticks the passages the answer should
+  // not rest on, and the page sends back the ids that stay. Retrieval is skipped -
+  // the reader has already decided what is relevant - and only the judge and the
+  // writer run. The request carries ids, never passage text: the server resolves
+  // them against its own corpus, so a client cannot inject prose into a prompt.
+  // `asked` is the English question the reader already read, sent back so the
+  // rerun does not pay for a translation it already has.
+  const keepIds = Array.isArray(body.keep)
+    ? body.keep.filter(x => typeof x === 'string' && x).slice(0, 40)
+    : [];
+  const shownIds = Array.isArray(body.shown)
+    ? body.shown.filter(x => typeof x === 'string' && x).slice(0, 60)
+    : [];
+  const override = keepIds.length > 0;
+  const reuseAsked = override && typeof body.asked === 'string' && body.asked.trim().length >= 3 ? body.asked.trim() : '';
+  const overrideOf = override && typeof body.over === 'string' ? body.over.slice(0, 64) : '';
+
   // The reader no longer tells us the language. The question does: a clear
   // English question is left alone, anything else is translated in full. A
   // client that already has the English (a corrected translation) sends it back
@@ -825,7 +842,7 @@ async function handleRulesAsk(req, res) {
   // Which stages this question will actually run. A French question has one
   // more than an English one, and the page needs the list to draw a bar with the
   // right segments rather than a fixed guess.
-  const stages = (foreign ? ['translate'] : []).concat(['retrieve', 'judge', 'answer']);
+  const stages = override ? ['judge', 'answer'] : (foreign ? ['translate'] : []).concat(['retrieve', 'judge', 'answer']);
   // The page needs the id to attach a thumb to the right record, and the id is
   // the only handle it gets: eight random bytes that tie to nothing.
   emit({ type: 'start', lang: lang || 'und', stages, traceId, elapsedMs: Date.now() - started });
@@ -834,13 +851,16 @@ async function handleRulesAsk(req, res) {
     // The whole question is translated, not only its keywords: the retrieval
     // wants English words, but the judge and the writer want the question, and
     // 'can Asurmen embark after shooting' is not 'asurmen embark shoot'.
-    const translation = foreign
+    // A rerun does not translate again: it already has the English the first
+    // answer was judged and written from, and re-deriving it would be a call the
+    // reader paid for once already.
+    const translation = (foreign && !reuseAsked)
       ? await timed('translate', () => translateQuestion(question, keys.fast))
-      : { lang: 'en', translated: '', terms: [], glossary: [] };
+      : { lang: 'en', translated: reuseAsked, terms: [], glossary: [] };
     const asked = translation.translated || question;
     const terms = translation.terms || [];
     const answerLang = wantedAnswerLang || (String(translation.lang || '').slice(0, 2) === 'fr' ? 'fr' : 'en');
-    if (foreign) {
+    if (foreign && !reuseAsked) {
       emit({ type: 'translation', detected: translation.lang || 'und', original: question, translated: translation.translated, terms, elapsedMs: Date.now() - started });
     }
     emit({ type: 'terms', terms, translated: translation.translated || '', elapsedMs: Date.now() - started });
@@ -871,7 +891,7 @@ async function handleRulesAsk(req, res) {
     // The corpora are already in memory for the search; the card needs them to
     // resolve a Base or Faction ability to the rule it names. The index is never
     // touched either way.
-    const card = unitCard(question, { asked, corpora: corpora() });
+    const card = override ? null : unitCard(question, { asked, corpora: corpora() });
     if (card) emit({ type: 'card', card, preview: true, elapsedMs: Date.now() - started });
 
     // The search keeps deepening while the judge says it cannot answer, and the
@@ -898,7 +918,32 @@ async function handleRulesAsk(req, res) {
     // a narrower, shallower search; deep lets it think and looks wider for
     // longer. Both keep the anchoring, which is what makes the fast setting safe.
     emit({ type: 'mode', mode: modeName, first: mode.first, passes: mode.passes, reasoning: mode.reasoning || 'model default', elapsedMs: Date.now() - started });
-    const outcome = await timed('retrieve+judge', () => answerableFindings(asked, {
+    // A manual rerank: the reader's own selection IS the retrieval. The ids are
+    // resolved against both halves in the order sent, they become the findings,
+    // and the judge's verdict on them is binding exactly as it is on a searched
+    // list. Nothing is searched and nothing is widened.
+    let outcome;
+    if (override) {
+      const byId = new Map();
+      for (const half of ['rules', 'factions']) for (const sec of corpora()[half] || []) byId.set(sec.id, sec);
+      const chosen = keepIds.map(id => byId.get(id)).filter(Boolean).map((sec, i) => findingFor(sec, i + 1));
+      if (!chosen.length) throw new RulesError(400, 'none of those passages is in the corpus');
+      findings = chosen;
+      counts = { rules: chosen.filter(f => f.set !== 'factions').length, factions: chosen.filter(f => f.set === 'factions').length };
+      const plan = { rules: counts.rules, factions: counts.factions };
+      emit({ type: 'findings', findings: toPayload(chosen), counts, terms, steps, attempt: 0, plan, escalated: false, override: true, elapsedMs: Date.now() - started });
+      const verdict = await timed('judge', () => judgeCoverage(asked, chosen, keys.fast, { reasoning: mode.reasoning, lang: answerLang }));
+      emit({ type: 'judge', judge: verdict, final: true, attempt: 0, elapsedMs: Date.now() - started });
+      outcome = {
+        findings: chosen,
+        judge: verdict,
+        dual: null,
+        attempts: [{ plan, count: chosen.length, answered: verdict.answered === true, confidence: verdict.confidence || '', widen: verdict.widen, final: true }],
+        unresolved: verdict.answered !== true,
+        escalated: false,
+      };
+    } else {
+    outcome = await timed('retrieve+judge', () => answerableFindings(asked, {
       fastKey: keys.fast,
       topKs: [mode.first],
       passes: mode.passes,
@@ -934,6 +979,7 @@ async function handleRulesAsk(req, res) {
         if (!final) emit({ type: 'escalate', widen: judge.widen || 'both', elapsedMs: Date.now() - started });
       },
     }));
+    }
 
     const judge = outcome.judge;
     const payload = toPayload(outcome.findings);
@@ -1010,6 +1056,16 @@ async function handleRulesAsk(req, res) {
           judgeDowngrade,
           judgeDissentFrom,
           card: card ? { id: card.id, name: card.name } : null,
+          // The human override, recorded on the trace it belongs to: which
+          // passages the reader kept, which the first answer had shown and were
+          // dropped, and any the reader put back that the first answer had not
+          // shown. `overrideOf` is the trace of the answer being overridden.
+          override: override ? {
+            kept: keepIds,
+            dropped: shownIds.filter(id => keepIds.indexOf(id) === -1),
+            added: keepIds.filter(id => shownIds.indexOf(id) === -1),
+          } : null,
+          overrideOf,
           answer: answerText,
           failed: writer && writer.failed,
           declined: writer && writer.declined,

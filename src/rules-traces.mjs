@@ -149,6 +149,12 @@ export function buildTrace(input) {
   // records which datasheet, so card questions are filterable instead of looking
   // like an answer whose writer came back empty.
   if (input.card) t.card = { id: input.card.id, name: input.card.name };
+  // A manual rerank is a human override of the retrieval, not a second question:
+  // which passages the reader kept, dropped or added, and which trace it
+  // overrides. The candidate list the reader saw is already in the trace's
+  // findings, so only the delta and the pointer are stored.
+  if (input.override) t.override = input.override;
+  if (input.overrideOf) t.overrideOf = input.overrideOf;
   if (input.judge2) {
     t.judge2 = {
       answered: input.judge2.answered === true,
