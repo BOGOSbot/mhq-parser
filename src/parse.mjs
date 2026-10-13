@@ -7,7 +7,7 @@
  * data as JSON + a compact one-line-per-unit "mini" view.
  *
  * Usage:
- *   node parse.mjs <army-lists-url> [--out-dir <dir>] [--json <name>] [--mini <name>]
+ *   node src/parse.mjs <army-lists-url> [--out-dir <dir>] [--json <name>] [--mini <name>]
  *
  * The URL must match: https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>
  * Default output dir: <event-slug>/ (relative to this script)
@@ -49,7 +49,7 @@ function extractEventSlug(url) {
   return m ? m[1] : null;
 }
 
-// True only when run as the main script: node parse.mjs <url> [options].
+// True only when run as the main script: node src/parse.mjs <url> [options].
 const IS_MAIN = (() => {
   try { return import.meta.url === pathToFileURL(process.argv[1] || '').href; }
   catch { return false; }
@@ -82,9 +82,9 @@ function parseArgs(argv) {
   if (!a.cookie && process.env.MHQ_COOKIE) a.cookie = process.env.MHQ_COOKIE;
   if (!a.url && !a.file) {
     throw new Error('provide a link to an MHQ army list, or a path to a list file\n' +
-      '  Usage: node parse.mjs <army-lists-url|list-file> [--out-dir <dir>] [--json <name>] [--mini <name>] [--cookie <header>]\n' +
-      '  Example: node parse.mjs https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>\n' +
-      '  Example: node parse.mjs ./my-list.txt');
+      '  Usage: node src/parse.mjs <army-lists-url|list-file> [--out-dir <dir>] [--json <name>] [--mini <name>] [--cookie <header>]\n' +
+      '  Example: node src/parse.mjs https://miniheadquarters.com/tournaments/team/army-lists/<event-slug>\n' +
+      '  Example: node src/parse.mjs ./my-list.txt');
   }
   if (a.file) {
     // A path is not a URL, so URL_RE never sees it. Resolve it here; main()
@@ -195,7 +195,7 @@ function authError(url) {
     '    2. DevTools -> Network, reload, copy the Cookie request header',
     '       (or DevTools -> Application -> Cookies -> miniheadquarters.com).',
     '    3. Re-run with the session attached:',
-    '       node parse.mjs <url> --cookie "sessionid=...; csrftoken=..."',
+    '       node src/parse.mjs <url> --cookie "sessionid=...; csrftoken=..."',
     '       or set MHQ_COOKIE in the environment.',
   ].join('\n');
 }

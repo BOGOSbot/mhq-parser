@@ -1,0 +1,70 @@
+{
+ "version": 2,
+ "note": "Six real French rules questions with the answer a French player gave. Questions are colloquial and the corpus is English, so this tests the whole French path: translate the question into English search terms, retrieve, and answer back in French. 'asked' and 'answer' are what the player actually posted - the verbatim source, kept so the key does not depend on a session log; 'q' and 'expected' are the same question and ruling written out as the benchmark states them. 'expects' names the kind of record that settles it.",
+ "source": "user-supplied, from a French 40k community (posted 2026-10-12, session-581fdcf9 of this repository)",
+ "questions": [
+  {
+   "id": "wracks-battleshock",
+   "asked": "Bonjour j'aimerais être sur d'un point de règle : Les wracks ont dans leurs datasheet le fait que quand ils se sont activés, le joueur adverse doit faire un test de battleshock. Si j'ai plusieurs packs qui tir sur plusieurs unités, chaque unité adverse doit bien faire un test ? Si oui cela me pose une seconde question : Si une unité de wracks tir , unité adverse doit donc faire son test, si il réussi, puis-je tiré avec une seconde unité pour faire un second test sur la même unité adverse ?",
+   "answer": "Oui",
+   "q": "Les Wracks ont dans leur datasheet le fait que quand ils se sont activés, le joueur adverse doit faire un test de battleshock. Si j'ai plusieurs packs qui tirent sur plusieurs unités, chaque unité adverse doit bien faire un test ? Et si une unité de Wracks tire, que l'unité adverse réussit son test, puis-je tirer avec une seconde unité pour faire un second test sur la même unité adverse ?",
+   "expected": "Oui, chaque unité adverse visée teste. Et oui, on peut tirer avec une seconde unité pour forcer un second test sur la même unité adverse.",
+   "expects": [
+    "datasheet",
+    "stratagem"
+   ]
+  },
+  {
+   "id": "calgar-victrix-keywords",
+   "asked": "Bonjour, Je voulais avoir la.validation d'un point, quelqu'un m'a dit que si je mettais Calgar dans un pack de victrix le pack avait a la fois le mot clé termi et tacticus et que par extension les strata qui booste les termi boost mon pack.",
+   "answer": "Oui c'est vrai",
+   "q": "Si je mets Calgar dans un pack de Victrix, le pack a-t-il à la fois le mot-clé Terminator et Tacticus, et par extension les stratagèmes qui boostent les Terminators boostent-ils mon pack ?",
+   "expected": "Oui : l'unité attachée porte les mots-clés des deux, donc les stratagèmes Terminator s'appliquent.",
+   "expects": [
+    "datasheet",
+    "attached-units"
+   ]
+  },
+  {
+   "id": "returning-models-coherency",
+   "asked": "Bonsoir, lors d'une partie on m'a dit que dans le core rule il est dit que les figurine qui revienne via heal ou aptitude devait arrivé au plus près des autre fig de son unité et non engagé. Il n'a pas pus me dire ou c'était et je vous avouerai que pour moi c'est juste que ta fig doit être en cohésion de son unité.",
+   "answer": "01.02.03\nCohérence oui mais elles peuvent arriver engagées si l'unité était déjà engagée avec l'unité que la fig qui revient va engagée",
+   "q": "Les figurines qui reviennent via un soin ou une aptitude doivent-elles arriver au plus près des autres figurines de leur unité et non engagées ? Pour moi une figurine qui revient doit juste être en cohésion de son unité.",
+   "expected": "01.02.03 : cohérence, oui - mais elles peuvent arriver engagées si l'unité était déjà engagée avec l'unité que la figurine qui revient va engager.",
+   "expects": [
+    "core-rules"
+   ]
+  },
+  {
+   "id": "fanal-territory",
+   "asked": "Hello, j'ai toujours du mal avec la gestion du territoire, que veux dire \"hors de votre territoire\" (Fanal). Est-ce qu'il faut comprendre, wholly outside, ou est-ce que si un modèle est hors du territoire c'est OK ? Merci bieng",
+   "answer": "\"not within\" donc pas \"wholly\"",
+   "q": "Que veut dire \"hors de votre territoire\" pour le Fanal ? Faut-il comprendre wholly outside, ou suffit-il qu'un modèle soit hors du territoire ?",
+   "expected": "\"not within\", donc pas \"wholly\".",
+   "expects": [
+    "mission"
+   ]
+  },
+  {
+   "id": "kill-more",
+   "asked": "sur une partie on a une différence d'interprétation sur le kill more. quelle interprétation est bonne sur l'exemple suivant: T1: J1 et J2 on tuer aucune unité T2: J1 tue 3 unité pour J2 pour le kill more doit tuer 1 unité ou 4 unité ?",
+   "answer": "4",
+   "q": "Sur le kill more : T1 aucun joueur ne tue d'unité, T2 le joueur 1 tue 3 unités. Pour le joueur 2, pour obtenir le kill more, doit-il tuer 1 unité ou 4 unités ?",
+   "expected": "4 unités.",
+   "expects": [
+    "mission"
+   ]
+  },
+  {
+   "id": "asurmen-embark-after-shooting",
+   "asked": "Est-ce que Asurmen peut réembarquer avec son normal après avoir tiré ?",
+   "answer": "Correct answer: A rule exists that prevents it. (the player's own verdict, from the follow-up report that the retrieval had failed while the judge still answered)",
+   "q": "Est ce que asurmen peut embarquer avec son normal move apres avoir tiré",
+   "expected": "Non. Une règle l'interdit : la seule capacité qui autorise un Normal move après avoir tiré est Tactical Acumen, et Embarquement (18.02) exige que l'unité embarque à la suite d'un mouvement autorisé - Fire and Fade, la capacité qui autorise un mouvement après avoir tiré, interdit explicitement d'embarquer dans ce même mouvement.",
+   "expects": [
+    "core-rules",
+    "datasheet"
+   ]
+  }
+ ]
+}

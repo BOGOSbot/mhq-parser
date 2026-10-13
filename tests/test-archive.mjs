@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { parseHtml, renderMini } from '../parse.mjs';
-import { candidates, entryFor, entryForKey, eventKey, is40k, isClosed, keyOfUrl, loadIndex, prune, readEvent, rejectedKeys, reindex, rowFor, saveIndex } from '../archive.mjs';
+import { parseHtml, renderMini } from '../src/parse.mjs';
+import { candidates, entryFor, entryForKey, eventKey, is40k, isClosed, keyOfUrl, loadIndex, prune, readEvent, rejectedKeys, reindex, rowFor, saveIndex } from '../src/archive.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {

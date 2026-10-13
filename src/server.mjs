@@ -3,7 +3,7 @@
 /**
  * MHQ Army Lists - local web UI for parse.mjs.
  *
- *   node server.mjs [--port 8787] [--host 127.0.0.1]
+ *   node src/server.mjs [--port 8787] [--host 127.0.0.1]
  *
  * Endpoints:
  *   GET  /          serves index.html
@@ -17,6 +17,10 @@
  *   POST /parse-list?name=<file>  body: pasted/dropped list text -> same shape
  *   POST /feedback  { title?, body } -> { created, url }  file an issue on GitHub,
  *                    or a prefilled github.com/.../issues/new link when no token
+ *   GET  /rules     serves rules.html, the rules-question page
+ *   POST /rules/ask { question, answerLang, english?, stream? } -> findings, judge, answer
+ *                    searches the indexed corpus, ranks with Jev, judges and writes
+ *                    with a small model; every citation is a page it really fetched
  *
  * The browser cannot fetch miniheadquarters.com directly (no CORS headers), so
  * every parse happens here and the UI only renders. Stdlib only, no deps.
@@ -29,6 +33,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
+import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
+import { ASK_MODES, VECTOR_BACKEND, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, indexInfo, looksForeign, readAllCorpus, translateQuestion } from './rules-corpus.mjs';
+import { appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled } from './rules-traces.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -36,6 +43,13 @@ const INDEX_PATH = path.join(__dirname, 'index.html');
 // require a server restart. It is a single small file and the response is no-store.
 function readIndex() {
   return fs.readFileSync(INDEX_PATH, 'utf8');
+}
+
+// The rules page is read the same way, for the same reason: it is edited far
+// more often than the server is restarted.
+const RULES_PATH = path.join(__dirname, 'rules.html');
+function readRules() {
+  return fs.readFileSync(RULES_PATH, 'utf8');
 }
 
 // --- session auth ------------------------------------------------------
@@ -680,6 +694,286 @@ async function handleFeedback(req, res) {
   return json(res, 200, { created: false, url: fallback, error: String(reason) });
 }
 
+// --- rules answers ----------------------------------------------------------
+// The page asks the corpus now, not Wahapedia. The corpus was scraped and
+// embedded ahead of time, so a question costs a query rather than a crawl:
+// seconds instead of ten to thirty, and no dependence on the origin being up.
+//
+// Both halves are searched. Core rules and faction rules live in separate
+// namespaces and are retrieved separately, because a datasheet question and a
+// core-rules question want different halves and, sharing one index, each
+// crowded the other out.
+//
+// A French question is translated into English search terms first. The corpus
+// is English and grep cannot match a word that is not there, so "blessures
+// mortelles" has to become "mortal wounds" before anything can be found. Those
+// terms are search input only - nothing machine-translated is ever shown as a
+// fact, and the glossary that is sourced beats the model that is not.
+//
+// The findings are returned and rendered beside the answer. The answer is an
+// addition to them, never a substitute: the citations are the product. The
+// judge is a signal about the findings, not a replacement for them.
+let corpusCache = null;
+function corpora() {
+  // Parsed once, not per request: the grep leg reads them whole and they are
+  // thousands of records.
+  if (!corpusCache) corpusCache = { rules: readAllCorpus('rules'), factions: readAllCorpus('factions') };
+  return corpusCache;
+}
+
+// A cheap guess, only used when the client does not say. The page sends its
+// own answer, because the voice control already knows which language it
+// listened for.
+export function looksFrench(text) {
+  return /[àâçéèêëîïôûùüÿœ]|\b(le|la|les|des|une|un|est|que|qui|pour|avec|sur|dans|je|peut|doit|figurine|unité|règle|test|combien)\b/i.test(String(text));
+}
+
+async function handleRulesAsk(req, res) {
+  let body;
+  try { body = JSON.parse((await readBody(req, 128 * 1024)) || '{}'); }
+  catch (e) { return fail(res, 400, 'invalid JSON body: ' + e.message); }
+  const question = typeof body.question === 'string' ? body.question.trim() : '';
+  if (question.length < 3) return fail(res, 400, 'ask a question (at least 3 characters)');
+  if (question.length > 1000) return fail(res, 400, 'that question is too long (1000 characters max)');
+
+  // The reader no longer tells us the language. The question does: a clear
+  // English question is left alone, anything else is translated in full. A
+  // client that already has the English (a corrected translation) sends it back
+  // as english:true and skips the call.
+  const questionIsEnglish = body.english === true;
+  const foreign = !questionIsEnglish && looksForeign(question);
+  const lang = questionIsEnglish ? 'en' : (foreign ? '' : 'en');
+  // The answer keeps the reader's language even though the search runs in
+  // English: a French question gets a French answer citing the English terms.
+  // A client that already corrected the translation says so with answerLang.
+  const wantedAnswerLang = body.answerLang === 'fr' || body.answerLang === 'en' ? body.answerLang : '';
+  // The Jev key follows the route: the ranker authenticates with whichever
+  // gateway rules.mjs has active, OpenRouter's paid decisions endpoint right
+  // now while the free tier rate-limits.
+  // The judge and the translation run on the fast route, the answer on the
+  // writer's: a small model decides well and writes badly, and the writer is
+  // the step the reader grades.
+  const keys = { jev: credential(jevKeyName()), model: modelCredential(), fast: fastCredential() };
+  const steps = [];
+  const started = Date.now();
+  const timed = async (name, fn) => {
+    const at = Date.now();
+    const value = await fn();
+    steps.push({ name, ms: Date.now() - at });
+    return value;
+  };
+
+  // Each stage is published as it lands rather than all at the end. The findings
+  // are the product, and they are ready in a couple of seconds; the judge and
+  // the prose take twenty more. Sending them together would make a reader wait
+  // for the slowest part to read the fastest one.
+  //
+  // The judge is emitted last but belongs first on the page: it says whether the
+  // findings are worth reading, so it sits above them rather than after them.
+  const stream = body.stream === true;
+  let gone = false;
+  req.on('close', function () { gone = true; });
+  if (stream) {
+    res.writeHead(200, {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no',
+    });
+    // Without this the headers sit in Node until the first body write, so the
+    // browser's fetch does not even resolve - and the page cannot draw its
+    // waiting state - until translation has finished several seconds later.
+    res.flushHeaders();
+  }
+  const emit = obj => {
+    if (!stream || gone) return;
+    try { res.write(JSON.stringify(obj) + '\n'); } catch (e) { gone = true; }
+  };
+
+  // Which stages this question will actually run. A French question has one
+  // more than an English one, and the page needs the list to draw a bar with the
+  // right segments rather than a fixed guess.
+  const stages = (foreign ? ['translate'] : []).concat(['retrieve', 'judge', 'answer']);
+  emit({ type: 'start', lang: lang || 'und', stages, elapsedMs: Date.now() - started });
+
+  try {
+    // The whole question is translated, not only its keywords: the retrieval
+    // wants English words, but the judge and the writer want the question, and
+    // 'can Asurmen embark after shooting' is not 'asurmen embark shoot'.
+    const translation = foreign
+      ? await timed('translate', () => translateQuestion(question, keys.fast))
+      : { lang: 'en', translated: '', terms: [], glossary: [] };
+    const asked = translation.translated || question;
+    const terms = translation.terms || [];
+    const answerLang = wantedAnswerLang || (String(translation.lang || '').slice(0, 2) === 'fr' ? 'fr' : 'en');
+    if (foreign) {
+      emit({ type: 'translation', detected: translation.lang || 'und', original: question, translated: translation.translated, terms, elapsedMs: Date.now() - started });
+    }
+    emit({ type: 'terms', terms, translated: translation.translated || '', elapsedMs: Date.now() - started });
+
+    // The search keeps deepening while the judge says it cannot answer, and the
+    // last pass is the last word. The judge's verdict is binding: a retrieval it
+    // has already called insufficient must not go on to produce a confident
+    // answer, which is exactly what used to happen.
+    let findings = [];
+    let counts = { rules: 0, factions: 0 };
+    const toPayload = list => list.map(f => ({
+      n: f.n, set: f.set, source: f.source, faction: f.faction, heading: f.heading,
+      ruleId: f.ruleId, url: f.url, href: f.href, excerpt: f.excerpt,
+    }));
+
+    // The reader picks the setting: fast asks the judge not to reason and takes
+    // a narrower, shallower search; deep lets it think and looks wider for
+    // longer. Both keep the anchoring, which is what makes the fast setting safe.
+    const modeName = askMode(body.mode);
+    const mode = ASK_MODES[modeName];
+    emit({ type: 'mode', mode: modeName, first: mode.first, passes: mode.passes, reasoning: mode.reasoning || 'model default', elapsedMs: Date.now() - started });
+    const outcome = await timed('retrieve+judge', () => answerableFindings(asked, {
+      fastKey: keys.fast,
+      topKs: [mode.first],
+      passes: mode.passes,
+      judgeOpts: { reasoning: mode.reasoning },
+      dual: {
+        rulesCorpus: corpora().rules,
+        factionsCorpus: corpora().factions,
+        jevKey: keys.jev,
+        terms,
+        // The grep net and the reranker's net are both wider than the cut, and
+        // the reranker's is the one that mattered: on 'can Asurmen re-embark
+        // after shooting' the Embarking rule reached merged rank 54, so a net of
+        // 50 never showed it to Jev and the judge was asked about a corpus that
+        // had the rule without being shown it. At 80 the same passage came back
+        // 4th. One batched call, so the wider net is one request, not forty.
+        grepNet: mode.grepNet,
+        jevMax: mode.jevMax,
+      },
+      onFindings: ({ plan, findings: found, dual, attempt }) => {
+        findings = found;
+        counts = { rules: dual.rules.length, factions: dual.factions.length };
+        emit({
+          type: 'findings', findings: toPayload(found), counts, terms, steps,
+          attempt, plan, escalated: attempt > 0, elapsedMs: Date.now() - started,
+        });
+      },
+      onJudge: ({ judge, final, attempt }) => {
+        emit({ type: 'judge', judge, final, attempt, elapsedMs: Date.now() - started });
+        // Only the intermediate verdict widens; the last one is final by
+        // definition and the page should not be told the search will continue.
+        if (!final) emit({ type: 'escalate', widen: judge.widen || 'both', elapsedMs: Date.now() - started });
+      },
+    }));
+
+    const judge = outcome.judge;
+    const payload = toPayload(outcome.findings);
+
+    // The trace is written after the answer exists, never in front of it: a
+    // retention feature that can fail an answer is a worse bug than a lost trace.
+    // Off unless RULES_TRACES is set (src/rules-traces.mjs), and that switch stays
+    // off until the page carries the retention line the reader is owed.
+    const trace = answerText => {
+      if (!tracesEnabled()) return;
+      try {
+        appendTrace(buildTrace({
+          id: newTraceId(),
+          at: new Date().toISOString(),
+          edition: rulesEdition,
+          corpusAt: corpusState().updated,
+          mode: modeName,
+          lang: lang || 'und',
+          question,
+          asked,
+          terms,
+          signals: traceSignals(question, findings),
+          counts,
+          findings,
+          judge,
+          answer: answerText,
+          steps,
+          elapsedMs: Date.now() - started,
+          unresolved: outcome.unresolved,
+          escalated: outcome.escalated,
+          attempts: outcome.attempts,
+        }));
+      } catch (e) { /* a trace must never break an answer */ }
+    };
+
+    if (!findings.length) {
+      trace('');
+      const notes = ['nothing in the corpus matched that question'];
+      const elapsedMs = Date.now() - started;
+      if (stream) {
+        emit({ type: 'findings', findings: [], counts, terms, steps, elapsedMs, notes });
+        emit({ type: 'done', elapsedMs, steps, notes });
+        return res.end();
+      }
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: [], judge, answer: '', steps, elapsedMs, notes });
+    }
+
+    // The judge has already run; the answer waits on it rather than racing it,
+    // because whether to write one at all depends on its verdict.
+    const DECLINED = 'The findings do not answer this question.';
+    let answer = await timed('answer', () => (outcome.unresolved
+      ? Promise.resolve(dontKnowAnswer(judge, lang))
+      : compileFindings(asked, outcome.findings, keys.model, { lang: answerLang })));
+    // The writer's refusal beats the judge's boolean. The judge once marked a
+    // question answered on a passage it then quoted as NOT applying - 'answer:
+    // true' with a why that argued against itself - and the writer, reading the
+    // same findings, declined. When the two disagree the honest verdict is the
+    // refusal, so the reader gets the statement of absence instead of a page
+    // that says both things at once.
+    let writerDeclined = false;
+    if (!outcome.unresolved && String(answer).trim() === DECLINED) {
+      answer = dontKnowAnswer(judge, lang);
+      outcome.unresolved = true;
+      writerDeclined = true;
+    }
+
+    emit({ type: 'answer', answer, unresolved: outcome.unresolved, elapsedMs: Date.now() - started });
+
+    // The revised verdict follows the answer it is about. The writer spent that
+    // time deciding to decline, and the page credits every stage with the seconds
+    // between one event and the next: a verdict emitted before its own answer
+    // would put the writer's time on the judge's clock.
+    if (writerDeclined) {
+      emit({ type: 'judge', judge: Object.assign({}, judge, { answered: false, confidence: judge && judge.confidence, why: ((judge && judge.why) || '') + ' - the writer declined these findings' }), final: true, attempt: 0, elapsedMs: Date.now() - started });
+    }
+
+    trace(answer);
+    if (stream) {
+      emit({ type: 'done', elapsedMs: Date.now() - started, steps, unresolved: outcome.unresolved, escalated: outcome.escalated });
+      return res.end();
+    }
+    return json(res, 200, {
+      question, asked, lang: lang || 'und', translation: translation.translated || '', terms, findings: payload, judge, answer,
+      counts, steps, elapsedMs: Date.now() - started, mode: modeName,
+      unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,
+    });
+  } catch (e) {
+    if (stream) { emit({ type: 'error', message: String((e && e.message) || e) }); return res.end(); }
+    const status = e instanceof RulesError ? e.status : 502;
+    return fail(res, status, String((e && e.message) || e));
+  }
+}
+
+// The index counts, next to the corpus counts, with the difference spelled out:
+// 'ahead' means the namespace holds vectors the corpus does not have (a stale
+// rebuild), 'behind' means the corpus has sections the index never saw.
+async function vectorState() {
+  if (VECTOR_BACKEND === 'local') return { backend: VECTOR_BACKEND };
+  try {
+    const state = corpusState();
+    const info = await indexInfo();
+    const ns = (info && info.namespaces) || {};
+    const counts = {};
+    for (const k of Object.keys(ns)) counts[k || '(default)'] = ns[k].vectorCount;
+    const corpus = {};
+    for (const [set, n] of Object.entries(state.sets || {})) corpus[set] = n;
+    const out = { backend: VECTOR_BACKEND, indexType: info && info.indexType, model: info && info.denseIndex && info.denseIndex.embeddingModel, counts, corpus };
+    out.ahead = Object.entries(corpus).filter(([k, n]) => (counts[k] || 0) > n).map(([k, n]) => k + ' +' + ((counts[k] || 0) - n));
+    out.behind = Object.entries(corpus).filter(([k, n]) => (counts[k] || 0) < n).map(([k, n]) => k + ' -' + (n - (counts[k] || 0)));
+    return out;
+  } catch (e) { return { backend: VECTOR_BACKEND, error: String((e && e.message) || e) }; }
+}
+
 const server = http.createServer(async (req, res) => {
   let u;
   try { u = new URL(req.url, 'http://localhost'); }
@@ -688,6 +982,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && (u.pathname === '/' || u.pathname === '/index.html')) {
     return send(res, 200, readIndex(), 'text/html; charset=utf-8');
   }
+  if (req.method === 'GET' && u.pathname === '/rules') {
+    try { return send(res, 200, readRules(), 'text/html; charset=utf-8'); }
+    catch (e) { return fail(res, 500, 'rules.html could not be read: ' + String((e && e.message) || e)); }
+  }
   if (req.method === 'GET' && u.pathname === '/health') {
     const a = archiveIndex();
     return json(res, 200, {
@@ -695,6 +993,37 @@ const server = http.createServer(async (req, res) => {
       archived: a.events.length,
       checked: (a.checked || []).length,
       archiveError: archiveError || undefined,
+      // Which halves of the rules page this machine can run, so a missing key
+      // is visible before a question is asked rather than after it fails.
+      rules: rulesKeyState(),
+      // Which edition the page answers for. It is a deployment decision, not a
+      // detail: 10th and 11th give different answers to the same question.
+      rulesEdition: rulesEdition,
+      rulesEditionLabel: rulesEditionLabel,
+      // What the page actually searches, replacing the old page-count that
+      // described the crawl the corpus replaced.
+      // When our copy of the rules was last built, and how much of it there is.
+      // This is the date a reader can act on - ours, rather than a guess at
+      // whether somebody else's site is behind.
+      corpus: (function () {
+        try {
+          const state = corpusState();
+          const c = corpora();
+          const out = {
+            rules: c.rules.length,
+            factions: c.factions.length,
+            updated: state.updated,
+            sourceDate: state.sourceDate,
+            edition: state.edition,
+          };
+          return out;
+        } catch (e) { return { error: String((e && e.message) || e) }; }
+      })(),
+      // What the vector index holds against what is on disk. A vector leg that
+      // returns nothing looks exactly like a question whose answer is not there,
+      // so the one place a half-landed rebuild, a stale id or a query against the
+      // wrong namespace becomes visible is here.
+      vectors: await vectorState(),
     });
   }
   if (req.method === 'GET' && u.pathname === '/events') return handleEvents(req, res, u);
@@ -704,6 +1033,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/parse-file') return handleParseFile(req, res, u);
   if (req.method === 'POST' && u.pathname === '/parse-list') return handleParseList(req, res, u);
   if (req.method === 'POST' && u.pathname === '/feedback') return handleFeedback(req, res);
+  if (req.method === 'POST' && u.pathname === '/rules/ask') return handleRulesAsk(req, res);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 
@@ -726,6 +1056,13 @@ server.listen(port, host, () => {
   console.log('POST /parse {"url":"<army-lists url>"}');
   console.log('POST /parse-file?name=<file>   (body: a saved page)');
   console.log('GET  /events?limit=80&type=team');
+  const keys = rulesKeyState();
+  console.log('GET  /rules    then POST /rules/ask {question, engine}');
+  console.log('Rules keys: tinyfish ' + (keys.tinyfish ? 'ok' : 'MISSING') +
+    ', jev ' + (keys.jev ? 'ok' : 'MISSING') +
+    ', writer ' + (keys.model ? 'ok' : 'MISSING') + ' (' + keys.modelName + ')' +
+    ', fast ' + (keys.fast ? 'ok' : 'MISSING') + ' (' + keys.fastName + ')' +
+    ' | edition ' + rulesEdition + ' (' + rulesEditionLabel + ')');
   console.log('POST /feedback {title?,body}  -> ' + (GITHUB_TOKEN
     ? 'files an issue on ' + FEEDBACK_REPO
     : 'returns a prefilled github.com/' + FEEDBACK_REPO + '/issues/new link (set GITHUB_TOKEN to file directly)'));

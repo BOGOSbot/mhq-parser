@@ -3,7 +3,7 @@
 /**
  * Cross-analyse the source formats in the archive.
  *
- *   node formats.mjs [--dir <archive dir>] [--md] [--unknown <n>]
+ *   node src/formats.mjs [--dir <archive dir>] [--md] [--unknown <n>]
  *
  * Every archived list is signed by whatever tool produced it - or is not. This
  * walks the archive, asks parse.mjs's detectExporter() what wrote each list, and
@@ -26,7 +26,7 @@ import { detectExporter } from './parse.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
-  const o = { dir: path.join(__dirname, 'archive'), md: false, unknown: 12 };
+  const o = { dir: path.join(__dirname, '..', 'archive'), md: false, unknown: 12 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--md') o.md = true;

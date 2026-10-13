@@ -6,6 +6,14 @@
 # scratch: commit messages staged to a file, probe scripts
 _msg*.txt
 _*.ps1
+_*.tmp.mjs
+
+# the local working area: the rules corpus and CSV export, the vector index
+# state, eval runs and server logs. Regenerable, per-machine, never committed.
+workspace/
+
+# Obsidian vault config for this folder
+.obsidian/
 
 # browser snapshots from playwright-cli runs
 .playwright-cli/

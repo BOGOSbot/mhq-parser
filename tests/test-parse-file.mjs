@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { parseHtml } from '../parse.mjs';
+import { parseHtml } from '../src/parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {

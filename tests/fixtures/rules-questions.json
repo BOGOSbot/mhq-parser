@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "note": "Retrieval ground truth for the /rules corpus. 'expect' lists the section ids that answer the question; a hit is any of them in the top-k, and a multi-expect question counts as full only when every id is found. 'kind' names the failure mode the question is there to catch.",
+  "questions": [
+    { "q": "What is a Desperate Escape test?", "expect": ["core-rules#Desperate-Escape-Test", "core-rules#Desperate-Escape"], "kind": "literal" },
+    { "q": "How does Battle-shock work?", "expect": ["core-rules#Battle-shock-Rolls", "core-rules#3.-Battle-shock-Step"], "kind": "literal" },
+    { "q": "What are the shooting types a unit can make?", "expect": ["core-rules#2.-Shoot"], "kind": "literal" },
+    { "q": "What is Engagement?", "expect": ["core-rules#Engagement", "rules-appendix#What-Is-Engagement"], "kind": "literal" },
+    { "q": "How does Benefit of Cover work?", "expect": ["core-rules#Benefit-of-Cover"], "kind": "literal" },
+    { "q": "What is a Hazard Roll?", "expect": ["core-rules#Hazard-Rolls"], "kind": "literal" },
+    { "q": "How does a Surge Move work?", "expect": ["core-rules#Surge-Moves"], "kind": "literal" },
+    { "q": "What is Transport Capacity?", "expect": ["core-rules#Transport-Capacity"], "kind": "literal" },
+
+    { "q": "When is a unit counted as being in coherency?", "expect": ["core-rules#What-Is-Coherency", "core-rules#Coherency"], "kind": "paraphrase" },
+    { "q": "What happens when a charge fails?", "expect": ["rules-appendix#Failed-Charges"], "kind": "paraphrase" },
+    { "q": "How do I put a unit inside a transport?", "expect": ["core-rules#Embarking", "core-rules#Able-To-Embark"], "kind": "paraphrase" },
+    { "q": "What is the order of the steps in the Fight phase?", "expect": ["core-rules#Fight-Phase"], "kind": "paraphrase" },
+    { "q": "What does it take to secure an objective?", "expect": ["core-rules#Secured-Objectives", "core-rules#Objectives"], "kind": "paraphrase" },
+    { "q": "How do models see each other across the board?", "expect": ["core-rules#Visibility"], "kind": "paraphrase" },
+    { "q": "How does a unit arrive from reserves?", "expect": ["core-rules#Arriving-from-Strategic-Reserves"], "kind": "paraphrase" },
+    { "q": "What are the rules for a unit that can fly?", "expect": ["core-rules#Flying-Models"], "kind": "paraphrase" },
+
+    { "q": "Can a monster or vehicle shoot while it is stuck in combat?", "expect": ["core-rules#Shooting-at-Engaged-Monsters-and-Vehicles", "rules-appendix#Shooting-While-Engaged-With-Monsters-Vehicles"], "kind": "player" },
+    { "q": "My unit is battle-shocked, what does that stop it doing?", "expect": ["core-rules#Battle-shock-Rolls", "core-rules#3.-Battle-shock-Step"], "kind": "player" },
+    { "q": "How close do my models have to stay to each other?", "expect": ["core-rules#Coherency", "core-rules#What-Is-Coherency"], "kind": "player" },
+    { "q": "Can I shoot into a melee that my own unit is in?", "expect": ["core-rules#Engagement", "core-rules#Shooting-at-Engaged-Monsters-and-Vehicles"], "kind": "player" },
+    { "q": "What happens to my models when a transport blows up?", "expect": ["core-rules#Disembarking", "rules-appendix#Rapid-Disembark-And-Limitations"], "kind": "player" },
+    { "q": "How do I score points at the end of a battle round?", "expect": ["core-rules#Secured-Objectives", "core-rules#Objectives", "event-companion#Warhammer-Event-Mission-Sequence"], "kind": "player" },
+
+    { "q": "What does the Advance move do?", "expect": ["core-rules#3.-End-of-Movement-Phase", "rules-appendix#Selecting-Modes"], "kind": "player" },
+
+    { "q": "How are command points generated for an event?", "expect": ["event-companion#Generating-Command-Points", "rules-appendix#Command-Points"], "kind": "cross-source" },
+    { "q": "How do I pick my secondary missions?", "expect": ["event-companion#Select-Secondary-Missions"], "kind": "cross-source" },
+    { "q": "What happens to units left in strategic reserves when the battle ends?", "expect": ["core-rules#Strategic-Reserves-at-the-End-of-the-Battle", "rules-appendix#Strategic-Reserves-at-the-End-of-the-Battle"], "kind": "cross-source" },
+    { "q": "What does Rapid Disembark let a unit do?", "expect": ["rules-appendix#Rapid-Disembark-And-Limitations"], "kind": "cross-source" },
+
+    { "q": "How does a hazard roll relate to a Desperate Escape test?", "expect": ["core-rules#Hazard-Rolls", "core-rules#Desperate-Escape-Test"], "kind": "multi-hop" },
+    { "q": "What is the sequence for making an attack, from hit roll to damage?", "expect": ["core-rules#1.-Hit-Roll", "core-rules#2.-Wound-Roll", "core-rules#3.-Save-Rolls", "core-rules#4.-Inflict-Damage"], "kind": "multi-hop" },
+
+    { "q": "How many points does a Space Marine Captain cost?", "expect": [], "kind": "out-of-corpus" },
+    { "q": "What does the Oath of Moment ability do?", "expect": [], "kind": "out-of-corpus" },
+    { "q": "Which detachments can Space Marines take?", "expect": [], "kind": "out-of-corpus" },
+    { "q": "What is the best paint scheme for Ultramarines?", "expect": [], "kind": "out-of-corpus" }
+  ]
+}

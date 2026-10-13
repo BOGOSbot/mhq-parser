@@ -5,7 +5,7 @@
 // corpus that shaped the rules is the bogos-team-6 event (see the tool header).
 
 import fs from 'node:fs';
-import { verifyEvent, summarize, parseMfmPage } from '../verify-points.mjs';
+import { verifyEvent, summarize, parseMfmPage } from '../src/verify-points.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {

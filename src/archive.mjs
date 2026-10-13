@@ -3,7 +3,7 @@
 /**
  * The archive: every closed 40k event, parsed once and kept in the repository.
  *
- *   node archive.mjs [--plan] [--list] [--verify] [--prune] [--refresh]
+ *   node src/archive.mjs [--plan] [--list] [--verify] [--prune] [--refresh]
  *                    [--limit <n>] [--months <n>] [--concurrency <n>]
  *                    [--out-dir <dir>]
  *
@@ -49,7 +49,7 @@ import { checkEvent, detectExporter, detectFormat, getAllEvents, parseUrl } from
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export const ARCHIVE_DIR = process.env.MHQ_ARCHIVE_DIR || path.join(__dirname, 'archive');
+export const ARCHIVE_DIR = process.env.MHQ_ARCHIVE_DIR || path.join(__dirname, '..', 'archive');
 const EVENTS_DIR = 'events';
 const INDEX_FILE = 'index.json';
 

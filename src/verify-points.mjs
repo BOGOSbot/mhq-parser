@@ -4,7 +4,7 @@
  * verify-points.mjs - check every unit row of a parsed event against the
  * official points tables (the Munitorum Field Manual, mfm.warhammer-community.com).
  *
- *   node verify-points.mjs <event.json> [--ref-dir .verify-ref] [--lang both|en|fr]
+ *   node src/verify-points.mjs <event.json> [--ref-dir .verify-ref] [--lang both|en|fr]
  *                          [--rows <file>] [--report <file>] [--no-scrape] [--quiet]
  *
  * Input: a JSON in the shape parse.mjs/parseHtml write - { event, count, players[] },
@@ -537,7 +537,7 @@ function parseArgs(argv) {
   }
   if (!a.event) {
     throw new Error('provide the event JSON (as parse.mjs / Download JSON write it)\n' +
-      '  Usage: node verify-points.mjs <event.json> [--ref-dir <dir>] [--lang both|en|fr] [--rows <file>] [--report <file>] [--no-scrape]');
+      '  Usage: node src/verify-points.mjs <event.json> [--ref-dir <dir>] [--lang both|en|fr] [--rows <file>] [--report <file>] [--no-scrape]');
   }
   if (!['both', 'en', 'fr'].includes(a.lang)) throw new Error('--lang must be both, en or fr');
   if (!a.refDir) a.refDir = path.join(path.dirname(path.resolve(a.event)), '.verify-ref');

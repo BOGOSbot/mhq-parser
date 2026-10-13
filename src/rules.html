@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>40k rules</title>
+<style>
+:root{
+  --bg:#0f1116; --panel:#161a22; --panel2:#1c212b; --line:#2a3040;
+  --txt:#e7eaf0; --dim:#8d96a8; --acc:#6ea8fe; --warn:#e8b44a; --err:#ef6b6b; --ok:#5fbf7f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:10;background:rgba(15,17,22,.94);
+  border-bottom:1px solid var(--line);padding:12px 18px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+h1{font-size:15px;margin:0;letter-spacing:.2px;white-space:nowrap}
+h1 span{color:var(--dim);font-weight:400}
+.spacer{flex:1}
+a.nav{color:var(--dim);font:12.5px system-ui;text-decoration:none;padding:3px 8px;border-radius:6px}
+a.nav:hover{color:var(--txt);background:var(--panel2)}
+.keys{font:11.5px var(--mono);color:var(--dim);white-space:nowrap}
+.keys b{font-weight:600}
+.keys .no{color:var(--err)}
+.keys .yes{color:var(--ok)}
+form{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+input[type=text]{flex:1;min-width:260px;background:var(--panel2);color:var(--txt);
+  border:1px solid var(--line);border-radius:7px;padding:9px 11px;font:13.5px system-ui}
+input[type=text]:focus{outline:none;border-color:var(--acc)}
+select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+  border-radius:7px;padding:8px 8px;font:13px system-ui}
+select:focus{outline:none;border-color:var(--acc)}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--dim);font-size:12.5px;
+  cursor:pointer;user-select:none;white-space:nowrap}
+label.chk input{accent-color:var(--acc)}
+button.mic{display:flex;align-items:center;gap:7px;background:var(--panel2);color:var(--dim);
+  border:1px solid var(--line);border-radius:7px;padding:8px 11px;font:13px system-ui;cursor:pointer}
+button.mic:hover{color:var(--txt);border-color:var(--acc)}
+/* Recording has to look different from idle at a glance: a mic left open is a
+   privacy problem, not a styling detail. */
+button.mic.on{color:#fff;background:var(--err);border-color:var(--err);animation:micpulse 1.1s ease-in-out infinite}
+@keyframes micpulse{0%,100%{opacity:1}50%{opacity:.62}}
+select.lang{background:var(--panel2);color:var(--dim);border:1px solid var(--line);
+  border-radius:7px;padding:8px 6px;font:12px system-ui}
+select.lang:focus{outline:none;border-color:var(--acc)}
+/* Two settings, one button each: fast asks the judge not to reason and looks
+   shallower, deep lets it think and searches wider. The difference is measured,
+   not cosmetic - see docs/rules-page.md. */
+.modes{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+button.mode{background:var(--panel2);color:var(--dim);border:0;border-radius:0;padding:8px 12px;font:12px system-ui}
+button.mode + button.mode{border-left:1px solid var(--line)}
+button.mode:hover{filter:none;color:var(--txt)}
+button.mode.on{background:var(--acc);color:#0b1020;font-weight:600}
+button{background:var(--acc);color:#0b1020;border:0;border-radius:7px;padding:9px 18px;
+  font:600 13px system-ui;cursor:pointer}
+button:hover{filter:brightness(1.1)}
+button:disabled{opacity:.55;cursor:default}
+.status{font:12px var(--mono);color:var(--dim);min-height:16px;margin-top:9px}
+.status.err{color:var(--err)}
+.status.busy{color:var(--acc)}
+.status.ok{color:var(--ok)}
+main{padding:16px 18px 70px;max-width:900px;margin:0 auto}
+.examples{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 4px}
+.ex{font:12px system-ui;color:var(--dim);background:var(--panel);border:1px solid var(--line);
+  border-radius:20px;padding:5px 12px;cursor:pointer}
+.ex:hover{color:var(--txt);border-color:var(--acc)}
+.intro{color:var(--dim);font-size:13px;margin:18px 0}
+.intro ol{margin:8px 0 0;padding-left:20px}
+.intro li{margin:3px 0}
+.intro code{font:12px var(--mono);color:var(--txt);background:var(--panel2);
+  border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:11px;
+  padding:16px 18px;margin:16px 0}
+.answer{font-size:14.5px;line-height:1.62}
+.answer p{margin:0 0 10px}
+.answer p:last-child{margin-bottom:0}
+.answer ul{margin:0 0 10px;padding-left:22px}
+.answer li{margin:3px 0}
+.answer blockquote{margin:0 0 10px;padding:2px 0 2px 12px;border-left:2px solid var(--line);color:var(--txt)}
+.answer b{color:#fff}
+a.cite{color:var(--acc);text-decoration:none;font:600 11px var(--mono);
+  vertical-align:super;padding:0 1px}
+a.cite:hover{text-decoration:underline}
+h2{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);
+  margin:0 0 10px;font-weight:600}
+ol.cites{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+ol.cites li{display:flex;gap:10px;align-items:flex-start}
+.num{font:600 11px var(--mono);color:var(--acc);border:1px solid rgba(110,168,254,.4);
+  border-radius:5px;padding:2px 6px;margin-top:2px;white-space:nowrap}
+.cbody{flex:1;min-width:0}
+.cbody a{color:var(--acc);text-decoration:none;overflow-wrap:anywhere}
+.cbody a:hover{text-decoration:underline}
+.csec{color:var(--dim);font-size:12.5px;margin-top:1px}
+.cscore{font:11px var(--mono);color:var(--dim);margin-left:6px}
+.trbox{width:100%;min-height:64px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:9px 10px;font:13px system-ui;margin:0 0 8px;resize:vertical}
+.trbox:focus{outline:none;border-color:var(--acc)}
+details{margin-top:5px}
+details summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
+details summary:hover{color:var(--txt)}
+details pre{background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+  padding:9px 10px;margin:6px 0 0;font:11.5px/1.5 var(--mono);white-space:pre-wrap;
+  max-height:260px;overflow:auto}
+.note{color:var(--dim);font-size:12px;margin-top:10px}
+.note.warn{color:var(--warn)}
+.note.ok{color:var(--ok)}
+.tag{font:600 10px var(--mono);letter-spacing:.5px;color:var(--dim);border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-right:8px;vertical-align:1px}
+.tag.faction{color:var(--warn);border-color:rgba(232,180,74,.45)}
+.srcs{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
+.src{font:11.5px var(--mono);color:var(--dim);border:1px solid var(--line);
+  border-radius:6px;padding:3px 8px;text-decoration:none;overflow-wrap:anywhere}
+.src:hover{color:var(--txt);border-color:var(--acc)}
+.hidden{display:none!important}
+.foot{display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap;
+  padding:4px 0 24px;color:var(--dim);font:12px system-ui}
+/* When this copy of the rules was built. Quiet: it is a fact to be able to
+   check, not a warning. */
+.card.arrived{animation:arrive 1.6s ease-out}
+@keyframes arrive{0%{box-shadow:0 0 0 1px var(--acc) inset,0 0 18px rgba(90,140,255,.20)}100%{box-shadow:none}}
+.note.waiting{opacity:.6}
+.conf{display:inline-block;font:600 10px var(--mono);letter-spacing:.4px;border-radius:4px;padding:2px 7px;margin-bottom:6px;border:1px solid var(--line);color:var(--dim)}
+.conf.high{color:var(--ok);border-color:rgba(110,200,140,.5)}
+.conf.med{color:var(--warn);border-color:rgba(232,180,74,.45)}
+.conf.low{color:var(--err);border-color:rgba(230,110,110,.5)}
+.conf.rerun{color:var(--acc);border-color:rgba(90,140,255,.5);margin-right:6px}
+/* Stage progress. The request is a sequence of named stages and the stream says
+   when each one lands, so the bar is driven by what actually happened rather
+   than by a timer guessing at it. */
+.progress{display:flex;align-items:center;gap:10px;margin:10px 0 2px;max-width:640px}
+.progress.hidden{display:none}
+.psegs{display:flex;gap:4px;flex:1}
+.pseg{flex:1;position:relative;height:20px;border:1px solid var(--line);border-radius:5px;background:var(--panel2);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.pseg span,.pseg em{position:relative;z-index:1;font:10.5px system-ui;letter-spacing:.3px;color:var(--dim)}
+.pseg em{font-style:normal;opacity:.7;margin-left:4px;font-variant-numeric:tabular-nums}
+.pseg .pfill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc);opacity:0;transition:width .35s ease,opacity .35s ease}
+.pseg.active .pfill{width:100%;opacity:.22;animation:pshimmer 1.3s ease-in-out infinite}
+.pseg.done .pfill{width:100%;opacity:.22;background:var(--ok)}
+.pseg.done span,.pseg.active span,.pseg.done em,.pseg.active em{color:var(--txt)}
+.pelapsed{font:11px var(--mono);color:var(--dim);min-width:34px;text-align:right}
+@keyframes pshimmer{0%,100%{opacity:.11}50%{opacity:.30}}
+.corpusdate{color:var(--dim);font:11.5px system-ui;border-left:1px solid var(--line);padding-left:14px}
+.foot a{color:var(--dim)}
+.foot a:hover{color:var(--txt)}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1 id="h1">40k <span>rules</span></h1>
+    <a class="nav" id="navparse" href="/">Army-list parser</a>
+    <a class="nav" id="wahalink" href="https://wahapedia.ru/" target="_blank" rel="noopener">Wahapedia</a>
+    <span class="spacer"></span>
+    <span id="keys" class="keys"></span>
+  </div>
+  <form id="f">
+    <input id="q" type="text" spellcheck="false" autocomplete="off"
+           placeholder="Ask a rules question — e.g. can a unit shoot after it Fell Back?">
+    <button id="go" type="submit">Ask</button>
+    <button type="button" id="mic" class="mic" title="Ask by voice"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg><span id="miclabel">Voice</span></button>
+    <!-- Two settings for the search and the judge. Fast asks the judge not to
+         reason and ranks fewer findings; deep lets it think and looks wider. -->
+    <span class="modes" id="modes" role="group" aria-label="Mode">
+      <button type="button" class="mode" id="mfast" data-mode="fast" aria-pressed="false">Fast</button>
+      <button type="button" class="mode on" id="mdeep" data-mode="deep" aria-pressed="true">Deep</button>
+    </span>
+    <!-- One switch, three jobs: the text on this page, the language the
+         microphone listens for, and the language of the answer. The language of
+         the question itself is still detected server-side. -->
+    <select id="lang" class="lang" title="Page and answer language">
+      <option value="fr">FR</option>
+      <option value="en">EN</option>
+    </select>
+  </form>
+  <div id="status" class="status"></div>
+    <div id="progress" class="progress hidden"><div class="psegs" id="psegs"></div><span id="pelapsed" class="pelapsed"></span></div>
+</header>
+<main>
+  <div id="intro">
+    <div class="examples" id="examples"></div>
+    <div class="intro" id="introtext"></div>
+    <div class="intro hidden">
+The question is searched against an indexed copy of the
+        <span id="edlabel">current-edition</span> rules, not answered from memory. Both halves
+        are searched — core rules, and faction datasheets, stratagems, detachments and
+        enhancements:
+      <ol>
+        <li><b>translate</b> — a French question becomes English search terms first, because the corpus is English;</li>
+        <li><b>retrieve</b> — each half is searched separately, then <b>jev free</b> reranks the union. Jev decides; it does not write;</li>
+        <li><b>judge + answer</b> — the findings below are the product; a small model writes alongside them and judges whether they answer the question, and the two do not have to be the same model.</li>
+        <li><b>voice</b> is optional: the <b>Voice</b> button transcribes in your browser, French or English, and needs https or localhost. The text is left in the box to correct — speech recognition mangles unit names, and the wrong unit retrieves the wrong rule.</li>
+      </ol>
+      Every citation below links to the section it came from —
+      <code>…/core-rules/#1.-Hit-Roll</code> or a datasheet page. The anchor is derived by
+      the server from the heading, never written by the model, so a citation cannot point
+      at a source that was not indexed.
+    </div>
+  </div>
+  <div id="result" class="hidden"></div>
+</main>
+<div class="foot">
+  <span id="footline">Rules text from <a id="wahafoot" href="https://wahapedia.ru/" target="_blank" rel="noopener">Wahapedia</a><span id="edfoot">, the current edition</span>.</span>
+    <span id="corpusdate" class="corpusdate"></span>
+</div>
+<script>
+'use strict';
+var $ = function (s) { return document.querySelector(s); };
+
+// --- the page's language -----------------------------------------------------
+// One switch drives three things: the text on this page, the language the
+// microphone listens for, and the language the answer is written in. The
+// language of the QUESTION is still detected server-side - a French question
+// typed while the page is in English is translated all the same.
+var I18N = {
+  en: {
+    navparse: 'Army-list parser',
+    placeholder: 'Ask a rules question — e.g. can a unit shoot after it Fell Back?',
+    ask: 'Ask',
+    voice: 'Voice',
+    modeFast: 'Fast',
+    modeDeep: 'Deep',
+    modeFastTitle: 'quicker: the judge does not reason, fewer findings are ranked',
+    modeDeepTitle: 'slower: the judge reasons, more findings are ranked and judged',
+    langTitle: 'Page and answer language',
+    keysPrefix: 'keys: ',
+    keyMissing: ' key missing',
+    keyMissingStatus: 'a key is not set — the corpus can be searched but not answered',
+    statusAskFirst: 'Ask a question first.',
+    listening: 'listening...',
+    heard: 'heard it - check the wording, then Ask',
+    nothingHeard: 'nothing was heard',
+    micRefused: 'microphone permission was refused',
+    noMic: 'no microphone was found',
+    speechNet: 'the browser could not reach its speech service',
+    voiceFailed: 'voice input failed: ',
+    voiceNoStart: 'voice input could not start: ',
+    voiceUnsupported: 'this browser has no speech recognition - type the question instead',
+    waitingFindings: 'waiting for the findings...',
+    readingFindings: 'reading the findings...',
+    writingAnswer: 'writing the answer...',
+    judgeTitle: 'Judge',
+    answerTitle: 'Answer',
+    termsTitle: 'Searched for',
+    termsNote: 'The corpus is English, so these terms were searched alongside the translated question. They are search input, not a translation of the rules.',
+    findingsTitle: 'Findings',
+    findingsCounts: ' core, ',
+    findingsCountsTail: ' faction',
+    nothingMatchedCard: 'Nothing in the corpus matched that question.',
+    nothingMatched: 'nothing in the corpus matched that question',
+    findingsReady: 'findings ready in ',
+    judgeComing: 's - judge and answer still coming',
+    judgeIn: 'judge in ',
+    judgeNo: 'it does not think these findings answer it',
+    judgeYes: 'it thinks these findings answer it',
+    partMissing: 'a part of the answer never arrived',
+    noVerdict: 'no verdict',
+    answeredYes: 'these findings answer the question',
+    answeredNo: 'these findings do NOT answer the question',
+    afterWidening: 'after widening',
+    confidence: 'confidence: ',
+    passage: 'passage',
+    translationTitle: 'Translation',
+    translationFrom: ' - ',
+    translationTo: ' to English',
+    translationNote: 'Your question was not in English, so it was translated in full before searching. The index, the judge and the answer all read the English text below - correct it and search again if a name came out wrong.',
+    translationButton: 'Search this English text',
+    translationTooShort: 'that translation is too short to search',
+    corpusBuilt: 'corpus built ',
+    corpusToday: 'today',
+    corpusYesterday: '1 day ago',
+    corpusDays: ' days ago',
+    corpusCountsA: ' core + ',
+    corpusCountsB: ' faction records',
+    stages: { translate: 'translate', retrieve: 'retrieve', judge: 'judge', answer: 'answer', widen: 'widen' },
+    examples: [
+      'Can a unit shoot after it Fell Back?',
+      'How does Devastating Wounds interact with Anti-?',
+      'When does a unit become Battle-shocked?',
+      'What does Oath of Moment do for Space Marines?',
+      'Does the Tyrannofex have the FRAME keyword?'
+    ],
+    intro: '<p>The question is searched against an indexed copy of the <span id="edlabel">current-edition</span> rules, not answered from memory. Both halves are searched — core rules, and faction datasheets, stratagems, detachments and enhancements:</p><ol><li><b>translate</b> — a question in another language is translated in full into English first, because the corpus is English, and the translation is shown so you can correct it;</li><li><b>retrieve</b> — each half is searched separately, then <b>jev</b> reranks the union. Jev decides; it does not write;</li><li><b>judge + answer</b> — the findings below are the product; a small model writes alongside them and judges whether they answer the question, and the two need not be the same model;</li><li><b>voice</b> is optional: the <b>Voice</b> button transcribes in your browser and needs https or localhost. The text is left in the box to correct — speech recognition mangles unit names, and the wrong unit retrieves the wrong rule.</li></ol><p>Every citation below links to the section it came from — <code>.../core-rules/#1.-Hit-Roll</code> or a datasheet page. The anchor is derived by the server from the heading, never written by the model, so a citation cannot point at a source that was not indexed.</p>',
+    footline: 'Rules text from <a id="wahafoot" href="https://wahapedia.ru/" target="_blank" rel="noopener">Wahapedia</a><span id="edfoot">, the current edition</span>.'
+  },
+  fr: {
+    navparse: 'Parseur de listes',
+    placeholder: 'Posez une question de règles — ex. une unité peut-elle tirer après avoir battu en retraite ?',
+    ask: 'Demander',
+    voice: 'Voix',
+    modeFast: 'Rapide',
+    modeDeep: 'Approfondi',
+    modeFastTitle: 'plus rapide : le juge ne raisonne pas, moins de constats sont classés',
+    modeDeepTitle: 'plus lent : le juge raisonne, plus de constats sont classés et jugés',
+    langTitle: 'Langue de la page et de la réponse',
+    keysPrefix: 'clés : ',
+    keyMissing: ' clé absente',
+    keyMissingStatus: 'une clé manque — le corpus peut être cherché, mais pas répondu',
+    statusAskFirst: 'Posez d\u2019abord une question.',
+    listening: 'écoute...',
+    heard: 'entendu — vérifiez le texte, puis Demander',
+    nothingHeard: 'rien entendu',
+    micRefused: 'autorisation micro refusée',
+    noMic: 'aucun microphone trouvé',
+    speechNet: 'le navigateur n\u2019a pas pu joindre son service vocal',
+    voiceFailed: 'la saisie vocale a échoué : ',
+    voiceNoStart: 'la saisie vocale n\u2019a pas pu démarrer : ',
+    voiceUnsupported: 'ce navigateur ne gère pas la reconnaissance vocale — tapez la question',
+    waitingFindings: 'en attente des constats...',
+    readingFindings: 'lecture des constats...',
+    writingAnswer: 'rédaction de la réponse...',
+    judgeTitle: 'Juge',
+    answerTitle: 'Réponse',
+    termsTitle: 'Termes cherchés',
+    termsNote: 'Le corpus est en anglais : ces termes ont été cherchés en plus de la question traduite. Ce sont des termes de recherche, pas une traduction des règles.',
+    findingsTitle: 'Constats',
+    findingsCounts: ' règles de base, ',
+    findingsCountsTail: ' faction',
+    nothingMatchedCard: 'Rien dans le corpus ne correspond à cette question.',
+    nothingMatched: 'rien dans le corpus ne correspond à cette question',
+    findingsReady: 'constats prêts en ',
+    judgeComing: ' s — juge et réponse à suivre',
+    judgeIn: 'juge en ',
+    judgeNo: 'il estime que ces constats ne répondent pas à la question',
+    judgeYes: 'il estime que ces constats répondent à la question',
+    partMissing: 'une partie de la réponse n\u2019est jamais arrivée',
+    noVerdict: 'pas de verdict',
+    answeredYes: 'ces constats répondent à la question',
+    answeredNo: 'ces constats ne répondent PAS à la question',
+    afterWidening: 'après élargissement',
+    confidence: 'confiance : ',
+    passage: 'passage',
+    translationTitle: 'Traduction',
+    translationFrom: ' — ',
+    translationTo: ' vers l\u2019anglais',
+    translationNote: 'Votre question n\u2019était pas en anglais : elle a été traduite en entier avant la recherche. L\u2019index, le juge et la réponse lisent le texte anglais ci-dessous — corrigez-le et relancez si un nom est mal traduit.',
+    translationButton: 'Chercher ce texte anglais',
+    translationTooShort: 'cette traduction est trop courte pour être cherchée',
+    corpusBuilt: 'corpus construit le ',
+    corpusToday: 'aujourd\u2019hui',
+    corpusYesterday: 'il y a 1 jour',
+    corpusDays: ' jours',
+    corpusCountsA: ' règles de base + ',
+    corpusCountsB: ' fiches de faction',
+    stages: { translate: 'traduction', retrieve: 'recherche', judge: 'juge', answer: 'réponse', widen: 'élargissement' },
+    examples: [
+      'Une unité peut-elle tirer après avoir battu en retraite ?',
+      'Comment les Blessures Dévastatrices interagissent-elles avec Anti- ?',
+      'Quand une unité devient-elle Commotionnée (Battle-shocked) ?',
+      'Que fait Serment du Moment pour les Space Marines ?',
+      'Le Tyrannofex a-t-il le mot-clé FRAME ?'
+    ],
+    intro: '<p>La question est cherchée dans une copie indexée des règles <span id="edlabel">de l\u2019édition en cours</span>, jamais répondue de mémoire. Les deux moitiés sont cherchées — règles de base, et fiches techniques, stratagèmes, détachements et optimisations de faction :</p><ol><li><b>traduction</b> — une question dans une autre langue est d\u2019abord traduite en entier en anglais, car le corpus est anglais, et la traduction est affichée pour être corrigée ;</li><li><b>recherche</b> — chaque moitié est cherchée séparément, puis <b>jev</b> reclasse l\u2019union. Jev décide ; il n\u2019écrit pas ;</li><li><b>juge + réponse</b> — les constats ci-dessous sont le produit ; un petit modèle écrit à côté et juge s\u2019ils répondent à la question, et les deux ne sont pas forcément le même ;</li><li><b>voix</b> est optionnel : le bouton <b>Voix</b> transcrit dans votre navigateur et exige https ou localhost. Le texte reste dans le champ pour être corrigé — la reconnaissance vocale abîme les noms d\u2019unités, et la mauvaise unité fait chercher la mauvaise règle.</li></ol><p>Chaque citation renvoie à la section d\u2019où elle vient — <code>.../core-rules/#1.-Hit-Roll</code> ou une page de fiche technique. L\u2019ancre est dérivée par le serveur à partir du titre, jamais écrite par le modèle : une citation ne peut pas pointer vers une source non indexée.</p>',
+    footline: 'Textes de règles issus de <a id="wahafoot" href="https://wahapedia.ru/" target="_blank" rel="noopener">Wahapedia</a><span id="edfoot">, l\u2019édition en cours</span>.'
+  }
+};
+
+var LANG = 'en';
+function t(key) {
+  var table = I18N[LANG] || I18N.en;
+  if (table && table[key] !== undefined) return table[key];
+  return I18N.en[key] !== undefined ? I18N.en[key] : key;
+}
+function renderExamples() {
+  var host = $('#examples');
+  if (!host) return;
+  host.textContent = '';
+  var list = (I18N[LANG] || I18N.en).examples || [];
+  for (var i = 0; i < list.length; i++) {
+    (function (text) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ex';
+      b.textContent = text;
+      b.addEventListener('click', function () { $('#q').value = text; $('#q').focus(); });
+      host.appendChild(b);
+    })(list[i]);
+  }
+}
+
+// The edition label and the Wahapedia links are facts from /health, in either
+// language: re-applied whenever the dictionary redraws the page.
+var EDITION = null;
+function applyEdition() {
+  if (!EDITION) return;
+  var url = 'https://wahapedia.ru/' + EDITION.slug + '/';
+  var label = EDITION.label || EDITION.slug;
+  var wa = $('#wahalink'); if (wa) wa.href = url;
+  var wf = $('#wahafoot'); if (wf) wf.href = url;
+  var el = $('#edlabel'); if (el) el.textContent = label;
+  var ef = $('#edfoot'); if (ef) ef.textContent = ', ' + label;
+  document.title = '40k rules — ' + label;
+}
+
+function applyLang() {
+  document.documentElement.lang = LANG;
+  var np = $('#navparse'); if (np) np.textContent = t('navparse');
+  var q = $('#q'); if (q) q.setAttribute('placeholder', t('placeholder'));
+  var go = $('#go'); if (go) go.textContent = t('ask');
+  var ml = $('#miclabel'); if (ml) ml.textContent = t('voice');
+  var ls = $('#lang'); if (ls) ls.setAttribute('title', t('langTitle'));
+  labelModes();
+  var it = $('#introtext'); if (it) it.innerHTML = t('intro');
+  var fl = $('#footline'); if (fl) fl.innerHTML = t('footline');
+  renderExamples();
+  applyEdition();
+  try { localStorage.setItem('rulesLang', LANG); } catch (e) { /* private mode */ }
+}
+
+(function initLang() {
+  var saved = null;
+  try { saved = localStorage.getItem('rulesLang'); } catch (e) { }
+  if (saved === 'fr' || saved === 'en') LANG = saved;
+  else LANG = /^fr/i.test(navigator.language || '') ? 'fr' : 'en';
+  var sel = $('#lang');
+  if (sel) {
+    sel.value = LANG;
+    sel.addEventListener('change', function () {
+      LANG = sel.value === 'fr' ? 'fr' : 'en';
+      applyLang();
+    });
+  }
+  applyLang();
+})();
+
+// --- the two settings -------------------------------------------------------
+// The choice is the reader's and it is remembered. It goes to the server as
+// 'mode', which fixes the first-pass depth, the widening ceiling, how wide the
+// reranker's net is and whether the judge reasons - the four things the
+// benchmark says separate a quick answer from a careful one.
+var MODE = 'deep';
+
+function labelModes() {
+  var f = $('#mfast'), d = $('#mdeep');
+  if (f) { f.textContent = t('modeFast'); f.setAttribute('title', t('modeFastTitle')); }
+  if (d) { d.textContent = t('modeDeep'); d.setAttribute('title', t('modeDeepTitle')); }
+}
+
+function setMode(m) {
+  MODE = m === 'fast' ? 'fast' : 'deep';
+  var f = $('#mfast'), d = $('#mdeep');
+  if (f) { f.className = 'mode' + (MODE === 'fast' ? ' on' : ''); f.setAttribute('aria-pressed', MODE === 'fast' ? 'true' : 'false'); }
+  if (d) { d.className = 'mode' + (MODE === 'deep' ? ' on' : ''); d.setAttribute('aria-pressed', MODE === 'deep' ? 'true' : 'false'); }
+  labelModes();
+  try { localStorage.setItem('rulesMode', MODE); } catch (e) { /* private mode */ }
+}
+
+(function initMode() {
+  var saved = null;
+  try { saved = localStorage.getItem('rulesMode'); } catch (e) { }
+  setMode(saved === 'fast' ? 'fast' : 'deep');
+  var box = $('#modes');
+  if (box) box.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('button.mode') : null;
+    if (!b) return;
+    e.preventDefault();
+    setMode(b.getAttribute('data-mode'));
+  });
+})();
+
+function setStatus(msg, cls) {
+  var s = $('#status');
+  s.className = 'status' + (cls ? ' ' + cls : '');
+  s.textContent = msg || '';
+}
+
+// Which halves of the pipeline this server can run. A missing key is worth
+// saying before the question is asked rather than after it fails.
+fetch('/health').then(function (r) { return r.json(); }).then(function (h) {
+  var k = (h && h.rules) || {};
+  function tag(ok, name) {
+    return '<b class="' + (ok ? 'yes' : 'no') + '">' + name + '</b>' + (ok ? '' : t('keyMissing'));
+  }
+  // The badge names the model family rather than the pinned snapshot: it says
+  // which routes answer this deployment, and the versions are RULES_MODEL's and
+  // RULES_FAST's. One route set twice reads as one name, not two.
+  var modelName = String(k.modelName || 'model').split('-')[0];
+  var fastName = String(k.fastName || '').split('-')[0];
+  $('#keys').innerHTML = t('keysPrefix') + tag(k.tinyfish, 'tinyfish') + ' · ' +
+    tag(k.jev, 'jev') + ' · ' + tag(k.model, modelName) +
+    (fastName && fastName !== modelName ? ' · ' + tag(k.fast, fastName) : '');
+  if (k.jev === false || k.model === false || k.fast === false) setStatus(t('keyMissingStatus'), 'err');
+  // The edition is the server's decision, so the page asks rather than assumes.
+  // Naming the wrong edition under every citation is worse than naming none.
+  // Held in EDITION rather than written straight to the DOM, because switching
+  // language redraws the edition label and the links with it.
+  if (k.edition) {
+    EDITION = { slug: k.edition, label: k.editionLabel || k.edition };
+    applyEdition();
+  }
+}).catch(function () { /* the page still works without the badge */ });
+
+
+// --- rendering --------------------------------------------------------------
+// The answer is model output, so it is never trusted as HTML. Text becomes text
+// nodes, the markers become links to citations this server built, and nothing
+// else is interpreted. Bold and italic are the only formatting the model is
+// asked for and the only formatting rendered.
+function inlineNodes(text, byN) {
+  var frag = document.createDocumentFragment();
+  var re = /(\*\*[^*]+\*\*|\*[^*]+\*|\[\d+\])/g;
+  var last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+    var tok = m[0];
+    if (tok.charAt(0) === '*') {
+      var emph = document.createElement(tok.slice(0, 2) === '**' ? 'b' : 'i');
+      emph.textContent = tok.replace(/\*/g, '');
+      frag.appendChild(emph);
+    } else {
+      var n = parseInt(tok.slice(1, -1), 10);
+      var c = byN[n];
+      if (c) {
+        var a = document.createElement('a');
+        a.className = 'cite';
+        a.href = c.url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.title = (c.faction ? c.faction + ' - ' : '') + c.heading;
+        a.textContent = tok;
+        frag.appendChild(a);
+      } else {
+        frag.appendChild(document.createTextNode(tok));
+      }
+    }
+    last = m.index + tok.length;
+  }
+  if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+  return frag;
+}
+
+function renderAnswer(text, citations) {
+  var byN = {};
+  for (var i = 0; i < citations.length; i++) byN[citations[i].n] = citations[i];
+  var host = document.createElement('div');
+  host.className = 'answer';
+  var blocks = String(text || '').split(/\n{2,}/);
+  for (var b = 0; b < blocks.length; b++) {
+    var block = blocks[b].replace(/^\s+|\s+$/g, '');
+    if (!block) continue;
+    var lines = block.split('\n');
+    if (lines[0].indexOf('- ') === 0) {
+      var ul = document.createElement('ul');
+      for (var j = 0; j < lines.length; j++) {
+        var li = document.createElement('li');
+        li.appendChild(inlineNodes(lines[j].replace(/^-\s*/, ''), byN));
+        ul.appendChild(li);
+      }
+      host.appendChild(ul);
+    } else if (lines[0].charAt(0) === '>') {
+      var quote = document.createElement('blockquote');
+      var joined = [];
+      for (var k = 0; k < lines.length; k++) joined.push(lines[k].replace(/^>\s?/, ''));
+      quote.appendChild(inlineNodes(joined.join(' '), byN));
+      host.appendChild(quote);
+    } else {
+      var p = document.createElement('p');
+      for (var l = 0; l < lines.length; l++) {
+        if (l) p.appendChild(document.createElement('br'));
+        p.appendChild(inlineNodes(lines[l], byN));
+      }
+      host.appendChild(p);
+    }
+  }
+  return host;
+}
+
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function sectionCard(title) {
+  var card = el('div', 'card');
+  card.appendChild(el('h2', null, title));
+  return card;
+}
+
+function stageLabel(name) {
+  var map = (I18N[LANG] || I18N.en).stages || {};
+  return map[name] || name;
+}
+
+function termsCard(terms) {
+  var card = sectionCard(t('termsTitle'));
+  card.appendChild(el('div', 'note', t('termsNote')));
+  var box = el('div', 'srcs');
+  for (var i = 0; i < terms.length; i++) box.appendChild(el('span', 'src', terms[i]));
+  card.appendChild(box);
+  return card;
+}
+
+// The question was translated before anything searched it, so the reader is
+// shown what was actually asked and can correct it. Machine translation of unit
+// names is the failure this exists for: the wrong English word retrieves the
+// wrong rule, and only the reader knows which name they meant.
+function translationCard(tr) {
+  var from = tr.detected && tr.detected !== 'und' ? tr.detected : t('translationTitle');
+  var card = sectionCard(t('translationTitle') + t('translationFrom') + from + t('translationTo'));
+  card.appendChild(el('div', 'note', t('translationNote')));
+  var ta = document.createElement('textarea');
+  ta.className = 'trbox';
+  ta.id = 'tr';
+  ta.spellcheck = false;
+  ta.value = tr.translated || '';
+  card.appendChild(ta);
+  var btn = el('button', null, t('translationButton'));
+  btn.type = 'button';
+  btn.addEventListener('click', function () {
+    var text = (ta.value || '').trim();
+    if (text.length < 3) { setStatus(t('translationTooShort'), 'err'); return; }
+    $('#q').value = text;
+    ask({ question: text, english: true });
+  });
+  card.appendChild(btn);
+  return card;
+}
+
+function findingsCard(findings, counts) {
+  var title = 'Findings - ' + findings.length;
+  if (counts) title += ' (' + counts.rules + t('findingsCounts') + counts.factions + t('findingsCountsTail') + ')';
+  var card = sectionCard(title);
+  if (!findings.length) { card.appendChild(el('div', 'note warn', t('nothingMatchedCard'))); return card; }
+  var ol = el('ol', 'cites');
+  for (var c = 0; c < findings.length; c++) {
+    var f = findings[c];
+    var li = el('li');
+    li.appendChild(el('span', 'num', '[' + f.n + ']'));
+    var body = el('div', 'cbody');
+    body.appendChild(el('span', 'tag' + (f.set === 'factions' ? ' faction' : ''), f.set === 'factions' ? 'FACTION' : 'CORE'));
+    var a = el('a', null, (f.faction ? f.faction + ' - ' : '') + f.heading + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
+    a.href = f.href || f.url; a.target = '_blank'; a.rel = 'noopener';
+    body.appendChild(a);
+    var det = document.createElement('details');
+    det.appendChild(el('summary', null, t('passage')));
+    det.appendChild(el('pre', null, f.excerpt));
+    body.appendChild(det);
+    li.appendChild(body);
+    ol.appendChild(li);
+  }
+  card.appendChild(ol);
+  return card;
+}
+
+function verdictLine(judge, attempt) {
+  var wrap = el('div');
+  // The verdict after a widening is a second verdict, and saying so stops it
+  // reading as the only one there was - which is how a re-evaluation looks like
+  // no evaluation at all.
+  if (attempt > 0) wrap.appendChild(el('span', 'conf rerun', t('afterWidening')));
+  var conf = judge && judge.confidence ? judge.confidence : '';
+  if (conf) wrap.appendChild(el('span', 'conf ' + conf, t('confidence') + conf));
+  var line = el('div', 'note');
+  // The verdict is published in full and may run to a few sentences: keep its
+  // line breaks instead of letting HTML collapse them into one block.
+  line.style.whiteSpace = 'pre-wrap';
+  var unknown = !judge || judge.answered === null || judge.answered === undefined;
+  if (!unknown && judge.answered) line.className = 'note ok';
+  else if (!unknown) line.className = 'note warn';
+  var why = judge && judge.why ? String(judge.why) : '';
+  var verdict = unknown ? t('noVerdict') : (judge.answered ? t('answeredYes') : t('answeredNo'));
+  line.appendChild(document.createTextNode(verdict + (why ? (unknown ? ': ' : ' - ') : '')));
+  // The reason is the model's own prose and a small model reaches for markdown
+  // in it - a literal ** around a rule name reads as a typo. It goes through the
+  // same emphasis rendering as the answer, with no citations to resolve: a
+  // [1] in a verdict means the passage it names, and the passage numbers are
+  // already printed beside it.
+  if (why) line.appendChild(inlineNodes(why, {}));
+  wrap.appendChild(line);
+  return wrap;
+}
+
+// Retrieval is ready in about two seconds and the judge and the prose take
+// twenty more, so the page is built up as each piece lands rather than held back
+// until the slowest one finishes. Every slot is created up front, so nothing
+// moves when a later piece arrives. The judge sits at the top even though it
+// arrives last: it says whether the findings below it are worth reading.
+function startResult(lang) {
+  resetProgress();
+  var host = $('#result');
+  host.textContent = '';
+  host.classList.remove('hidden');
+  $('#intro').classList.add('hidden');
+  var verdict = el('div', 'card');
+  verdict.appendChild(el('h2', null, t('judgeTitle')));
+  verdict.appendChild(el('div', 'note waiting', t('waitingFindings')));
+  host.appendChild(verdict);
+  // The answer card is titled by the switch, not by the question's language:
+  // a French reader asking in English still wants a French answer.
+  var answerCard = sectionCard(t('answerTitle'));
+  answerCard.appendChild(el('div', 'note waiting', t('writingAnswer')));
+  host.appendChild(answerCard);
+  var rest = el('div');
+  host.appendChild(rest);
+  return { verdict: verdict, answer: answerCard, rest: rest, findings: [], terms: [], translation: null };
+}
+
+// --- stage progress ---------------------------------------------------------
+// The bar is built from the stage list the server sends with its first event and
+// advanced by the events that follow: findings means retrieval finished, judge
+// means the verdict finished. Nothing here estimates - a segment lights because
+// that stage actually reported back.
+//
+// Each segment also carries what its stage cost. The clock is the server's own
+// elapsedMs, which every event reports, so a segment shows how long that stage
+// really took rather than what the browser saw of it. The bar is the record of
+// the request, not a spinner: when the answer lands it stays on the page with
+// its timings, and the status line stops repeating what is already here.
+var PSTAGE_MS = {};
+var PSTAGE_AT = 0;   // the elapsedMs of the last stage boundary
+var PDONE = false;   // the run ended; the counter beside the bar stops moving
+
+function pFmt(ms) { return (ms / 1000).toFixed(1) + 's'; }
+
+// Credit everything since the last boundary to one stage and repaint it. Called
+// at each boundary the server reports, so a stage that ran twice - the judge,
+// before and after a widening - accumulates instead of overwriting.
+function pAttribute(name, elapsedMs) {
+  var at = Number(elapsedMs);
+  if (!isFinite(at)) at = 0;
+  var spent = at - PSTAGE_AT;
+  if (spent < 0) spent = 0;
+  // A stage with nothing credited yet is painted even when it cost nothing this
+  // boundary: the writer's refusal is reported by the judge and the answer in
+  // the same millisecond, and an empty box reads as a stage that never ran.
+  if (spent > 0 || PSTAGE_MS[name] === undefined) {
+    PSTAGE_MS[name] = (PSTAGE_MS[name] || 0) + spent;
+    if (at > PSTAGE_AT) PSTAGE_AT = at;
+  }
+  pPaint(name);
+}
+
+function pPaint(name) {
+  var seg = document.querySelector('.pseg[data-stage="' + name + '"]');
+  if (!seg) return;
+  var ms = PSTAGE_MS[name];
+  if (ms === undefined) return;
+  var time = seg.querySelector('em');
+  if (time) time.textContent = pFmt(ms);
+}
+
+// The label, the time that will appear beside it, and the fill behind both.
+function pSegment(name, active) {
+  var seg = el('div', active ? 'pseg active' : 'pseg');
+  seg.setAttribute('data-stage', name);
+  seg.appendChild(el('span', null, stageLabel(name)));
+  seg.appendChild(el('em'));
+  seg.appendChild(el('div', 'pfill'));
+  return seg;
+}
+
+function startProgress(stages) {
+  var host = $('#progress');
+  var box = $('#psegs');
+  if (!host || !box) return;
+  box.textContent = '';
+  PSTAGE_MS = {};
+  PSTAGE_AT = 0;
+  PDONE = false;
+  for (var i = 0; i < (stages || []).length; i++) box.appendChild(pSegment(stages[i], false));
+  host.classList.remove('hidden');
+  activateNext();
+}
+
+// A new question starts from a blank bar: the previous request's timings must
+// not sit under the new question while it is still being asked.
+function resetProgress() {
+  var host = $('#progress');
+  var box = $('#psegs');
+  if (box) box.textContent = '';
+  if (host) host.classList.add('hidden');
+  var e = $('#pelapsed');
+  if (e) e.textContent = '';
+  PSTAGE_MS = {};
+  PSTAGE_AT = 0;
+  PDONE = false;
+}
+
+function activateNext() {
+  var segs = $('#psegs').children;
+  for (var i = 0; i < segs.length; i++) {
+    if (segs[i].className.indexOf('done') === -1) { segs[i].className = 'pseg active'; return; }
+  }
+}
+
+function setStageActive(name) {
+  var seg = document.querySelector('.pseg[data-stage="' + name + '"]');
+  if (seg && seg.className.indexOf('done') === -1) seg.className = 'pseg active';
+}
+
+// Added when the judge sends the search back for a wider look, so the bar shows
+// the extra pass instead of quietly re-lighting a finished stage. Only the stage
+// actually running shimmers: the widening takes over from the judge, which is
+// still waiting to re-read the wider findings.
+function addStage(name, afterName) {
+  var box = $('#psegs');
+  if (!box || box.querySelector('.pseg[data-stage="' + name + '"]')) return;
+  var running = box.querySelectorAll('.pseg.active');
+  for (var a = 0; a < running.length; a++) running[a].className = 'pseg';
+  var seg = pSegment(name, true);
+  var after = afterName ? box.querySelector('.pseg[data-stage="' + afterName + '"]') : null;
+  if (after && after.nextSibling) box.insertBefore(seg, after.nextSibling);
+  else box.appendChild(seg);
+}
+
+function markStage(name) {
+  var seg = document.querySelector('.pseg[data-stage="' + name + '"]');
+  if (seg) seg.className = 'pseg done';
+  activateNext();
+}
+
+// One stage landed: credit its time, then close it.
+function doneStage(name, elapsedMs) {
+  pAttribute(name, elapsedMs);
+  markStage(name);
+}
+
+function finishProgress() {
+  var segs = $('#psegs').children;
+  for (var i = 0; i < segs.length; i++) segs[i].className = 'pseg done';
+  var e = $('#pelapsed');
+  if (e) e.textContent = '';
+  PDONE = true;
+}
+
+function flash(node) {
+  node.classList.remove('arrived');
+  void node.offsetWidth;   // restart the animation on a node being reused
+  node.classList.add('arrived');
+}
+
+function applyEvent(ev, state) {
+  if (!ev || !ev.type) return;
+  if (ev.type === 'start') { startProgress(ev.stages); return; }
+  // The server echoes the setting it actually ran, which is also what a shared
+  // link or a curl says: the page draws it from its own toggle, so this only
+  // keeps the state honest if the two ever disagree.
+  if (ev.type === 'mode') { state.mode = ev.mode; setMode(ev.mode); return; }
+  if (ev.type === 'escalate') { pAttribute('judge', ev.elapsedMs); addStage('widen', 'retrieve'); return; }
+  if (ev.type === 'translation') { state.translation = ev; doneStage('translate', ev.elapsedMs); return; }
+  if (ev.type === 'terms') { state.terms = ev.terms || []; doneStage('translate', ev.elapsedMs); return; }
+  if (ev.type === 'findings') {
+    state.findings = ev.findings || [];
+    state.terms = (ev.terms && ev.terms.length) ? ev.terms : state.terms;
+    state.rest.textContent = '';
+    if (state.translation) state.rest.appendChild(translationCard(state.translation));
+    if (state.terms.length) state.rest.appendChild(termsCard(state.terms));
+    state.rest.appendChild(findingsCard(state.findings, ev.counts));
+    doneStage(ev.attempt > 0 ? 'widen' : 'retrieve', ev.elapsedMs);
+    if (ev.attempt > 0) setStageActive('judge');
+    // The judge is computed from the findings, so once they are here the
+    // placeholder should say what it is actually waiting on.
+    var vwait = state.verdict.querySelector('.waiting');
+    if (vwait) vwait.textContent = t('readingFindings');
+    setStatus(state.findings.length
+      ? t('findingsReady') + (ev.elapsedMs / 1000).toFixed(1) + t('judgeComing')
+      : t('nothingMatched'),
+      state.findings.length ? 'busy' : 'warn');
+    return;
+  }
+  if (ev.type === 'judge') {
+    state.verdict.textContent = '';
+    state.verdict.appendChild(el('h2', null, t('judgeTitle')));
+    state.verdict.appendChild(verdictLine(ev.judge, ev.attempt));
+    flash(state.verdict);
+    // Only a final verdict closes the judge stage; an interim one is about to be
+    // superseded, so closing it would show progress that has not happened.
+    if (ev.final !== false) doneStage('judge', ev.elapsedMs);
+    else setStageActive('judge');
+    var no = ev.judge && ev.judge.answered === false;
+    setStatus(t('judgeIn') + (ev.elapsedMs / 1000).toFixed(1) + 's - ' + (no ? t('judgeNo') : t('judgeYes')), no ? 'warn' : 'ok');
+    return;
+  }
+  if (ev.type === 'answer') {
+    var waiting = state.answer.querySelector('.waiting');
+    if (waiting) waiting.parentNode.removeChild(waiting);
+    state.answer.appendChild(renderAnswer(ev.answer || '', state.findings));
+    flash(state.answer);
+    doneStage('answer', ev.elapsedMs);
+    return;
+  }
+  if (ev.type === 'done') {
+    finishProgress();
+    var pending = state.verdict.querySelector('.waiting') || state.answer.querySelector('.waiting');
+    // A finished request says nothing here: the timings are in the bar and the
+    // count is the findings card's own title. A stream that ended without a part
+    // is the one thing the bar cannot show, so that one is still said.
+    setStatus(pending ? t('partMissing') : '', pending ? 'warn' : '');
+    return;
+  }
+  if (ev.type === 'error') setStatus(ev.message || 'the request failed', 'err');
+}
+
+// The whole response at once, for anything that cannot stream.
+function showInto(state, j) {
+  applyEvent({ type: 'findings', findings: j.findings || [], counts: j.counts, terms: j.terms, steps: j.steps, elapsedMs: j.elapsedMs }, state);
+  if (j.judge) applyEvent({ type: 'judge', judge: j.judge, final: true, elapsedMs: j.elapsedMs }, state);
+  applyEvent({ type: 'answer', answer: j.answer, elapsedMs: j.elapsedMs }, state);
+  applyEvent({ type: 'done', elapsedMs: j.elapsedMs, unresolved: j.unresolved, escalated: j.escalated }, state);
+  for (var i = 0; i < (j.notes || []).length; i++) state.rest.appendChild(el('div', 'note warn', j.notes[i]));
+}
+
+// A whole response when there was no state yet.
+function show(j) { showInto(startResult(j.lang), j); }
+// --- when was this copy of the rules built? ---------------------------------
+// The date our own corpus was made, taken from the corpus itself. Deliberately
+// not a verdict on whether some other site is behind: that compares clocks
+// dating different things and can only answer coarsely, while our own build date
+// is exact and is the one that says whether this copy is worth trusting.
+(function corpusDate() {
+  var host = document.getElementById('corpusdate');
+  if (!host) return;
+  fetch('/health').then(function (r) { return r.json(); }).then(function (h) {
+    var c = h && h.corpus;
+    if (!c || !c.updated) return;
+    var at = new Date(c.updated);
+    if (isNaN(at.getTime())) return;
+    var days = Math.floor((Date.now() - at.getTime()) / 86400000);
+    var age = days <= 0 ? t('corpusToday') : days === 1 ? t('corpusYesterday') : days + t('corpusDays');
+    host.textContent = t('corpusBuilt') + String(c.updated).slice(0, 10) + ' (' + age + ') | '
+      + c.rules + t('corpusCountsA') + c.factions + t('corpusCountsB');
+  }).catch(function () { /* the line is optional */ });
+})();
+
+// --- voice ------------------------------------------------------------------
+// The Web Speech API transcribes in the browser: no server, no key, no cost, and
+// nothing to host on Vercel. Two constraints shape the wiring.
+//
+// It needs a secure context, so https or localhost - a LAN address such as
+// http://192.168.1.20:8787 offers no microphone at all. And only Chrome, Edge
+// and Safari implement it. The button used to be hidden in the browsers that do
+// not, which left a reader who knows the page has voice input wondering where it
+// went: it stays visible and says why it cannot work.
+//
+// The transcript is deliberately not submitted on its own. Speech recognition
+// mangles proper nouns - Wracks, Victrix, Fulgurite - and a rules question that
+// names the wrong unit retrieves the wrong rule, so the text is left in the box
+// to be corrected first.
+(function voice() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var mic = document.getElementById('mic');
+  if (!mic) return;
+
+  var rec = null;
+  var listening = false;
+  var base = '';
+
+  // The microphone listens in the language the page is in: one switch, not two.
+  function speechLocale() {
+    return LANG === 'fr' ? 'fr-FR' : 'en-GB';
+  }
+
+  function setListening(on) {
+    listening = on;
+    mic.classList.toggle('on', on);
+    mic.title = on ? 'Stop listening' : t('voice');
+    if (on) setStatus(t('listening'), 'busy');
+  }
+  function stop() {
+    if (rec) { try { rec.stop(); } catch (e) { /* already stopped */ } }
+    setListening(false);
+  }
+
+  mic.addEventListener('click', function () {
+    if (!SR) { setStatus(t('voiceUnsupported'), 'err'); return; }
+    if (listening) { stop(); return; }
+    rec = new SR();
+    rec.lang = speechLocale();
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+    base = $('#q').value.trim();
+    rec.onresult = function (e) {
+      var text = '';
+      for (var i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
+      $('#q').value = (base ? base + ' ' : '') + text.trim();
+      setStatus(e.results[e.results.length - 1].isFinal ? t('heard') : t('listening'), 'busy');
+    };
+    rec.onerror = function (e) {
+      var why = e.error === 'not-allowed' ? t('micRefused')
+        : e.error === 'no-speech' ? t('nothingHeard')
+        : e.error === 'audio-capture' ? t('noMic')
+        : e.error === 'network' ? t('speechNet')
+        : t('voiceFailed') + e.error;
+      setStatus(why, 'err');
+      setListening(false);
+    };
+    rec.onend = function () {
+      if (listening) setStatus($('#q').value ? t('heard') : t('nothingHeard'), '');
+      setListening(false);
+    };
+    try { rec.start(); setListening(true); }
+    catch (e) { setStatus(t('voiceNoStart') + e.message, 'err'); }
+  });
+})();
+
+// --- asking -----------------------------------------------------------------
+var busy = false;
+
+// ask() takes overrides from the translation card: the corrected English text
+// and the fact that it is already English, so the server neither detects nor
+// translates it again.
+async function ask(over) {
+  if (busy) return;
+  var o = over || {};
+  var question = (o.question != null ? String(o.question) : $('#q').value).trim();
+  if (question.length < 3) { setStatus(t('statusAskFirst'), 'err'); return; }
+  busy = true;
+  var btn = $('#go');
+  btn.disabled = true;
+  var t0 = performance.now();
+  // A cold question reads real pages and takes ten to thirty seconds. A frozen
+  // button over a still line reads as broken, so the status counts.
+  // The bar carries the progress now, so this only counts seconds beside it.
+  setStatus('', '');
+  var tick = setInterval(function () {
+    if (PDONE) return;
+    var e = $('#pelapsed');
+    if (e) e.textContent = ((performance.now() - t0) / 1000).toFixed(0) + 's';
+  }, 200);
+  try {
+    // Draw the slots before the request, so pressing Ask shows where the parts
+    // will land instead of an empty page while translation runs.
+    // The answer is written in the language of the page switch, whatever
+    // language the question arrived in: French question under the FR switch gets
+    // a French answer, and an English question does too.
+    var answerLang = LANG;
+    var state = startResult(answerLang);
+    var r = await fetch('/rules/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: question,
+        answerLang: answerLang,
+        english: o.english === true,
+        mode: MODE,
+        stream: true
+      })
+    });
+    if (!r.ok) {
+      var errBody = await r.json().catch(function () { return {}; });
+      throw new Error(errBody.error || ('HTTP ' + r.status));
+    }
+    if (!r.body || !r.body.getReader || !window.TextDecoder) {
+      // No readable stream in this browser: take the whole response instead.
+      showInto(state, await r.json());
+      return;
+    }
+    // One JSON object per line, applied as each line arrives. The findings are
+    // on screen about two seconds in; the judge and the prose follow behind.
+    var reader = r.body.getReader();
+    var dec = new TextDecoder();
+    var buf = '';
+    for (;;) {
+      var chunk = await reader.read();
+      if (chunk.done) break;
+      buf += dec.decode(chunk.value, { stream: true });
+      var lines = buf.split('\n');
+      buf = lines.pop();
+      for (var i = 0; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        var ev = null;
+        try { ev = JSON.parse(lines[i]); } catch (e2) { continue; }
+        applyEvent(ev, state);
+      }
+    }
+  } catch (e) {
+    var bar = $('#progress');
+    if (bar) bar.classList.add('hidden');
+    setStatus(String(e.message || e), 'err');
+  } finally {
+    clearInterval(tick);
+    busy = false;
+    btn.disabled = false;
+  }
+}
+
+$('#f').addEventListener('submit', function (e) { e.preventDefault(); ask(); });
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { $('#q').blur(); }
+});
+$('#q').focus();
+</script>
+</body>
+</html>

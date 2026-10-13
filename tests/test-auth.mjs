@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { URL_RE, ADMIN_LIST_RE, extractEventSlug, isAdminUrl, isLoginPage, authError, splitArticles, buildPlayers, loginFormError, setCookieOf, splitAdminRows, adminListContent, adminStatusOf, adminArticle, getMeta, getTeamName, totals, playerWarnings, parseOrganizedRows, formatDateOf } from '../parse.mjs';
+import { URL_RE, ADMIN_LIST_RE, extractEventSlug, isAdminUrl, isLoginPage, authError, splitArticles, buildPlayers, loginFormError, setCookieOf, splitAdminRows, adminListContent, adminStatusOf, adminArticle, getMeta, getTeamName, totals, playerWarnings, parseOrganizedRows, formatDateOf } from '../src/parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
