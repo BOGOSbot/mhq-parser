@@ -1706,18 +1706,41 @@ export function judgePrompt(question, passages, opts) {
   ].join('\n');
 }
 
-// Two verdicts on the same findings. The page runs a second judge beside the
-// writer, and when the two disagree the CONSERVATIVE one stands: an
-// 'insufficient' from either verdict is the answer, and a second 'answered'
-// never overturns a refusal. The caller annotates the answer it already sent
-// rather than replacing it, so this only decides which verdict is doing the
-// binding and whether anything needs saying at all.
+// How much a judge's reasoning is worth, for deciding whose refusal counts. The
+// bank measured the same judge at 61.8% with reasoning off and 79.4% with it on,
+// and 'high' measured no deeper than 'medium'. An unknown setting - a custom
+// endpoint told nothing - ranks as the equal of anything, so it can still
+// downgrade rather than being silently ignored.
+export function judgeStrength(reasoning) {
+  const r = String(reasoning || '').toLowerCase();
+  if (r === 'none') return 0;
+  return 1;
+}
+
+// Two verdicts on the same findings. The caller annotates the answer it already
+// sent rather than replacing it, so this decides three things: whether the two
+// disagree at all, who dissented, and whether that dissent may downgrade the
+// answer.
+//
+// A second refusal binds only when it comes from a judge at least as reliable as
+// the one that answered. Fast mode pairs a quick binding judge with a careful
+// second, so the careful refusal still downgrades - that is the case the rule was
+// written for. Deep mode pairs a careful binding judge with a quick second, and
+// there the quick refusal must NOT stamp a correct answer 'not confirmed': the
+// less accurate judge was vetoing the more accurate one, which is a design bug
+// and not a display one. A weaker dissent is still reported, as a dissent.
 export function reconcileVerdicts(binding, second) {
   const a = binding ? binding.answered : null;
   const b = second ? second.answered : null;
-  if (a === null || a === undefined || b === null || b === undefined) return { disagreement: false, conservative: 'binding' };
-  if (a === b) return { disagreement: false, conservative: 'binding' };
-  return { disagreement: true, conservative: b === false ? 'second' : 'binding' };
+  if (a === null || a === undefined || b === null || b === undefined) return { disagreement: false, conservative: 'binding', downgrade: false, dissenter: '' };
+  if (a === b) return { disagreement: false, conservative: 'binding', downgrade: false, dissenter: '' };
+  // Only the second judge's refusal has something to downgrade: when the binding
+  // judge refused, the answer is already the cautious one.
+  if (b === false) {
+    const downgrade = judgeStrength(second.reasoning) >= judgeStrength(binding.reasoning);
+    return { disagreement: true, conservative: downgrade ? 'second' : 'binding', downgrade, dissenter: 'second' };
+  }
+  return { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'binding' };
 }
 
 // 'medium' and 'normal' are what a model reaches for when it is not given the

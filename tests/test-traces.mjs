@@ -56,7 +56,7 @@ t('the English actually searched travels with it', trace.asked, 'Can Asurmen re-
 t('a finding is a pointer', trace.findings[0], { n: 1, set: 'rules', source: 'core-rules', ruleId: '18.02', id: 'core-rules#Embarking' });
 t('no passage text in the trace', JSON.stringify(trace).includes('A unit can embark'), false);
 t('no judge why in the trace', JSON.stringify(trace).includes('Passage [1] says'), false);
-t('the verdict keeps its answer and confidence', trace.judge, { answered: true, confidence: 'high' });
+t('the verdict keeps its answer, confidence and reasoning setting', trace.judge, { answered: true, confidence: 'high', reasoning: '' });
 t('the answer is kept - the bank grades on it', trace.answer, 'Oui [1].');
 t('the corpus build travels with it', trace.corpusAt, '2026-10-13T00:55:31.597Z');
 t('kind is unknown, not a guess', trace.kind, KIND_UNKNOWN);
@@ -80,12 +80,18 @@ t('the trace carries the mode', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.0
 // trace, the rate would need the benchmark Mandal does not want yet.
 const twoJudges = buildTrace({
   id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []),
-  answer: 'A rule [1].', judge: { answered: true, confidence: 'high' },
+  answer: 'A rule [1].', judge: { answered: true, confidence: 'high' }, judgeReasoning: 'none',
   judge2: { answered: false, confidence: 'med', reasoning: 'medium' }, judgeDisagreement: true,
+  judgeDowngrade: true, judgeDissentFrom: 'second',
 });
 t('the trace carries the second verdict', twoJudges.judge2, { answered: false, confidence: 'med', reasoning: 'medium' });
 t('the trace carries the disagreement flag', twoJudges.judgeDisagreement, true);
-t('the binding verdict is unchanged beside it', twoJudges.judge, { answered: true, confidence: 'high' });
+t('the binding verdict is unchanged beside it', twoJudges.judge, { answered: true, confidence: 'high', reasoning: 'none' });
+// Which judge dissented and whether it was allowed to downgrade: the two fields
+// task-16's rule is measured from.
+t('the dissent and its effect are recorded', [twoJudges.judgeDissentFrom, twoJudges.judgeDowngrade], ['second', true]);
+t('a stronger binding makes the quick dissent a non-downgrade', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', answer: 'a', judge: { answered: true }, judgeReasoning: 'medium', judge2: { answered: false, reasoning: 'none' }, judgeDisagreement: true, judgeDowngrade: false, judgeDissentFrom: 'second' }).judgeDowngrade, false);
+t('the reasoning setting of the binding judge is recorded', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', answer: 'a', judge: { answered: true }, judgeReasoning: 'medium' }).judge.reasoning, 'medium');
 const oneJudge = buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: 'A rule [1].', judge: { answered: true, confidence: 'high' } });
 t('a single-judge trace has no second verdict', oneJudge.judge2 === undefined, true);
 t('and no disagreement', oneJudge.judgeDisagreement, false);

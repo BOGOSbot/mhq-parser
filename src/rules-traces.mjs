@@ -123,12 +123,17 @@ export function buildTrace(input) {
     signals: input.signals,
     counts: input.counts || { rules: 0, factions: 0 },
     findings: traceFindings(input.findings),
-    judge: { answered: !!(input.judge && input.judge.answered), confidence: (input.judge && input.judge.confidence) || '' },
+    judge: { answered: !!(input.judge && input.judge.answered), confidence: (input.judge && input.judge.confidence) || '', reasoning: input.judgeReasoning || '' },
     // The second judge, and whether the two disagreed. The rate this exists to
     // make measurable is count(judgeDisagreement) / count(traces with judge2): a
     // question the binding judge accepted and the careful one refused is the
     // reader's one signal that the prose is provisional.
     judgeDisagreement: !!input.judgeDisagreement,
+    // Which judge dissented, and whether that dissent was allowed to downgrade
+    // the answer. Both are needed to measure the rule: a refusal from the quick
+    // judge in deep mode is information, not a downgrade.
+    judgeDowngrade: !!input.judgeDowngrade,
+    judgeDissentFrom: input.judgeDissentFrom || '',
     answer: input.answer || '',
     writer: writerMode(input),
     steps: input.steps || [],

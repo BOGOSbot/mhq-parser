@@ -924,28 +924,39 @@ async function handleRulesAsk(req, res) {
     // binding judge is already the careful one and the second opinion is the
     // quick one, which cannot upgrade anything.
     //
-    // Either way the CONSERVATIVE verdict stands: a second judge saying
-    // 'insufficient' downgrades the answer visibly and is never outvoted by the
-    // first, and a second judge saying 'answered' never turns a refusal into
-    // prose. Nothing here replaces the answer - the reader may already have read
-    // it - so a disagreement is annotated on top of it.
+    // The conservative verdict stands, but only when it comes from a judge at
+    // least as reliable as the one that answered: a second refusal downgrades
+    // the answer, a second 'answered' never turns a refusal into prose, and a
+    // refusal from the QUICK judge never outvotes a careful one. Nothing here
+    // replaces the answer - the reader may already have read it - so a
+    // disagreement is annotated on top of it, as a downgrade or as a dissent.
     const secondReasoning = mode.second === undefined ? (modeName === 'fast' ? 'medium' : 'none') : mode.second;
     let secondJudge = null;
     let judgeDisagreement = false;
+    let judgeDowngrade = false;
+    let judgeDissentFrom = '';
     const emitSecond = () => {
       if (!secondJudge) return;
-      const reconciled = reconcileVerdicts(judge, secondJudge);
+      // The reconciliation needs to know how hard each judge thought: a refusal
+      // from the quick judge must not downgrade an answer the careful one wrote.
+      const reconciled = reconcileVerdicts(
+        Object.assign({}, judge, { reasoning: mode.reasoning }),
+        Object.assign({}, secondJudge, { reasoning: secondReasoning }),
+      );
       judgeDisagreement = reconciled.disagreement;
+      judgeDowngrade = reconciled.downgrade;
+      judgeDissentFrom = reconciled.dissenter;
       emit({ type: 'judge', judge: secondJudge, final: true, attempt: 0, second: true, reasoning: secondReasoning, elapsedMs: Date.now() - started });
       if (judgeDisagreement) {
         emit({
           type: 'reconcile',
-          // Which verdict is doing the binding now. 'second' when the second
-          // judge refused what the first accepted; 'binding' when the first
-          // refused and the second would have answered.
+          // 'downgrade' is the whole of task-16: true only when the dissenting
+          // judge was at least as reliable as the binding one.
+          downgrade: reconciled.downgrade,
+          dissenter: reconciled.dissenter,
           conservative: reconciled.conservative,
-          binding: { answered: judge ? judge.answered : null, confidence: (judge && judge.confidence) || '' },
-          second: { answered: secondJudge.answered, confidence: secondJudge.confidence || '' },
+          binding: { answered: judge ? judge.answered : null, confidence: (judge && judge.confidence) || '', reasoning: mode.reasoning },
+          second: { answered: secondJudge.answered, confidence: secondJudge.confidence || '', reasoning: secondReasoning },
           elapsedMs: Date.now() - started,
         });
       }
@@ -972,8 +983,11 @@ async function handleRulesAsk(req, res) {
           counts,
           findings,
           judge,
+          judgeReasoning: mode.reasoning,
           judge2: secondJudge,
           judgeDisagreement,
+          judgeDowngrade,
+          judgeDissentFrom,
           card: card ? { id: card.id, name: card.name } : null,
           answer: answerText,
           failed: writer && writer.failed,
@@ -1044,7 +1058,7 @@ async function handleRulesAsk(req, res) {
       emitSecond();
       trace('', { failed: writerFailed });
       if (stream) {
-        emit({ type: 'done', elapsedMs, steps, failed: true, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDisagreement });
+        emit({ type: 'done', elapsedMs, steps, failed: true, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
         return res.end();
       }
       return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, judge2: secondJudge, judgeDisagreement, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
@@ -1067,7 +1081,7 @@ async function handleRulesAsk(req, res) {
 
     trace(answer, { declined: writerDeclined });
     if (stream) {
-      emit({ type: 'done', elapsedMs: Date.now() - started, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDisagreement });
+      emit({ type: 'done', elapsedMs: Date.now() - started, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
       return res.end();
     }
     return json(res, 200, {

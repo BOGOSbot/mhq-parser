@@ -225,6 +225,10 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 .vevidence{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
 .vevidence .vlabel{color:var(--dim);font:11px var(--mono)}
 .vevidence a.cite{font-size:11.5px}
+/* A dissent, not a downgrade: the answer stands, and this is information. */
+.dissent{margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.dissent .dtitle{color:var(--dim);font:600 11.5px var(--mono);letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px}
+.dissent .note{margin-top:0}
 .corpusdate{color:var(--dim);font:11.5px system-ui;border-left:1px solid var(--line);padding-left:14px}
 .footlinks{display:flex;gap:10px;align-items:center}
 .footlinks a{display:inline-flex;color:var(--dim);padding:4px;border-radius:7px}
@@ -340,6 +344,9 @@ var I18N = {
     judgeDisagreeTitle: 'The two judges disagree',
     judgeDisagreeNo: 'The second judge does not think these findings answer the question. That is the more cautious verdict, so the answer above is not confirmed.',
     judgeDisagreeYes: 'The second judge would answer from these findings, but the first judge found them insufficient. The cautious verdict stands: the answer above stays a statement of absence.',
+    judgeDissentTitle: 'A weaker judge dissents',
+    judgeDissentWeaker: 'The second judge reasons less than the one that answered, and it would not answer from these findings. The answer stands: the more reliable verdict is the one that wrote it.',
+    judgeDissentOther: 'The second judge would answer from these findings, but the judge that gated the prose found them insufficient, so the refusal stands.',
     answerTitle: 'Answer',
     termsTitle: 'Searched for',
     termsNote: 'The corpus is English, so these terms were searched alongside the translated question. They are search input, not a translation of the rules.',
@@ -472,6 +479,9 @@ var I18N = {
     judgeDisagreeTitle: 'Les deux juges ne sont pas d\u2019accord',
     judgeDisagreeNo: 'Le second juge estime que ces constats ne répondent pas à la question. C\u2019est l\u2019avis le plus prudent : la réponse ci-dessus n\u2019est pas confirmée.',
     judgeDisagreeYes: 'Le second juge répondrait à partir de ces constats, mais le premier les a jugés insuffisants. L\u2019avis prudent l\u2019emporte : la réponse ci-dessus reste une absence de réponse.',
+    judgeDissentTitle: 'Un juge plus faible exprime un désaccord',
+    judgeDissentWeaker: 'Le second juge raisonne moins que celui qui a répondu, et il ne répondrait pas à partir de ces constats. La réponse tient : c\u2019est l\u2019avis le plus fiable qui l\u2019a écrite.',
+    judgeDissentOther: 'Le second juge répondrait à partir de ces constats, mais le juge qui a commandé la prose les a jugés insuffisants : l\u2019absence de réponse tient.',
     answerTitle: 'Réponse',
     termsTitle: 'Termes cherchés',
     termsNote: 'Le corpus est en anglais : ces termes ont été cherchés en plus de la question traduite. Ce sont des termes de recherche, pas une traduction des règles.',
@@ -1542,14 +1552,21 @@ function applyEvent(ev, state) {
   if (ev.type === 'reconcile') {
     // The prose was written before this verdict landed and may already have been
     // read, so the contradiction is annotated on top of it - never a silent
-    // replacement. The conservative verdict is named in both directions.
-    state.disputed = true;
-    var dispute = el('div', 'dispute');
-    dispute.appendChild(el('div', 'dtitle', t('judgeDisagreeTitle')));
-    dispute.appendChild(el('div', 'note', ev.conservative === 'second' ? t('judgeDisagreeNo') : t('judgeDisagreeYes')));
-    state.answer.appendChild(dispute);
+    // replacement. Two outcomes, and the difference is the point: a dissent from
+    // a judge at least as reliable as the one that answered downgrades the answer
+    // ('not confirmed'); a WEAKER judge's refusal is a dissent and leaves the
+    // answer standing, because the less accurate judge must not veto the more
+    // accurate one - reasoning off measured 61.8% against reasoning on 79.4%.
+    var down = ev.downgrade === true;
+    state.disputed = down;
+    var box = el('div', down ? 'dispute' : 'dissent');
+    box.appendChild(el('div', 'dtitle', down ? t('judgeDisagreeTitle') : t('judgeDissentTitle')));
+    box.appendChild(el('div', 'note', down
+      ? (ev.conservative === 'second' ? t('judgeDisagreeNo') : t('judgeDisagreeYes'))
+      : (ev.dissenter === 'second' ? t('judgeDissentWeaker') : t('judgeDissentOther'))));
+    state.answer.appendChild(box);
     flash(state.answer);
-    setStatus(t('judgeDisagreeTitle'), 'warn');
+    setStatus(down ? t('judgeDisagreeTitle') : '', down ? 'warn' : '');
     return;
   }
   if (ev.type === 'answer') {

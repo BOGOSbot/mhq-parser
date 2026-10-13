@@ -148,13 +148,22 @@ its reasoning scored 61.8% where thinking it scored 79.4%. So the page runs both
   after it, as information rather than as a delay; in deep mode the careful
   verdict is already the binding one and the quick second opinion cannot upgrade
   anything.
-- The **conservative** verdict stands. A second judge saying `insufficient`
-  when the first said `answered` downgrades the answer that was already sent; a
-  second judge saying `answered` never turns a refusal into prose. Neither
-  replaces the prose - the reader may already have read it - so the
-  contradiction is an annotation on the answer (the stream's `reconcile` event),
-  naming both verdicts. `reconcileVerdicts` is that rule, on its own, and
-  `tests/test-judge.mjs` holds it.
+- A second judge may **downgrade** the answer only when it is at least as
+  reliable as the binding one, and reliability is the reasoning setting because
+  the bank measured it: the same judge scores 61.8% with reasoning off and 79.4%
+  with it on. So **in fast mode** (quick binding judge, careful second) a second
+  `insufficient` still downgrades the answer; **in deep mode** (careful binding
+  judge, quick second) it does not - the quick judge does not hold a veto over
+  the careful one. The comparison is `judgeStrength`, an unknown setting ranks as
+  the equal of anything so a custom endpoint is never silently ignored.
+- A second judge saying `answered` never turns a refusal into prose, in either
+  mode: when the binding judge refused, the answer already is the cautious one.
+- Neither replaces the prose - the reader may already have read it - so a
+  contradiction is an annotation on the answer (the stream's `reconcile` event):
+  a **downgrade** marks the answer unconfirmed, a **weaker dissent** is shown as
+  a dissent and the answer stands, because it is still information. Both name the
+  verdicts and their settings. `reconcileVerdicts` and `judgeStrength` are that
+  rule, on their own, and `tests/test-judge.mjs` holds it for both modes.
 - Both verdicts are printed with their confidence and their reasoning setting
   (`second judge - with reasoning`).
 - The verdict is a model call read by the reader, so **it follows the reader's

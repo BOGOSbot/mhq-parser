@@ -39,7 +39,9 @@ One JSON line per question (`src/rules-traces.mjs`):
 | `kind` | `unknown` - see *The taxonomy* |
 | `signals` | `firstPerson`, `termMatch`, `sources`, `halves`, `rules` |
 | `counts`, `findings` | how many per half, and the pointers |
-| `judge` | `answered`, `confidence` |
+| `judge` | `answered`, `confidence`, `reasoning` (the binding judge's setting) |
+| `judge2` | the second judge's `answered`, `confidence`, `reasoning` |
+| `judgeDisagreement`, `judgeDowngrade`, `judgeDissentFrom` | whether the two disagreed, whether the dissent was allowed to downgrade the answer, and which judge it came from |
 | `answer` | the cited prose the reader saw |
 | `steps`, `elapsedMs` | per-stage timing |
 | `unresolved`, `escalated`, `attempts` | how the search ended |
