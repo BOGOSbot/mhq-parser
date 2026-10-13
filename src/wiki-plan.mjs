@@ -194,6 +194,17 @@ export function planWiki(data) {
     if (!childrenOf.has(parentHeading)) childrenOf.set(parentHeading, []);
     for (const kid of byHeading.get(h)) if (!childrenOf.get(parentHeading).some(k => k.id === kid.id)) childrenOf.get(parentHeading).push(kid);
   }
+  // A child names its parent too, not only the other way round: navigation is
+  // walked in both directions, and a record whose parent field is empty cannot
+  // be followed upward.
+  const parentIdOf = new Map();
+  for (const h of byHeading.keys()) {
+    const parts = String(h).split(' > ').filter(Boolean);
+    if (parts.length < 2) continue;
+    const parentHeading = parts.slice(0, -1).join(' > ');
+    if (!byHeading.has(parentHeading)) continue;
+    for (const kid of byHeading.get(h)) parentIdOf.set(kid.id, byHeading.get(parentHeading)[0].id);
+  }
   for (const r of rules) {
     const kids = childrenOf.get(String(r.heading || '')) || [];
     const wanted = kids.map(k => ({ to: k.id, title: lastCrumb(k.heading), kind: 'section' }));
@@ -201,7 +212,7 @@ export function planWiki(data) {
     stats.linksDropped += resolved.dropped;
     const rec = baseRecord(r, {
       kind: r.source === 'core-stratagems' ? 'stratagem' : 'rule',
-      parent: '', children: resolved.links.map(l => l.to), links: resolved.links,
+      parent: parentIdOf.get(r.id) || '', children: resolved.links.map(l => l.to), links: resolved.links,
       idFrom: 'source-key', part: 1, parts: 1, text: String(r.text || ''),
     });
     if (resolved.links.length) {

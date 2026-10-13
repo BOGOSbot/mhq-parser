@@ -168,6 +168,62 @@ How to test, in order:
   aggregate will not save it.
 - Cost: free Jev calls only, local embeddings, no writer/judge calls.
 
+
+## Phase B: measured (2026-10-13)
+
+Built by `src/wiki-build.mjs` into `workspace/rules-corpus-wiki/` - a directory of
+its own, never the live corpus, and the local backend keeps its store inside it,
+so nothing here can reach Upstash. 7,556 records across the five source files,
+13,834 links, no remote call, no model call.
+
+**The gate, like for like and free.** `tests/eval-retrieval.mjs --retriever grep`
+on the 29 graded questions, live corpus against the planned one (the grep arm, not
+the recorded dual path - those numbers are not comparable to it):
+
+| grep arm, 29 questions | live | wiki |
+|---|---|---|
+| hit@1 | 27.6% | **31.0%** |
+| hit@5 | 44.8% | **51.7%** |
+| hit@10 | 62.1% | **65.5%** |
+| hit@20 | 65.5% | **69.0%** |
+| MRR | 0.358 | **0.398** |
+| reachable hit@20 / MRR | 79.3% / 0.487 | 79.3% / 0.487 |
+
+The movement is at the edge of the 2-4 point noise floor at hit@1/10/20 (+3.4) and
+beyond it at hit@5 (+6.9) and MRR (+0.040). The bucket that moves most is the one
+the mechanism predicts: **literal** questions, 50% -> 62.5% at hit@1 and
+75% -> 87.5% at hit@5, MRR 0.609 -> 0.719. Reachable is unchanged, which is what a
+corpus that adds records rather than moving them should look like.
+
+**The two targeted questions, which decide it:**
+
+- **Battle Focus: impossible -> rank 1.** No record anywhere in the live corpus;
+  `faction-rule#000009894` comes back first for a Battle Focus question on the
+  planned one. A rule with no record cannot be retrieved at all, and 58 other
+  faction rules are in the same hole.
+- **A subsection naming its parent: NOT demonstrated.** The parent record exists
+  and does carry its children's names (`3. End of Shooting Phase` contains
+  `- section: NORMAL SHOOTING`, `- ASSAULT SHOOTING`, ...), but a query naming
+  NORMAL SHOOTING still returns the child at #2 in both corpora and never the
+  parent. The link block is built; the retrieval benefit it was bet on is
+  unproven for this pair, where the child is a strong hit in its own right.
+
+**The vector arm is not run.** Ollama and bge-m3 are on the machine, and the
+measured local embedding rate is 1.61s per record batched, so the full 7,556-record
+local index is **~3.4 hours** (the rules half alone is ~20 minutes) - free, but
+longer than a session. That is the price of the vector-arm numbers and of phase C's
+rebuild; it is measured, not estimated.
+
+**So: a conditional go.** The rewrite is safe (0 ids moved), affordable (+291
+records), and it fixes a class of rule that cannot be retrieved today - the Battle
+Focus class - which the lexical arm already proves. The aggregate is positive
+beyond the noise at hit@5 and at the edge of it elsewhere. What is NOT shown is the
+link-block mechanism (its parent test is negative) and the vector arm (~3.4h), and
+the four open questions below (back-links in or out of the text, name-only index
+pages, the 37 forced chunks) are all vector-arm arms. Phase C should therefore be
+scheduled with the local build first, and the live rebuild asked for only once the
+local numbers exist.
+
 ## Open questions before phase B
 
 - **Is the link block noise for retrieval?** A parent's vector now carries up to
@@ -186,7 +242,9 @@ How to test, in order:
 
 ## Recommendation
 
-**Proceed to phase B, on the local backend, with the bank as the gate.** The
+**Proceed to phase B, on the local backend, with the bank as the gate** - phase B
+has now run, and its measured result is above. In short: build it, and the local
+vector arm before the live rebuild. The
 dry run says the rewrite is additive (0 ids moved), affordable (291 records,
 +0.5% on rules, +3.9% on factions), and it fixes a real hole (59 faction rules,
 Battle Focus among them, that no query can reach today). But the retrieval gain
