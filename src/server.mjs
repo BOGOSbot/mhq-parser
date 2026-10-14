@@ -359,9 +359,9 @@ const COMPRESSIBLE = /^(?:text\/|application\/(?:json|xml|javascript)|image\/svg
 // 16x16, an ICO holding a PNG. Every fresh tab asks for this and used to get a 404.
 const ICON = Buffer.from('AAABAAEAEBAAAAEAIABhAAAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAAQAAAAEAgGAAAAH/P/YQAAAChJREFUeNpjyFvx7z8lmAFE8AuKkYUHqQEiUmp48agBI8OAIZqUKcEAWaOsmOgvCt0AAAAASUVORK5CYII=', 'base64');
 
-// Brotli first: on this server's own text it is the smallest of the three by a
-// wide margin (140,552 bytes of /rules to ~1,061 against gzip's ~1.4 KB), and a
-// browser that offers brotli has offered it for years.
+// Brotli first: on this server's own text it beats gzip by about 15% (139,870
+// bytes of /rules to 35,545 against gzip's 41,521), and a browser that offers
+// brotli has offered it for years.
 function pickEncoding(req) {
   const a = String((req && req.headers && req.headers['accept-encoding']) || '');
   if (/(?:^|[,\s])br(?:[;\s,]|$)/.test(a)) return 'br';
