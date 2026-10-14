@@ -176,5 +176,56 @@ ok('a record pick and none replace each other', traces.indexOf('t.answeredNone =
 const promote = fs.readFileSync(path.join(__dirname, 'promote-traces.mjs'), 'utf8');
 ok('the harvest prints the reader pick', promote.indexOf('const reader = readerPick(t);') !== -1 && promote.indexOf("console.log('reader: ' + reader)") !== -1);
 
+// The layout of the question: the box grows with its text, the translation has
+// its own box under it, and the retention line is in the body where a run cannot
+// hide it. None of the three is visible to an i18n check and each is one edit
+// away from being undone, so each is asserted structurally.
+const formHtml = PAGE.slice(PAGE.indexOf('<form id="f">'), PAGE.indexOf('</form>'));
+ok('the question box is a textarea, not a one-line input',
+  formHtml.indexOf('<textarea id="q"') !== -1 && formHtml.indexOf('<input id="q"') === -1);
+const growBlock = code.slice(code.indexOf('function growQuestion'), code.indexOf('function renderExamples'));
+ok('the box grows to its scrollHeight', /q\.scrollHeight/.test(growBlock));
+ok('and stops at the cap', /Math\.min\([^)]*QCAPPX\)/.test(growBlock));
+ok('the cap is the CSS max-height', /textarea#q\{[^}]*max-height:\d+px/.test(PAGE));
+ok('Enter asks and Shift+Enter adds a line',
+  /e\.key !== 'Enter' \|\| e\.shiftKey/.test(growBlock) && /e\.preventDefault\(\)/.test(growBlock) && /ask\(\);/.test(growBlock));
+const voiceBlock = code.slice(code.indexOf('rec.onresult'), code.indexOf('rec.onerror'));
+ok('the voice transcript grows the box', voiceBlock.indexOf('growQuestion()') !== -1);
+ok('an example chip grows the box', code.indexOf("$('#q').value = text; $('#q').focus(); growQuestion();") !== -1);
+ok('the translation re-ask grows the box', /growQuestion\(\);\s*\n\s*ask\(\{ question: text, english: true \}\)/.test(code));
+
+const headerHtml = PAGE.slice(PAGE.indexOf('<header>'), PAGE.indexOf('</header>'));
+ok('the translation box sits under the question in the header',
+  headerHtml.indexOf('id="trslot"') !== -1 && headerHtml.indexOf('id="trslot"') > headerHtml.indexOf('id="q"'));
+ok('the translation event fills that box', /state\.translation = ev;[\s\S]{0,60}renderTranslation\(state\)/.test(code));
+ok('the box is the server text through the same card', /slot\.appendChild\(translationCard\(state\.translation\)\)/.test(code));
+ok('it is no longer a results card', code.indexOf('state.rest.appendChild(translationCard') === -1);
+ok('a new question clears it', /clearTranslation\(\);/.test(code));
+ok('the correction path re-asks in English', /ask\(\{ question: text, english: true \}\)/.test(code));
+const trKeys = ['translationTitle', 'translationFrom', 'translationTo', 'translationNote', 'translationButton', 'translationTooShort'];
+t('the translation labels exist in both languages', trKeys.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined), []);
+
+// The matching close of a div, so 'in the body' cannot mean 'inside the block a
+// run hides'.
+function closeOf(html, from) {
+  const re = /<div\b|<\/div>/g;
+  re.lastIndex = from;
+  let depth = 0, m;
+  while ((m = re.exec(html)) !== null) {
+    if (m[0] === '<div') depth++;
+    else if (--depth === 0) return re.lastIndex;
+  }
+  return -1;
+}
+const mainAt = PAGE.indexOf('<main>');
+const retentionAt = PAGE.indexOf('id="retention"');
+const introAt = PAGE.indexOf('<div id="intro">');
+const introEnd = closeOf(PAGE, introAt);
+ok('the retention line is in the body', retentionAt > mainAt && retentionAt < PAGE.indexOf('</main>'));
+ok('and outside the intro a run hides', introEnd > introAt && retentionAt > introEnd);
+ok('nothing hides it', !/^.*retention.*(classList|add\('hidden'\))/m.test(code));
+ok('its text is a table key, not a literal', code.indexOf("rt.textContent = t('retention')") !== -1);
+t('the retention text exists in both languages', ['retention'].filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined), []);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

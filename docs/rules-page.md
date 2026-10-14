@@ -33,6 +33,31 @@ functionality document for that page; the army-list parser has its own in
   localised by the page from the `wh40k11ed` slug, because the server's label is
   English and it was the one English string left on the French page.
 
+## Asking the question
+
+The question box is a textarea, not a one-line input: it grows with what is
+typed, up to about seven lines, and then scrolls, and the form's controls sit at
+its top rather than centred on it. **Enter asks; Shift+Enter adds a line** - a
+textarea does not submit its form on Enter, so the key is handled on the field
+itself. Voice transcription, an example chip and the translation's re-ask all
+fill the same box and grow it.
+
+**The translation has its own box under the question, in the header.** The
+server already sends it: the stream's `translation` event carries `detected`
+and `translated`, and a reply that is not streamed carries the same text as
+`translation`; one box takes whichever arrived. It shows the English the index,
+the judge and the writer actually read, and it is editable: *Search this English
+text* re-asks with `english: true`, so the corrected text is neither detected
+nor translated again. That is the path a mangled unit name needs - the wrong
+English word retrieves the wrong rule, and only the reader knows which name they
+meant. The box belongs to the question rather than to a result: it is drawn once
+per question, so a findings event cannot wipe an edit, and a rerun - which does
+not translate again - leaves it in place.
+
+The retention line is at the top of the body, not in the header. A run hides the
+intro block; the retention line is not inside it, so the note about what the
+page keeps stays on screen while the question runs and after it.
+
 ## The corpus
 
 The rules are read and embedded ahead of time, not fetched per question. Two

@@ -21,10 +21,15 @@ h1 span{color:var(--dim);font-weight:400}
 .spacer{flex:1}
 a.nav{color:var(--dim);font:12.5px system-ui;text-decoration:none;padding:3px 8px;border-radius:6px}
 a.nav:hover{color:var(--txt);background:var(--panel2)}
-form{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
-input[type=text]{flex:1;min-width:260px;background:var(--panel2);color:var(--txt);
-  border:1px solid var(--line);border-radius:7px;padding:9px 11px;font:13.5px system-ui}
-input[type=text]:focus{outline:none;border-color:var(--acc)}
+form{display:flex;gap:8px;align-items:flex-start;margin-top:10px;flex-wrap:wrap}
+/* The question box grows with what is typed and scrolls once it hits the cap. It
+   is a textarea, not a one-line input: a rules question is often a sentence with
+   a unit name in it, and a single line hid the end of it. Enter still asks;
+   Shift+Enter adds a line. */
+textarea#q{flex:1;min-width:260px;background:var(--panel2);color:var(--txt);
+  border:1px solid var(--line);border-radius:7px;padding:9px 11px;font:13.5px system-ui;
+  line-height:1.45;resize:none;overflow-y:auto;min-height:40px;max-height:168px}
+textarea#q:focus{outline:none;border-color:var(--acc)}
 select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
   border-radius:7px;padding:8px 8px;font:13px system-ui}
 select:focus{outline:none;border-color:var(--acc)}
@@ -92,6 +97,12 @@ ol.cites li{display:flex;gap:10px;align-items:flex-start}
 .cscore{font:11px var(--mono);color:var(--dim);margin-left:6px}
 .trbox{width:100%;min-height:64px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:9px 10px;font:13px system-ui;margin:0 0 8px;resize:vertical}
 .trbox:focus{outline:none;border-color:var(--acc)}
+/* The translation is its own box under the question, in the header: the server
+   already sends it, the reader corrects it there, and the correction is the next
+   ask. The header is tight, so the card loses its outer margins. */
+#trslot .card{margin:10px 0 0;padding:12px 14px}
+#trslot .card h2{margin-bottom:6px}
+#trslot .trbox{margin-bottom:6px}
 details{margin-top:5px}
 details summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 details summary:hover{color:var(--txt)}
@@ -269,8 +280,8 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
     <span class="spacer"></span>
   </div>
   <form id="f">
-    <input id="q" type="text" spellcheck="false" autocomplete="off"
-           placeholder="Ask a rules question — e.g. can a unit shoot after it Fell Back?">
+    <textarea id="q" rows="1" spellcheck="false" autocomplete="off"
+           placeholder="Ask a rules question — e.g. can a unit shoot after it Fell Back?"></textarea>
     <button id="go" type="submit">Ask</button>
     <button type="button" id="mic" class="mic" title="Ask by voice"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg><span id="miclabel">Voice</span></button>
     <!-- Two settings for the search and the judge. Fast asks the judge not to
@@ -287,7 +298,7 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
       <option value="en">EN</option>
     </select>
   </form>
-  <p class="note" id="retention"></p>
+  <div id="trslot" class="hidden"></div>
   <div id="status" class="status"></div>
     <div id="progress" class="progress hidden"><div class="psegs" id="psegs"></div><span id="pelapsed" class="pelapsed"></span></div>
 </header>
@@ -312,6 +323,7 @@ The question is searched against an indexed copy of the
       at a source that was not indexed.
     </div>
   </div>
+  <p class="note" id="retention"></p>
   <div id="result" class="hidden"></div>
 </main>
 <div class="foot">
@@ -648,6 +660,26 @@ function t(key) {
   if (table && table[key] !== undefined) return table[key];
   return I18N.en[key] !== undefined ? I18N.en[key] : key;
 }
+// --- the question box --------------------------------------------------------
+// A textarea that grows with its text and then scrolls, where a one-line input
+// hid the end of a long question. The cap is this page's own: past it the box
+// scrolls rather than pushing the form off the screen.
+var QCAPPX = 168;   // px, kept in step with textarea#q's CSS max-height
+function growQuestion() {
+  var q = $('#q');
+  if (!q) return;
+  q.style.height = 'auto';
+  q.style.height = Math.min(q.scrollHeight + 2, QCAPPX) + 'px';
+}
+// Enter asks; Shift+Enter is a new line. A textarea does not submit the form it
+// sits in on Enter, and asking must not need a reach for the button.
+$('#q').addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229) return;
+  e.preventDefault();
+  ask();
+});
+$('#q').addEventListener('input', growQuestion);
+
 function renderExamples() {
   var host = $('#examples');
   if (!host) return;
@@ -659,7 +691,7 @@ function renderExamples() {
       b.type = 'button';
       b.className = 'ex';
       b.textContent = text;
-      b.addEventListener('click', function () { $('#q').value = text; $('#q').focus(); });
+      b.addEventListener('click', function () { $('#q').value = text; $('#q').focus(); growQuestion(); });
       host.appendChild(b);
     })(list[i]);
   }
@@ -926,10 +958,33 @@ function translationCard(tr) {
     var text = (ta.value || '').trim();
     if (text.length < 3) { setStatus(t('translationTooShort'), 'err'); return; }
     $('#q').value = text;
+    growQuestion();
     ask({ question: text, english: true });
   });
   card.appendChild(btn);
   return card;
+}
+
+// The translation box is filled from here and lives under the question, in the
+// header - not in the results. It is the English the pipeline actually ran, and
+// the correction the reader types is the next ask. Rendered once per question
+// rather than on every findings event, so an edit is not wiped mid-run.
+function renderTranslation(state) {
+  var slot = $('#trslot');
+  if (!slot) return;
+  slot.textContent = '';
+  if (!state || !state.translation) { slot.classList.add('hidden'); return; }
+  slot.appendChild(translationCard(state.translation));
+  slot.classList.remove('hidden');
+}
+
+// A new question starts with no translation: the box belongs to the question
+// being asked, and a stale one reads as a run that already happened.
+function clearTranslation() {
+  var slot = $('#trslot');
+  if (!slot) return;
+  slot.textContent = '';
+  slot.classList.add('hidden');
 }
 
 // The reader's pick: an ASSERTION that a passage answered the question, written
@@ -1557,6 +1612,7 @@ function startResult(lang, options) {
   host.textContent = '';
   host.classList.remove('hidden');
   $('#intro').classList.add('hidden');
+  clearTranslation();
   return resultSlots(host, newState());
 }
 
@@ -1724,7 +1780,7 @@ function applyEvent(ev, state) {
     return;
   }
   if (ev.type === 'escalate') { pAttribute('judge', ev.elapsedMs); addStage('widen', 'retrieve'); return; }
-  if (ev.type === 'translation') { state.translation = ev; doneStage('translate', ev.elapsedMs); return; }
+  if (ev.type === 'translation') { state.translation = ev; renderTranslation(state); doneStage('translate', ev.elapsedMs); return; }
   if (ev.type === 'terms') {
     state.terms = ev.terms || [];
     if (ev.translated) state.asked = ev.translated;
@@ -1750,7 +1806,6 @@ function applyEvent(ev, state) {
     if (ev.attempt > 0) state.cited = [];
     state.terms = (ev.terms && ev.terms.length) ? ev.terms : state.terms;
     state.rest.textContent = '';
-    if (state.translation) state.rest.appendChild(translationCard(state.translation));
     if (state.terms.length) state.rest.appendChild(termsCard(state.terms));
     // Re-rendered on every pass, so a widened search replaces the narrower list
     // rather than leaving one list under the other.
@@ -1849,6 +1904,10 @@ function applyEvent(ev, state) {
 
 // The whole response at once, for anything that cannot stream.
 function showInto(state, j) {
+  // The stream sends the translation as an event and the JSON reply carries it as
+  // a string: one box, filled from whichever arrived. Only when the server really
+  // translated - a rerun's reply echoes the English it was given.
+  if (j.translation && j.translation !== (j.question || '')) applyEvent({ type: 'translation', detected: j.lang, translated: j.translation, elapsedMs: j.elapsedMs }, state);
   if (j.card) applyEvent({ type: 'card', card: j.card, elapsedMs: j.elapsedMs }, state);
   applyEvent({ type: 'findings', findings: j.findings || [], counts: j.counts, terms: j.terms, steps: j.steps, elapsedMs: j.elapsedMs }, state);
   if (j.judge) applyEvent({ type: 'judge', judge: j.judge, final: true, elapsedMs: j.elapsedMs }, state);
@@ -1928,6 +1987,7 @@ function show(j) { showInto(startResult(j.lang), j); }
       var text = '';
       for (var i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
       $('#q').value = (base ? base + ' ' : '') + text.trim();
+      growQuestion();
       setStatus(e.results[e.results.length - 1].isFinal ? t('heard') : t('listening'), 'busy');
     };
     rec.onerror = function (e) {
@@ -2047,6 +2107,7 @@ $('#f').addEventListener('submit', function (e) { e.preventDefault(); ask(); });
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') { closePassage(); $('#q').blur(); }
 });
+growQuestion();
 $('#q').focus();
 </script>
 </body>
