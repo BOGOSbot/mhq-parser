@@ -249,4 +249,300 @@ export const TOC_JS = [
   '})();',
 ].join('\n');
 
-export default { TOC_CSS, TOC_JS, tocData, tocIndex };
+export default { TOC_CSS, TOC_JS, tocData, tocIndex, tocTree, wikiTree, pageNamer };
+
+
+
+// ============================================================================
+// The three-branch tree: Rules / Missions / Factions.
+//
+// Additive: the two-pane areas above keep being written, so the popup that
+// consumes them is untouched. This model is the reader's path instead -
+// Rules -> book -> chapter -> section; Missions -> Events / Primary / Secondary
+// -> section; Factions -> Imperium / Chaos / Xenos -> faction ->
+// Detachments / Units, and each detachment holds its OWN enhancements and
+// stratagems. Every node is one file, loaded when the cascade opens it, so no
+// view ever pulls the corpus: the index names the three branches, a branch names
+// its children, and only the node a reader opens carries records.
+//
+// A node file is { n, lvl, c, recs, kids }: c counts the records at or under the
+// node, recs are its own record entries { i, t, f } (id, title, page file), and
+// kids are child refs { n, lvl, c, f } - or, for a detachment's Enhancements and
+// Stratagems, an inline group { n, lvl, c, recs } because those leaves are small
+// and belong to their detachment, not to a file of their own.
+import { readAllCorpus } from './rules-corpus.mjs';
+import { cardTables } from './unit-card.mjs';
+
+// Alliances come from the cards' own faction keyword: IMPERIUM on the Imperium
+// factions and CHAOS on the Chaos ones. 11th edition has no XENOS keyword, so a
+// faction carrying neither marker is Xenos by exclusion. One measured exception,
+// in this one place: Genestealer Cults carries IMPERIUM on 100 of its 139
+// datasheets, all of them Brood Brothers (Astra Militarum units it can take), so
+// its own identity is Xenos.
+export const ALLIANCE_EXCEPTIONS = { 'Genestealer Cults': 'Xenos' };
+export const ALLIANCE_ORDER = ['Imperium', 'Chaos', 'Xenos'];
+export const ALLIANCE_KEYWORDS = ['Imperium', 'Chaos'];
+
+// The books of the Rules branch. The core-stratagems decision lives here and
+// nowhere else: the 54 records whose source is core-stratagems and whose url is
+// the-rules/core-rules/#Core-Stratagems are a SECTION of the Core Rules page,
+// not a third book, so their source is folded into this book's source list.
+export const TREE_BOOKS = [
+  { slug: 'core-rules', name: 'Core Rules', sources: ['core-rules', 'core-stratagems'] },
+  { slug: 'rules-appendix', name: 'Rules Appendix', sources: ['rules-appendix'] },
+];
+
+// The Mission parts, measured on the event-companion page's 14 top-level parts.
+// Primary is its Primary Mission deck (13), Secondary its Secondary Mission deck
+// (24), and Events is the tournament machinery: Generating Command Points (14),
+// Books (8, the mission FAQ), Ranking Players (6), Deployment Card Key (6),
+// When Drawn (2), Pairing Players (2), Force Disposition Cards (1), Deployment
+// deck (1), plus the four general parts that fit nowhere else - Welcome to the
+// Warhammer Event Companion!, 'Cumulative' and 'Or' Conditions, Leaves the
+// Battelefield and VP Up to a Limit (1 each). 13 + 24 + 44 = 81.
+export const MISSION_PARTS = [
+  { name: 'Events', heading: null },
+  { name: 'Primary', heading: 'Primary Mission deck' },
+  { name: 'Secondary', heading: 'Secondary Mission deck' },
+];
+
+// The page name of a record, one implementation for the render and for this
+// tree: the slug carries a hash only this function knows, so a second copy
+// would drift.
+function hash8(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+export function pageSlug(id) { return String(id).replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 60) + '-' + hash8(String(id)); }
+export function pageNamer(records) { const m = new Map(); for (const r of records) m.set(r.id, pageSlug(r.id) + '.html'); return m; }
+
+// The 24 factions, in the order the tree shows them, from the card tables. UA
+// (Unbound Adversaries) is not one of the 24 and is left out.
+export function factionRoster(factionName, factionLink) {
+  const roster = [];
+  for (const [id, name] of factionName) {
+    if (id === 'UA') continue;
+    const m = /factions\/([a-z0-9-]+)$/i.exec(String((factionLink || new Map()).get(id) || ''));
+    roster.push({ id: String(id), name: String(name), slug: m ? m[1].toLowerCase() : String(id).toLowerCase() });
+  }
+  roster.sort((a, b) => a.name.localeCompare(b.name));
+  return roster;
+}
+
+// A record's faction, from the only fields that carry it: its own url
+// (factions/<slug>), its parent (faction-index#faction-<id>), then its own id
+// for a faction index page. 923 records - most unitrules - have no faction url
+// and are recovered by the parent; 71 cross-faction index stubs have neither.
+export function factionAssigner(roster) {
+  const bySlug = new Map(roster.map(f => [f.slug, f.name]));
+  const byId = new Map(roster.map(f => [f.id.toLowerCase(), f.name]));
+  return r => {
+    const u = /factions\/([a-z0-9-]+)/i.exec(String(r.url || ''));
+    if (u && bySlug.has(u[1].toLowerCase())) return bySlug.get(u[1].toLowerCase());
+    const p = /^faction-index#faction-([a-z0-9]+)(?:::\d+)?$/i.exec(String(r.parent || ''));
+    if (p && byId.has(p[1].toLowerCase())) return byId.get(p[1].toLowerCase());
+    const q = /^faction-index#faction-([a-z0-9]+)(?:::\d+)?$/i.exec(String(r.id || ''));
+    if (q && byId.has(q[1].toLowerCase())) return byId.get(q[1].toLowerCase());
+    return null;
+  };
+}
+
+// The alliance of each faction, measured from the keywords on its own datasheets.
+export function allianceAssigner(roster, datasheets, keywords) {
+  const out = new Map();
+  for (const f of roster) {
+    const kws = new Set();
+    for (const d of datasheets) if (d.faction_id === f.id) for (const k of (keywords.get(d.id) || [])) kws.add(String(k.keyword || '').trim());
+    let a = 'Xenos';
+    for (const k of ALLIANCE_KEYWORDS) if (kws.has(k)) { a = k; break; }
+    if (ALLIANCE_EXCEPTIONS[f.name]) a = ALLIANCE_EXCEPTIONS[f.name];
+    out.set(f.name, a);
+  }
+  return out;
+}
+
+// "Auric Champions (Adeptus Custodes) (1/2)" -> "Auric Champions": a detachment
+// heading carries its faction and, when the page was split, a part number; the
+// Detachment: line inside an enhancement or stratagem carries neither.
+function stripSuffix(s) {
+  let p = String(s == null ? '' : s).replace(/[\u2019']/g, "'").replace(/\s+/g, ' ').trim();
+  for (let prev; p !== prev; ) { prev = p; p = p.replace(/\s*\([^)]*\)\s*$/, '').trim(); }
+  return p;
+}
+function detachmentName(r) {
+  const m = /Detachment:\s*(.+)/.exec(String(r.text || ''));
+  return m ? stripSuffix(m[1]) : null;
+}
+function leafTitle(r) {
+  const path = String(r.heading || '').split(' > ').filter(Boolean);
+  return path.length ? path[path.length - 1] : String(r.id);
+}
+function nodeSlug(s) {
+  const base = String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
+  return base || 'node';
+}
+function uniqueSlug(base, used) {
+  let s = base, i = 2;
+  while (used.has(s)) { s = base + '-' + i; i++; }
+  used.add(s);
+  return s;
+}
+
+// The tree itself, pure: it takes the records, their page names and the faction
+// wiring, so a test can build it from a mutated corpus.
+export function tocTree(records, pageOf, opts) {
+  const roster = opts.roster, factionOf = opts.factionOf, allianceOf = opts.allianceOf;
+  const files = {};
+  const ent = r => ({ i: r.id, t: leafTitle(r), f: pageOf.get(r.id) || '' });
+
+  // --- Rules -> book -> chapter -> section ----------------------------------
+  const bookNodes = [];
+  for (const book of TREE_BOOKS) {
+    const recs = records.filter(r => r.set === 'rules' && book.sources.indexOf(r.source) !== -1);
+    const byHeading = new Map();
+    for (const r of recs) { const h = String(r.heading || ''); if (!byHeading.has(h)) byHeading.set(h, []); byHeading.get(h).push(r); }
+    // Chapter: the nearest ancestor, not a fixed depth. Walk the heading path
+    // from the deepest prefix up; the first prefix that is another record's
+    // heading is the chapter. "Muster Armies > Errata > X" has no record at the
+    // middle prefix, so it lands under Muster Armies; a top-level heading - or a
+    // core stratagem, whose heading is just its name - has no ancestor and falls
+    // back to the book itself.
+    const chapters = new Map();
+    for (const r of recs) {
+      const path = String(r.heading || '').split(' > ').filter(Boolean);
+      let title = book.name, key = '\u0000book';
+      for (let i = path.length - 2; i >= 0; i--) {
+        const prefix = path.slice(0, i + 1).join(' > ');
+        const hit = byHeading.get(prefix);
+        if (hit && hit.some(x => x.id !== r.id)) { title = path[i]; key = prefix; break; }
+      }
+      if (!chapters.has(key)) chapters.set(key, { title: title, recs: [] });
+      chapters.get(key).recs.push(r);
+    }
+    const used = new Set(), kids = [];
+    for (const ch of chapters.values()) {
+      const slug = uniqueSlug(nodeSlug(ch.title), used);
+      const file = 'tree/rules/' + book.slug + '/' + slug + '.js';
+      ch.recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+      files[file] = { n: ch.title, lvl: 'chapter', c: ch.recs.length, recs: ch.recs.map(ent) };
+      kids.push({ n: ch.title, lvl: 'chapter', c: ch.recs.length, f: file });
+    }
+    kids.sort((a, b) => a.n.localeCompare(b.n));
+    const file = 'tree/rules/' + book.slug + '.js';
+    files[file] = { n: book.name, lvl: 'book', c: recs.length, kids: kids };
+    bookNodes.push({ n: book.name, lvl: 'book', c: recs.length, f: file });
+  }
+  const rulesTotal = bookNodes.reduce((n, b) => n + b.c, 0);
+  files['tree/rules.js'] = { n: 'Rules', lvl: 'branch', c: rulesTotal, kids: bookNodes };
+
+  // --- Missions -> Events / Primary / Secondary -> section -------------------
+  const ev = records.filter(r => r.set === 'rules' && r.source === 'event-companion');
+  const partNodes = [];
+  for (const part of MISSION_PARTS) {
+    const recs = ev.filter(r => {
+      const h = String(r.heading || '').split(' > ')[0];
+      return part.heading === null ? (h !== 'Primary Mission deck' && h !== 'Secondary Mission deck') : h === part.heading;
+    });
+    const file = 'tree/missions/' + nodeSlug(part.name) + '.js';
+    recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+    files[file] = { n: part.name, lvl: 'part', c: recs.length, recs: recs.map(ent) };
+    partNodes.push({ n: part.name, lvl: 'part', c: recs.length, f: file });
+  }
+  files['tree/missions.js'] = { n: 'Missions', lvl: 'branch', c: ev.length, kids: partNodes };
+
+  // --- Factions -> alliance -> faction -> Detachments / Units ---------------
+  const byFaction = new Map();
+  const excludedIds = [];
+  for (const r of records) {
+    if (r.set !== 'factions') continue;
+    // The 163 index records are generated link stubs, not corpus content: 92
+    // name a faction and 71 span several. They are navigation, and the tree
+    // replaces them - counted and named, never silently dropped.
+    if (r.kind === 'index') { excludedIds.push(r.id); continue; }
+    const f = factionOf(r);
+    if (!f) continue;
+    if (!byFaction.has(f)) byFaction.set(f, []);
+    byFaction.get(f).push(r);
+  }
+  const allianceNodes = [];
+  for (const alliance of ALLIANCE_ORDER) {
+    const facNodes = [];
+    for (const f of roster.filter(x => allianceOf.get(x.name) === alliance)) {
+      const recs = byFaction.get(f.name) || [];
+      const rules = recs.filter(r => r.kind === 'faction-rule');
+      const units = recs.filter(r => r.kind === 'datasheet' || r.kind === 'unitrules');
+      const detGroups = new Map();
+      for (const d of recs.filter(r => r.kind === 'detachment')) {
+        const n = stripSuffix(d.heading);
+        if (!detGroups.has(n)) detGroups.set(n, { name: n, recs: [], enh: [], strat: [], synthetic: false });
+        detGroups.get(n).recs.push(d);
+      }
+      for (const r of recs.filter(r => r.kind === 'enhancement' || r.kind === 'stratagem')) {
+        // The corpus marks the attachment in the record itself: "Detachment: X"
+        // inside the enhancement or stratagem. A value with no detachment record
+        // (Aeldari's 6 "Army Rules" stratagems) keeps its own node, marked
+        // synthetic, so nothing is flattened into a pile.
+        const n = detachmentName(r) || 'Army Rules';
+        if (!detGroups.has(n)) detGroups.set(n, { name: n, recs: [], enh: [], strat: [], synthetic: true });
+        (r.kind === 'enhancement' ? detGroups.get(n).enh : detGroups.get(n).strat).push(r);
+      }
+      const base = 'tree/factions/' + nodeSlug(alliance) + '/' + f.slug;
+      const used = new Set(), detKids = [];
+      for (const n of [...detGroups.keys()].sort((a, b) => a.localeCompare(b))) {
+        const g = detGroups.get(n);
+        const slug = uniqueSlug(nodeSlug(n), used);
+        const file = base + '/detachments/' + slug + '.js';
+        const kids = [];
+        if (g.enh.length) { g.enh.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || ''))); kids.push({ n: 'Enhancements', lvl: 'group', c: g.enh.length, recs: g.enh.map(ent) }); }
+        if (g.strat.length) { g.strat.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || ''))); kids.push({ n: 'Stratagems', lvl: 'group', c: g.strat.length, recs: g.strat.map(ent) }); }
+        g.recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+        const c = g.recs.length + g.enh.length + g.strat.length;
+        files[file] = { n: n, lvl: 'detachment', c: c, recs: g.recs.map(ent), kids: kids, synthetic: g.synthetic ? 1 : 0 };
+        detKids.push({ n: n, lvl: 'detachment', c: c, f: file, synthetic: g.synthetic ? 1 : 0 });
+      }
+      const detFile = base + '/detachments.js';
+      const detC = detKids.reduce((n, k) => n + k.c, 0);
+      files[detFile] = { n: 'Detachments', lvl: 'group', c: detC, kids: detKids };
+      units.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+      const unitsFile = base + '/units.js';
+      files[unitsFile] = { n: 'Units', lvl: 'group', c: units.length, recs: units.map(ent) };
+      rules.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+      const facC = detC + units.length + rules.length;
+      const facFile = base + '.js';
+      files[facFile] = { n: f.name, lvl: 'faction', c: facC, recs: rules.map(ent), kids: [
+        { n: 'Detachments', lvl: 'group', c: detC, f: detFile },
+        { n: 'Units', lvl: 'group', c: units.length, f: unitsFile },
+      ] };
+      facNodes.push({ n: f.name, lvl: 'faction', c: facC, f: facFile });
+    }
+    facNodes.sort((a, b) => a.n.localeCompare(b.n));
+    const file = 'tree/factions/' + nodeSlug(alliance) + '.js';
+    const c = facNodes.reduce((n, k) => n + k.c, 0);
+    files[file] = { n: alliance, lvl: 'alliance', c: c, kids: facNodes };
+    allianceNodes.push({ n: alliance, lvl: 'alliance', c: c, f: file });
+  }
+  const facTotal = allianceNodes.reduce((n, k) => n + k.c, 0);
+  files['tree/factions.js'] = { n: 'Factions', lvl: 'branch', c: facTotal, kids: allianceNodes };
+
+  const placed = rulesTotal + ev.length + facTotal;
+  const index = {
+    v: 1, n: 'Wiki', total: records.length, placed: placed,
+    branches: [
+      { n: 'Rules', lvl: 'branch', c: rulesTotal, f: 'tree/rules.js' },
+      { n: 'Missions', lvl: 'branch', c: ev.length, f: 'tree/missions.js' },
+      { n: 'Factions', lvl: 'branch', c: facTotal, f: 'tree/factions.js' },
+    ],
+    excluded: excludedIds.length ? [{ k: 'index', c: excludedIds.length, why: 'navigation stubs, not corpus content' }] : [],
+  };
+  return { index: index, files: files, stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: ev.length, factions: facTotal } };
+}
+
+// The real corpus, wired once: the render and the tests both call this, so there
+// is one implementation of the branches.
+export function wikiTree(records) {
+  const all = records || readAllCorpus();
+  const t = cardTables();
+  const roster = factionRoster(t.factionName, t.factionLink);
+  return tocTree(all, pageNamer(all), {
+    roster: roster,
+    factionOf: factionAssigner(roster),
+    allianceOf: allianceAssigner(roster, t.datasheets, t.keywords),
+  });
+}

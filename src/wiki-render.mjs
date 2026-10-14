@@ -19,14 +19,12 @@ import { readAllCorpus } from './rules-corpus.mjs';
 import { renderLinks } from './wiki-plan.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
 import { SHELL_CSS, shellHead, topBar } from './wiki-shell.mjs';
-import { TOC_CSS, TOC_JS, tocData, tocIndex } from './wiki-toc.mjs';
+import { TOC_CSS, TOC_JS, tocData, tocIndex, tocTree, pageNamer, factionRoster, factionAssigner, allianceAssigner } from './wiki-toc.mjs';
 import { cardTables } from './unit-card.mjs';
 
 const OUT = process.env.WIKI_RENDER_DIR || path.join('workspace', 'wiki-render');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const norm = s => String(s || '').replace(/\s+/g, ' ').trim();
-function hash8(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
-const slug = id => String(id).replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 60) + '-' + hash8(String(id));
 
 const CSS = [
   ':root { --ink:#1a1a1a; --dim:#666; --line:#e2e2e2; --bg:#fdfdfc; --chip:#f2f4f7; --warn:#b3261e; --ok:#1b5e20; }'
@@ -73,7 +71,7 @@ function productPage(title, body, r, openArea) {
 
 const all = readAllCorpus();
 const byId = new Map(all.map(r => [r.id, r]));
-const pageOf = new Map(all.map(r => [r.id, slug(r.id) + '.html']));
+const pageOf = pageNamer(all);
 // The two things a record body needs besides the record itself: the card builder's
 // corpora (the ability resolver reads both halves) and one index for the ability
 // links, built once rather than per datasheet.
@@ -165,6 +163,25 @@ fs.writeFileSync(path.join(OUT, 'shell-data.js'), 'window.WIKI_TOC = ' + JSON.st
 // One file per area, loaded when the popup first opens that area: every record
 // page used to pull the whole tree (788KB raw) for a popup most views never open.
 for (const a of toc.areas) fs.writeFileSync(path.join(OUT, a.f), 'window.WIKI_TOC_AREA = ' + JSON.stringify({ n: a.n, g: a.g }) + ';');
+
+// --- the three-branch tree, additive -------------------------------------------
+// Rules / Missions / Factions, per node: the index names the three branches, a
+// branch names its children, and only the node a reader opens carries records.
+// The two-pane files above keep being written, so the popup is untouched; these
+// files are what the cascade slice will load, on demand.
+const roster = factionRoster(cardTables().factionName, cardTables().factionLink);
+const tree = tocTree(records, pageOf, {
+  roster: roster,
+  factionOf: factionAssigner(roster),
+  allianceOf: allianceAssigner(roster, cardTables().datasheets, cardTables().keywords),
+});
+for (const rel of Object.keys(tree.files)) {
+  const file = path.join(OUT, rel);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, 'window.WIKI_TREE_NODE = ' + JSON.stringify(tree.files[rel]) + ';');
+}
+fs.mkdirSync(path.join(OUT, 'tree'), { recursive: true });
+fs.writeFileSync(path.join(OUT, 'tree', 'index.js'), 'window.WIKI_TREE_INDEX = ' + JSON.stringify(tree.index) + ';');
 
 const counts = {};
 for (const r of records) counts[r.kind || '(none)'] = (counts[r.kind || '(none)'] || 0) + 1;
@@ -295,6 +312,8 @@ fs.writeFileSync(path.join(OUT, 'home.html'), productPage('40k rules', homeBody,
 fs.writeFileSync(path.join(OUT, 'map.json'), JSON.stringify(Object.fromEntries(pageOf)));
 console.log('wiki-render -> ' + OUT);
 console.log('  records rendered      ' + written);
+console.log('  tree branches         ' + tree.index.branches.map(b => b.n + ' ' + b.c).join(', ') + '  (placed ' + tree.stats.placed + ' of ' + tree.stats.total + ', excluded ' + tree.stats.excluded + ' index stubs)');
+console.log('  tree node files       ' + (Object.keys(tree.files).length + 1));
 console.log('  kept segments         ' + kept.length + ' records');
 console.log('  debris                ' + debris.length);
 console.log('  dangling links        ' + dangling.length + ' records');
