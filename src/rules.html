@@ -486,6 +486,7 @@ var I18N = {
   recordSwipe: 'swipe left or right for the next finding',
   recordWiki: 'Browse the wiki',
   recordSource: 'Open the source',
+  lookupFound: 'Answered from the heading index - no model was called.',
   recordText: 'Record',
   recordLinks: 'Inside this record',
   kindUnit: 'unit',
@@ -662,6 +663,7 @@ var I18N = {
   recordSwipe: 'balayez à gauche ou à droite pour passer au constat suivant',
   recordWiki: 'Parcourir le wiki',
   recordSource: 'Ouvrir la source',
+  lookupFound: 'Réponse depuis l\u2019index des titres — aucun modèle appelé.',
   recordText: 'Fiche',
   recordLinks: 'Dans cette fiche',
   kindUnit: 'unité',
@@ -2570,11 +2572,38 @@ var busy = false;
 // ask() takes overrides from the translation card: the corrected English text
 // and the fact that it is already English, so the server neither detects nor
 // translates it again.
+// A lookup by name is answered before the pipeline: the server greps the
+// corpus's own headings and returns the record, and the record view opens on it.
+// A miss is invisible here - the normal ask runs untouched - because the reader
+// asked for a rule, not for a router. The marks (caret, x) are hidden: there is
+// no question for them to label, and the record is the whole answer.
+async function lookupAnswer(question) {
+  var out = null;
+  try {
+    var r = await fetch('/rules/lookup?q=' + encodeURIComponent(question));
+    out = r.ok ? await r.json() : null;
+  } catch (e) { out = null; }
+  if (!out || !out.found || !out.record) return false;
+  var state = newState();
+  state.selectable = false;
+  state.rerun = true;
+  state.findings = [out.record];
+  state.recordWikiMap = {};
+  state.recordWikiMap[out.record.id] = out.wiki || '';
+  openRecord(state, out.record.id);
+  setStatus(t('lookupFound'), 'ok');
+  return true;
+}
+
 async function ask(over) {
   if (busy) return;
   var o = over || {};
   var question = (o.question != null ? String(o.question) : $('#q').value).trim();
   if (question.length < 3) { setStatus(t('statusAskFirst'), 'err'); return; }
+  // A lookup by name is answered from the heading index before any model runs;
+  // a miss - or anything that is not a lookup - falls through to the pipeline
+  // below, untouched. A rerun and a corrected translation are never lookups.
+  if (!o.keep && !o.english && await lookupAnswer(question)) return;
   busy = true;
   var btn = $('#go');
   btn.disabled = true;

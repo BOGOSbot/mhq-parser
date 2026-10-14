@@ -60,7 +60,9 @@ const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild',
   'heroDev', 'heroDevHide', 'heroLinks', 'foundBy', 'legUnknown',
   // The full-screen record, the wiki link and the four categories it opens.
   'wikiNav', 'recordOpen', 'recordClose', 'recordSwipe', 'recordWiki', 'recordSource', 'recordText', 'recordLinks',
-  'kindUnit', 'kindFaction', 'kindDetachment', 'kindRule', 'kindStratagem', 'kindEnhancement', 'kindAbility', 'kindIndex', 'kindOther'];
+  'kindUnit', 'kindFaction', 'kindDetachment', 'kindRule', 'kindStratagem', 'kindEnhancement', 'kindAbility', 'kindIndex', 'kindOther',
+  // The lookup router's one reader-facing line.
+  'lookupFound'];
 const absent = needed.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined);
 t('the new display labels exist in both languages', absent, []);
 
@@ -74,7 +76,7 @@ t('no reader-facing label is hardcoded in the script', hardcoded, []);
 // The passage popup reads the payload, never the network: one fetch of /health
 // is the only fetch outside /rules/ask on the page.
 const fetchCalls = Array.from(new Set(Array.from(PAGE.matchAll(/fetch\('([^']+)'/g)).map(m => m[1]))).sort();
-t('the page only fetches the six routes it needs', fetchCalls, ['/health', '/rules/answered', '/rules/ask', '/rules/labels', '/rules/record?id=', '/rules/vote']);
+t('the page only fetches the seven routes it needs', fetchCalls, ['/health', '/rules/answered', '/rules/ask', '/rules/labels', '/rules/lookup?q=', '/rules/record?id=', '/rules/vote']);
 
 // The display the task asks for, asserted where it can be seen: findings above
 // the prose, re-rendered whenever a findings event lands, popup over payload.
@@ -220,6 +222,21 @@ ok('the findings payload carries the links', /links: resolveRecordLinks\(/.test(
 ok('the link targets are resolved against the corpus', /const target = l && l\.to \? byId\.get\(l\.to\) : null;/.test(unit) && /if \(!target\) continue;/.test(unit));
 ok('a link keeps the target anchor and url', /anchor: target\.anchor \|\| ''[\s\S]{0,60}url: target\.url \|\| ''/.test(unit));
 ok('the record card resolves them through the same function', /links: resolveRecordLinks\(rec\.links, byId\)/.test(unit));
+
+// Task-38: a lookup by name is answered from the header index before any model
+// runs, and a miss falls through to the pipeline untouched. The set it is
+// measured on was written BEFORE the module (tests/fixtures/rules-lookups.json);
+// tests/test-lookup.mjs is the measurement.
+ok('the page asks the header index first', /if \(!o\.keep && !o\.english && await lookupAnswer\(question\)\) return;/.test(code));
+ok('a lookup opens the record without a model', /openRecord\(state, out\.record\.id\);/.test(code) && /setStatus\(t\('lookupFound'\), 'ok'\)/.test(code));
+ok('and hides the marks there is no question to label', /state\.selectable = false;/.test(code) && /state\.findings = \[out\.record\];/.test(code));
+ok('the server exposes the lookup route', server.indexOf("'/rules/lookup'") !== -1 && server.indexOf('handleRulesLookup') !== -1 && /lookupRecord\(q\)/.test(server));
+ok('a lookup miss reports why it fell through', /reason: hit\.reason, candidates/.test(server));
+ok('the route answers in the findings shape the page already renders', /kind: rec\.kind \|\| '',/.test(server) && /links: resolveRecordLinks\(rec\.links, corpusById\(\)\)/.test(server));
+const lookupFixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'rules-lookups.json'), 'utf8'));
+ok('the measurement set predates the router and is the size asked for', lookupFixture.lookups.length >= 20 && lookupFixture.lookups.length <= 40);
+ok('it names nothing in the corpus several times', lookupFixture.lookups.filter(l => l.kind === 'none').length >= 5);
+t('it is bilingual', new Set(lookupFixture.lookups.map(l => l.lang)).size, 2);
 
 // Task-41: a card tap opens the record full screen, one shape for the four
 // categories, with the same controls, a swipe through the findings, and the

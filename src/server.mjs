@@ -37,6 +37,7 @@ import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKe
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
+import { lookupRecord } from './header-index.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -859,6 +860,37 @@ async function handleRulesRecord(req, res, u) {
   return json(res, 200, { ok: true, record, wiki: wikiPageFor(id) });
 }
 
+// A lookup by name, answered from the header index before anything else runs:
+// mechanical - a grep over the corpus's own headings - with no embedding, no
+// index write and no model call. A miss (a phrase the corpus does not name, a
+// name several headings carry, or a question that is not a lookup at all) falls
+// through to the full pipeline, and the reply says which, so a fall-through is
+// never silent.
+async function handleRulesLookup(req, res, u) {
+  const q = String((u && u.searchParams.get('q')) || '').trim();
+  if (q.length < 3) return fail(res, 400, 'need ?q=<lookup>');
+  let hit;
+  try { hit = lookupRecord(q); } catch (e) { return fail(res, 500, 'lookup failed: ' + String((e && e.message) || e)); }
+  if (!hit.found) return json(res, 200, { ok: true, found: false, reason: hit.reason, candidates: hit.candidates || 0 });
+  const rec = corpusById().get(hit.id);
+  if (!rec) return json(res, 200, { ok: true, found: false, reason: 'no-heading', candidates: 0 });
+  const f = findingFor(rec, 1);
+  return json(res, 200, {
+    ok: true,
+    found: true,
+    tier: hit.tier,
+    // The same finding shape the findings event carries, so the page opens it
+    // with the record view it already has.
+    record: {
+      id: f.id, n: 1, set: f.set, source: f.source, faction: f.faction, heading: f.heading,
+      ruleId: f.ruleId, url: f.url, href: f.href, excerpt: f.excerpt, passage: f.text || '',
+      rank: 0, leg: '', matchedTerms: [], kind: rec.kind || '',
+      links: resolveRecordLinks(rec.links, corpusById()),
+    },
+    wiki: wikiPageFor(hit.id),
+  });
+}
+
 async function handleRulesAsk(req, res) {
   let body;
   try { body = JSON.parse((await readBody(req, 128 * 1024)) || '{}'); }
@@ -1385,6 +1417,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/rules/answered') return handleRulesAnswered(req, res);
   if (req.method === 'POST' && u.pathname === '/rules/labels') return handleRulesLabels(req, res);
   if (req.method === 'GET' && u.pathname === '/rules/record') return handleRulesRecord(req, res, u);
+  if (req.method === 'GET' && u.pathname === '/rules/lookup') return handleRulesLookup(req, res, u);
   if (req.method === 'GET' && (u.pathname === '/wiki' || u.pathname.indexOf('/wiki/') === 0)) return handleWiki(req, res, u);
   return fail(res, 404, 'not found: ' + u.pathname);
 });

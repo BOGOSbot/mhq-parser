@@ -23,6 +23,12 @@ functionality document for that page; the army-list parser has its own in
   the browser's own *Error in input stream* after an answer that had already
   arrived. A cut stream keeps whatever arrived, leaves the bar's timings in place
   and says the connection dropped, instead of printing that string at the reader.
+- `GET /rules/lookup?q=...` answers a lookup by name from the header index
+  (`src/header-index.mjs`): a grep over the corpus's own headings, in memory,
+  with no embedding, no index write and no model call. It replies
+  `{ found, tier, record, wiki }`, or on a miss `{ found: false, reason }` with
+  `not-a-lookup`, `no-heading`, `only-mentions` or `ambiguous`. The page opens
+  the record full screen on a hit and runs the normal ask untouched on a miss.
 - `GET /health` publishes `corpus` (sections per half, build date, edition),
   the edition, and both inference routes. The page no longer prints the key
   state: which models a deployment uses is not the reader's business, and a
@@ -32,6 +38,33 @@ functionality document for that page; the army-list parser has its own in
   11e édition`. The build date comes from `corpus.updated`; the edition is
   localised by the page from the `wh40k11ed` slug, because the server's label is
   English and it was the one English string left on the French page.
+
+## The lookup router
+
+"find rapid ingress" is a lookup, not a question, and it needs neither retrieval
+nor a model: every record's heading already names it. `GET /rules/lookup` greps
+those headings at word start and answers with the record when the match covers the
+query; the page opens it in the full-screen record view. The index is a
+**projection, not a vector index** - `{ id, heading path, kind, target link }` per
+record, regenerated from the corpus on every start, living beside it. The
+header-embed arm was measured and lost (header-only hit@1 33.3 / hit@20 48.5
+against the full text's 42.4 / 69.7, and fusing the two costs the head), so a miss
+falls through to the normal pipeline, never to a header-embed step.
+
+The match is deliberately conservative, because a wrong answer is worse than a
+slow one - the reader has no reason to doubt a lookup they typed themselves. A
+question is a lookup only when it opens with a lookup verb (`find`, `search`,
+`show me`, `where is`, `cherche`, `trouve`, `montre`, `où est`); a candidate
+whose path carries a sentence, a question or an FAQ/Errata segment is a *mention*
+of the rule rather than the rule and is dropped; several different headings
+carrying the words is ambiguous and falls through. The set it is measured on was
+written **before** the router (`tests/fixtures/rules-lookups.json`, 36 phrasings
+in both languages, seven of them naming nothing the corpus holds and three
+ambiguous): **24 land on the right record, 12 fall through, 0 answer wrongly, and
+every lookup the corpus names lands** (`node tests/test-lookup.mjs`). A French
+phrasing whose content words are French (`cherche les règles de mouvement`) falls
+through by design: there is no mechanical French rule-name lexicon, and the
+normal pipeline translates it.
 
 ## Asking the question
 
