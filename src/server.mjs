@@ -34,7 +34,7 @@ import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
+import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
 import { lookupRecord } from './header-index.mjs';
@@ -1377,6 +1377,11 @@ const server = http.createServer(async (req, res) => {
       // Which halves of the rules page this machine can run, so a missing key
       // is visible before a question is asked rather than after it fails.
       rules: rulesKeyState(),
+      // What the model route actually did since this process started: calls, empty
+      // bodies, retries and how many retries landed. The free route returns empty
+      // bodies under load, so a page that looks like one call per step may be
+      // making two - this is where a deployment sees it.
+      route: routeStats(),
       // Which edition the page answers for. It is a deployment decision, not a
       // detail: 10th and 11th give different answers to the same question.
       rulesEdition: rulesEdition,

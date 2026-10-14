@@ -235,6 +235,11 @@ ok('the page asks the header index first', /if \(!o\.keep && !o\.english && awai
 ok('a lookup opens the record without a model', /openRecord\(state, out\.record\.id\);/.test(code) && /setStatus\(t\('lookupFound'\), 'ok'\)/.test(code));
 ok('and hides the marks there is no question to label', /state\.selectable = false;/.test(code) && /state\.findings = \[out\.record\];/.test(code));
 ok('the server exposes the lookup route', server.indexOf("'/rules/lookup'") !== -1 && server.indexOf('handleRulesLookup') !== -1 && /lookupRecord\(q\)/.test(server));
+// The route counters: the free route returns empty bodies under load, so /health
+// publishes what the model route actually did - calls, empties, retries, recovered.
+ok('the health payload publishes what the route did', server.indexOf('route: routeStats()') !== -1 && server.indexOf('routeStats') !== -1);
+const corpusSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'rules-corpus.mjs'), 'utf8');
+ok('and the counters count an empty body and a recovered retry', corpusSrc.indexOf('ROUTE_STATS.empty++') !== -1 && corpusSrc.indexOf('ROUTE_STATS.recovered++') !== -1);
 ok('a lookup miss reports why it fell through', /reason: hit\.reason, candidates/.test(server));
 ok('the route answers in the findings shape the page already renders', /kind: rec\.kind \|\| '',/.test(server) && /links: resolveRecordLinks\(rec\.links, corpusById\(\)\)/.test(server));
 const lookupFixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'rules-lookups.json'), 'utf8'));

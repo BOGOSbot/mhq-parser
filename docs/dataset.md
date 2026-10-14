@@ -302,6 +302,16 @@ changes is whether a retry can still land. A serial run is therefore the predict
 shape (~8.5 s/record, no sweep), and the sweep is the safety net for the concurrent
 one.
 
+**The same route serves the page, so the counters are published.** `GET /health`
+now carries `route` - `calls`, `empty`, `truncated`, `retries`, `recovered`,
+`empty_rate`, and the split `byRoute.fast` / `byRoute.model` - so a deployment can
+answer "am I retrying half my calls" on itself instead of on a trace. First live
+reading, three questions on 8787 in fast mode (English and French): **10 calls, 0
+empty, 0 retries, recovered 0** (fast 7, model 3) - the page has NOT been absorbing
+the failure, and its real shape is 2-3 fast calls plus one model call per question.
+Small sample, and the field traces agree with it (45/45 translations, 0/76
+unparseable verdicts).
+
 ### The fourth sample: the naming mix lands (the population)
 
 The last nudge: the prompt allows ONE OR TWO of the three shapes to name the rule.

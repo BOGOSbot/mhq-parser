@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { readAllCorpus } from '../src/rules-corpus.mjs';
+import { readAllCorpus, routeStats, routeStatsReset } from '../src/rules-corpus.mjs';
 import { KIND_UNKNOWN, PENDING_LABEL_MAX, PENDING_LABEL_MS, TRACE_RETENTION_MONTHS, answeredTrace, appendTrace, buildTrace, firstPerson, labelsTrace, newTraceId, pendingLabelCount, resetPendingLabels, sweepTraces, takePendingLabels, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
 import { classifyTrace, harvestOrder, loadTraces, promotedQuestion, rerankLabels, tracePriority } from './promote-traces.mjs';
 import { expectGroups } from './expectation-groups.mjs';
@@ -492,6 +492,16 @@ t('and the loose readings', [statsSample.name_exact, statsSample.name_exact_pct,
 t('and the length distribution', [statsSample.median_chars, statsSample.median_words, statsSample.p90_chars, statsSample.p90_words], [36.5, 7, 43, 9]);
 t('p90 is the ninetieth, not the maximum', p90([...Array(20).keys()]), 18);
 t('and the shapes', statsSample.shapes, { yesno: 2, when: 1, scenario: 1 });
+
+// --- what the route actually did --------------------------------------------
+// The counters are published in /health; they are only incremented by a real call,
+// so the test pins the empty state and the reset, and the live measurement is what
+// fills them.
+routeStatsReset();
+t('the route counters start empty', [routeStats().calls, routeStats().empty, routeStats().retries, routeStats().recovered], [0, 0, 0, 0]);
+t('and the empty rate is zero, not NaN', routeStats().empty_rate, 0);
+routeStatsReset();
+t('a reset leaves them empty', routeStats(), { calls: 0, empty: 0, truncated: 0, retries: 0, recovered: 0, empty_rate: 0, byRoute: {} });
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

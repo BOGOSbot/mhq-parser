@@ -1446,11 +1446,38 @@ export function parseTerms(text) {
 //
 // So an empty reply that stopped on length is retried with double the budget
 // rather than returned.
+// What the route actually did, because a caller never sees it and the page's real
+// call count is not what its code suggests. The free route returns an empty body
+// (measured at about half its calls even with the gateway idle), and an empty body
+// is fast and silent. These counters are published in /health, so a deployment can
+// see the empty rate, the retries and how many retries landed.
+const ROUTE_STATS = { calls: 0, empty: 0, truncated: 0, retries: 0, recovered: 0, byRoute: {} };
+export function routeStats() {
+  const byRoute = {};
+  for (const [k, v] of Object.entries(ROUTE_STATS.byRoute)) byRoute[k] = Object.assign({}, v);
+  return {
+    calls: ROUTE_STATS.calls, empty: ROUTE_STATS.empty, truncated: ROUTE_STATS.truncated,
+    retries: ROUTE_STATS.retries, recovered: ROUTE_STATS.recovered,
+    empty_rate: ROUTE_STATS.calls ? Math.round(1000 * ROUTE_STATS.empty / ROUTE_STATS.calls) / 10 : 0,
+    byRoute,
+  };
+}
+export function routeStatsReset() {
+  ROUTE_STATS.calls = 0; ROUTE_STATS.empty = 0; ROUTE_STATS.truncated = 0;
+  ROUTE_STATS.retries = 0; ROUTE_STATS.recovered = 0; ROUTE_STATS.byRoute = {};
+}
+
 async function routeText(route, prompt, key, maxTokens, opts) {
   if (!key) return '';
+  const name = route.name || route.model || 'route';
+  const bucket = ROUTE_STATS.byRoute[name] || (ROUTE_STATS.byRoute[name] = { calls: 0, empty: 0, truncated: 0, retries: 0, recovered: 0 });
   let budget = maxTokens || 900;
   let last = '';
+  let recovering = false;
   for (let attempt = 0; attempt < 3; attempt++) {
+    ROUTE_STATS.calls++;
+    bucket.calls++;
+    if (attempt > 0) { ROUTE_STATS.retries++; bucket.retries++; }
     // The route carries a default; a caller may override it for one call - the
     // /rules page's fast mode asks the judge not to reason, deep asks it to.
     const reasoning = (opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning;
@@ -1477,30 +1504,38 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     const choice = res && res.choices && res.choices[0];
     const content = String((choice && choice.message && choice.message.content) || '');
     last = content;
-    if (!choice) return content;
+    // A reply with no choice at all IS the empty body; it is returned as it always
+    // was (routeText does not retry it), but it is now counted.
+    if (!choice) { ROUTE_STATS.empty++; bucket.empty++; return content; }
+    if (!content.trim()) { ROUTE_STATS.empty++; bucket.empty++; }
     // A reply that stopped on the token limit is only usable when a cut cannot
     // break it. Prose that had to be cut is still prose; a JSON object cut
     // mid-string is not an object at all - and that is what a judge returned
     // once, which the caller read as 'nothing parseable' and answered "I do not
     // know" over findings that were fine. Those get a bigger budget instead.
     const truncated = choice.finish_reason === 'length';
+    if (truncated) { ROUTE_STATS.truncated++; bucket.truncated++; }
     const json = !!(opts && opts.json);
-    if (!truncated || (content.trim() && !json)) return content;
+    if (!truncated || (content.trim() && !json)) {
+      if (recovering) { ROUTE_STATS.recovered++; bucket.recovered++; }
+      return content;
+    }
     budget *= 2;
+    recovering = true;
   }
   return last;
 }
 
 // The writer's route: the cited answer the reader sees.
 export async function modelText(prompt, key, maxTokens, opts) {
-  return routeText({ endpoint: MODEL_ENDPOINT, model: MODEL, reasoning: MODEL_REASONING, timeout: MODEL_TIMEOUT_MS }, prompt, key, maxTokens, opts);
+  return routeText({ name: 'model', endpoint: MODEL_ENDPOINT, model: MODEL, reasoning: MODEL_REASONING, timeout: MODEL_TIMEOUT_MS }, prompt, key, maxTokens, opts);
 }
 
 // The fast route: everything that only decides or rewrites - the translated
 // question, the search terms, the verdict. Same call, a different model behind
 // it, and the same route as the writer until RULES_FAST_* names another.
 export async function fastText(prompt, key, maxTokens, opts) {
-  return routeText({ endpoint: FAST_ENDPOINT, model: FAST_MODEL, reasoning: FAST_REASONING, timeout: FAST_TIMEOUT_MS }, prompt, key, maxTokens, opts);
+  return routeText({ name: 'fast', endpoint: FAST_ENDPOINT, model: FAST_MODEL, reasoning: FAST_REASONING, timeout: FAST_TIMEOUT_MS }, prompt, key, maxTokens, opts);
 }
 
 // A small model writes a paragraph into a JSON string and does not always escape
