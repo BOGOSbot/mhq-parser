@@ -80,7 +80,7 @@ t('the page only fetches the seven routes it needs', fetchCalls, ['/health', '/r
 
 // The display the task asks for, asserted where it can be seen: findings above
 // the prose, re-rendered whenever a findings event lands, popup over payload.
-ok('the findings slot is placed before the answer card', code.indexOf("host.appendChild(findingSlot)") !== -1 && code.indexOf("host.appendChild(findingSlot)") < code.indexOf("host.appendChild(answerCard)"));
+ok('the findings slot is placed before the trailing block', code.indexOf("host.appendChild(findingSlot)") !== -1 && code.indexOf("host.appendChild(findingSlot)") < code.indexOf("host.appendChild(rest)"));
 ok('the findings slot is rebuilt on every findings event', /state\.findingSlot\.textContent = ''/.test(code));
 ok('a widening flashes the rebuilt list', /if \(ev\.attempt > 0\) flash\(state\.findingSlot\)/.test(code));
 ok('the popup reads the passage from the payload', /f\.passage \|\| f\.excerpt/.test(code));
@@ -403,7 +403,16 @@ ok('the question microphone types into the question box in the page language',
 ok('the language switch sits in the top bar, not under the question',
   headerHtml.indexOf('id="lang"') !== -1 && headerHtml.indexOf('id="lang"') < headerHtml.indexOf('<form id="f">'));
 ok('the Fast/Deep control is gone', PAGE.indexOf('id="modes"') === -1 && PAGE.indexOf('button.mode') === -1 && code.indexOf('setMode(') === -1);
-ok('but the page still asks for the deep settings', /var MODE = 'deep'/.test(code) && /mode: MODE/.test(code));
+ok('the page asks for the fast settings, the default', /var MODE = 'fast'/.test(code) && /mode: MODE/.test(code));
+// The writer is off by default, so the page draws no answer: no card to wait in,
+// no handler for an event that will not arrive, and no stage it could belong to.
+ok('the page draws no answer card', code.indexOf('answerCard') === -1 && code.indexOf('state.answer = ') === -1);
+ok('and handles no answer event', code.indexOf("ev.type === 'answer'") === -1 && code.indexOf("doneStage('answer'") === -1);
+ok('and calls none of the answer strings', code.indexOf("t('writingAnswer')") === -1 && code.indexOf("t('answerFailed')") === -1 && code.indexOf("t('answerTitle')") === -1);
+// The server decides the stages, and it leaves the answer out when the writer is
+// off; the request can still turn the writer back on.
+ok('the server gates the writer and its stage', /const writerOn = writerEnabled\(process\.env, body\.writer\)/.test(server) && /writerOn \? \['answer'\] : \[\]/.test(server) && server.indexOf('if (!writerOn) {') !== -1);
+ok('and the payload says which one ran', /mode: modeName, writer: writerOn/.test(server));
 t('the send and voice controls have names in both languages',
   ['ask', 'translationButton', 'voiceEnglish', 'stopListening'].filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined), []);
 

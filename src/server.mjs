@@ -34,7 +34,7 @@ import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
+import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
 import { lookupRecord } from './header-index.mjs';
@@ -989,7 +989,10 @@ async function handleRulesAsk(req, res) {
   // Which stages this question will actually run. A French question has one
   // more than an English one, and the page needs the list to draw a bar with the
   // right segments rather than a fixed guess.
-  const stages = override ? ['judge', 'answer'] : (foreign ? ['translate'] : []).concat(['retrieve', 'judge', 'answer']);
+  // The writer is off by default (see writerEnabled): when it is off there is no
+  // answer segment on the bar and nothing waits on prose.
+  const writerOn = writerEnabled(process.env, body.writer);
+  const stages = (override ? ['judge'] : (foreign ? ['translate'] : []).concat(['retrieve', 'judge'])).concat(writerOn ? ['answer'] : []);
   // The page needs the id to attach a thumb to the right record, and the id is
   // the only handle it gets: eight random bytes that tie to nothing.
   emit({ type: 'start', lang: lang || 'und', stages, traceId, elapsedMs: Date.now() - started });
@@ -1261,7 +1264,24 @@ async function handleRulesAsk(req, res) {
     // The judge has already run; the answer waits on it rather than racing it,
     // because whether to write one at all depends on its verdict.
     const DECLINED = WRITER_DECLINED;
-    // The writer fails in two modes that read the same to a reader: the call is
+    // The writer is OFF by default (writerEnabled): the findings, the judge, the
+    // citations and the marks are the run's product, so the run ends here - no
+    // answer event, no prose to wait for, and no answer segment on the bar (the
+    // start event already left it out). The call below is kept, not deleted: its
+    // format is going into the judge next.
+    if (!writerOn) {
+      await secondRun;
+      emitSecond();
+      trace('', {});
+      const elapsedMs = Date.now() - started;
+      if (stream) {
+        emit({ type: 'done', elapsedMs, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
+        return res.end();
+      }
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, answer: '', writer: false, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
+    }
+
+    // The judge has already run; the answer waits on it rather than racing it,
     // cut at the timeout, or it comes back with nothing because its own reasoning
     // ate the budget. One path, one ending - the findings are already on the page
     // and they stay, so the answer card says the prose failed rather than waiting
@@ -1325,7 +1345,7 @@ async function handleRulesAsk(req, res) {
     return json(res, 200, {
       question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, answer,
       judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom,
-      counts, steps, elapsedMs: Date.now() - started, mode: modeName,
+      counts, steps, elapsedMs: Date.now() - started, mode: modeName, writer: writerOn,
       unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,
     });
   } catch (e) {

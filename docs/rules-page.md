@@ -205,7 +205,11 @@ those.
 4. **answer** - the writer compiles the cited prose from the surviving findings
    only. Every `[n]` marker resolves to a finding that was really retrieved; the
    server builds the citation link from the record, so a marker and a link
-   cannot drift apart.
+   cannot drift apart. **This call is OFF by default** (`writerEnabled` in
+   `src/rules-corpus.mjs`): a run is translate - retrieve - judge - findings, and
+   the page draws no answer. `RULES_WRITER=1`, or `writer: true` in the request,
+   turns it back on - the path is kept because its format is going into the
+   judge.
 
 ## Two judges, one answer
 
@@ -213,11 +217,14 @@ The judge decides whether the findings answer the question, and its verdict is
 binding. It is also the step accuracy leans on hardest: the same judge without
 its reasoning scored 61.8% where thinking it scored 79.4%. So the page runs both.
 
-The reader no longer chooses between them: the page asks for the careful setting
-only, and the Fast/Deep control is gone from it. `ASK_MODES` in
+The reader no longer chooses between them, and the Fast/Deep control is gone from
+the page. **Fast is the default** wherever a mode is resolved - the page's
+constant, the server when a request omits `mode`, and every caller that does not
+ask otherwise - so deep is reached by asking for it by name. `ASK_MODES` in
 `src/rules-corpus.mjs` stays the one place the settings live, and the server still
-accepts `mode` in the request body (echoed in the `mode` stream event) so the
-harness can ask for the other one.
+accepts `mode` in the request body (echoed in the `mode` stream event) for the
+harness. The benchmarks below were taken in deep mode and stay labelled that way:
+the default changes what runs, not what was recorded.
 
 - The **binding** judge is the one the setting names - fast mode asks it not to
   reason, deep lets it think (`medium`). It gates the widening and whether the

@@ -936,7 +936,7 @@ function applyLang() {
 // src/rules-corpus.mjs stays the single place the settings live, and the server
 // still accepts 'mode' so a harness can ask for the other one - flipping this
 // constant is all that would take.
-var MODE = 'deep';
+var MODE = 'fast';
 
 function setStatus(msg, cls) {
   var s = $('#status');
@@ -2107,14 +2107,12 @@ function resultSlots(host, state) {
   // is - a summary of passages already on the page.
   var findingSlot = el('div', 'findingsslot');
   host.appendChild(findingSlot);
-  // The answer card is titled by the switch, not by the question's language:
-  // a French reader asking in English still wants a French answer.
-  var answerCard = sectionCard(t('answerTitle'));
-  answerCard.appendChild(el('div', 'note waiting', t('writingAnswer')));
-  host.appendChild(answerCard);
+  // No answer card: the writer is off by default and the page must not wait on
+  // prose that is not coming. The findings, the verdict, the citations and the
+  // marks are the page - see writerEnabled in src/rules-corpus.mjs.
   var rest = el('div');
   host.appendChild(rest);
-  state.cardSlot = cardSlot; state.verdict = verdict; state.findingSlot = findingSlot; state.answer = answerCard; state.rest = rest;
+  state.cardSlot = cardSlot; state.verdict = verdict; state.findingSlot = findingSlot; state.rest = rest;
   return state;
 }
 
@@ -2421,24 +2419,13 @@ function applyEvent(ev, state) {
     box.appendChild(el('div', 'note', down
       ? (ev.conservative === 'second' ? t('judgeDisagreeNo') : t('judgeDisagreeYes'))
       : (ev.dissenter === 'second' ? t('judgeDissentWeaker') : t('judgeDissentOther'))));
-    state.answer.appendChild(box);
-    flash(state.answer);
+    state.rest.appendChild(box);
+    flash(state.rest);
     setStatus(down ? t('judgeDisagreeTitle') : '', down ? 'warn' : '');
     return;
   }
-  if (ev.type === 'answer') {
-    state.answered = true;
-    var waiting = state.answer.querySelector('.waiting');
-    if (waiting) waiting.parentNode.removeChild(waiting);
-    // The writer failed - it timed out, or it came back with nothing. The reader
-    // cannot tell those apart and does not need to: the findings are already
-    // above, so the answer card says the prose failed rather than waiting forever.
-    if (ev.failed) state.answer.appendChild(el('p', 'note', t('answerFailed')));
-    else state.answer.appendChild(renderAnswer(ev.answer || '', state.findings));
-    flash(state.answer);
-    doneStage('answer', ev.elapsedMs);
-    return;
-  }
+  // No 'answer' event is handled: the writer is off, the server does not send one
+  // and there is nothing on the page to show it in.
   if (ev.type === 'done') {
     finishProgress();
     // The trace exists by now, so a pick made while the prose was still being
@@ -2450,7 +2437,7 @@ function applyEvent(ev, state) {
     // A disagreement outlives the request: clearing it here would erase the one
     // line that says the answer is provisional.
     if (state.disputed) { setStatus(t('judgeDisagreeTitle'), 'warn'); return; }
-    var pending = state.verdict.querySelector('.waiting') || state.answer.querySelector('.waiting');
+    var pending = state.verdict.querySelector('.waiting');
     // A finished request says nothing here: the timings are in the bar and the
     // count is the findings card's own title. A stream that ended without a part
     // is the one thing the bar cannot show, so that one is still said.

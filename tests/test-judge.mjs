@@ -1,5 +1,5 @@
 import {
-  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, judgePrompt, judgeStrength, normalizeConfidence, normalizeWiden, parseJsonObject, reconcileVerdicts, termCount, termPresent, widenPlan,
+  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, judgePrompt, judgeStrength, normalizeConfidence, normalizeWiden, parseJsonObject, reconcileVerdicts, termCount, termPresent, widenPlan, writerEnabled,
 } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
@@ -99,16 +99,21 @@ t('naming both splits them', widenPlan('both', 5), { rules: 15, factions: 15, ta
 t('the first pass is ten a side', ESCALATION_TOPKS, [10]);
 t('the widening adds twenty', WIDEN_ADD, 20);
 
-// --- the two settings the page offers ----------------------------------------
+// --- the two settings ---------------------------------------------------------
 // Fast and deep differ in four measured ways at once: how deep the first pass
 // looks, how many times a miss widens it, how wide the reranker's net is, and
 // whether the judge reasons. The judge's reasoning is the one that moves the
 // clock (79.4% -> 61.8% on the real bank when it is turned off).
+// FAST is the default now: every caller that does not say otherwise gets it, and
+// deep is reached by asking for it. The measurements in the docs were taken in
+// deep mode and stay labelled that way - this changes what runs, not what was
+// recorded.
 t('fast is a setting', askMode('fast'), 'fast');
 t('deep is a setting', askMode('deep'), 'deep');
 t('the setting is case-insensitive', askMode('FAST'), 'fast');
-t('an unknown setting is deep, not an error', askMode('turbo'), 'deep');
-t('a missing setting is deep', askMode(undefined), 'deep');
+t('a missing setting is the default, and the default is FAST', askMode(undefined), 'fast');
+t('an unknown setting falls back to the default too, not to an error', askMode('turbo'), 'fast');
+t('an empty setting is the default', askMode(''), 'fast');
 t('fast turns the judge reasoning off', ASK_MODES.fast.reasoning, 'none');
 t('deep lets the judge reason', ASK_MODES.deep.reasoning, 'medium');
 t('fast looks shallower', ASK_MODES.fast.first < ASK_MODES.deep.first, true);
@@ -119,6 +124,17 @@ t('fast gives the reranker a smaller net', ASK_MODES.fast.jevMax < ASK_MODES.dee
 t('fast mode pairs its quick judge with the thinking one', ASK_MODES.fast.second, 'medium');
 t('deep mode pairs its thinking judge with the quick one', ASK_MODES.deep.second, 'none');
 t('the two judges never run the same setting', ASK_MODES.fast.reasoning !== ASK_MODES.fast.second && ASK_MODES.deep.reasoning !== ASK_MODES.deep.second, true);
+
+// --- the writer switch --------------------------------------------------------
+// The writer - the "answer" call - is OFF by default: the findings, the judge,
+// the citations and the marks are the run's product. The path is kept because the
+// format is going into the judge, so the switch has to work in both directions.
+t('the writer is off by default', writerEnabled({}), false);
+t('a deployment can turn it on', writerEnabled({ RULES_WRITER: '1' }), true);
+t('and off again in writing', [writerEnabled({ RULES_WRITER: 'on' }), writerEnabled({ RULES_WRITER: 'no' })], [true, false]);
+t('an unknown env value is off, never a surprise call', writerEnabled({ RULES_WRITER: 'maybe' }), false);
+t('the request can ask for it', writerEnabled({}, true), true);
+t('and the request beats the environment, both ways', [writerEnabled({ RULES_WRITER: '1' }, false), writerEnabled({}, 'true')], [false, true]);
 
 // --- two verdicts on the same findings --------------------------------------
 // A refusal downgrades the answer only when it comes from a judge at least as

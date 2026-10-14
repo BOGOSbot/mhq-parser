@@ -1949,9 +1949,27 @@ export const ASK_MODES = {
   fast: { first: 5, passes: 2, reasoning: 'none', second: 'medium', grepNet: 50, jevMax: 60 },
   deep: { first: 10, passes: 3, reasoning: 'medium', second: 'none', grepNet: 60, jevMax: 80 },
 };
+// Fast is the default: the reader gets the answer while the question is still in
+// mind. Deep stays reachable by asking for it explicitly - one word in the request
+// body or in a harness - and ASK_MODES keeps both entries.
 export function askMode(value) {
   const s = String(value == null ? '' : value).toLowerCase().trim();
-  return Object.prototype.hasOwnProperty.call(ASK_MODES, s) ? s : 'deep';
+  return Object.prototype.hasOwnProperty.call(ASK_MODES, s) ? s : 'fast';
+}
+
+// The writer - the "answer" call that turns findings into prose - is OFF by
+// default. What the page shows is the findings, the judge's verdict, the citations
+// and the marks; the prose is a later format whose home is going to be the judge,
+// so the call is switched off rather than deleted. RULES_WRITER=1 (or
+// writer: true in the request) turns it back on for whoever wants it.
+export function writerEnabled(env, requested) {
+  if (requested !== undefined && requested !== null) {
+    if (typeof requested === 'boolean') return requested;
+    return ['1', 'true', 'on', 'yes'].indexOf(String(requested).trim().toLowerCase()) !== -1;
+  }
+  const e = env || process.env;
+  const v = String(e.RULES_WRITER == null ? '' : e.RULES_WRITER).trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'on' || v === 'yes';
 }
 
 // The next pass adds WIDEN_ADD findings in total to the depth the previous one
