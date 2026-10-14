@@ -213,6 +213,12 @@ The judge decides whether the findings answer the question, and its verdict is
 binding. It is also the step accuracy leans on hardest: the same judge without
 its reasoning scored 61.8% where thinking it scored 79.4%. So the page runs both.
 
+The reader no longer chooses between them: the page asks for the careful setting
+only, and the Fast/Deep control is gone from it. `ASK_MODES` in
+`src/rules-corpus.mjs` stays the one place the settings live, and the server still
+accepts `mode` in the request body (echoed in the `mode` stream event) so the
+harness can ask for the other one.
+
 - The **binding** judge is the one the setting names - fast mode asks it not to
   reason, deep lets it think (`medium`). It gates the widening and whether the
   writer writes at all.

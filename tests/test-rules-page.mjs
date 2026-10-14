@@ -298,18 +298,16 @@ ok('one helper grows both boxes',
 ok('the box grows to its scrollHeight', /box\.scrollHeight/.test(growHelper));
 ok('and stops at the cap', /Math\.min\([^)]*cap\)/.test(growHelper));
 // Each cap is one number in two places: the CSS max-height the box scrolls at,
-// and the JS constant that stops the growth. A CSS cap moved without its
-// constant would let the box grow past the style that is supposed to hold it.
+// and the JS constant that stops the growth. The question box and the translation
+// box are ONE rule now - the translation IS the question box - so there is one cap
+// and both constants have to hold it.
 function cssCaps(re) {
   const m = re.exec(PAGE);
   return m ? Array.from(m[1].matchAll(/max-height:(\d+)px/g)).map(x => Number(x[1])) : [];
 }
-const qCapCss = cssCaps(/textarea#q\{([^}]*)\}/);
-const trCapCss = cssCaps(/\.trbox\{([^}]*)\}/);
-t('the question cap is the only one in its rule', qCapCss.length, 1);
-t('the translation cap is the only one in its rule', trCapCss.length, 1);
-t('the question JS cap is that CSS number', Number((/var QCAPPX = (\d+)/.exec(code) || [])[1]), qCapCss[0]);
-t('the translation JS cap is that CSS number', Number((/var TRCAPPX = (\d+)/.exec(code) || [])[1]), trCapCss[0]);
+const sharedCapCss = cssCaps(/textarea#q, textarea\.trbox\{([^}]*)\}/);
+t('the question and translation caps are one rule', sharedCapCss.length, 1);
+t('and both JS caps are that CSS number', [Number((/var QCAPPX = (\d+)/.exec(code) || [])[1]), Number((/var TRCAPPX = (\d+)/.exec(code) || [])[1])], [sharedCapCss[0], sharedCapCss[0]]);
 ok('Enter asks and Shift+Enter adds a line',
   /e\.key !== 'Enter' \|\| e\.shiftKey/.test(growBlock) && /e\.preventDefault\(\)/.test(growBlock) && /ask\(\);/.test(growBlock));
 const voiceBlock = code.slice(code.indexOf('rec.onresult'), code.indexOf('rec.onerror'));
@@ -341,28 +339,30 @@ ok('the note key is table-only, drawn nowhere', code.indexOf("t('translationNote
 ok('the translation box grows through the shared helper', /ta\.addEventListener\('input', growTranslation\)/.test(trBlock));
 ok('and is grown once the card is visible', /slot\.appendChild\(translationCard\(state\.translation\)\);[\s\S]{0,180}growTranslation\(\);/.test(code));
 ok('the box lost its fixed 64px height and its drag handle',
-  /\.trbox\{[^}]*min-height:40px/.test(PAGE) && /\.trbox\{[^}]*resize:none/.test(PAGE)
-  && /\.trbox\{[^}]*overflow-y:auto/.test(PAGE) && !/\.trbox\{[^}]*min-height:64px/.test(PAGE));
-// 3. The button sits at the right of the box in the ask row's shape, and the
-// box keeps a floor so a phone wraps the row rather than squeezing it to nothing.
-ok('the card puts the box and its button in one row',
-  /el\('div', 'trrow'\)/.test(trBlock) && /row\.appendChild\(ta\)/.test(trBlock)
-  && /row\.appendChild\(btn\)/.test(trBlock) && /card\.appendChild\(row\)/.test(trBlock));
+  /textarea#q, textarea\.trbox\{[^}]*min-height:40px/.test(PAGE) && /textarea#q, textarea\.trbox\{[^}]*resize:none/.test(PAGE)
+  && /textarea#q, textarea\.trbox\{[^}]*overflow-y:auto/.test(PAGE) && !/\.trbox\{[^}]*min-height:64px/.test(PAGE));
+// 3. The slice-4 shape: the box IS the question box, its action is the same send
+// control turned 45 degrees and put at the FRONT, and nothing is drawn around it.
+ok('the box and its arrow share one row, the arrow in front',
+  /el\('div', 'trrow'\)/.test(trBlock) && /row\.appendChild\(btn\)/.test(trBlock) && /row\.appendChild\(ta\)/.test(trBlock)
+  && trBlock.indexOf('row.appendChild(btn)') < trBlock.indexOf('row.appendChild(ta)')
+  && trBlock.indexOf("el('div', 'card')") === -1);
 ok('the row is the ask row shape', /\.trrow\{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap\}/.test(PAGE));
-ok('the box keeps a min width so the row wraps instead of squeezing', /\.trbox\{[^}]*min-width:120px/.test(PAGE));
+ok('the box keeps the question box min width so the row wraps instead of squeezing', /textarea#q, textarea\.trbox\{[^}]*min-width:260px/.test(PAGE));
 ok('the box starts at one row, like the question box', /ta\.rows = 1;/.test(trBlock));
 
-// Slice 1c: the card loses its heading, and the main ask and the correction are
-// one up-arrow send button. The icon is its only visible label, so the accessible
-// name (aria-label and tooltip) comes from the tables and the target is 44px.
-ok('the translation card has no heading',
+// Slice 1c: no heading, and the ask and the correction are one send control whose
+// icon is its only visible label - the name (aria-label and tooltip) comes from
+// the tables and the target is 44px.
+ok('the translation draws no card at all around the box - it IS the question box',
   trBlock.indexOf('sectionCard(') === -1 && trBlock.indexOf("el('h2'") === -1
-  && trBlock.indexOf("el('div', 'card')") !== -1);
+  && trBlock.indexOf("el('div', 'card')") === -1);
 ok('the dead detected-language caption is gone', trBlock.indexOf('var from = ') === -1);
 const goHtml = formHtml.slice(formHtml.indexOf('<button id="go"'), formHtml.indexOf('</button>', formHtml.indexOf('<button id="go"')));
 ok('the main ask is the same send button',
   /class="sendbtn"/.test(goHtml) && /type="submit"/.test(goHtml) && goHtml.indexOf('>Ask<') === -1);
-ok('the translation button is a send button too', /el\('button', 'sendbtn'\)/.test(trBlock));
+ok('the translation action is the send control, angled and in front',
+  /el\('button', 'sendbtn transsend'\)/.test(trBlock) && /button\.transsend svg\{transform:rotate\(45deg\)\}/.test(PAGE));
 const sendBlock = code.slice(code.indexOf('var SEND_ICON'), code.indexOf('function applyLang'));
 ok('one svg shape is shared by both buttons', (sendBlock.match(/<svg /g) || []).length === 1 && /btn\.innerHTML = SEND_ICON/.test(sendBlock));
 ok('and only set when the button has no icon yet', /if \(!btn\.firstChild\) btn\.innerHTML = SEND_ICON;/.test(sendBlock));
@@ -376,8 +376,16 @@ ok('the send control is a 44px target',
 ok('the main button keeps its disabled state during a run',
   /var btn = \$\('#go'\);\s*\n\s*btn\.disabled = true;/.test(code) && /btn\.disabled = false;/.test(code));
 ok('the correction keeps its short-text guard', trBlock.indexOf("t('translationTooShort')") !== -1);
-ok('the voice button is untouched: mic icon and visible label',
-  /id="mic" class="mic"/.test(formHtml) && /id="miclabel"/.test(formHtml) && formHtml.indexOf('id="mic" class="mic sendbtn"') === -1);
+// Slice 4: the voice control is an icon with the name on its aria-label and
+// tooltip; the language switch is chrome in the top bar; the mode choice is gone
+// but the page still asks for the careful settings through 'mode'.
+ok('the voice button is icon only, named by aria-label and tooltip',
+  /id="mic" class="mic"[^>]*aria-label="Ask by voice"/.test(formHtml) && formHtml.indexOf('id="miclabel"') === -1
+  && /button\.mic\{[^}]*width:44px/.test(PAGE) && /mb\.setAttribute\('aria-label', t\('voice'\)\)/.test(code));
+ok('the language switch sits in the top bar, not under the question',
+  headerHtml.indexOf('id="lang"') !== -1 && headerHtml.indexOf('id="lang"') < headerHtml.indexOf('<form id="f">'));
+ok('the Fast/Deep control is gone', PAGE.indexOf('id="modes"') === -1 && PAGE.indexOf('button.mode') === -1 && code.indexOf('setMode(') === -1);
+ok('but the page still asks for the deep settings', /var MODE = 'deep'/.test(code) && /mode: MODE/.test(code));
 t('the send buttons have names in both languages', ['ask', 'translationButton'].filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined), []);
 
 // The matching close of a div, so 'in the body' cannot mean 'inside the block a
