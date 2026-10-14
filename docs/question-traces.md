@@ -71,8 +71,17 @@ record id and an x a `negative`. The sets are the reader's current state and not
 an action log, so a second tap replaces the first and a record is positive or
 negative, never both (the caret wins); taking every mark back clears the field. A
 record id the trace never showed is **refused** rather than recorded - a mark can
-only name a passage the reader was actually given - and a mark for a swept or
-unknown question is dropped like a vote. Nothing in it identifies the reader: it
+only name a passage the reader was actually given.
+
+A mark is posted **the moment it is clicked**, not when the run ends: the trace is
+written when the answer lands, and the reader may be gone by then, so the server
+holds a mark whose line does not exist yet against that question's random id and
+applies it when the line lands. The hold expires (30 minutes) and is capped, so a
+run that never lands is discarded and a hold can never reach another question's
+record. Waiting for `done` used to lose exactly the readers who left early, and
+they are the ones whose pick the dataset wants.
+
+Nothing in it identifies the reader: it
 is record ids beside the question's random id. It is not the pick: the pick
 asserts that a record answered the question, the caret says where in the list the
 reader put it and the x says it should not carry the second answer.

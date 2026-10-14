@@ -125,7 +125,11 @@ ok('one place draws the findings list', /function renderFindings\(state\)/.test(
 ok('each finding is a hero card with its own caret and x', /el\('button', 'herocaret'/.test(code) && /el\('button', 'herox'/.test(code) && /'fitem hero'/.test(code));
 ok('the caret is a positive example in the same trace as the question', code.indexOf('state.positive.unshift(id)') !== -1 && code.indexOf('postLabels(state)') !== -1);
 ok('the x is a negative example in the same trace as the question', /negative: state\.shownIds\.filter/.test(code));
-ok('the caret and the x wait for the run that writes the trace', /if \(state\.runDone\) \{ state\.labelsPending = false; postLabels\(state\); \}/.test(code) && /if \(state\.labelsPending\) postLabels\(state\);/.test(code));
+// They are posted the moment they are made: the trace is written when the answer
+// lands, and the server holds the mark for it, so a reader who leaves early still
+// leaves the label the dataset wants.
+ok('the caret and the x are posted the moment they are made', /function markLabels\(state\) \{[\s\S]{0,80}postLabels\(state\);/.test(code));
+t('and nothing waits for the run to end any more', code.indexOf('labelsPending'), -1);
 ok('a widening cannot undo the reader\'s marks', /state\.keep\[sid\] = prevKeep\[sid\] !== false;/.test(code));
 ok('the dev toggle opens the whole passage and its indicators', /function devPanel\(f, state\)/.test(code) && code.indexOf("t('foundBy')") !== -1 && /passageBody\(f\)/.test(code) && code.indexOf("t('rankScore')") !== -1);
 ok('the card shows one line at rest', /\.heroline\{white-space:nowrap;overflow:hidden;text-overflow:ellipsis\}/.test(PAGE));

@@ -93,17 +93,23 @@ export function citedIds(trace) {
 // The label, in the note's precision order. Returns the groups and how they were
 // made; 'caret' covers the reader's own pick (the caret or the answeredBy button),
 // the strongest label the page can produce without a human at a desk.
+// One group PER ID on the trace lanes: a group means 'any member satisfies, every
+// group must be satisfied', so every record the reader marked is required - the
+// caret asserts each one answers, and the judge's citations are the passages the
+// answer rested on, all of them. Alternatives (one answer in two places) are the
+// bank's shape, not the trace's: a trace lane that folded them together said 'any
+// one of six passages answers it', which is not what either reader meant.
 export function goldFor(trace) {
   const labels = trace.labels || {};
   const positives = (labels.positive || []).filter(x => typeof x === 'string' && x);
-  if (positives.length) return { gold: [positives], gold_how: 'caret' };
+  if (positives.length) return { gold: positives.map(id => [id]), gold_how: 'caret' };
   if (typeof trace.answeredBy === 'string' && trace.answeredBy) return { gold: [[trace.answeredBy]], gold_how: 'caret' };
   if (trace.vote === 'up') {
     const cited = citedIds(trace);
-    if (cited.length) return { gold: [cited], gold_how: 'vote' };
+    if (cited.length) return { gold: cited.map(id => [id]), gold_how: 'vote' };
   }
   const cited = citedIds(trace);
-  if (cited.length) return { gold: [cited], gold_how: 'judge' };
+  if (cited.length) return { gold: cited.map(id => [id]), gold_how: 'judge' };
   return { gold: [], gold_how: '' };
 }
 
@@ -242,6 +248,22 @@ export function buildDataset(traces, bank, live) {
 // The same call the page makes: retrieveDual with the trace's own mode, on the
 // English it actually searched, with the terms the translator produced. Gold is
 // the trace's gold; a rank is the best rank of any member of any group.
+// Where the gold sits in a ranked list. 'rank' is the best rank of any required
+// record - the bank's hit@k reading; 'rank_all' is the rank at which EVERY group
+// is satisfied, which is what a reader would call answered.
+export function scoreRanks(gold, ids) {
+  const rankOf = group => {
+    for (let i = 0; i < ids.length; i++) if (group.indexOf(ids[i]) !== -1) return i + 1;
+    return null;
+  };
+  const groupRanks = (gold || []).map(rankOf);
+  const found = groupRanks.filter(r => r !== null);
+  return {
+    rank: found.length ? Math.min(...found) : null,
+    rank_all: groupRanks.length && groupRanks.every(r => r !== null) ? Math.max(...groupRanks) : null,
+  };
+}
+
 export async function measureRetrieval(records, traces, opts) {
   const o = opts || {};
   const rulesCorpus = o.rulesCorpus || readAllCorpus('rules');
@@ -257,7 +279,7 @@ export async function measureRetrieval(records, traces, opts) {
     const mode = ASK_MODES[askMode(trace && trace.mode)];
     const q = (trace && trace.asked) ? trace.asked : rec.q;
     const terms = (trace && Array.isArray(trace.terms)) ? trace.terms : [];
-    let rank = null, error = '';
+    let rank = null, rankAll = null, error = '';
     try {
       const dual = await retrieveDual(q, {
         rulesCorpus, factionsCorpus, jevKey: o.jevKey, terms,
@@ -265,14 +287,12 @@ export async function measureRetrieval(records, traces, opts) {
         perSide: { rules: mode.first, factions: mode.first },
       });
       const ids = (dual.all || []).map((s, i) => findingFor(s, i + 1).id);
-      for (let i = 0; i < ids.length; i++) {
-        for (const group of rec.gold) {
-          if (group.indexOf(ids[i]) !== -1) { rank = i + 1; break; }
-        }
-        if (rank) break;
-      }
+      // Two readings, because the gold groups are now strict: the BEST rank of any
+      const scored = scoreRanks(rec.gold, ids);
+      rank = scored.rank;
+      rankAll = scored.rank_all;
     } catch (e) { error = String((e && e.message) || e); }
-    rows.push({ id: rec.id, q: rec.q, asked: q, gold_how: rec.gold_how, split: rec.split, groups: rec.gold.length, rank, error });
+    rows.push({ id: rec.id, q: rec.q, asked: q, gold_how: rec.gold_how, split: rec.split, groups: rec.gold.length, rank, rank_all: rankAll, error });
     if (o.onRow) o.onRow(rows[rows.length - 1]);
   }
   return rows;
@@ -280,9 +300,16 @@ export async function measureRetrieval(records, traces, opts) {
 
 export function rankStats(rows) {
   const graded = rows.filter(r => !r.error);
-  const at = k => graded.filter(r => r.rank !== null && r.rank <= k).length;
+  const at = (k, key) => graded.filter(r => r[key] != null && r[key] <= k).length;
   const mrr = graded.length ? graded.reduce((s, r) => s + (r.rank ? 1 / r.rank : 0), 0) / graded.length : 0;
-  return { n: graded.length, hit1: at(1), hit5: at(5), hit20: at(20), found: graded.filter(r => r.rank !== null).length, mrr };
+  return {
+    n: graded.length,
+    hit1: at(1, 'rank'), hit5: at(5, 'rank'), hit20: at(20, 'rank'),
+    all1: at(1, 'rank_all'), all5: at(5, 'rank_all'), all20: at(20, 'rank_all'),
+    found: graded.filter(r => r.rank != null).length,
+    all: graded.filter(r => r.rank_all != null).length,
+    mrr,
+  };
 }
 
 function pct(a, b) { return b ? (100 * a / b).toFixed(1) + '%' : '-'; }
@@ -335,10 +362,11 @@ async function retrievalMain(datasetFile, dir) {
   const reader = rows.filter(r => r.split === 'train' && (r.gold_how === 'caret' || r.gold_how === 'vote'));
   const judge = rows.filter(r => r.gold_how === 'judge');
   const bankRows = rows.filter(r => r.split === 'eval');
-  for (const row of rows) console.log('  ' + (row.rank ? '#' + row.rank : '  -') + '  ' + (row.gold_how || '-').padEnd(6) + '  ' + row.q.slice(0, 56) + (row.error ? '  ERROR ' + row.error : ''));
+  for (const row of rows) console.log('  ' + (row.rank ? '#' + row.rank : '  -') + ' all:' + (row.rank_all ? '#' + row.rank_all : '-') + '  groups ' + row.groups + '  ' + (row.gold_how || '-').padEnd(6) + '  ' + row.q.slice(0, 52) + (row.error ? '  ERROR ' + row.error : ''));
   for (const [name, set] of [['reader gold (caret/vote)', reader], ['judge gold (circular)', judge], ['all trace gold', rows.filter(r => r.split === 'train')], ['bank eval (authored)', bankRows]]) {
     const s = rankStats(set);
-    console.log(name + ': n ' + s.n + '  hit@1 ' + s.hit1 + ' (' + pct(s.hit1, s.n) + ')  hit@5 ' + s.hit5 + '  hit@20 ' + s.hit20 + '  found ' + s.found + '  MRR ' + s.mrr.toFixed(3));
+    console.log(name + ': n ' + s.n + '  [any] hit@1 ' + s.hit1 + ' (' + pct(s.hit1, s.n) + ')  hit@5 ' + s.hit5 + '  hit@20 ' + s.hit20 + '  found ' + s.found + '  MRR ' + s.mrr.toFixed(3)
+      + '   [every group] @1 ' + s.all1 + ' @5 ' + s.all5 + ' @20 ' + s.all20 + ' (' + pct(s.all20, s.n) + ')  all found ' + s.all);
   }
   fs.writeFileSync(outFile, JSON.stringify({ at: new Date().toISOString(), rows, stats: { reader: rankStats(reader), judge: rankStats(judge), all: rankStats(rows.filter(r => r.split === 'train')), bank: rankStats(bankRows) } }, null, 1));
   console.log('retrieval -> ' + outFile);

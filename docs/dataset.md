@@ -19,10 +19,14 @@ says how the builder fills it and what it refuses to guess.
   `split: eval`. Traces are the `train` split. The bank is never trained on, and
   nothing harvested enters it without the review a promotion gets today.
 - **Gold is groups**, the bank's `expect` shape: any member of a group answers,
-  and every group must be satisfied - an alternative is not a hop. A caret, or the
-  `answeredBy` pick, is one group (`gold_how: caret`); an up-vote takes the
-  passages the answer rested on (`vote`); a judge citation with no reader label is
-  marked `judge`, usable for training and never for eval.
+  and every group must be satisfied - an alternative is not a hop. On the trace
+  lanes each id is its **own** group of one: every record the reader caret, and every
+  passage the judge rested the answer on, is REQUIRED - folding them into one group
+  would read as "any one of six passages answers it", which is not what either
+  meant. A caret, or the `answeredBy` pick, is `gold_how: caret`; an up-vote takes
+  the cited passages (`vote`); a judge citation with no reader label is `judge`,
+  usable for training and never for eval. Alternatives (one answer in two places)
+  are the bank's shape alone.
 - **Negatives are free**: the x marks first, then everything the run showed that
   is not gold.
 - **Every id is resolved against the corpus at read time.** An id the corpus no
@@ -46,26 +50,47 @@ says how the builder fills it and what it refuses to guess.
 | gold_how | judge 68, manual 33 (bank), caret 1, none 26 |
 | negatives | 1,347 ids over 76 records |
 | corpus resolution | 176 ids missing of 1,980, in 40 records (traces) |
-| gold groups | 117 before and after - none lost |
+| gold groups | 450, of which 41 dropped by resolution - 409 kept, no record lost every group |
 
 And the page's own retrieval over those records (`--retrieval`, the trace's own
 mode and the English it searched, the base plan):
 
-| lane | n | hit@1 | hit@5 | hit@20 | MRR |
-|---|---|---|---|---|---|
-| reader gold (caret/vote) | 1 | 1 | 1 | 1 | 1.000 |
-| judge gold - circular | 68 | 17 (25.0%) | 38 | 62 | 0.385 |
-| all trace gold | 69 | 18 (26.1%) | 39 | 63 | 0.394 |
-| bank eval, same call | 33 | 10 (30.3%) | 22 | 29 | 0.454 |
+Two readings, because the trace groups are strict. **Any** is the best rank of any
+required record - the bank's `hit@k` convention. **Every** is the rank at which
+every required group is satisfied, which is what a reader would call answered.
 
-The judge lane is the whole of the trace figure today, so it cannot settle
-anything: the judge cited passages the retriever had already shown it, and the
-base plan understates it - four of the 68 cited passages sit past rank 20 and
-were only reached by a later, widened pass. It is recorded as the shape of the
-number, not as a verdict on the page.
+| lane | n | any @1 | any @5 | any @20 | MRR | every @1 | every @5 | every @20 |
+|---|---|---|---|---|---|---|---|---|
+| reader gold (caret) | 1 | 1 | 1 | 1 | 1.000 | 1 | 1 | 1 |
+| judge gold - circular | 68 | 17 (25.0%) | 38 | 62 (91.2%) | 0.385 | 0 | 2 | 13 (19.1%) |
+| all trace gold | 69 | 18 (26.1%) | 39 | 63 (91.3%) | 0.394 | 1 | 3 | 14 (20.3%) |
+| bank eval, same call | 33 | 10 (30.3%) | 22 | 29 (87.9%) | 0.454 | 9 (27.3%) | 17 | 24 (72.7%) |
 
-The reader lane is thin for a page reason, not a dataset one: a mark is only
-posted once the run ends, so a reader who carets a finding and leaves before the
-answer lands leaves no label. The one `caret` record is the `answeredBy` pick;
-the only caret/x labels that exist today are in an E2E scratch store, and running
-the builder on it (`--dir`) produces the caret gold as it should.
+**The bank comparison does not survive the strict reading, and the reason is the
+metric as much as the questions.** A trace now carries **5.23 groups** on average
+(up to 14 - the judge cites every passage its answer rested on) against the
+bank's **1.45**: "every group inside the cut" is mechanically harsher the more
+groups a question has. On the one-group records, where the two are comparable:
+
+| one group per record | n | @1 | @5 | @20 |
+|---|---|---|---|---|
+| bank eval | 21 | 9 (42.9%) | 14 | 19 (90.5%) |
+| trace gold | 7 | 1 (14.3%) | 2 | 6 (85.7%) |
+
+So on the `any` convention the two are close (91.3% against 87.9% at 20), on the
+strict convention the traces collapse (20.3% against 72.7%) mostly because they
+carry 3.6x the groups, and on the like-for-like subset the trace lane is n 7.
+The judge lane is circular anyway - the judge cited passages the retriever had
+already shown it, and the base plan understates it, since the page widens for a
+passage past the first cut. Nothing here is a verdict on the page: it is what a
+reader-gold lane of one cannot yet say.
+
+The reader lane is thin because it was not being fed: a mark used to be posted only
+when the run ended, so a reader who careted a finding and left before the answer
+landed left nothing - the deployed store holds a trace whose answer exists and
+whose labels do not, from exactly that. The page now posts each mark the moment it
+is clicked and the server holds it against the question's id until the line lands
+(`docs/question-traces.md`, "The caret and the x"), so the lane fills from the next
+reader. The one `caret` record today is the `answeredBy` pick; the only caret/x
+labels that exist are in an E2E scratch store, and running the builder on it
+(`--dir`) produces the caret gold as it should.

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
-import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, answeredTrace, appendTrace, buildTrace, firstPerson, labelsTrace, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
+import { KIND_UNKNOWN, PENDING_LABEL_MAX, PENDING_LABEL_MS, TRACE_RETENTION_MONTHS, answeredTrace, appendTrace, buildTrace, firstPerson, labelsTrace, newTraceId, pendingLabelCount, resetPendingLabels, sweepTraces, takePendingLabels, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
 import { classifyTrace, harvestOrder, loadTraces, promotedQuestion, rerankLabels, tracePriority } from './promote-traces.mjs';
 import { expectGroups } from './expectation-groups.mjs';
 
@@ -244,7 +244,9 @@ try {
   t('taking every mark back clears the field', [labelsTrace('labellabellabel1', { positive: [], negative: [] }, labelsDir), marked().labels], [true, undefined]);
   t('a record the trace never showed is refused', labelsTrace('labellabellabel1', { positive: ['core-rules#NotShown'], negative: [] }, labelsDir), false);
   t('and the refusal changes nothing', marked().labels, undefined);
-  t('a mark for an unknown question is refused', labelsTrace('nope', { positive: ['core-rules#Embarking'], negative: [] }, labelsDir), false);
+  // The trace is not on disk YET: the mark is held for when it lands, not refused.
+  t('a mark for a question whose trace has not landed is held', labelsTrace('nope', { positive: ['core-rules#Embarking'], negative: [] }, labelsDir), true);
+  resetPendingLabels();
   t('a request that is not a pair of sets is refused', labelsTrace('labellabellabel1', { positive: ['core-rules#Embarking'] }, labelsDir), false);
   t('the other record is untouched', loadTraces(labelsDir).find(x => x.id === 'other999').labels, undefined);
   t('the labels add no identifier either', Object.keys(marked()).filter(k => /^(ip|useragent|cookie|session|account|address)$/i.test(k)).length, 0);
@@ -282,17 +284,21 @@ t('and an out-of-corpus one', classifyTrace({ question: 'q', findings: [], signa
 // The schema is the vault note's (notes/mhq-dataset.md). The tests here pin the
 // two things that would quietly poison a training set: where each label came from
 // (gold_how) and that an id the corpus no longer holds is REPORTED, never kept.
-import { bankRecord, buildDataset, citedIds, goldFor, negativesFor, rankStats, resolveGroups, sha8, traceRecord } from './build-dataset.mjs';
+import { bankRecord, buildDataset, citedIds, goldFor, negativesFor, rankStats, resolveGroups, scoreRanks, sha8, traceRecord } from './build-dataset.mjs';
 
 const LIVE = new Set(['core#A', 'core#B', 'fact#C']);
 t('the cited numbers resolve to the shown findings', citedIds({ findings: [{ n: 1, id: 'core#A' }, { n: 3, id: 'fact#C' }], judge: { cited: [3, 1, 3] } }), ['fact#C', 'core#A']);
 t('an older trace falls back to the answer markers', citedIds({ findings: [{ n: 2, id: 'core#B' }], judge: {}, answer: 'see [2], and [9] does not exist' }), ['core#B']);
 
-t('a caret is one gold group - alternatives, not hops', goldFor({ labels: { positive: ['core#A', 'core#B'], negative: [] } }), { gold: [['core#A', 'core#B']], gold_how: 'caret' });
+// A group is 'any member satisfies'. The reader marked BOTH records, and the judge
+// rested the answer on every passage it cited, so each is its own group of one -
+// folding them into one group would read as 'any one of them answers it'.
+t('every caret is a required record, not an alternative', goldFor({ labels: { positive: ['core#A', 'core#B'], negative: [] } }), { gold: [['core#A'], ['core#B']], gold_how: 'caret' });
 t('the answeredBy button is the same reader pick', goldFor({ answeredBy: 'core#A' }), { gold: [['core#A']], gold_how: 'caret' });
 t('and a caret outranks it', goldFor({ answeredBy: 'core#B', labels: { positive: ['core#A'] } }).gold, [['core#A']]);
-t('an up-vote takes the passages the answer rested on', goldFor({ vote: 'up', findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], judge: { cited: [1, 2] } }), { gold: [['core#A', 'core#B']], gold_how: 'vote' });
+t('an up-vote takes every passage the answer rested on, each required', goldFor({ vote: 'up', findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], judge: { cited: [1, 2] } }), { gold: [['core#A'], ['core#B']], gold_how: 'vote' });
 t('an unmarked judge citation is marked judge', goldFor({ findings: [{ n: 1, id: 'core#A' }], judge: { cited: [1] } }).gold_how, 'judge');
+t('and every citation it rested on is required', goldFor({ findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], judge: { cited: [1, 2] } }).gold, [['core#A'], ['core#B']]);
 t('and no label at all is no gold', goldFor({ findings: [], judge: {} }), { gold: [], gold_how: '' });
 
 t('a dead id leaves its group and is reported', resolveGroups([['core#A', 'gone#D']], LIVE), { groups: [['core#A']], missing: ['gone#D'] });
@@ -330,9 +336,65 @@ t('a gold id the corpus lost turns the record query-only, and is counted', (func
 })(), [[], 1, 1]);
 t('the negatives count includes what was shown', buildDataset([{ id: 'n1', question: 'q', findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], judge: { cited: [1] } }], [], LIVE).stats.negatives, 1);
 
-const stats = rankStats([{ rank: 1 }, { rank: 3 }, { rank: null }, { rank: 25 }]);
+t('a group is satisfied by any member, and every group is required', scoreRanks([['a'], ['b']], ['x', 'b', 'a']), { rank: 2, rank_all: 3 });
+t('and a group none of whose members came back leaves the question unanswered', scoreRanks([['a'], ['z']], ['x', 'a']).rank_all, null);
+
+const stats = rankStats([{ rank: 1, rank_all: 1 }, { rank: 3, rank_all: 5 }, { rank: null, rank_all: null }, { rank: 25, rank_all: 30 }]);
 t('the rank stats read like the bank eval', [stats.n, stats.hit1, stats.hit5, stats.hit20, stats.found], [4, 1, 2, 2, 3]);
 t('and MRR averages the reciprocal', stats.mrr, (1 + 1 / 3 + 1 / 25) / 4);
+t('the strict reading counts only questions whose every group is in the cut', [stats.all1, stats.all5, stats.all20, stats.all], [1, 2, 2, 3]);
+
+// --- the label that arrives before its trace --------------------------------
+// The reader's mark is posted when it is clicked and the trace is written when
+// the answer lands: the hold is what keeps a reader who leaves early from leaving
+// nothing, and what keeps that mark off another question's record.
+function readTraceLine(dir, id) {
+  for (const name of fs.readdirSync(dir)) {
+    for (const line of fs.readFileSync(path.join(dir, name), 'utf8').split('\n')) {
+      if (!line.trim()) continue;
+      const trace = JSON.parse(line);
+      if (trace.id === id) return trace;
+    }
+  }
+  return null;
+}
+const holdDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-hold-'));
+const holdShown = [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }];
+resetPendingLabels();
+t('a mark posted before its trace counts as saved', labelsTrace('held1', { positive: ['core#A'], negative: ['core#B'] }, holdDir), true);
+t('and is held against that question id', pendingLabelCount(), 1);
+appendTrace({ id: 'held1', at: '2026-10-14T09:00:00.000Z', question: 'q', findings: holdShown }, holdDir);
+t('and lands with the trace it belongs to', readTraceLine(holdDir, 'held1').labels, { positive: ['core#A'], negative: ['core#B'] });
+t('and the hold is consumed, not left behind', pendingLabelCount(), 0);
+t('a held mark the trace never showed is dropped with the hold', (function () {
+  resetPendingLabels();
+  labelsTrace('held2', { positive: ['core#A'], negative: [] }, holdDir);
+  appendTrace({ id: 'held2', at: '2026-10-14T09:00:00.000Z', question: 'q', findings: [{ n: 1, id: 'core#B' }] }, holdDir);
+  return readTraceLine(holdDir, 'held2').labels;
+})(), undefined);
+t('a hold cannot land on another question', (function () {
+  resetPendingLabels();
+  labelsTrace('held3', { positive: ['core#A'], negative: [] }, holdDir);
+  appendTrace({ id: 'held4', at: '2026-10-14T09:00:00.000Z', question: 'q', findings: holdShown }, holdDir);
+  return readTraceLine(holdDir, 'held4').labels;
+})(), undefined);
+t('a hold for a run that never lands expires instead of waiting for ever', (function () {
+  resetPendingLabels();
+  labelsTrace('never', { positive: ['core#A'], negative: [] }, holdDir);
+  const later = Date.now() + PENDING_LABEL_MS + 1;
+  return [takePendingLabels('never', later), pendingLabelCount(later)];
+})(), [null, 0]);
+t('a mark a trace that exists refuses is not held', (function () {
+  resetPendingLabels();
+  appendTrace({ id: 'held5', at: '2026-10-14T09:00:00.000Z', question: 'q', findings: holdShown }, holdDir);
+  return [labelsTrace('held5', { positive: ['core#Z'], negative: [] }, holdDir), pendingLabelCount()];
+})(), [false, 0]);
+t('the hold is capped rather than unbounded', (function () {
+  resetPendingLabels();
+  for (let i = 0; i < PENDING_LABEL_MAX + 20; i++) labelsTrace('cap' + i, { positive: ['core#A'], negative: [] }, holdDir);
+  return pendingLabelCount();
+})(), PENDING_LABEL_MAX);
+resetPendingLabels();
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

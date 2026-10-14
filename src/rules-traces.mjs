@@ -177,9 +177,62 @@ export function buildTrace(input) {
 export function appendTrace(trace, dir) {
   const d = dir || TRACES_DIR;
   fs.mkdirSync(d, { recursive: true });
+  // A mark the reader made while this run was still going: the label was posted
+  // the moment it was clicked and held against this id (holdLabels), and it lands
+  // with the line it belongs to. Validated here against THIS trace's own findings,
+  // so an id the trace never showed is dropped with the hold, not written.
+  const held = takePendingLabels(trace && trace.id);
+  if (held) applyLabels(trace, held.positive, held.negative);
   const file = path.join(d, String(trace.at || '').slice(0, 7) + '.ndjson');
   fs.appendFileSync(file, JSON.stringify(trace) + '\n');
   return file;
+}
+
+// --- the label that arrives before its trace ---------------------------------
+// The reader's caret and x are posted the moment they are clicked, and the trace
+// that holds them is only written when the answer lands - seconds later, or never,
+// if the reader leaves. A label for an id the store does not hold yet is held here
+// against that id and applied by appendTrace when the line lands. The hold is
+// keyed by the question's random id, so it can never reach another question's
+// record; it expires (a run that takes half an hour is not coming back) and the
+// map is capped, so a reader who never returns cannot grow it without bound.
+export const PENDING_LABEL_MS = 30 * 60 * 1000;
+export const PENDING_LABEL_MAX = 500;
+let pendingLabels = new Map();   // id -> { positive, negative, at }
+
+export function pendingLabelCount(now) {
+  dropExpiredLabels(now);
+  return pendingLabels.size;
+}
+export function resetPendingLabels() { pendingLabels = new Map(); }
+
+function dropExpiredLabels(now) {
+  const t = now === undefined ? Date.now() : now;
+  for (const [id, p] of pendingLabels) {
+    if (t - (p.at || 0) > PENDING_LABEL_MS) pendingLabels.delete(id);
+  }
+  // Oldest first: a Map iterates in insertion order.
+  while (pendingLabels.size > PENDING_LABEL_MAX) pendingLabels.delete(pendingLabels.keys().next().value);
+}
+
+export function holdLabels(id, pick, now) {
+  if (!id) return false;
+  const p = pick || {};
+  const clean = list => [...new Set((list || []).filter(x => typeof x === 'string' && x))].slice(0, 40);
+  const t = now === undefined ? Date.now() : now;
+  dropExpiredLabels(t);
+  pendingLabels.delete(id);
+  pendingLabels.set(id, { positive: clean(p.positive), negative: clean(p.negative), at: t });
+  dropExpiredLabels(t);
+  return true;
+}
+
+export function takePendingLabels(id, now) {
+  dropExpiredLabels(now);
+  if (!id || !pendingLabels.has(id)) return null;
+  const p = pendingLabels.get(id);
+  pendingLabels.delete(id);
+  return p;
 }
 
 // --- retention ---------------------------------------------------------------
@@ -195,7 +248,7 @@ export const TRACE_RETENTION_MONTHS = 12;
 // synchronous, so inside one process two patches cannot interleave - the server
 // that answered the question is the only writer. It is the read-modify-write
 // shape, and it is exposed only if a second process shares the traces dir.
-function patchTrace(id, patch, dir) {
+function patchTrace(id, patch, dir, onMiss) {
   if (!id) return false;
   const d = dir || TRACES_DIR;
   let names = [];
@@ -216,6 +269,8 @@ function patchTrace(id, patch, dir) {
     }
     if (hit) { fs.writeFileSync(file, lines.join('\n')); return true; }
   }
+  // No line holds this id yet: the caller may hold the patch for when one does.
+  if (onMiss) onMiss();
   return false;
 }
 
@@ -243,30 +298,36 @@ export function voteTrace(id, vote, dir) {
 // trace never held is refused. Clearing every mark clears the field, so a tap the
 // reader took back does not stay in the record - the same reason the pick has one
 // slot rather than a log.
+// The reader's CURRENT state applied to one trace: each id must be one the trace
+// really showed, and a record is positive or negative, never both - the caret
+// wins, because the page clears one when the reader taps the other. An empty
+// request is a deliberate clear; a request that named records and resolved none
+// of them is refused, because the reader can only mark what they were shown.
+function applyLabels(t, positive, negative) {
+  const shown = new Set((t.findings || []).map(f => f && f.id));
+  const pos = positive.filter(x => shown.has(x));
+  const neg = negative.filter(x => shown.has(x) && pos.indexOf(x) === -1);
+  if (!pos.length && !neg.length) {
+    if (positive.length || negative.length) return false;
+    delete t.labels;
+    return true;
+  }
+  t.labels = { positive: pos, negative: neg };
+  return true;
+}
+
 export function labelsTrace(id, pick, dir) {
   const p = pick || {};
   if (!Array.isArray(p.positive) || !Array.isArray(p.negative)) return false;
   const clean = list => [...new Set(list.filter(x => typeof x === 'string' && x))].slice(0, 40);
   const positive = clean(p.positive);
   const negative = clean(p.negative);
-  return patchTrace(id, t => {
-    const shown = new Set((t.findings || []).map(f => f && f.id));
-    const pos = positive.filter(x => shown.has(x));
-    // A record is positive or negative, never both: the caret wins, because the
-    // page clears one when the reader taps the other.
-    const neg = negative.filter(x => shown.has(x) && pos.indexOf(x) === -1);
-    if (!pos.length && !neg.length) {
-      // A request that named records and resolved none of them is refused: the
-      // reader can only mark what the trace actually showed. An empty request is
-      // a deliberate clear - every mark taken back leaves no field, so the record
-      // keeps the reader's final judgement rather than an abandoned tap.
-      if (positive.length || negative.length) return false;
-      delete t.labels;
-      return true;
-    }
-    t.labels = { positive: pos, negative: neg };
-    return true;
-  }, dir);
+  // No line holds the id yet - the run is still going, or the reader left before
+  // it ended - so the pick is held and lands with the trace (appendTrace). The
+  // hold is the reader's latest state, like the patch it stands in for.
+  let held = false;
+  const patched = patchTrace(id, t => applyLabels(t, positive, negative), dir, () => { held = holdLabels(id, { positive, negative }); });
+  return patched || held;
 }
 
 // The reader's explicit 'this passage answered it', or 'none of these'. It is an

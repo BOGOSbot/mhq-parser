@@ -1744,10 +1744,12 @@ function toggleDev(state, id) {
 }
 
 // The caret and the x are labelled examples, and the trace that holds them is
-// written after the answer - exactly like the thumb and the pick - so a mark made
-// while the prose is still being written waits for it, and one made after the run
-// posts straight away. Same route shape as the vote: one id, one trace, no second
-// store, and a swept or disabled trace drops it silently.
+// written when the answer lands - seconds later, or never, if the reader closes
+// the page. So the mark is posted the moment it is clicked: the server holds it
+// against the question's id and applies it when the line lands. Waiting for the
+// run to end lost exactly the readers who left early, and they are the ones whose
+// pick the dataset wants. Same route shape as the vote: one id, one trace, no
+// second store, and a swept or disabled trace drops it silently.
 function labelBody(state) {
   return {
     id: state.traceId,
@@ -1759,13 +1761,11 @@ function postLabels(state) {
   if (!state || !state.traceId || !state.labelsTouched) return;
   fetch('/rules/labels', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(labelBody(state)) })
     .then(function (r) { return r.json(); })
-    .then(function () { state.labelsPending = false; })
-    .catch(function () { state.labelsPending = false; });
+    .catch(function () {});
 }
 function markLabels(state) {
   if (!state || !state.traceId) return;
-  if (state.runDone) { state.labelsPending = false; postLabels(state); }
-  else state.labelsPending = true;
+  postLabels(state);
 }
 
 // The passage is already in the payload, so the popup never fetches: the whole
@@ -2127,8 +2127,8 @@ function newState() {
     // The one rerank ordering the reader controls: the ids they careted, newest
     // first, and which records they opened the dev view on. Both survive a
     // re-render; the caret and the x are also the trace's labelled examples, so
-    // they wait for the run that writes it (labelsPending), exactly like the pick.
-    positive: [], devOpen: {}, labelsTouched: false, labelsPending: false,
+    // they are posted the moment they are made and held server-side until it lands.
+    positive: [], devOpen: {}, labelsTouched: false,
     // The full-screen record: which finding is open, the structured card once it
     // has landed, the wiki page for it, and the per-record caches so a swipe back
     // to a record already opened costs no request.
@@ -2442,10 +2442,11 @@ function applyEvent(ev, state) {
   if (ev.type === 'done') {
     finishProgress();
     // The trace exists by now, so a pick made while the prose was still being
-    // written can land in its record; a later pick posts straight away.
+    // written can land in its record; a later pick posts straight away. The marks
+    // are not here on purpose: they were posted when they were made, and the
+    // server held them for this moment.
     state.runDone = true;
     if (state.pickPending) postPick(state);
-    if (state.labelsPending) postLabels(state);
     // A disagreement outlives the request: clearing it here would erase the one
     // line that says the answer is provisional.
     if (state.disputed) { setStatus(t('judgeDisagreeTitle'), 'warn'); return; }
