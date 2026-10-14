@@ -102,6 +102,25 @@ async function main() {
     t('the route still answers JSON without the flag', (await request(port, '/rules/record?id=' + encodeURIComponent(REC))).headers['content-type'].indexOf('application/json'), 0);
     const json = JSON.parse((await request(port, '/rules/record?id=' + encodeURIComponent(REC))).body);
     ok('with the record shape it always had', json.ok === true && json.record && json.record.id === REC && typeof json.wiki === 'string');
+    // --- the card's CSS travels with the card, from one source ------------------
+    // The defect this slice fixes: the fragment was shared but its stylesheet was
+    // not, so the same markup was a datasheet on a wiki page and an unstyled table
+    // in the dialog. One export (CARD_CSS) and three surfaces carrying the same
+    // bytes: /card.css for the ask page, card.css beside the render, and the link
+    // in the record page's head. The shell must NOT carry it - the card belongs to
+    // the record, not to the wiki.
+    const cardCss = await request(port, '/card.css');
+    const cssExport = (await import('../src/wiki-cards.mjs')).CARD_CSS;
+    t('the card stylesheet is served on its own URL', cardCss.status, 200);
+    t('as css', String(cardCss.headers['content-type']).slice(0, 8), 'text/css');
+    t('and it IS the one export, byte for byte', cardCss.body, cssExport);
+    ok('with a validator', typeof cardCss.headers.etag === 'string' && cardCss.headers.etag.length > 4);
+    t('the render writes the same file beside its pages', fs.readFileSync(path.join(outDir, 'card.css'), 'utf8'), cssExport);
+    t('and serves it there too', (await request(port, '/wiki/card.css')).body, cssExport);
+    ok('the record page links the card stylesheet', fs.readFileSync(path.join(outDir, map[REC]), 'utf8').indexOf('<link rel="stylesheet" href="card.css">') !== -1);
+    ok('the shell stylesheet does NOT carry the card', fs.readFileSync(path.join(outDir, 'wiki.css'), 'utf8').indexOf('.wcard') === -1);
+    const pageSrc = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
+    ok('and the ask page links the same asset, with no copy of its own', pageSrc.indexOf('href="/card.css"') !== -1 && pageSrc.indexOf('.wcard-table') === -1);
     const missing = await request(port, '/rules/record?id=nope&format=html');
     t('an unknown id is still a 404', missing.status, 404);
   } finally {

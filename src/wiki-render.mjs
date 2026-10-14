@@ -47,13 +47,13 @@ const CSS = [
   , 'ul.plain { list-style:none; padding:0; } ul.plain li { border-bottom:1px solid var(--line); padding:.45rem 0; }'
   , '.num { color:var(--dim); font-size:.85rem; }'
   , '@media (max-width:600px){ main{padding:0 .7rem 3rem;} h1{font-size:1.2rem;} .text{font-size:.95rem;} }'
-  // The datasheet card's own CSS. The shell's chrome stays as it is: this is only
-  // what a card needs, under .wcard-* names a restyle can target.
-  , CARD_CSS,
 ].join('\n');
 
-function page(title, nav, body) {
-  return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n<link rel="stylesheet" href="wiki.css">\n</head>\n<body>\n<header><nav>' + nav + '</nav></header>\n<main>\n' + body + '\n</main>\n</body>\n</html>\n';
+// The card's stylesheet is its own file, not part of the shell: the card belongs to
+// the record, and the same string is served as /card.css to the ask page's dialog.
+// A record page links it; the index, search and reading-aids pages do not.
+function page(title, nav, body, head) {
+  return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n<link rel="stylesheet" href="wiki.css">\n' + (head || '') + '</head>\n<body>\n<header><nav>' + nav + '</nav></header>\n<main>\n' + body + '\n</main>\n</body>\n</html>\n';
 }
 const NAV = '<a href="index.html">Index</a><a href="search.html">Search</a><a href="anomalies.html">Reading aids</a>';
 
@@ -123,6 +123,9 @@ function linkChips(links, missingOk) {
 // --- the pages ------------------------------------------------------------------
 fs.mkdirSync(OUT, { recursive: true });
 fs.writeFileSync(path.join(OUT, 'wiki.css'), CSS);
+// The card's own CSS, from the one export in src/wiki-cards.mjs. Served as
+// /wiki/card.css (offline: a relative link) and as /card.css for the ask page.
+fs.writeFileSync(path.join(OUT, 'card.css'), CARD_CSS);
 
 const counts = {};
 for (const r of records) counts[r.kind || '(none)'] = (counts[r.kind || '(none)'] || 0) + 1;
@@ -222,7 +225,7 @@ for (const r of records) {
     r.parent && byId.has(r.parent) ? '<p class="num">Parent: <a href="' + esc(pageOf.get(r.parent)) + '">' + esc(byId.get(r.parent).heading) + '</a></p>' : '',
     back.length ? '<h2>Linked from (' + back.length + ')</h2><ul class="chips">' + back.map(id => '<li><a href="' + esc(pageOf.get(id)) + '">' + esc(byId.get(id).heading || id) + '</a></li>').join('') + '</ul>' : '',
   ].filter(Boolean).join('\n');
-  fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), page(r.heading || r.id, NAV, body));
+  fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), page(r.heading || r.id, NAV, body, '<link rel="stylesheet" href="card.css">'));
   written++;
 }
 // The record -> page map, so a server can link a finding's record to its page

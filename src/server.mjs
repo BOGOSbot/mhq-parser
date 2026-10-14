@@ -39,7 +39,7 @@ import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKe
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
-import { cardIndex, recordBody } from './wiki-cards.mjs';
+import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
 import { lookupRecord } from './header-index.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1509,6 +1509,12 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && (u.pathname === '/' || u.pathname === '/index.html')) {
     return send(res, 200, readIndex(), 'text/html; charset=utf-8');
+  }
+  // The card's stylesheet, the same string the wiki render writes beside its pages
+  // (CARD_CSS in src/wiki-cards.mjs). One source, two consumers: a record page
+  // links card.css relatively, the ask page's dialog links /card.css here.
+  if (req.method === 'GET' && u.pathname === '/card.css') {
+    return send(res, 200, CARD_CSS, 'text/css; charset=utf-8');
   }
   // The icon a fresh tab asks for. It used to 404 on every page load; now it is
   // 119 bytes and cached for a week, so it stops being a request at all.
