@@ -311,7 +311,8 @@ t('and both JS caps are that CSS number', [Number((/var QCAPPX = (\d+)/.exec(cod
 ok('Enter asks and Shift+Enter adds a line',
   /e\.key !== 'Enter' \|\| e\.shiftKey/.test(growBlock) && /e\.preventDefault\(\)/.test(growBlock) && /ask\(\);/.test(growBlock));
 const voiceBlock = code.slice(code.indexOf('rec.onresult'), code.indexOf('rec.onerror'));
-ok('the voice transcript grows the box', voiceBlock.indexOf('growQuestion()') !== -1);
+ok('the voice transcript grows the box it types into',
+  /box\.value = \(base \? base \+ ' ' : ''\) \+ text\.trim\(\);/.test(voiceBlock) && voiceBlock.indexOf('grow();') !== -1);
 ok('an example chip grows the box', code.indexOf("$('#q').value = text; $('#q').focus(); growQuestion();") !== -1);
 ok('the translation re-ask grows the box', /growQuestion\(\);\s*\n\s*ask\(\{ question: text, english: true \}\)/.test(code));
 
@@ -319,9 +320,11 @@ const headerHtml = PAGE.slice(PAGE.indexOf('<header>'), PAGE.indexOf('</header>'
 ok('the translation box sits under the question in the header',
   headerHtml.indexOf('id="trslot"') !== -1 && headerHtml.indexOf('id="trslot"') > headerHtml.indexOf('id="q"'));
 ok('the translation event fills that box', /state\.translation = ev;[\s\S]{0,60}renderTranslation\(state\)/.test(code));
-ok('the box is the server text through the same card', /slot\.appendChild\(translationCard\(state\.translation\)\)/.test(code));
+ok('the box is the server text through the same card', /slot\.appendChild\(translationCard\(tr\)\)/.test(code));
 ok('it is no longer a results card', code.indexOf('state.rest.appendChild(translationCard') === -1);
 ok('a new question clears it', /clearTranslation\(\);/.test(code));
+ok('an empty translation draws no box',
+  /var tr = state && state\.translation;\s*\n\s*if \(!tr \|\| !String\(tr\.translated \|\| ''\)\.trim\(\)\) \{ slot\.classList\.add\('hidden'\); return; \}/.test(code));
 ok('the correction path re-asks in English', /ask\(\{ question: text, english: true \}\)/.test(code));
 const trKeys = ['translationTitle', 'translationFrom', 'translationTo', 'translationNote', 'translationButton', 'translationTooShort'];
 t('the translation labels exist in both languages', trKeys.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined), []);
@@ -337,16 +340,22 @@ ok('the note key is table-only, drawn nowhere', code.indexOf("t('translationNote
 // 2. The box adapts to its text, through the question box's own helper, and it
 // grows while the reader corrects it as well as when the card is drawn.
 ok('the translation box grows through the shared helper', /ta\.addEventListener\('input', growTranslation\)/.test(trBlock));
-ok('and is grown once the card is visible', /slot\.appendChild\(translationCard\(state\.translation\)\);[\s\S]{0,180}growTranslation\(\);/.test(code));
+ok('and is grown once the card is visible', /slot\.appendChild\(translationCard\(tr\)\);[\s\S]{0,180}growTranslation\(\);/.test(code));
 ok('the box lost its fixed 64px height and its drag handle',
   /textarea#q, textarea\.trbox\{[^}]*min-height:40px/.test(PAGE) && /textarea#q, textarea\.trbox\{[^}]*resize:none/.test(PAGE)
   && /textarea#q, textarea\.trbox\{[^}]*overflow-y:auto/.test(PAGE) && !/\.trbox\{[^}]*min-height:64px/.test(PAGE));
-// 3. The slice-4 shape: the box IS the question box, its action is the same send
-// control turned 45 degrees and put at the FRONT, and nothing is drawn around it.
-ok('the box and its arrow share one row, the arrow in front',
-  /el\('div', 'trrow'\)/.test(trBlock) && /row\.appendChild\(btn\)/.test(trBlock) && /row\.appendChild\(ta\)/.test(trBlock)
-  && trBlock.indexOf('row.appendChild(btn)') < trBlock.indexOf('row.appendChild(ta)')
+// 3. The row mirrors the ask row - box, send, its own voice control - with one
+// mark in front that is not a control. Nothing is drawn around it.
+ok('the row is mark, box, send, voice, in that order',
+  /el\('div', 'trrow'\)/.test(trBlock)
+  && trBlock.indexOf('row.appendChild(mark)') < trBlock.indexOf('row.appendChild(ta)')
+  && trBlock.indexOf('row.appendChild(ta)') < trBlock.indexOf('row.appendChild(send)')
+  && trBlock.indexOf('row.appendChild(send)') < trBlock.indexOf('row.appendChild(mic)')
   && trBlock.indexOf("el('div', 'card')") === -1);
+ok('the mark in front is a mark, not a control',
+  /el\('span', 'trmark'\)/.test(trBlock) && /mark\.setAttribute\('aria-hidden', 'true'\)/.test(trBlock)
+  && /\.trmark\{[^}]*color:var\(--dim\)/.test(PAGE) && /\.trmark svg\{[^}]*rotate\(45deg\)/.test(PAGE)
+  && trBlock.indexOf("el('button', 'trmark')") === -1 && PAGE.indexOf('transsend') === -1);
 ok('the row is the ask row shape', /\.trrow\{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap\}/.test(PAGE));
 ok('the box keeps the question box min width so the row wraps instead of squeezing', /textarea#q, textarea\.trbox\{[^}]*min-width:260px/.test(PAGE));
 ok('the box starts at one row, like the question box', /ta\.rows = 1;/.test(trBlock));
@@ -361,15 +370,21 @@ ok('the dead detected-language caption is gone', trBlock.indexOf('var from = ') 
 const goHtml = formHtml.slice(formHtml.indexOf('<button id="go"'), formHtml.indexOf('</button>', formHtml.indexOf('<button id="go"')));
 ok('the main ask is the same send button',
   /class="sendbtn"/.test(goHtml) && /type="submit"/.test(goHtml) && goHtml.indexOf('>Ask<') === -1);
-ok('the translation action is the send control, angled and in front',
-  /el\('button', 'sendbtn transsend'\)/.test(trBlock) && /button\.transsend svg\{transform:rotate\(45deg\)\}/.test(PAGE));
+ok('the translation send is the same up-arrow control as the ask, after the box',
+  /el\('button', 'sendbtn'\)/.test(trBlock) && /paintSend\(send, t\('translationButton'\)\)/.test(trBlock)
+  && trBlock.indexOf('row.appendChild(ta)') < trBlock.indexOf('row.appendChild(send)'));
+ok('and it has a voice control of its own, listening in English',
+  /el\('button', 'mic'\)/.test(trBlock) && /paintMic\(mic, t\('voiceEnglish'\)\)/.test(trBlock)
+  && /wireVoice\(mic, ta, function \(\) \{ return 'en-GB'; \}, growTranslation\)/.test(trBlock));
 const sendBlock = code.slice(code.indexOf('var SEND_ICON'), code.indexOf('function applyLang'));
-ok('one svg shape is shared by both buttons', (sendBlock.match(/<svg /g) || []).length === 1 && /btn\.innerHTML = SEND_ICON/.test(sendBlock));
+ok('one svg shape per control, each injected once',
+  (sendBlock.match(/<svg /g) || []).length === 2 && /btn\.innerHTML = SEND_ICON/.test(sendBlock)
+  && /btn\.innerHTML = MIC_ICON/.test(sendBlock));
 ok('and only set when the button has no icon yet', /if \(!btn\.firstChild\) btn\.innerHTML = SEND_ICON;/.test(sendBlock));
 ok('the label is an accessible name and a tooltip, never text',
   /btn\.setAttribute\('aria-label', label\)/.test(sendBlock) && /btn\.title = label/.test(sendBlock));
 ok('both send buttons are painted with their own table key',
-  /paintSend\(go, t\('ask'\)\)/.test(code) && /paintSend\(btn, t\('translationButton'\)\)/.test(trBlock));
+  /paintSend\(go, t\('ask'\)\)/.test(code) && /paintSend\(send, t\('translationButton'\)\)/.test(trBlock));
 ok('the main button no longer writes its label as text', code.indexOf("go.textContent = t('ask')") === -1);
 ok('the send control is a 44px target',
   /button\.sendbtn\{[^}]*width:44px/.test(PAGE) && /button\.sendbtn\{[^}]*height:44px/.test(PAGE));
@@ -381,12 +396,16 @@ ok('the correction keeps its short-text guard', trBlock.indexOf("t('translationT
 // but the page still asks for the careful settings through 'mode'.
 ok('the voice button is icon only, named by aria-label and tooltip',
   /id="mic" class="mic"[^>]*aria-label="Ask by voice"/.test(formHtml) && formHtml.indexOf('id="miclabel"') === -1
-  && /button\.mic\{[^}]*width:44px/.test(PAGE) && /mb\.setAttribute\('aria-label', t\('voice'\)\)/.test(code));
+  && /button\.mic\{[^}]*width:44px/.test(PAGE) && /paintMic\(mb, t\('voice'\)\)/.test(code));
+ok('the question microphone types into the question box in the page language',
+  /wireVoice\(document\.getElementById\('mic'\), document\.getElementById\('q'\), function \(\) \{\s*\n\s*return LANG === 'fr' \? 'fr-FR' : 'en-GB';/.test(code)
+  && code.indexOf('speechLocale') === -1);
 ok('the language switch sits in the top bar, not under the question',
   headerHtml.indexOf('id="lang"') !== -1 && headerHtml.indexOf('id="lang"') < headerHtml.indexOf('<form id="f">'));
 ok('the Fast/Deep control is gone', PAGE.indexOf('id="modes"') === -1 && PAGE.indexOf('button.mode') === -1 && code.indexOf('setMode(') === -1);
 ok('but the page still asks for the deep settings', /var MODE = 'deep'/.test(code) && /mode: MODE/.test(code));
-t('the send buttons have names in both languages', ['ask', 'translationButton'].filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined), []);
+t('the send and voice controls have names in both languages',
+  ['ask', 'translationButton', 'voiceEnglish', 'stopListening'].filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined), []);
 
 // The matching close of a div, so 'in the body' cannot mean 'inside the block a
 // run hides'.

@@ -108,13 +108,19 @@ ol.cites li{display:flex;gap:10px;align-items:flex-start}
    off - the page sizes them from what is in them and a hand-drag would fight
    that. The min-width is what stops the translation box being squeezed beside
    its button: below it the row wraps the button under the box instead. */
-/* The translation is the question box: same widget, same width, same growth -
-   see the shared rule above. Its action sits at the FRONT as a small angled
-   arrow (the send glyph turned 45 degrees, pointing top-right) instead of the
-   up-arrow on the right, and the row wraps the box under it when both do not
-   fit. Nothing else is drawn around it: the box is the box. */
+/* The translation row mirrors the ask row - the box, then the send control,
+   then its own voice control - with one extra mark in FRONT of the box: a small
+   angled arrow, pointing top-right, that reads as "this is the question above,
+   in English". The mark is not a control; see .trmark. Nothing is drawn around
+   the row: the box is the box. */
 .trrow{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
-button.transsend svg{transform:rotate(45deg)}
+/* The mark in front of the translation is NOT a control: it says "this box is
+   the English of the question above", and nothing else. It is the send arrow's
+   own glyph turned to point top-right, dim and small, and it is hidden from
+   screen readers because the box and its send button already name themselves. */
+.trmark{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:44px;color:var(--dim);user-select:none}
+.trmark svg{width:13px;height:13px;transform:rotate(45deg)}
 #trslot{margin-top:10px}
 details{margin-top:5px}
 details summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
@@ -359,7 +365,7 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
     <button id="go" type="submit" class="sendbtn"></button>
     <!-- The voice control is its own icon: the name lives on the aria-label and
          the tooltip, not on the page. -->
-    <button type="button" id="mic" class="mic" title="Ask by voice" aria-label="Ask by voice"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg></button>
+    <button type="button" id="mic" class="mic" title="Ask by voice" aria-label="Ask by voice"></button>
   </form>
   <div id="trslot" class="hidden"></div>
   <div id="status" class="status"></div>
@@ -430,6 +436,8 @@ var I18N = {
     voiceFailed: 'voice input failed: ',
     voiceNoStart: 'voice input could not start: ',
     voiceUnsupported: 'this browser has no speech recognition - type the question instead',
+    stopListening: 'stop listening',
+    voiceEnglish: 'Dictate the English text',
     waitingFindings: 'waiting for the findings...',
     readingFindings: 'reading the findings...',
     writingAnswer: 'writing the answer...',
@@ -605,6 +613,8 @@ var I18N = {
     voiceFailed: 'la saisie vocale a échoué : ',
     voiceNoStart: 'la saisie vocale n\u2019a pas pu démarrer : ',
     voiceUnsupported: 'ce navigateur ne gère pas la reconnaissance vocale — tapez la question',
+    stopListening: 'arrêter l\u2019écoute',
+    voiceEnglish: 'Dicter le texte anglais',
     waitingFindings: 'en attente des constats...',
     readingFindings: 'lecture des constats...',
     writingAnswer: 'rédaction de la réponse...',
@@ -874,13 +884,25 @@ function paintSend(btn, label) {
   btn.title = label;
 }
 
+// The microphone is the second icon-only control and it is drawn the same way:
+// one shape, injected once, the name on the aria-label and the tooltip. The page
+// carries two of them now - the question's, which listens in the page's language,
+// and the translation's, which listens in English because that box holds English.
+var MIC_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg>';
+function paintMic(btn, label) {
+  if (!btn) return;
+  if (!btn.firstChild) btn.innerHTML = MIC_ICON;
+  btn.setAttribute('aria-label', label);
+  btn.title = label;
+}
+
 function applyLang() {
   document.documentElement.lang = LANG;
   var np = $('#navparse'); if (np) np.textContent = t('navparse');
   var wk = $('#wikinav'); if (wk) wk.textContent = t('wikiNav');
   var q = $('#q'); if (q) q.setAttribute('placeholder', t('placeholder'));
   var go = $('#go'); if (go) paintSend(go, t('ask'));
-  var mb = $('#mic'); if (mb) { mb.title = t('voice'); mb.setAttribute('aria-label', t('voice')); }
+  var mb = $('#mic'); if (mb) paintMic(mb, t('voice'));
   var ls = $('#lang'); if (ls) ls.setAttribute('title', t('langTitle'));
   var it = $('#introtext'); if (it) it.innerHTML = t('intro');
   var rt = $('#retention'); if (rt) rt.textContent = t('retention');
@@ -1051,22 +1073,35 @@ function translationCard(tr) {
   // Same widget as the question box, so the same growth: it adapts while the
   // reader corrects a name, not only when the card is first drawn.
   ta.addEventListener('input', growTranslation);
-  // The same send control as the main ask, moved to the front and turned 45
-  // degrees: the glyph is the action, the name is on the aria-label.
-  var btn = el('button', 'sendbtn transsend');
-  btn.type = 'button';
-  paintSend(btn, t('translationButton'));
-  btn.addEventListener('click', function () {
+  // The mark in front is a mark, not a control: no click, no target, no name.
+  var mark = el('span', 'trmark');
+  mark.innerHTML = SEND_ICON;
+  mark.setAttribute('aria-hidden', 'true');
+  // The buttons mirror the ask row's: the same send control, then a voice button
+  // of its own. The send is the up arrow, like the question's - the angled arrow
+  // is the mark in front, not this one.
+  var send = el('button', 'sendbtn');
+  send.type = 'button';
+  paintSend(send, t('translationButton'));
+  send.addEventListener('click', function () {
     var text = (ta.value || '').trim();
     if (text.length < 3) { setStatus(t('translationTooShort'), 'err'); return; }
     $('#q').value = text;
     growQuestion();
     ask({ question: text, english: true });
   });
-  // The ask row's shape, with the arrow in front: the box takes the width.
+  // This box holds English - the translation the pipeline actually ran - so its
+  // microphone listens in English whatever language the page is in.
+  var mic = el('button', 'mic');
+  mic.type = 'button';
+  paintMic(mic, t('voiceEnglish'));
+  wireVoice(mic, ta, function () { return 'en-GB'; }, growTranslation);
+  // The ask row's shape, with the mark in front: the box takes the width.
   var row = el('div', 'trrow');
-  row.appendChild(btn);
+  row.appendChild(mark);
   row.appendChild(ta);
+  row.appendChild(send);
+  row.appendChild(mic);
   return row;
 }
 
@@ -1074,12 +1109,16 @@ function translationCard(tr) {
 // header - not in the results. It is the English the pipeline actually ran, and
 // the correction the reader types is the next ask. Rendered once per question
 // rather than on every findings event, so an edit is not wiped mid-run.
+// An empty translation draws nothing: a correction box with nothing to correct
+// is worse than no box, and the translate stage can come back empty when the
+// route drops a call.
 function renderTranslation(state) {
   var slot = $('#trslot');
   if (!slot) return;
   slot.textContent = '';
-  if (!state || !state.translation) { slot.classList.add('hidden'); return; }
-  slot.appendChild(translationCard(state.translation));
+  var tr = state && state.translation;
+  if (!tr || !String(tr.translated || '').trim()) { slot.classList.add('hidden'); return; }
+  slot.appendChild(translationCard(tr));
   slot.classList.remove('hidden');
   // Grown once the card is visible: a hidden box reports no scrollHeight.
   growTranslation();
@@ -2469,24 +2508,21 @@ function show(j) { showInto(startResult(j.lang), j); }
 // mangles proper nouns - Wracks, Victrix, Fulgurite - and a rules question that
 // names the wrong unit retrieves the wrong rule, so the text is left in the box
 // to be corrected first.
-(function voice() {
+function wireVoice(mic, box, locale, grow) {
+  if (!mic || !box) return;
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var mic = document.getElementById('mic');
-  if (!mic) return;
-
   var rec = null;
   var listening = false;
   var base = '';
 
-  // The microphone listens in the language the page is in: one switch, not two.
-  function speechLocale() {
-    return LANG === 'fr' ? 'fr-FR' : 'en-GB';
-  }
+  // Each control restores its own name when it stops, so the translation's
+  // microphone does not come back called "Ask by voice".
+  var idleLabel = mic.getAttribute('aria-label') || t('voice');
 
   function setListening(on) {
     listening = on;
     mic.classList.toggle('on', on);
-    mic.title = on ? 'Stop listening' : t('voice');
+    mic.title = on ? t('stopListening') : idleLabel;
     if (on) setStatus(t('listening'), 'busy');
   }
   function stop() {
@@ -2498,16 +2534,16 @@ function show(j) { showInto(startResult(j.lang), j); }
     if (!SR) { setStatus(t('voiceUnsupported'), 'err'); return; }
     if (listening) { stop(); return; }
     rec = new SR();
-    rec.lang = speechLocale();
+    rec.lang = locale();
     rec.interimResults = true;
     rec.continuous = false;
     rec.maxAlternatives = 1;
-    base = $('#q').value.trim();
+    base = box.value.trim();
     rec.onresult = function (e) {
       var text = '';
       for (var i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
-      $('#q').value = (base ? base + ' ' : '') + text.trim();
-      growQuestion();
+      box.value = (base ? base + ' ' : '') + text.trim();
+      grow();
       setStatus(e.results[e.results.length - 1].isFinal ? t('heard') : t('listening'), 'busy');
     };
     rec.onerror = function (e) {
@@ -2520,13 +2556,18 @@ function show(j) { showInto(startResult(j.lang), j); }
       setListening(false);
     };
     rec.onend = function () {
-      if (listening) setStatus($('#q').value ? t('heard') : t('nothingHeard'), '');
+      if (listening) setStatus(box.value ? t('heard') : t('nothingHeard'), '');
       setListening(false);
     };
     try { rec.start(); setListening(true); }
     catch (e) { setStatus(t('voiceNoStart') + e.message, 'err'); }
   });
-})();
+}
+
+// The question's microphone listens in the language the page is in: one switch.
+wireVoice(document.getElementById('mic'), document.getElementById('q'), function () {
+  return LANG === 'fr' ? 'fr-FR' : 'en-GB';
+}, growQuestion);
 
 // --- asking -----------------------------------------------------------------
 var busy = false;
