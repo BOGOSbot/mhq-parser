@@ -30,6 +30,8 @@ import http from 'http';
 import https from 'https';
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
@@ -342,15 +344,105 @@ if (!Number.isFinite(port) || port <= 0) {
 const MAX_BODY = 64 * 1024;
 const MAX_FILE_BODY = 32 * 1024 * 1024;
 
-function send(res, status, body, type) {
-  res.writeHead(status, {
-    'Content-Type': type || 'application/json; charset=utf-8',
-    'Content-Length': Buffer.byteLength(body),
-    'Cache-Control': 'no-store',
-  });
-  res.end(body);
+// --- delivery: compression, validators, and the icon ------------------------
+// The rules page is 140 KB of HTML and every wiki record is a page plus a
+// stylesheet: a phone should not pay for that on every visit. Two things do the
+// work - the body is compressed when the client offers it, and every cacheable
+// response carries an ETag so a repeat visit costs a 304 rather than the body.
+//
+// The ask endpoint does NOT come through this helper: it STREAMS. A stream that
+// arrives all at once is a regression the reader can see, because the page counts
+// seconds while it waits, so that response is left exactly as it was.
+const REQ_OF = new WeakMap();
+const COMPRESS_MIN = 512;      // below this the framing costs more than it saves
+const COMPRESSIBLE = /^(?:text\/|application\/(?:json|xml|javascript)|image\/svg\+xml)/;
+// 16x16, an ICO holding a PNG. Every fresh tab asks for this and used to get a 404.
+const ICON = Buffer.from('AAABAAEAEBAAAAEAIABhAAAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAAQAAAAEAgGAAAAH/P/YQAAAChJREFUeNpjyFvx7z8lmAFE8AuKkYUHqQEiUmp48agBI8OAIZqUKcEAWaOsmOgvCt0AAAAASUVORK5CYII=', 'base64');
+
+// Brotli first: on this server's own text it is the smallest of the three by a
+// wide margin (140,552 bytes of /rules to ~1,061 against gzip's ~1.4 KB), and a
+// browser that offers brotli has offered it for years.
+function pickEncoding(req) {
+  const a = String((req && req.headers && req.headers['accept-encoding']) || '');
+  if (/(?:^|[,\s])br(?:[;\s,]|$)/.test(a)) return 'br';
+  if (/(?:^|[,\s])gzip(?:[;\s,]|$)/.test(a)) return 'gzip';
+  return '';
 }
-const json = (res, status, obj) => send(res, status, JSON.stringify(obj));
+function etagOf(buf) {
+  return '"' + crypto.createHash('sha1').update(buf).digest('base64').replace(/[^A-Za-z0-9]/g, '').slice(0, 27) + '"';
+}
+// Compressed bodies are content-addressed and remembered: the ETag is a hash of
+// the bytes, so a hit cannot be for different content. The rules page takes ~0.6 s
+// to brotli at quality 11 (35,545 bytes against gzip's 41,521), which is worth
+// paying ONCE per content change - a repeat visit is a memo hit or a 304. Bounded
+// because the wiki render is 6,705 pages and every one of them has its own body.
+const COMPRESSED = new Map();
+const COMPRESS_CACHE_MAX = 64;
+function compressedBody(buf, enc, tag) {
+  const key = tag + ':' + enc;
+  const hit = COMPRESSED.get(key);
+  if (hit) return hit;
+  const out = enc === 'br'
+    ? zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11 } })
+    : zlib.gzipSync(buf, { level: 9 });
+  if (COMPRESSED.size >= COMPRESS_CACHE_MAX) COMPRESSED.delete(COMPRESSED.keys().next().value);
+  COMPRESSED.set(key, out);
+  return out;
+}
+
+function matchesEtag(req, tag) {
+  const raw = String((req && req.headers && req.headers['if-none-match']) || '');
+  if (!raw) return false;
+  return raw.split(',').some(x => {
+    const t = x.trim().replace(/^W\//, '');
+    return t === '*' || t === tag.replace(/^W\//, '');
+  });
+}
+
+// The cache policy, and there are exactly two:
+//   revalidate (the default) - the bytes for a URL change only with the ETag, so
+//     the body is stored and validated rather than re-sent: no-cache + ETag. The
+//     HTML (/, /rules), the wiki render and its stylesheet.
+//   no-store - an answer computed FOR one request and time-varying, where a
+//     reused copy would be wrong rather than stale: /health (route counters that
+//     climb), /rules/record, /rules/lookup, /rules/labels and the archive JSON.
+//     They are small, so re-sending one costs less than a validator round trip.
+function send(res, status, body, type, opts) {
+  const o = opts || {};
+  const req = REQ_OF.get(res);
+  const buf = Buffer.isBuffer(body) ? body : Buffer.from(String(body == null ? '' : body), 'utf8');
+  const contentType = type || 'application/json; charset=utf-8';
+  const compressible = COMPRESSIBLE.test(contentType);
+  const headers = { 'Content-Type': contentType };
+  // Vary on every compressible response, compressed or not: the same URL has two
+  // representations once Accept-Encoding is read, and a cache that forgets it
+  // hands a br body to a client that asked for gzip.
+  if (compressible) headers['Vary'] = 'Accept-Encoding';
+  let tag = '';
+  if (o.cache === 'no-store') {
+    headers['Cache-Control'] = 'no-store';
+  } else {
+    headers['Cache-Control'] = o.maxAge || 'no-cache';
+    tag = etagOf(buf);
+    headers['ETag'] = tag;
+    if (req && (req.method === 'GET' || req.method === 'HEAD') && matchesEtag(req, tag)) {
+      res.writeHead(304, headers);
+      return res.end();
+    }
+  }
+  const enc = compressible ? pickEncoding(req) : '';
+  if (enc && buf.length >= COMPRESS_MIN) {
+    const out = compressedBody(buf, enc, tag || etagOf(buf));
+    headers['Content-Encoding'] = enc;
+    headers['Content-Length'] = out.length;
+    res.writeHead(status, headers);
+    return res.end(out);
+  }
+  headers['Content-Length'] = buf.length;
+  res.writeHead(status, headers);
+  return res.end(buf);
+}
+const json = (res, status, obj) => send(res, status, JSON.stringify(obj), undefined, { cache: 'no-store' });
 const fail = (res, status, message) => json(res, status, { error: message });
 
 function readBody(req, max = MAX_BODY) {
@@ -1379,9 +1471,18 @@ const server = http.createServer(async (req, res) => {
   let u;
   try { u = new URL(req.url, 'http://localhost'); }
   catch { return fail(res, 400, 'bad request line'); }
+  // send() reads the request through this: Accept-Encoding decides the encoding,
+  // If-None-Match decides whether the body goes out at all. Attached here, once,
+  // rather than threaded through every one of send's call sites.
+  REQ_OF.set(res, req);
 
   if (req.method === 'GET' && (u.pathname === '/' || u.pathname === '/index.html')) {
     return send(res, 200, readIndex(), 'text/html; charset=utf-8');
+  }
+  // The icon a fresh tab asks for. It used to 404 on every page load; now it is
+  // 119 bytes and cached for a week, so it stops being a request at all.
+  if (req.method === 'GET' && (u.pathname === '/favicon.ico' || u.pathname === '/favicon.png')) {
+    return send(res, 200, ICON, 'image/x-icon', { maxAge: 'public, max-age=604800' });
   }
   if (req.method === 'GET' && u.pathname === '/rules') {
     try { return send(res, 200, readRules(), 'text/html; charset=utf-8'); }
