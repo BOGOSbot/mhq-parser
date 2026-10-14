@@ -44,6 +44,7 @@ One JSON line per question (`src/rules-traces.mjs`):
 | `judgeDisagreement`, `judgeDowngrade`, `judgeDissentFrom` | whether the two disagreed, whether the dissent was allowed to downgrade the answer, and which judge it came from |
 | `answer` | the cited prose the reader saw |
 | `vote` | `up` or `down`, written after the fact by the thumb on the answer - absent until someone votes, and one vote per trace |
+| `labels` | the rerank examples: `{ positive: [record ids], negative: [record ids] }`, the green caret and the x - absent until the reader taps |
 | `steps`, `elapsedMs` | per-stage timing |
 | `unresolved`, `escalated`, `attempts` | how the search ended |
 
@@ -57,6 +58,23 @@ on top of the saved record, never the signal itself: a vote for a question whose
 line has been swept is dropped (`{ saved: false }`) rather than starting a
 second store. It adds no identifier: it is one value beside the question's random
 id, and it is stored with the question, apart from the corpus.
+
+## The caret and the x
+
+The findings list is a surface the reader reranks: the green caret puts a record
+first and the x ignores it. Both are labelled examples, and both are written
+**into the question's own trace** - the dataset's gold slice - through
+`POST /rules/labels`, which rides the same find-by-id patch as the thumb and the
+pick: one store, one line, no second mechanism. A caret is a `positive` for a
+record id and an x a `negative`. The sets are the reader's current state and not
+an action log, so a second tap replaces the first and a record is positive or
+negative, never both (the caret wins); taking every mark back clears the field. A
+record id the trace never showed is **refused** rather than recorded - a mark can
+only name a passage the reader was actually given - and a mark for a swept or
+unknown question is dropped like a vote. Nothing in it identifies the reader: it
+is record ids beside the question's random id. It is not the pick: the pick
+asserts that a record answered the question, the caret says where in the list the
+reader put it and the x says it should not carry the second answer.
 
 ## Where it is written
 
@@ -108,7 +126,9 @@ same, and `--classify` counts the retained traces by class. A trace the reader
 marked prints `answeredBy: <record id>` or `answeredNone: true` beside the thumb -
 an assertion and not the rerank's kept set, a candidate for the expectation and
 never the label, so `--promote` still takes its `--expect` and `--kind` from the
-human.
+human. The harvest also prints the trace's rerank marks as `+record` (the caret,
+a positive) and `-record` (the x, a negative), evidence for an expectation and
+never the expectation itself.
 
 `--list` shows every trace with its question, when it was asked, the language, the
 setting, the writer's mode, how many findings it carries and the first few record

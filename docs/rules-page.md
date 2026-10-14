@@ -311,9 +311,28 @@ matched - the words it matched.
 - The display sorts each half by that rank - ranks are per-half positions, so
   interleaving two halves would invent an order - shows the top five overall
   whole above the prose, and puts the rest behind *more findings*.
+- **The findings are hero cards, and the reader reranks them.** Each card is the
+  record's title and one line of it, with three controls: a green caret that puts
+  the record first, an `x` that ignores it, and a `<>` that opens the whole chunk
+  with the provenance behind it - the leg that found it, its rank, its rank score
+  and the words the lexical leg matched. The judge's cited passages and the
+  reader's carets both resort the list, and the reader wins: the careted records
+  first (newest first), then the cited ones, then rank order. An ignored record
+  sinks to the end and is dimmed but never leaves the page, because the evidence
+  behind a verdict stays readable even when the reader disagrees with it. The
+  caret and the `x` are the page's two labelled examples - a positive for a record
+  id and a negative - written into the question's own trace
+  (`docs/question-traces.md`), and the manual rerun at the foot answers again on
+  what is left, in the caret's order, through the task-21 override path.
+- **A finding's links render from the payload, never from its text.** The record
+  carries `links: [{ to, title, kind, anchor, url }]`; the server resolves each
+  target against the corpus, drops one the corpus does not hold, and the page
+  draws a chip per link whose hover or focus preview is built from that target's
+  own title and url. The `- section: X` lines the wiki build writes into the text
+  are never parsed: one source, or the two drift.
 - **The evidence behind a verdict is never collapsed.** The list shown whole is
   the union of the top five by rank and the passages the judge names in its
-  verdict, in rank order, the cited ones badged (`cité par le juge`), with no
+  verdict, in the rerank's order, the cited ones badged (`cité par le juge`), with no
   duplicate when a cited passage is already in the top five. This is why: the
   ability that answered "Can dragons with fuegan arrive from reserves in melta
   range?" sat at rank 15, inside the collapse, while the writer cited it - a
@@ -323,7 +342,7 @@ matched - the words it matched.
 - **A verdict links to its evidence.** The judge's `passages` are the same links
   the answer's `[n]` markers are: each one opens the passage popup from the
   payload. A reader who doubts a verdict can go and read what it was made from.
-- A lexical finding outlines the terms it matched, in the list and in the
+- A lexical finding outlines the terms it matched, in the dev view and in the
   passage. The vector leg's similarity is shown as a **rank score**: it orders
   passages, and it is not a confidence that one answers the question. The judge
   is that, and it is on the page above them.
