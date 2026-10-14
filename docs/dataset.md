@@ -290,6 +290,18 @@ node tests/generate-questions.mjs --limit 3460 --concurrency 3 \
   against the sample's 11.9: the first hundred records ARE the sample's, with the
   same prompt. Read a rate only after the cached records are behind it.
 
+**The operational fact, for whoever calls this gateway next:** the free route returns
+**empty bodies** under load; an empty body is fast and silent, so a fast rate can mean
+failure rather than throughput; and a retry that re-sends immediately just rejoins the
+burst, so the backoff has to be serial. Measured: under the full run's own load, 8 of
+19 records came back empty on their first call and the in-call retry could not save
+them (3 stayed empty); with the run paused and the same calls made one at a time, 7 of
+13 calls still returned empty, but the three-attempt retry recovered every one - 0 of
+10 records lost, no sweep needed. The empty body is the CALL's property; what overlap
+changes is whether a retry can still land. A serial run is therefore the predictable
+shape (~8.5 s/record, no sweep), and the sweep is the safety net for the concurrent
+one.
+
 ### The fourth sample: the naming mix lands (the population)
 
 The last nudge: the prompt allows ONE OR TWO of the three shapes to name the rule.
