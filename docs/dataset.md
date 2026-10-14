@@ -284,6 +284,11 @@ node tests/generate-questions.mjs --limit 3460 --concurrency 3 \
   separate pass over the finished file (`--retrieval-only`).
 - A record that produced nothing (an empty burst the sweep could not recover) is
   simply not in the output, so the next run retries it.
+- **The gateway serves an identical prompt from its cache**, so re-running a sample
+  is nearly free and fast, and a resumed run's `calls` figure understates the work
+  actually done. It is why the first checkpoint of the full run read 3.4 s/record
+  against the sample's 11.9: the first hundred records ARE the sample's, with the
+  same prompt. Read a rate only after the cached records are behind it.
 
 ### The fourth sample: the naming mix lands (the population)
 
