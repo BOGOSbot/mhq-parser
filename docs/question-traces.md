@@ -2,7 +2,8 @@
 
 What the /rules page keeps about a question, where it is written, and why the
 writer is off until the reader has been told. The page is described in
-`docs/rules-page.md`; the corpus it searches in `docs/corpus-storage.md`.
+`docs/rules-page.md`; the corpus it searches in `docs/corpus-storage.md`; the
+training set these traces are harvested into in `docs/dataset.md`.
 
 ## What is kept, and what is not
 

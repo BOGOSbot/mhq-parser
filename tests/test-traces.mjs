@@ -278,5 +278,61 @@ t('and a literal one', classifyTrace({ question: 'What is the Melta rule?', find
 t('and a cross-source one', classifyTrace({ question: 'how does that detachment work', findings: [{ id: 'x' }], signals: { firstPerson: false, termMatch: false, sources: ['faction-sm'] } }), 'cross-source');
 t('and an out-of-corpus one', classifyTrace({ question: 'q', findings: [], signals: {} }), 'out-of-corpus');
 
+// --- the dataset: one record per trace, the bank as the eval split -----------
+// The schema is the vault note's (notes/mhq-dataset.md). The tests here pin the
+// two things that would quietly poison a training set: where each label came from
+// (gold_how) and that an id the corpus no longer holds is REPORTED, never kept.
+import { bankRecord, buildDataset, citedIds, goldFor, negativesFor, rankStats, resolveGroups, sha8, traceRecord } from './build-dataset.mjs';
+
+const LIVE = new Set(['core#A', 'core#B', 'fact#C']);
+t('the cited numbers resolve to the shown findings', citedIds({ findings: [{ n: 1, id: 'core#A' }, { n: 3, id: 'fact#C' }], judge: { cited: [3, 1, 3] } }), ['fact#C', 'core#A']);
+t('an older trace falls back to the answer markers', citedIds({ findings: [{ n: 2, id: 'core#B' }], judge: {}, answer: 'see [2], and [9] does not exist' }), ['core#B']);
+
+t('a caret is one gold group - alternatives, not hops', goldFor({ labels: { positive: ['core#A', 'core#B'], negative: [] } }), { gold: [['core#A', 'core#B']], gold_how: 'caret' });
+t('the answeredBy button is the same reader pick', goldFor({ answeredBy: 'core#A' }), { gold: [['core#A']], gold_how: 'caret' });
+t('and a caret outranks it', goldFor({ answeredBy: 'core#B', labels: { positive: ['core#A'] } }).gold, [['core#A']]);
+t('an up-vote takes the passages the answer rested on', goldFor({ vote: 'up', findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], judge: { cited: [1, 2] } }), { gold: [['core#A', 'core#B']], gold_how: 'vote' });
+t('an unmarked judge citation is marked judge', goldFor({ findings: [{ n: 1, id: 'core#A' }], judge: { cited: [1] } }).gold_how, 'judge');
+t('and no label at all is no gold', goldFor({ findings: [], judge: {} }), { gold: [], gold_how: '' });
+
+t('a dead id leaves its group and is reported', resolveGroups([['core#A', 'gone#D']], LIVE), { groups: [['core#A']], missing: ['gone#D'] });
+t('a group that loses every member is dropped', resolveGroups([['gone#D'], ['core#B']], LIVE), { groups: [['core#B']], missing: ['gone#D'] });
+
+const neg = negativesFor({ labels: { negative: ['fact#C'] }, findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }, { n: 3, id: 'fact#C' }, { n: 4, id: 'gone#D' }] }, ['core#A'], LIVE);
+t('the x comes first, then the rest of what was shown, gold excluded', neg.negatives, ['fact#C', 'core#B']);
+t('a dead finding is reported, never kept', neg.missing, ['gone#D']);
+
+const shaped = traceRecord({ id: 't1', at: '2026-10-14T06:00:00.000Z', lang: 'fr', question: 'Ou est A ?', asked: 'Where is A?', terms: ['A'], answer: 'la reponse', findings: [{ n: 1, id: 'core#A' }], labels: { positive: ['core#A'] } }, LIVE).record;
+t('the record carries the schema', [shaped.id, shaped.lang, shaped.translation, shaped.answer, shaped.gold, shaped.gold_how, shaped.negatives, shaped.source, shaped.at, shaped.split], ['trace/t1', 'fr', 'Where is A?', 'la reponse', [['core#A']], 'caret', [], 'trace', '2026-10-14T06:00:00.000Z', 'train']);
+t('an English question has no translation', traceRecord({ id: 't2', question: 'What is A?', asked: 'What is A?', findings: [] }, LIVE).record.translation, null);
+t('an empty answer is null', traceRecord({ id: 't3', question: 'q', answer: '   ', findings: [] }, LIVE).record.answer, null);
+t('und is read as English', traceRecord({ id: 't4', lang: 'und', question: 'q', findings: [] }, LIVE).record.lang, 'en');
+
+const bankRec = bankRecord({ q: 'What is A?', expect: [['core#A', 'gone#D'], 'core#B'] }, LIVE).record;
+t('a bank entry keeps its groups, through the bank shape', bankRec.gold, [['core#A'], ['core#B']]);
+t('the bank is the eval split, manual, with no answer and no translation', [bankRec.source, bankRec.split, bankRec.gold_how, bankRec.answer, bankRec.translation], ['bank', 'eval', 'manual', null, null]);
+t('an out-of-corpus bank entry has no gold', bankRecord({ q: 'Who is the emperor?', expect: [] }, LIVE).record.gold_how, '');
+t('and a bank id is stable', bankRecord({ q: 'What is A?', expect: ['core#A'] }, LIVE).record.id, 'bank/' + sha8('What is A?'));
+
+const built = buildDataset(
+  [
+    { id: 'g1', at: '2026-10-01T00:00:00.000Z', question: 'What answers A?', findings: [{ n: 1, id: 'core#A' }], labels: { positive: ['core#A'] } },
+    { id: 'q1', at: '2026-10-02T00:00:00.000Z', question: 'a question with no label', findings: [{ n: 1, id: 'core#B' }] },
+  ],
+  [{ q: 'b1', expect: [['core#A']] }, { q: 'b2', expect: [] }],
+  LIVE);
+t('the stats count what the report claims', [built.stats.records, built.stats.with_gold, built.stats.query_only, built.stats.by_split.train, built.stats.by_split.eval], [4, 2, 2, 2, 2]);
+t('and the provenance', built.stats.by_gold_how, { caret: 1, none: 2, manual: 1 });
+t('a negative is not a positive', built.records[1].negatives, ['core#B']);
+t('a gold id the corpus lost turns the record query-only, and is counted', (function () {
+  const b = buildDataset([{ id: 'g2', question: 'lost', findings: [], labels: { positive: ['gone#D'] } }], [], LIVE);
+  return [b.records[0].gold, b.stats.gold_lost_records, b.stats.ids_missing];
+})(), [[], 1, 1]);
+t('the negatives count includes what was shown', buildDataset([{ id: 'n1', question: 'q', findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], judge: { cited: [1] } }], [], LIVE).stats.negatives, 1);
+
+const stats = rankStats([{ rank: 1 }, { rank: 3 }, { rank: null }, { rank: 25 }]);
+t('the rank stats read like the bank eval', [stats.n, stats.hit1, stats.hit5, stats.hit20, stats.found], [4, 1, 2, 2, 3]);
+t('and MRR averages the reciprocal', stats.mrr, (1 + 1 / 3 + 1 / 25) / 4);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

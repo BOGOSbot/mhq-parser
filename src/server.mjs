@@ -879,11 +879,13 @@ async function handleRulesLookup(req, res, u) {
     ok: true,
     found: true,
     tier: hit.tier,
-    // The same finding shape the findings event carries, so the page opens it
-    // with the record view it already has.
+    // The shape the record view reads, and only that: `passage` is the record's
+    // own text, so the truncated `excerpt` the findings list prints is dropped
+    // here rather than sent twice (byte-identical under 600 characters, one
+    // wasted kilobyte above it).
     record: {
       id: f.id, n: 1, set: f.set, source: f.source, faction: f.faction, heading: f.heading,
-      ruleId: f.ruleId, url: f.url, href: f.href, excerpt: f.excerpt, passage: f.text || '',
+      ruleId: f.ruleId, url: f.url, href: f.href, passage: f.text || '',
       rank: 0, leg: '', matchedTerms: [], kind: rec.kind || '',
       links: resolveRecordLinks(rec.links, corpusById()),
     },
