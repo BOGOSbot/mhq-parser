@@ -7,6 +7,9 @@
 <!-- The record card's stylesheet: the same string the wiki render writes as
      card.css, served once for every surface that shows a record. -->
 <link rel="stylesheet" href="/card.css">
+<!-- The wiki shell: the same file the wiki render writes as shell.css, so the
+     top bar and the tree are one asset on both surfaces. -->
+<link rel="stylesheet" href="/wiki/shell.css">
 <style>
 :root{
   --bg:#0f1116; --panel:#161a22; --panel2:#1c212b; --line:#2a3040;
@@ -2711,6 +2714,20 @@ async function ask(over) {
 }
 
 $('#f').addEventListener('submit', function (e) { e.preventDefault(); ask(); });
+
+// The wiki page's box submits to /rules?q=...: one ask implementation, two
+// surfaces. The reader types the question on the record page and it runs here.
+(function askFromQuery() {
+  var m = /[?&]q=([^&]*)/.exec(location.search);
+  if (!m) return;
+  var text = decodeURIComponent(m[1].replace(/\+/g, ' ')).trim();
+  if (text.length < 3) return;
+  var box = $('#q');
+  if (!box) return;
+  box.value = text;
+  growQuestion();
+  ask();
+})();
 document.addEventListener('keydown', function (e) {
   var inRecord = !!(RECORD_STATE && RECORD_STATE.recordId);
   if (e.key === 'Escape') {

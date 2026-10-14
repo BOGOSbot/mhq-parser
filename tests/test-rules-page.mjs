@@ -417,6 +417,7 @@ ok('the question microphone types into the question box in the page language',
   && code.indexOf('speechLocale') === -1);
 ok('the language switch sits in the top bar, not under the question',
   headerHtml.indexOf('id="lang"') !== -1 && headerHtml.indexOf('id="lang"') < headerHtml.indexOf('<form id="f">'));
+ok('the wiki box reaches the ask pipeline', /function askFromQuery\(\)/.test(code) && /\[\?&\]q=\(\[\^&\]\*\)/.test(code) && /box\.value = text;\s*\n\s*growQuestion\(\);\s*\n\s*ask\(\);/.test(code));
 ok('the Fast/Deep control is gone', PAGE.indexOf('id="modes"') === -1 && PAGE.indexOf('button.mode') === -1 && code.indexOf('setMode(') === -1);
 ok('the page asks for the fast settings, the default', /var MODE = 'fast'/.test(code) && /mode: MODE/.test(code));
 // The writer is off by default, so the page draws no answer: no card to wait in,

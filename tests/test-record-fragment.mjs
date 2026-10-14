@@ -121,6 +121,23 @@ async function main() {
     ok('the shell stylesheet does NOT carry the card', fs.readFileSync(path.join(outDir, 'wiki.css'), 'utf8').indexOf('.wcard') === -1);
     const pageSrc = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
     ok('and the ask page links the same asset, with no copy of its own', pageSrc.indexOf('href="/card.css"') !== -1 && pageSrc.indexOf('.wcard-table') === -1);
+    // --- the product shell, one asset for both surfaces -------------------------
+    // The wiki record page and the ask page share the top bar and its CSS: the
+    // markup comes from src/wiki-shell.mjs's topBar() and the stylesheet is the
+    // one shell.css the render writes (served as /wiki/shell.css). Neither copies
+    // the other - that is the drift this replaces.
+    const shellSrc = await import('../src/wiki-shell.mjs');
+    const page874 = fs.readFileSync(path.join(outDir, map[REC]), 'utf8');
+    ok('the record page carries the product top bar', page874.indexOf(shellSrc.topBar({})) !== -1);
+    ok('and links the shared shell stylesheet', page874.indexOf('href="shell.css"') !== -1 && page874.indexOf('href="card.css"') !== -1);
+    ok('and tells the tree which record it is', /window\.WIKI_HERE = \{/.test(page874));
+    t('the render writes the one shell stylesheet', fs.readFileSync(path.join(outDir, 'shell.css'), 'utf8'), shellSrc.SHELL_CSS);
+    const servedShell = await request(port, '/wiki/shell.css');
+    t('and serves it for the ask page', servedShell.status, 200);
+    t('byte for byte', servedShell.body, shellSrc.SHELL_CSS);
+    const askPage = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
+    ok('the ask page links the same asset', askPage.indexOf('href="/wiki/shell.css"') !== -1);
+    ok('and keeps no copy of the shell stylesheet', askPage.indexOf('.wtop{') === -1 && askPage.indexOf('.wrec{') === -1);
     const missing = await request(port, '/rules/record?id=nope&format=html');
     t('an unknown id is still a 404', missing.status, 404);
   } finally {

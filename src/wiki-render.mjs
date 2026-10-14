@@ -18,6 +18,7 @@ import path from 'node:path';
 import { readAllCorpus } from './rules-corpus.mjs';
 import { renderLinks } from './wiki-plan.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
+import { SHELL_CSS, shellHead, topBar } from './wiki-shell.mjs';
 
 const OUT = process.env.WIKI_RENDER_DIR || path.join('workspace', 'wiki-render');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -56,6 +57,14 @@ function page(title, nav, body, head) {
   return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n<link rel="stylesheet" href="wiki.css">\n' + (head || '') + '</head>\n<body>\n<header><nav>' + nav + '</nav></header>\n<main>\n' + body + '\n</main>\n</body>\n</html>\n';
 }
 const NAV = '<a href="index.html">Index</a><a href="search.html">Search</a><a href="anomalies.html">Reading aids</a>';
+
+// A record page in the product shell. The top bar and the CSS are the shared
+// asset (src/wiki-shell.mjs), not a copy; the page carries its own record id and
+// area so the Wiki control can open the tree where the reader is.
+function productPage(title, body, r) {
+  const here = JSON.stringify({ id: r.id, heading: r.heading || '' }).replace(/</g, '\\u003c');
+  return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n' + shellHead({}) + '</head>\n<body class="wpage">\n' + body + '\n<script>window.WIKI_HERE = ' + here + ';</script>\n</body>\n</html>\n';
+}
 
 const all = readAllCorpus();
 const byId = new Map(all.map(r => [r.id, r]));
@@ -126,6 +135,9 @@ fs.writeFileSync(path.join(OUT, 'wiki.css'), CSS);
 // The card's own CSS, from the one export in src/wiki-cards.mjs. Served as
 // /wiki/card.css (offline: a relative link) and as /card.css for the ask page.
 fs.writeFileSync(path.join(OUT, 'card.css'), CARD_CSS);
+// The product shell's stylesheet, from the one export in src/wiki-shell.mjs. The
+// ask page links the same file as /wiki/shell.css: one asset, two surfaces.
+fs.writeFileSync(path.join(OUT, 'shell.css'), SHELL_CSS);
 
 const counts = {};
 for (const r of records) counts[r.kind || '(none)'] = (counts[r.kind || '(none)'] || 0) + 1;
@@ -210,22 +222,30 @@ for (const r of records) {
     return target && target.id !== r.id ? '<a href="' + esc(pageOf.get(target.id)) + '">' + esc(c) + '</a>' : esc(c);
   }).join(' &rsaquo; ');
   const back = (reverse.get(r.id) || []).slice(0, 40);
+  // The product shell: the top bar the ask page has, over the record itself. The
+  // developer furniture (the link block, the reading aids) moves into one row of
+  // links at the foot, so nothing is lost and nothing is in the reader's way.
   const body = [
-    '<p class="crumb">' + (crumbHtml || '<a href="index.html">index</a>') + '</p>',
-    '<h1>' + esc(crumbs.length ? crumbs[crumbs.length - 1] : (r.heading || r.id)) + '</h1>',
-    '<p class="meta">' + esc(r.id) + ' &middot; ' + esc(r.kind) + ' &middot; ' + esc(r.source) + ' &middot; ' + r.chars + ' chars</p>',
+    topBar({}),
+    '<main class="wrec">',
+    '<p class="wcrumb">' + (crumbHtml || '<a href="index.html">index</a>') + '</p>',
+    '<h1 class="wtitle">' + esc(crumbs.length ? crumbs[crumbs.length - 1] : (r.heading || r.id)) + '</h1>',
+    '<p class="wmeta">' + esc(r.id) + ' &middot; ' + esc(r.kind) + ' &middot; ' + esc(r.source) + ' &middot; ' + r.chars + ' chars</p>',
     // The record body: the structured card for a datasheet or unitrules record,
     // the flat text for everything else (and for the 111 card records whose CSV
     // row is missing, which fall back to the same text).
     recordBody(r, { corpora, index: cardIdx, href: id => pageOf.get(id) || '' }),
-    (r.onlyText.length || r.onlyArray.length) ? '<p class="num missing">This page\'s text and its link array disagree: ' + r.onlyText.length + ' link(s) only in the text, ' + r.onlyArray.length + ' only in the array.</p>' : '',
     '<h2>Links (' + r.links.length + ')</h2>',
     linkChips(r.links, true),
-    r.links.length ? '<h2>The corpus\'s own link block</h2><pre class="block">' + esc(r.arrayBlock) + '</pre>' : '',
     r.parent && byId.has(r.parent) ? '<p class="num">Parent: <a href="' + esc(pageOf.get(r.parent)) + '">' + esc(byId.get(r.parent).heading) + '</a></p>' : '',
     back.length ? '<h2>Linked from (' + back.length + ')</h2><ul class="chips">' + back.map(id => '<li><a href="' + esc(pageOf.get(id)) + '">' + esc(byId.get(id).heading || id) + '</a></li>').join('') + '</ul>' : '',
+    (r.onlyText.length || r.onlyArray.length) ? '<p class="num missing">This page\'s text and its link array disagree.</p>' : '',
+    r.links.length ? '<h2>The corpus\'s own link block</h2><pre class="block">' + esc(r.arrayBlock) + '</pre>' : '',
+    '<p class="wfoot">' + esc(r.id) + ' &middot; ' + esc(r.kind) + ' &middot; ' + esc(r.source) + '</p>',
+    '<div class="wdev"><a href="index.html">Index</a><a href="search.html">Search</a><a href="anomalies.html">Reading aids</a></div>',
+    '</main>',
   ].filter(Boolean).join('\n');
-  fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), page(r.heading || r.id, NAV, body, '<link rel="stylesheet" href="card.css">'));
+  fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), productPage(r.heading || r.id, body, r));
   written++;
 }
 // The record -> page map, so a server can link a finding's record to its page
