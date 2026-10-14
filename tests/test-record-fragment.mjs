@@ -48,8 +48,12 @@ function run(cmd, args, env) {
   });
 }
 
-async function boot(port) {
-  const child = spawn(process.execPath, [path.join(ROOT, 'src', 'server.mjs'), '--port', String(port), '--host', '127.0.0.1'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+async function boot(port, wikiDir) {
+  const env = Object.assign({}, process.env);
+  // The server must serve the render THIS test just made, not whatever is in the
+  // live workspace/wiki-render: the two must be the same bytes to be compared.
+  if (wikiDir) env.WIKI_RENDER_DIR = wikiDir;
+  const child = spawn(process.execPath, [path.join(ROOT, 'src', 'server.mjs'), '--port', String(port), '--host', '127.0.0.1'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '';
   child.stdout.on('data', d => { out += String(d); });
   child.stderr.on('data', d => { out += String(d); });
@@ -83,7 +87,7 @@ async function main() {
   t('the static render runs for the named records', rendered.code, 0);
   const map = JSON.parse(fs.readFileSync(path.join(outDir, 'map.json'), 'utf8'));
 
-  const child = await boot(port);
+  const child = await boot(port, outDir);
   try {
     for (const id of [REC, FALLBACK]) {
       const file = map[id];
@@ -129,6 +133,7 @@ async function main() {
     const shellSrc = await import('../src/wiki-shell.mjs');
     const page874 = fs.readFileSync(path.join(outDir, map[REC]), 'utf8');
     ok('the record page carries the product top bar', page874.indexOf(shellSrc.topBar({})) !== -1);
+    ok('and knows which area it is in, so the popup opens there', /WIKI_HERE = \{[^}]*"area":"Adeptus Custodes"/.test(page874));
     ok('and links the shared shell stylesheet', page874.indexOf('href="shell.css"') !== -1 && page874.indexOf('href="card.css"') !== -1);
     ok('and tells the tree which record it is', /window\.WIKI_HERE = \{/.test(page874));
     t('the render writes the one shell stylesheet plus the tree', fs.readFileSync(path.join(outDir, 'shell.css'), 'utf8'), shellSrc.SHELL_CSS + '\n' + (await import('../src/wiki-toc.mjs')).TOC_CSS);
@@ -139,20 +144,35 @@ async function main() {
     ok('the ask page links the same asset', askPage.indexOf('href="/wiki/shell.css"') !== -1);
     ok('and keeps no copy of the shell stylesheet', askPage.indexOf('.wtop{') === -1 && askPage.indexOf('.wrec{') === -1);
     // --- the two-pane tree, one implementation for both surfaces ---------------
+    // The index is what a record page loads before the popup opens; each area's
+    // tree is its own file, loaded when that area is first opened.
     const tocSrc = await import('../src/wiki-toc.mjs');
-    const dataJs = fs.readFileSync(path.join(outDir, 'shell-data.js'), 'utf8');
-    const tree = JSON.parse(dataJs.replace(/^window\.WIKI_TOC = /, '').replace(/;$/, ''));
-    t('the tree is built from the corpus', Array.isArray(tree.areas) && tree.areas.length > 20, true);
-    t('with Core Rules first and counted', [tree.areas[0].n, tree.areas[0].c > 0], ['Core Rules', true]);
-    ok('every area carries groups and pages of its own', tree.areas.every(a => a.g.length && a.g.every(g => g.c > 0 && g.p.length === g.c)));
-    ok('and every page carries the id and the file the dialog needs', tree.areas.every(a => a.g.every(g => g.p.every(p => p.i && typeof p.f === 'string'))));
+    const indexJs = fs.readFileSync(path.join(outDir, 'shell-data.js'), 'utf8');
+    const index = JSON.parse(indexJs.replace(/^window\.WIKI_TOC = /, '').replace(/;$/, ''));
+    ok('the index is small: a page loads it before the popup opens', indexJs.length < 4096);
+    t('25 areas: Core Rules and the 24 factions', index.areas.length, 25);
+    t('and they partition the whole corpus', index.areas.reduce((n, a) => n + a.c, 0), 6705);
+    t('Core Rules first', index.areas[0].n, 'Core Rules');
+    ok('Core Rules is down to the rules-side records', index.areas[0].c < 2000);
+    const areaFile = (name) => { const a = index.areas.find(x => x.n === name); return { a, data: JSON.parse(fs.readFileSync(path.join(outDir, a.f), 'utf8').replace(/^window\.WIKI_TOC_AREA = /, '').replace(/;$/, '')) }; };
+    const cust = areaFile('Adeptus Custodes');
+    t('a faction carries its own groups, not one flat list', cust.data.g.map(g => g.n).sort(), ['Datasheets', 'Detachments', 'Enhancements', 'Stratagems']);
+    const custIds = cust.data.g.reduce((all, g) => all.concat(g.p.map(p => p.i)), []);
+    ok('THE FIX: a Custodes stratagem files under Adeptus Custodes', custIds.indexOf('stratagem#000008931007') !== -1);
+    ok('and so does its enhancement', custIds.indexOf('enhancement#000009273002') !== -1);
+    ok('every group counts its own pages', cust.data.g.every(g => g.c === g.p.length && g.c > 0));
+    ok('and every page carries the id and the file the tree opens', cust.data.g.every(g => g.p.every(p => p.i && typeof p.f === 'string')));
+    const core = areaFile('Core Rules');
+    ok('the rules-side records stay there, grouped by kind', core.data.g.length >= 4 && core.data.g.some(g => /Rules|rules/.test(g.n)));
     const shellJs = await request(port, '/wiki/shell.js');
     t('the behaviour is served for the ask page', shellJs.status, 200);
     t('and is the one implementation', shellJs.body, tocSrc.TOC_JS);
-    t('the data is served too', (await request(port, '/wiki/shell-data.js')).body, dataJs);
-    ok('the two-tap rule: a group opens, a page navigates', /data-group/.test(tocSrc.TOC_JS) && /data-page/.test(tocSrc.TOC_JS) && /opened\[area\.n \+ '\|' \+ gr\.getAttribute\('data-group'\)\] = true; render\(\); return; \}/.test(tocSrc.TOC_JS) && /location\.href = f/.test(tocSrc.TOC_JS));
+    t('the index is served too', (await request(port, '/wiki/shell-data.js')).body, indexJs);
+    t('and an area file loads on demand', (await request(port, '/wiki/' + cust.a.f)).body, fs.readFileSync(path.join(outDir, cust.a.f), 'utf8'));
+    ok('the two-tap rule: a group opens, a page navigates', /data-group/.test(tocSrc.TOC_JS) && /data-page/.test(tocSrc.TOC_JS) && /opened\[entry\.n \+ '\|' \+ gr\.getAttribute\('data-group'\)\] = true; render\(\); return; \}/.test(tocSrc.TOC_JS) && /location\.href = f/.test(tocSrc.TOC_JS));
     ok('and a group is never collapsed by a tap', /opened\[[^\]]*\] = true/.test(tocSrc.TOC_JS) && !/opened\[[^\]]*\] = false/.test(tocSrc.TOC_JS) && tocSrc.TOC_JS.indexOf('delete opened') === -1);
     ok('the rail collapses to the current-area chip', /wrail-off/.test(tocSrc.TOC_CSS) && /data-rail-open/.test(tocSrc.TOC_JS) && /wchip on/.test(tocSrc.TOC_JS));
+    ok('a record page also loads only one area file, on demand', /s\.src = BASE \+ entry\.f/.test(tocSrc.TOC_JS) && /if \(tree\(\)\) \{ cb\(\); return; \}/.test(tocSrc.TOC_JS));
     const home = await request(port, '/wiki/');
     t('a cold /wiki/ serves the product', home.status, 200);
     ok('with the top bar', home.body.indexOf('class="wtop"') !== -1);

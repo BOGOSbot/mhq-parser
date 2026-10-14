@@ -19,7 +19,7 @@ import { readAllCorpus } from './rules-corpus.mjs';
 import { renderLinks } from './wiki-plan.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
 import { SHELL_CSS, shellHead, topBar } from './wiki-shell.mjs';
-import { TOC_CSS, TOC_JS, tocData } from './wiki-toc.mjs';
+import { TOC_CSS, TOC_JS, tocData, tocIndex } from './wiki-toc.mjs';
 import { cardTables } from './unit-card.mjs';
 
 const OUT = process.env.WIKI_RENDER_DIR || path.join('workspace', 'wiki-render');
@@ -64,7 +64,7 @@ const NAV = '<a href="index.html">Index</a><a href="search.html">Search</a><a hr
 // asset (src/wiki-shell.mjs), not a copy; the page carries its own record id and
 // area so the Wiki control can open the tree where the reader is.
 function productPage(title, body, r, openArea) {
-  const here = r ? JSON.stringify({ id: r.id, heading: r.heading || '' }).replace(/</g, '\\u003c') : '';
+  const here = r ? JSON.stringify({ id: r.id, heading: r.heading || '', area: r.area || '' }).replace(/</g, '\\u003c') : '';
   return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n' + shellHead({}) + '</head>\n<body class="wpage">\n' + body + '\n'
     + (here ? '<script>window.WIKI_HERE = ' + here + ';</script>\n' : '')
     + (openArea ? '<script>window.WIKI_TOC_OPEN = ' + JSON.stringify(openArea) + ';</script>\n' : '')
@@ -85,8 +85,23 @@ const cardIdx = cardIndex(byId);
 const records = all.map(r => ({
   id: r.id, heading: r.heading || '', kind: r.kind || '', source: r.source || '', set: r.set || '',
   text: String(r.text || ''), links: Array.isArray(r.links) ? r.links : [], parent: r.parent || '', children: Array.isArray(r.children) ? r.children : [],
+  // url and faction are what the tree files a record by: a stratagem's source is
+  // 'stratagems' and its faction is empty, and only its url names the faction.
+  url: r.url || '', faction: r.faction || '',
 }));
 
+// The tree data and the area of every record, computed once. Each record's area
+// comes from its own url (factions/<slug>), the only field a stratagem, an
+// enhancement or a detachment carries - their source is 'stratagems' and their
+// faction is empty, and that is what filed them under Core Rules.
+const slugNames = new Map();
+for (const [id, url] of cardTables().factionLink) {
+  const m = /factions\/([a-z0-9-]+)$/i.exec(String(url || ''));
+  if (m) slugNames.set(m[1].toLowerCase(), cardTables().factionName.get(id) || id);
+}
+const toc = tocData(records, pageOf, cardTables().factionName, slugNames);
+const areaOf = new Map();
+for (const a of toc.areas) for (const g of a.g) for (const p of g.p) areaOf.set(p.i, a.n);
 // --- the reading aids, computed here so the pages can show them -----------------
 const W = 100;
 const windowCount = new Map();
@@ -146,7 +161,10 @@ fs.writeFileSync(path.join(OUT, 'shell.css'), SHELL_CSS + '\n' + TOC_CSS);
 // The tree: its data is a JS assignment so a page opened from a folder has it
 // without a fetch, and its behaviour is one file both surfaces load.
 fs.writeFileSync(path.join(OUT, 'shell.js'), TOC_JS);
-fs.writeFileSync(path.join(OUT, 'shell-data.js'), 'window.WIKI_TOC = ' + JSON.stringify(tocData(records, pageOf, cardTables().factionName)) + ';');
+fs.writeFileSync(path.join(OUT, 'shell-data.js'), 'window.WIKI_TOC = ' + JSON.stringify(tocIndex(toc)) + ';');
+// One file per area, loaded when the popup first opens that area: every record
+// page used to pull the whole tree (788KB raw) for a popup most views never open.
+for (const a of toc.areas) fs.writeFileSync(path.join(OUT, a.f), 'window.WIKI_TOC_AREA = ' + JSON.stringify({ n: a.n, g: a.g }) + ';');
 
 const counts = {};
 for (const r of records) counts[r.kind || '(none)'] = (counts[r.kind || '(none)'] || 0) + 1;
@@ -254,7 +272,7 @@ for (const r of records) {
     '<div class="wdev"><a href="index.html">Index</a><a href="search.html">Search</a><a href="anomalies.html">Reading aids</a></div>',
     '</main>',
   ].filter(Boolean).join('\n');
-  fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), productPage(r.heading || r.id, body, r));
+  fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), productPage(r.heading || r.id, body, Object.assign({}, r, { area: areaOf.get(r.id) || '' })));
   written++;
 }
 // The record -> page map, so a server can link a finding's record to its page
@@ -263,7 +281,7 @@ for (const r of records) {
 // dead one.
 // The product entry: /wiki/ serves this, with the tree open on Core Rules. The
 // developer index stays where it is (reachable from the foot) until slice 8.
-const tocAreas = tocData(records, pageOf, cardTables().factionName).areas;
+const tocAreas = toc.areas;
 const homeBody = [
   topBar({}),
   '<main class="wrec">',
