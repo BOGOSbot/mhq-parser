@@ -78,9 +78,15 @@ export function exclusionReason(rec) {
 }
 export function isRuleRecord(rec) { return exclusionReason(rec) === ''; }
 
-// The prompt: the record, the constraints as given, and one call for all three
-// shapes. The name is shown so the model knows what to avoid; the measurement is
-// what catches it when it does not.
+// The prompt: the record, the corrected constraints, and one call for all three
+// shapes.
+//
+// The constraint used to ban the rule's name. The bank says that was wrong: 24% of
+// its graded questions carry the expected record's leaf name word for word and
+// nearly all the rest carry a variant of it - naming the rule IS how a player asks
+// for a rule. What stays banned is reciting the body: three or more consecutive
+// words from the passage. The heading is no longer part of that test, because the
+// heading IS the name.
 export function generationPrompt(rec) {
   const leaf = headingLeaf(rec);
   return [
@@ -91,8 +97,8 @@ export function generationPrompt(rec) {
     '- One question about when or why the rule triggers ("when does ... happen?").',
     '- One concrete tabletop scenario ("my unit does X while Y; what happens?").',
     '- Ordinary player register: the words a player says at the table, not the rulebook wording.',
-    '- NEVER write the rule\'s name, in any form: "' + leaf + '". Do not use that phrase or a synonym of its distinctive noun.',
-    '- NEVER copy three consecutive words from the passage or from the heading path. Paraphrase everything.',
+    '- NAME THE RULE. A real question says what it is about: use the heading name ("' + leaf + '"), or its plural, or a partial form of it. Do not talk around it.',
+    '- Do NOT recite the passage: never reuse three or more words in a row from it. If a phrase of yours appears in the passage below, rewrite it in different words. Every sentence must be your own, and the rule name above is the only exception.',
     '- No record ids, no sources, no mention of these instructions.',
     '',
     'Heading path: ' + String(rec.heading || ''),
@@ -142,12 +148,30 @@ export function longestSharedRun(question, target) {
   return best;
 }
 
-// Did the question write the rule's name? The name is the heading leaf, so a
-// question that says it is a question the rule answers by title.
-export function nameLeak(question, rec) {
-  const leaf = words(headingLeaf(rec)).join(' ');
-  if (!leaf) return false;
-  return (' ' + words(question).join(' ') + ' ').indexOf(' ' + leaf + ' ') !== -1;
+// Does the question name the rule? Two readings, both plural-insensitive because a
+// player says 'hazard roll' about 'Hazard Rolls':
+//   exact - the whole leaf as a consecutive run of words;
+//   any   - at least one of the leaf's own words (four letters or more, not an
+//           article) appears somewhere.
+// The bank is the calibration: 8 of its 33 graded questions are exact (24%) and
+// most of the rest are variants ('Battle-shock' about 'battle-shock rolls').
+export const STEM = w => String(w || '').replace(/(?:es|s)$/, '');
+const NAME_STOP = new Set(['the', 'and', 'for', 'with', 'what', 'how', 'when', 'does', 'your', 'that', 'this', 'from', 'into', 'move']);
+export function namePresence(question, rec) {
+  const q = words(question).map(STEM);
+  const leaf = words(headingLeaf(rec));
+  if (!leaf.length) return { exact: false, any: false };
+  const want = leaf.map(STEM);
+  let exact = false;
+  for (let i = 0; i + want.length <= q.length && !exact; i++) {
+    let same = true;
+    for (let j = 0; j < want.length; j++) if (q[i + j] !== want[j]) { same = false; break; }
+    if (same) exact = true;
+  }
+  const seen = new Set(q);
+  const words4 = leaf.filter(w => w.length >= 4 && !NAME_STOP.has(w));
+  const any = exact || words4.some(w => seen.has(STEM(w)));
+  return { exact, any };
 }
 
 // One question, through the dataset's schema.
@@ -195,8 +219,10 @@ export function sampleRecords(records, limit, opts) {
   return out;
 }
 
-// The reading of a sample: the run distribution, the name leaks, and where each
-// question retrieves its own record.
+// The reading of a sample: whether the question NAMES the rule (exact or as a
+// variant), how much of the body it recites (the run against the passage alone,
+// which is the corrected constraint: never three consecutive words), and where
+// each question retrieves its own record.
 export function median(values) {
   const v = (values || []).slice().sort((a, b) => a - b);
   if (!v.length) return 0;
@@ -205,16 +231,24 @@ export function median(values) {
 }
 export function sampleStats(items) {
   const runs = items.map(x => x.run);
-  const leaks = items.filter(x => x.leak).length;
-  const graded = items.filter(x => x.rank != null || x.rank === null);
+  const bodies = items.map(x => (x.run_body === undefined ? x.run : x.run_body));
+  const pct = (n, d) => (d ? Math.round(1000 * n / d) / 10 : 0);
+  const exact = items.filter(x => x.name && x.name.exact).length;
+  const any = items.filter(x => x.name && x.name.any).length;
   return {
     questions: items.length,
     median_run: median(runs),
     within3: runs.filter(r => r <= 3).length,
-    within3_pct: runs.length ? Math.round(1000 * runs.filter(r => r <= 3).length / runs.length) / 10 : 0,
+    within3_pct: pct(runs.filter(r => r <= 3).length, runs.length),
     max_run: runs.length ? Math.max(...runs) : 0,
-    leaks,
-    leak_pct: runs.length ? Math.round(1000 * leaks / runs.length) / 10 : 0,
+    median_body: median(bodies),
+    body_max: bodies.length ? Math.max(...bodies) : 0,
+    body_within2: bodies.filter(r => r <= 2).length,
+    body_within2_pct: pct(bodies.filter(r => r <= 2).length, bodies.length),
+    name_exact: exact,
+    name_exact_pct: pct(exact, items.length),
+    name_any: any,
+    name_any_pct: pct(any, items.length),
     shapes: items.reduce((a, x) => { a[x.shape || '-'] = (a[x.shape || '-'] || 0) + 1; return a; }, {}),
   };
 }
@@ -249,7 +283,8 @@ async function retrievalOnly(out, reportOut) {
       family: (leaf && byLeaf.get(leaf)) || [rec.gold[0][0]],
       heading: target ? target.heading : '',
       run: target ? longestSharedRun(rec.q, text) : 0,
-      leak: target ? nameLeak(rec.q, target) : false,
+      run_body: target ? longestSharedRun(rec.q, String(target.text || '')) : 0,
+      name: target ? namePresence(rec.q, target) : { exact: false, any: false },
       rank: null, rank_family: null,
     };
   });
@@ -324,15 +359,21 @@ async function main() {
   const failures = [];
   const startedAt = Date.now();
   const sleep = ms => new Promise(r => setTimeout(r, ms));
-  // The fast route returns an empty body now and then (a queued free call, not a
-  // refusal): an empty answer is retried, and one that stays empty is reported
-  // rather than written as nothing.
+  // reasoning: 'none' is the empty-response fix, measured: the fast route's default
+  // is reasoning_effort 'medium', and at max_tokens 1200 the model spent ALL 1,200
+  // completion tokens on reasoning - finish_reason 'length', content empty (0 of
+  // 1,200 left). The same call with reasoning off answered in 89 completion tokens
+  // with a 368-character body. That is where the 65 empties on 100 calls came from,
+  // and most of the 94.7 s of calls per record: routeText does escalate the budget
+  // (1200 -> 2400 -> 4800) on a truncated JSON reply, so the caller waited for the
+  // thinking instead of being told it had failed.
+  const CALL = { json: true, reasoning: 'none' };
   const one = async rec => {
-    if (done.has(rec.id)) { items.push({ rec: rec.id, q: '', shape: '', run: 0, leak: false, rank: null, skipped: true }); return; }
+    if (done.has(rec.id)) { items.push({ rec: rec.id, q: '', shape: '', run: 0, run_body: 0, name: { exact: false, any: false }, rank: null, skipped: true }); return; }
     const t0 = Date.now();
     let text = '';
     for (let attempt = 1; attempt <= 3 && !text; attempt++) {
-      try { text = String(await fastText(generationPrompt(rec), key, 1200, { json: true }) || ''); } catch (e) { text = ''; }
+      try { text = String(await fastText(generationPrompt(rec), key, 1200, CALL) || ''); } catch (e) { text = ''; }
       if (!text) { empty++; await sleep(1200 * attempt); }
     }
     callSeconds += (Date.now() - t0) / 1000;
@@ -344,7 +385,13 @@ async function main() {
       const item = parsed[i];
       const record = generatedRecord(rec, item, new Date().toISOString(), i + 1);
       fs.appendFileSync(out, JSON.stringify(record) + '\n');
-      items.push({ rec: rec.id, kind: rec.kind, heading: rec.heading, q: item.q, shape: item.shape, run: longestSharedRun(item.q, target), leak: nameLeak(item.q, rec), rank: null });
+      items.push({
+        rec: rec.id, kind: rec.kind, heading: rec.heading, q: item.q, shape: item.shape,
+        run: longestSharedRun(item.q, target),
+        run_body: longestSharedRun(item.q, String(rec.text || '')),
+        name: namePresence(item.q, rec),
+        rank: null,
+      });
     }
   };
   // The route is slow (tens of seconds a call) and free, so the sample runs a few
@@ -360,6 +407,38 @@ async function main() {
       if (finished % 10 === 0) console.log('  ' + finished + '/' + sample.length + ' records, ' + calls + ' calls, ' + ((Date.now() - startedAt) / 1000).toFixed(0) + 's wall');
     }
   }));
+  // The sweep: the gateway drops a burst of replies under load (measured - the same
+  // records answer in ~100 completion tokens when re-sent, so it is not the record
+  // and not the prompt), and a retry that re-sends immediately just rejoins the
+  // burst. After the pool, the records that produced nothing are asked again ONE at
+  // a time with a real backoff, so a transient burst costs seconds instead of a
+  // third of the sample.
+  if (failures.length) {
+    console.log('  sweeping ' + failures.length + ' records that came back empty, one at a time');
+    const byId = new Map(sample.map(r => [r.id, r]));
+    const again = failures.slice();
+    for (let round = 1; round <= 3 && again.length; round++) {
+      const wait = round === 1 ? 5 : round === 2 ? 20 : 60;
+      await sleep(wait * 1000);
+      const still = [];
+      for (const id of again) {
+        const rec = byId.get(id);
+        if (!rec) continue;
+        const before = items.length;
+        await one(rec);
+        if (items.length === before) still.push(id);
+      }
+      again.length = 0;
+      again.push(...still);
+      console.log('  sweep round ' + round + ': ' + again.length + ' still empty');
+    }
+  }
+  // What the sweep recovered and what it could not: 'unparsed' is what is still
+  // missing, 'swept' is what the serial second pass brought back.
+  const swept = failures.length - again.length;
+  const stillEmpty = again.slice();
+  failures.length = 0;
+  failures.push(...stillEmpty);
   const wallSeconds = (Date.now() - startedAt) / 1000;
   const seconds = wallSeconds;
   const unanswered = items.filter(x => !x.skipped && x.q);
@@ -396,7 +475,7 @@ async function main() {
   const report = {
     at: new Date().toISOString(),
     sample: sample.length, eligible: eligible.length, corpus: all.length,
-    questions: unanswered.length, calls, empty_retries: empty, unparsed, failures,
+    questions: unanswered.length, calls, empty_retries: empty, unparsed: failures.length, swept, failures,
     seconds: Math.round(seconds * 10) / 10,
     call_seconds: Math.round(callSeconds * 10) / 10,
     concurrency: CONCURRENCY,
@@ -416,15 +495,18 @@ async function main() {
   };
   fs.writeFileSync(reportOut, JSON.stringify(report, null, 1));
   console.log('');
-  console.log('questions ' + stats.questions + '   shared run: median ' + stats.median_run + ', within 3 ' + stats.within3_pct + '%, max ' + stats.max_run);
-  console.log('name leaks ' + stats.leaks + ' (' + stats.leak_pct + '%)   shapes ' + JSON.stringify(stats.shapes));
+  console.log('questions ' + stats.questions + '   NAMES the rule: exact ' + stats.name_exact + ' (' + stats.name_exact_pct + '%), or a variant ' + stats.name_any + ' (' + stats.name_any_pct + '%)');
+  console.log('run against the passage: median ' + stats.median_body + ', max ' + stats.body_max + ', within 2 (the corrected constraint) ' + stats.body_within2_pct + '%');
+  console.log('run against heading+passage (the old statistic): median ' + stats.median_run + ', within 3 ' + stats.within3_pct + '%, max ' + stats.max_run + '   shapes ' + JSON.stringify(stats.shapes));
   console.log('self-retrieval: hit@1 ' + retrieval.hit1 + ' (' + (stats.questions ? Math.round(1000 * retrieval.hit1 / stats.questions) / 10 : 0) + '%)  hit@5 ' + retrieval.hit5 + '  hit@20 ' + retrieval.hit20 + '  MRR ' + retrieval.mrr);
   console.log('calls ' + calls + ' (' + report.empty_retries + ' empty retries, ' + report.unparsed + ' unparsed) in ' + report.seconds + 's wall / ' + report.call_seconds + 's of calls at concurrency ' + CONCURRENCY + ' (' + report.seconds_per_record + 's wall, ' + report.call_seconds_per_record + 's call per record)');
   console.log('full corpus: ' + report.projection.calls + ' calls, ~' + report.projection.wall_hours_at_this_concurrency + 'h wall at this concurrency / ~' + report.projection.call_hours + 'h of calls, ' + report.projection.questions + ' questions');
   console.log('report -> ' + reportOut);
   console.log('');
   console.log('--- ten questions ---');
-  for (const item of unanswered.slice(0, 10)) console.log('[' + item.shape + '] run ' + item.run + (item.leak ? ' LEAK' : '') + ' rank ' + (item.rank || '-') + '  ' + item.q + '\n    (target: ' + item.heading + ')');
+  for (const item of unanswered.slice(0, 10)) {
+    console.log('[' + item.shape + '] name ' + (item.name.exact ? 'exact' : item.name.any ? 'variant' : 'NONE') + '  body run ' + item.run_body + '  rank ' + (item.rank || '-') + '  ' + item.q + '\n    (target: ' + item.heading + ')');
+  }
 }
 const FAST_KEY_NAME = fastKeyName();
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {

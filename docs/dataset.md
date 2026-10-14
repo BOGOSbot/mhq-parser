@@ -132,35 +132,70 @@ a rule may still be easier than one written by a confused player. The only test
 that settles it is training on generated questions and evaluating on the bank.
 Until that runs, the sample below says the generator is calibrated to real
 phrasing - not that it is as hard.
-### The sample (2026-10-14, 100 records)
+### What the bank actually does (the calibration)
 
-| | |
-|---|---|
-| questions | 282 (yes/no 94, when 94, scenario 94) |
-| longest shared run with the target | median **2**, **97.9% within 3**, max 4 |
-| questions that wrote the rule's name | **0 (0%)** |
-| self-retrieval, the exact record | hit@1 **5 (1.8%)**, hit@5 36, hit@20 105, MRR 0.078 |
-| self-retrieval, any record of the same rule | hit@1 10 (3.5%), hit@5 44, hit@20 115, MRR 0.105 |
-| calls | 100 for 100 records (65 empty retries, 6 records unparsed) |
-| cost | 2,402 s wall at concurrency 4 (24.0 s/record); 9,466 s of calls (94.7 s/record) |
-| projection to 3,460 records | ~23 h wall at concurrency 4, ~9,750 questions |
+The first constraint banned the rule's name, and the run-length statistic endorsed
+it. Measuring the bank instead says the statistic was the wrong one: of its 33
+graded questions, **8 (24.2%) carry the expected record's leaf name word for word**
+and **21 (63.6%) carry it exactly or as a variant** - `How does Battle-shock work?`
+against *Battle-shock Rolls*, `What is a Hazard Roll?` against *Hazard Rolls*. A
+real question names the rule and does not recite it. Two populations can share a
+median two-word run and mean completely different things by it: the bank's two
+words are the rule's name, the first generator's two words were `can a unit`.
 
-The run-length calibration holds - median 2 and 97.9% within 3, against the real
-bank's 85% within 3 - and no question writes the rule's name. **The self-retrieval
-does not hold**: a question written from a record finds that record 1.8% of the
-time at rank 1 and 37% at rank 20. The reason is the constraint working as
-designed: a question that shares no name and no three-word run with its record
-gives the retriever almost nothing to hold. A control says the retriever is not
-the broken half - "What is Firing Deck?" ranks an ability copy at 1 while the three
-headless questions about that rule rank 3, 11 and nothing - and corpus duplication
-is not the explanation either, since scoring ANY record of the same rule only moves
-hit@1 from 1.8% to 3.5%.
+### The empty responses, and the fix
 
-So the honest reading: the generator writes player-register questions that are not
-identifiable by the page's own search. That is either a generator paraphrasing past
-the point of searchability or a constraint that removes the retriever's only
-handle, and this sample cannot tell the two apart. One shape with the name allowed,
-or a four-word run, would. The train-on-generated / evaluate-on-the-bank test
-remains the only one that settles whether these questions are worth training on.
+The 65 empty retries on the first 100 calls were not a lane problem. The fast
+route's default is `reasoning_effort: medium`, and at `max_tokens: 1200` the model
+spent **all 1,200 completion tokens on reasoning**: `finish_reason: length`,
+content empty, 0 characters. The identical call with `reasoning: 'none'` answered
+in **89-131 completion tokens** with a 368-500 character body, `finish_reason:
+stop`. That is also where the time went: with reasoning off a call is 8-18 s
+instead of 60-100 s.
+
+A second, smaller cause remained: the free gateway drops a burst of replies under
+load. The same records answer in ~100 completion tokens when re-sent, so it is
+neither the record nor the prompt; a retry that re-sends immediately just rejoins
+the burst. The run now ends with a **serial sweep** - the records that produced
+nothing are asked again one at a time with a 5/20/60 s backoff. On the corrected
+sample it recovered **35 of 35**, so a transient burst costs seconds instead of a
+third of the sample.
+
+### The corrected sample (2026-10-14, 100 records, name allowed)
+
+The corrected constraint: the rule's name is allowed, including its plural and
+partial forms; what stays banned is reciting the body - three or more consecutive
+words from the **passage** (the heading is no longer part of that test, because the
+heading is the name). One call per record, reasoning off, concurrency 3, the
+serial sweep at the end.
+
+| | before (name banned) | after (name allowed) |
+|---|---|---|
+| questions | 282 (94/94/94 shapes) | 300 (100/100/100) |
+| name exact / exact-or-variant | **0%** / 16.7% | **64.7%** / **92%** |
+| run against the passage: median, max, within 2 | 2, 4, 85.8% | 3, 8, **43%** |
+| run against heading+passage: median, within 3 | 2, 97.9% | 3, 76% |
+| self-retrieval exact: hit@1, hit@5, hit@20, MRR | 1.8%, 36, 105, 0.078 | **13.7%**, 123 (41%), 283 (94.3%), 0.284 |
+| calls / records lost to empty replies | 100 / 6 unparsed | 135 / 35 swept, **0 lost** |
+| cost per record | 24.0 s wall, 94.7 s of calls | 8.4 s wall, 16.5 s of calls |
+| projection to 3,460 records | ~23 h wall, ~9,750 questions | ~8 h wall at concurrency 3, ~10,380 questions |
+
+**The name fix worked and the body fix did not.** Naming the rule went from 0% to
+64.7% exact (the 20-record variant, with the weaker wording, hit 77.2%), and
+self-retrieval went from 1.8% to 13.7% at rank 1 and 94.3% at rank 20. But the run
+against the passage is now **median 3 with only 43% inside two words**: the model,
+allowed to name the rule, started reciting the passage - exactly the failure the
+run-length check was meant to catch, and the prompt alone does not hold it. A
+question that contains three or more words of the passage teaches a copy shortcut,
+so the constraint has to be enforced mechanically (regenerate or drop a question
+whose passage run is 3) before this lane is emitted. That is the next fix, and it
+is deliberately not in this commit.
+
+The strategic half: this lane supplies the **easy mass** - a player who names the
+rule they want. The hard cases, a player who describes a situation without knowing
+the rule's name, can only come from real questions; that is another reason the
+deploy matters, and it is the honest ceiling on what this lane can teach. Whether
+even the easy mass is worth training on is still settled only by training on
+generated questions and evaluating on the bank.
 
 
