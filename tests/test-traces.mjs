@@ -437,7 +437,7 @@ t('a points line is not a rule', exclusionReason({ id: 'datasheet#2', kind: 'rul
 t('a keyword list is not a rule', exclusionReason({ id: 'unitrules#1', kind: 'rule', heading: 'X > Tactical Profile', text: 'IMPERIUM ADEPTUS ASTARTES INFANTRY BATTLELINE GRENADES SMOKE TACTICAL WALKER VEHICLE ' + 'x'.repeat(200) }), 'a keyword list');
 
 const prompt = generationPrompt(goodRule);
-t('the prompt gives the name as the one exception', prompt.indexOf('may name the rule') !== -1 && prompt.indexOf('Coherency') !== -1, true);
+t('the prompt gives the name as the exception, one or two of three', prompt.indexOf('ONE OR TWO of the three may name the rule') !== -1 && prompt.indexOf('Coherency') !== -1, true);
 t('and asks for short questions', prompt.indexOf('44 characters') !== -1 && prompt.indexOf('Never more than 90') !== -1, true);
 t('and no longer forbids it', prompt.indexOf('NEVER write the rule') === -1, true);
 t('what it protects is the passage body', prompt.indexOf('three or more words in a row') !== -1, true);

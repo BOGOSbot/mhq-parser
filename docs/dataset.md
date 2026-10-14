@@ -189,7 +189,7 @@ run-length check was meant to catch, and the prompt alone does not hold it. A
 question that contains three or more words of the passage teaches a copy shortcut,
 so the constraint has to be enforced mechanically (regenerate or drop a question
 whose passage run is 3) before this lane is emitted. That fix landed in the third
-sample below.
+sample below, and the naming mix landed in the fourth.
 
 ### The third sample: length, the naming mix, and the body gate (2026-10-14)
 
@@ -242,6 +242,12 @@ exactly in about one question in six and carries one of its words in about half.
 
 ### The fast-route audit (reasoning eating the budget)
 
+**The rule, and it will bite the next caller: reasoning is billed to the same
+`max_tokens` as the answer, and an empty body is read as "nothing to say" - a
+silent failure.** `expandQuery` is the proof: it is one import away from silent
+nothing, and nothing on a page would ever say so. A caller that leaves reasoning at
+the route's default must either budget for the thinking or turn it off.
+
 The generator's empty responses were a call-shaped bug, not a lane bug, and the
 same shape was audited everywhere else the fast route is called:
 
@@ -252,12 +258,55 @@ same shape was audited everywhere else the fast route is called:
 | `judgeCoverage` | 4,000 (json), 1,200 fallback | the mode's (none fast, medium deep) | holds: 0 of 76 judged traces returned an unparseable verdict |
 | `compilePrompt` (writer) | 8,000 | `none` | by design |
 
-The rule behind it: **reasoning is billed to the same `max_tokens` as the answer**,
-and an empty body is read as "nothing to say" - a silent failure. At 1,200 tokens
-with reasoning `medium` the model spent all 1,200 on thinking and returned 0
-characters. A caller that leaves reasoning at the default must either budget for
-the thinking or turn it off; `expandQuery` now turns it off, because writing search
+At 1,200 tokens with reasoning `medium` the model spent all 1,200 on thinking and
+returned 0 characters. `expandQuery` now turns reasoning off, because writing search
 terms is a rewrite.
+
+### Scaling, and how to resume it
+
+The full run is the same command with the full sample:
+
+```
+node tests/generate-questions.mjs --limit 3460 --concurrency 3 \
+  --checkpoint 25 --no-retrieval \
+  --out workspace/dataset/generated-full.jsonl \
+  --report workspace/dataset/generated-full-report.json
+```
+
+- **It resumes itself.** The output file is read at start and every record already
+  present in it is skipped, so re-running the identical command after an interruption
+  continues where it stopped. Questions are appended as they are made, so a killed
+  process keeps everything it had.
+- **It says where it got to.** One `CHECKPOINT <iso> <n>/<pending> records this run,
+  <calls> calls, <s> wall, <s/record>, <questions> questions` line every
+  `--checkpoint` records (25 above), in the run log.
+- **`--no-retrieval` keeps it a generation job**; the self-retrieval reading is a
+  separate pass over the finished file (`--retrieval-only`).
+- A record that produced nothing (an empty burst the sweep could not recover) is
+  simply not in the output, so the next run retries it.
+
+### The fourth sample: the naming mix lands (the population)
+
+The last nudge: the prompt allows ONE OR TWO of the three shapes to name the rule.
+Everything else is the third sample.
+
+| | bank (real) | v2 name allowed | v3 one of three | **v4 one or two** |
+|---|---|---|---|---|
+| questions | 33 | 300 | 275 | **267** |
+| median chars / words, p90 chars | 44 / 8, 67 | 111 / 20, 163 | 52 / 10, 70 | **49 / 9, 68** |
+| name exact, strict | 15.2% | 25.7% | 8.7% | **18.7%** |
+| any leaf word, strict | 54.5% | 90.7% | 29.1% | **36.7%** |
+| passage run within 2 | - | 43% | 100% | **100%** (gated) |
+| self-retrieval hit@1 | ~30% | 13.7% | 8% | 10.9% |
+| regenerated / rejected | - | - | 44 / 79 | **48 / 104** |
+| cost per record | - | 8.4 s wall | 11.7 s wall | 11.9 s wall, 15.2 s of calls |
+
+Both readings now sit between the name-allowed sample and the one-in-three sample -
+exact 18.7% against the bank's 15.2%, any 36.7% against 54.5% - and length is on the
+bank's population. This is the distribution to scale.
+
+
+
 
 
 

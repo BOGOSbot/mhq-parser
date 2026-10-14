@@ -100,7 +100,7 @@ export function generationPrompt(rec) {
     'How a real player asks, measured on our own bank of real questions:',
     '- SHORT. A real question is about 44 characters and eight words - one clause, typed on a phone with one thumb. Never more than 90 characters, and prefer one sentence.',
     '- Ordinary player register: the words a player says at the table, not the rulebook wording.',
-    '- At most ONE of the three may name the rule ("' + leaf + '"), in the heading name, its plural or a partial form. The other two must describe the situation WITHOUT naming it - that is how most real questions are asked.',
+    '- ONE OR TWO of the three may name the rule ("' + leaf + '"), in the heading name, its plural or a partial form - a real bank of player questions names the rule exactly in about one in six and carries one of its words in about half. The rest describe the situation WITHOUT naming it.',
     '- Do NOT recite the passage: never reuse three or more words in a row from it. If a phrase of yours appears in the passage below, rewrite it in different words. Every sentence must be your own, and the rule name above is the only exception.',
     '- No record ids, no sources, no mention of these instructions.',
     '',
@@ -468,15 +468,24 @@ async function main() {
   };
   // The route is slow (tens of seconds a call) and free, so the sample runs a few
   // at a time: the wall time is what is reported, and the per-call seconds too.
-  const queue = sample.slice();
+  // Resumable by construction: 'done' holds every record already in the output file,
+  // so re-running the same command skips them and appends the rest. The checkpoint
+  // line says where it got to, every N records, with the wall clock and the rate.
+  const queue = sample.filter(r => !done.has(r.id));
+  const pending = queue.length;
+  console.log('to generate ' + pending + ' of ' + sample.length + ' records (' + (sample.length - pending) + ' already in ' + out + ')');
   const CONCURRENCY = Math.max(1, Number(flag('concurrency', 1)) || 1);
+  const CHECKPOINT = Math.max(1, Number(flag('checkpoint', 10)) || 10);
   let finished = 0;
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
     while (queue.length) {
       const rec = queue.shift();
       await one(rec);
       finished++;
-      if (finished % 10 === 0) console.log('  ' + finished + '/' + sample.length + ' records, ' + calls + ' calls, ' + ((Date.now() - startedAt) / 1000).toFixed(0) + 's wall');
+      if (finished % CHECKPOINT === 0) {
+        const wall = (Date.now() - startedAt) / 1000;
+        console.log('  CHECKPOINT ' + new Date().toISOString() + '  ' + finished + '/' + pending + ' records this run, ' + calls + ' calls, ' + wall.toFixed(0) + 's wall, ' + (wall / finished).toFixed(1) + 's/record, ' + items.length + ' questions');
+      }
     }
   }));
   // The sweep: the gateway drops a burst of replies under load (measured - the same
