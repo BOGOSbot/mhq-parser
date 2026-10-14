@@ -64,7 +64,9 @@ export function topBar(opts) {
 export function shellHead(opts) {
   const o = opts || {};
   const nav = o.nav || '';
-  return '<link rel="stylesheet" href="shell.css">\n<link rel="stylesheet" href="card.css">\n<script src="shell-data.js" defer></script>\n<script src="shell.js" defer></script>\n' + nav;
+  // tree/index.js is the root the cascade reads (the three branches); the node
+  // files it opens later are fetched by shell.js, one at a time.
+  return '<link rel="stylesheet" href="shell.css">\n<link rel="stylesheet" href="card.css">\n<script src="tree/index.js" defer></script>\n<script src="shell.js" defer></script>\n' + nav;
 }
 
 export default { SHELL_CSS, topBar, shellHead };

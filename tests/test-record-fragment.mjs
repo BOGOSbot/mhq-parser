@@ -143,40 +143,42 @@ async function main() {
     const askPage = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
     ok('the ask page links the same asset', askPage.indexOf('href="/wiki/shell.css"') !== -1);
     ok('and keeps no copy of the shell stylesheet', askPage.indexOf('.wtop{') === -1 && askPage.indexOf('.wrec{') === -1);
-    // --- the two-pane tree, one implementation for both surfaces ---------------
-    // The index is what a record page loads before the popup opens; each area's
-    // tree is its own file, loaded when that area is first opened.
+    // --- the cascade, one implementation for both surfaces ---------------------
+    // The old two-pane index and area files are still written and served, so
+    // nothing that read them breaks, but the popup itself is now the Miller
+    // cascade over tree/: the root is tree/index.js and a node file is fetched
+    // only when its level is opened.
     const tocSrc = await import('../src/wiki-toc.mjs');
     const indexJs = fs.readFileSync(path.join(outDir, 'shell-data.js'), 'utf8');
     const index = JSON.parse(indexJs.replace(/^window\.WIKI_TOC = /, '').replace(/;$/, ''));
-    ok('the index is small: a page loads it before the popup opens', indexJs.length < 4096);
     t('25 areas: Core Rules and the 24 factions', index.areas.length, 25);
     t('and they partition the whole corpus', index.areas.reduce((n, a) => n + a.c, 0), 6705);
     t('Core Rules first', index.areas[0].n, 'Core Rules');
-    ok('Core Rules is down to the rules-side records', index.areas[0].c < 2000);
     const areaFile = (name) => { const a = index.areas.find(x => x.n === name); return { a, data: JSON.parse(fs.readFileSync(path.join(outDir, a.f), 'utf8').replace(/^window\.WIKI_TOC_AREA = /, '').replace(/;$/, '')) }; };
     const cust = areaFile('Adeptus Custodes');
-    t('a faction carries its own groups, not one flat list', cust.data.g.map(g => g.n).sort(), ['Datasheets', 'Detachments', 'Enhancements', 'Stratagems']);
-    const custIds = cust.data.g.reduce((all, g) => all.concat(g.p.map(p => p.i)), []);
-    ok('THE FIX: a Custodes stratagem files under Adeptus Custodes', custIds.indexOf('stratagem#000008931007') !== -1);
-    ok('and so does its enhancement', custIds.indexOf('enhancement#000009273002') !== -1);
-    ok('every group counts its own pages', cust.data.g.every(g => g.c === g.p.length && g.c > 0));
-    ok('and every page carries the id and the file the tree opens', cust.data.g.every(g => g.p.every(p => p.i && typeof p.f === 'string')));
-    const core = areaFile('Core Rules');
-    ok('the rules-side records stay there, grouped by kind', core.data.g.length >= 4 && core.data.g.some(g => /Rules|rules/.test(g.n)));
+    ok('the retired area data still files a Custodes stratagem under Adeptus Custodes', cust.data.g.reduce((all, g) => all.concat(g.p.map(p => p.i)), []).indexOf('stratagem#000008931007') !== -1);
+    // The cascade's root, and the record page's own path.
+    ok('the render writes the cascade root', fs.existsSync(path.join(outDir, 'tree', 'index.js')));
+    ok('and the branch file it names', fs.existsSync(path.join(outDir, 'tree', 'rules.js')));
+    const pageCust = fs.readFileSync(path.join(outDir, map[REC]), 'utf8');
+    ok('a record page loads the cascade root, not the retired index', pageCust.indexOf('src="tree/index.js"') !== -1 && pageCust.indexOf('src="shell-data.js"') === -1);
+    const here = JSON.parse(/window\.WIKI_HERE = (\{.*?\});<\/script>/.exec(pageCust.replace(/\n/g, ''))[1]);
+    t('the record carries its node chain for the cascade to pre-walk', here.path.map(p => p.n), ['Factions', 'Imperium', 'Adeptus Custodes', 'Units']);
+    ok('and the chain names the node files, one per level', here.path.every(p => p.f.indexOf('tree/') === 0));
     const shellJs = await request(port, '/wiki/shell.js');
     t('the behaviour is served for the ask page', shellJs.status, 200);
     t('and is the one implementation', shellJs.body, tocSrc.TOC_JS);
-    t('the index is served too', (await request(port, '/wiki/shell-data.js')).body, indexJs);
-    t('and an area file loads on demand', (await request(port, '/wiki/' + cust.a.f)).body, fs.readFileSync(path.join(outDir, cust.a.f), 'utf8'));
-    ok('the two-tap rule: a group opens, a page navigates', /data-group/.test(tocSrc.TOC_JS) && /data-page/.test(tocSrc.TOC_JS) && /opened\[entry\.n \+ '\|' \+ gr\.getAttribute\('data-group'\)\] = true; render\(\); return; \}/.test(tocSrc.TOC_JS) && /location\.href = f/.test(tocSrc.TOC_JS));
-    ok('and a group is never collapsed by a tap', /opened\[[^\]]*\] = true/.test(tocSrc.TOC_JS) && !/opened\[[^\]]*\] = false/.test(tocSrc.TOC_JS) && tocSrc.TOC_JS.indexOf('delete opened') === -1);
-    ok('the rail collapses to the current-area chip', /wrail-off/.test(tocSrc.TOC_CSS) && /data-rail-open/.test(tocSrc.TOC_JS) && /wchip on/.test(tocSrc.TOC_JS));
-    ok('a record page also loads only one area file, on demand', /s\.src = BASE \+ entry\.f/.test(tocSrc.TOC_JS) && /if \(tree\(\)\) \{ cb\(\); return; \}/.test(tocSrc.TOC_JS));
+    t('the cascade root is served', (await request(port, '/wiki/tree/index.js')).body, fs.readFileSync(path.join(outDir, 'tree', 'index.js'), 'utf8'));
+    t('and a node file is served, for the fetch on open', (await request(port, '/wiki/tree/rules.js')).body, fs.readFileSync(path.join(outDir, 'tree', 'rules.js'), 'utf8'));
+    ok('the cascade walks a path with a clickable column index', /data-wc-jump/.test(tocSrc.TOC_JS) && /wccol/.test(tocSrc.TOC_CSS));
+    ok('the pane beside it opens a level on demand', /data-wc-node/.test(tocSrc.TOC_JS) && /function loadNode/.test(tocSrc.TOC_JS) && /s\.src = BASE \+ f/.test(tocSrc.TOC_JS));
+    ok('and a record opens from the pane', /data-wc-rec/.test(tocSrc.TOC_JS) && /location\.href = BASE \+ f/.test(tocSrc.TOC_JS));
+    ok('the resting bar opens full screen, and one tap retracts it', /data-wc-open/.test(tocSrc.TOC_JS) && /wcasc/.test(tocSrc.TOC_CSS) && /data-wc-close/.test(tocSrc.TOC_JS));
+    ok('a back press retracts it', /history\.pushState/.test(tocSrc.TOC_JS) && /addEventListener\("popstate"/.test(tocSrc.TOC_JS));
     const home = await request(port, '/wiki/');
     t('a cold /wiki/ serves the product', home.status, 200);
     ok('with the top bar', home.body.indexOf('class="wtop"') !== -1);
-    ok('and the tree open on Core Rules', /window\.WIKI_TOC_OPEN = "Core Rules"/.test(home.body));
+    ok('and no record context: the cascade rests at the root', home.body.indexOf('WIKI_HERE') === -1 && home.body.indexOf('tree/index.js') !== -1);
     ok('while the developer index stays reachable', home.body.indexOf('index.html') !== -1);
     const missing = await request(port, '/rules/record?id=nope&format=html');
     t('an unknown id is still a 404', missing.status, 404);

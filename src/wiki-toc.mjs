@@ -14,46 +14,37 @@
 // The popup's own CSS, kept apart from the shell's: shell.css reads as two blocks,
 // the top bar and then the tree, on the same palette and custom properties.
 export const TOC_CSS = [
-  ".wtoc{position:fixed;inset:0;z-index:60}",
-  ".wtoc.hidden{display:none}",
-  ".wscrim{position:absolute;inset:0;background:rgba(6,8,12,.66)}",
-  ".wsheet{position:absolute;left:0;right:0;bottom:0;top:64px;background:var(--w-panel);border-top:1px solid var(--w-line);display:flex;flex-direction:column;box-shadow:0 -18px 40px rgba(0,0,0,.55)}",
-  ".wshbar{padding:9px 12px 8px;border-bottom:1px solid var(--w-line);display:flex;align-items:center;gap:9px}",
-  ".wshtitle{font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}",
-  ".wsub{font:10.5px var(--w-mono);color:var(--w-dim)}",
-  ".wclose{margin-left:auto;width:30px;height:30px;border:1px solid var(--w-line);border-radius:7px;background:var(--w-panel2);color:var(--w-dim);font-size:13px;cursor:pointer}",
-  ".wpanes{flex:1;display:flex;min-height:0}",
-  ".wpanes.wrail-off .wrail{display:none}",
-  ".wrail{width:132px;flex:0 0 auto;border-right:1px solid var(--w-line);background:#12161d;overflow-y:auto}",
-  ".wrailhead{padding:9px 10px 6px;font:9px var(--w-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--w-dim);border-bottom:1px solid #212633}",
-  ".wra{display:flex;align-items:center;gap:7px;padding:10px;font-size:12px;color:#c3cbd8;border-bottom:1px solid #1b202a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}",
-  ".wra .wdot{width:5px;height:5px;flex:0 0 auto;border-radius:50%;background:#4e596e}",
-  ".wra.on{background:var(--w-panel);color:#fff;font-weight:700;border-left:3px solid var(--w-acc);padding-left:7px}",
-  ".wra.on .wdot{background:var(--w-acc)}",
-  ".wbody{flex:1;min-width:0;display:flex;flex-direction:column}",
-  ".wareahdr{padding:10px 12px;border-bottom:1px solid var(--w-line);background:var(--w-panel2)}",
-  ".wan{font-size:13.5px;font-weight:700}",
-  ".wad{font:10px var(--w-mono);color:var(--w-dim);margin-top:3px}",
-  ".wlist{flex:1;overflow-y:auto;overscroll-behavior:contain}",
-  ".wrow{display:flex;align-items:center;gap:9px;padding:11px 12px;border-bottom:1px solid #212633;min-height:44px;cursor:pointer}",
-  ".wgrp>.wrow{background:var(--w-panel2)}",
-  ".wpage .wrow{background:var(--w-panel)}",
-  ".wchev{flex:0 0 auto;width:14px;color:var(--w-dim);font-size:12px}",
-  ".wgrp.wopen .wchev{transform:rotate(90deg);color:var(--w-acc)}",
-  ".wglabel{flex:1;font-size:13.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
-  ".wcount{font:10px var(--w-mono);color:var(--w-dim);border:1px solid var(--w-line);border-radius:4px;padding:1px 5px}",
-  ".wpdot{flex:0 0 auto;width:5px;height:5px;border-radius:50%;background:#54607a;margin:0 4px}",
-  ".wplabel{flex:1;font-size:13px;color:#dbe1eb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-  ".where{background:#13203a!important;border-left:3px solid var(--w-acc)}",
-  ".where .wplabel{color:#fff;font-weight:700}",
-  ".where .wpdot{background:var(--w-acc);width:7px;height:7px}",
-  ".wyoutag{font:9px var(--w-mono);color:var(--w-acc);border:1px solid #2f4c78;background:#0f1a2c;border-radius:4px;padding:2px 5px}",
-  ".wkids{margin-left:18px;border-left:1px solid #232a38}",
-  ".wtreefoot{border-top:1px solid var(--w-line);background:var(--w-panel)}",
-  ".wlbl{font:9.5px var(--w-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--w-dim);padding:8px 12px 4px}",
-  ".wchips{display:flex;gap:6px;overflow-x:auto;padding:2px 12px 10px}",
-  ".wchip{flex:0 0 auto;font-size:11.5px;padding:6px 10px;border-radius:999px;border:1px solid var(--w-line);background:var(--w-panel2);color:var(--w-dim);cursor:pointer}",
-  ".wchip.on{color:#0b1020;background:var(--w-acc);border-color:var(--w-acc);font-weight:700}",
+  // The Miller cascade over the three-branch tree. The retracted bar sits at the
+  // top of the page (inside the sticky top bar) and is the resting form: the path
+  // to where the reader is, one tap from the full screen. Open, it is a left
+  // column of the path walked and, beside it, the next level down.
+  '.wcbar{display:flex;align-items:center;gap:6px;width:100%;min-height:34px;padding:4px 0;margin:0;border:0;background:none;color:var(--w-dim);font:12px system-ui;text-align:left;cursor:pointer;overflow:hidden}',
+  '.wcbar:focus-visible{outline:2px solid var(--w-acc);outline-offset:2px}',
+  '.wcbpath{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+  '.wcblead{color:var(--w-txt);font-weight:700}',
+  '.wcbhere{color:var(--w-acc);font-weight:700}',
+  '.wcsep{color:var(--w-dim)}',
+  '.wcasc{position:fixed;inset:0;z-index:80;background:var(--w-bg);display:flex;flex-direction:column}',
+  '.wcasc.hidden{display:none}',
+  '.wcaschead{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--w-line);background:var(--w-panel)}',
+  '.wcaschead .wcbpath{font-size:12px}',
+  '.wcclose{width:36px;height:36px;flex:0 0 auto;border:1px solid var(--w-line);border-radius:8px;background:var(--w-panel2);color:var(--w-txt);font-size:16px;cursor:pointer}',
+  '.wcpans{flex:1;display:flex;min-height:0}',
+  '.wccol{width:42%;max-width:220px;flex:0 0 auto;border-right:1px solid var(--w-line);background:var(--w-panel);overflow-y:auto}',
+  '.wccolrow{display:flex;align-items:center;gap:8px;padding:12px 10px;font-size:12.5px;color:var(--w-dim);border-bottom:1px solid #1b202a;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:44px}',
+  '.wccolrow.on{color:var(--w-txt);font-weight:700;background:var(--w-panel2);border-left:3px solid var(--w-acc);padding-left:7px}',
+  '.wcdot{width:5px;height:5px;flex:0 0 auto;border-radius:50%;background:#4e596e}',
+  '.wccolrow.on .wcdot{background:var(--w-acc)}',
+  '.wcpane{flex:1;min-width:0;overflow-y:auto;overscroll-behavior:contain}',
+  '.wcgrp{padding:9px 12px 5px;font:10px var(--w-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--w-dim)}',
+  '.wcrow{display:flex;align-items:center;gap:9px;padding:11px 12px;min-height:44px;border-bottom:1px solid var(--w-line);cursor:pointer}',
+  '.wcrow:active{background:var(--w-panel2)}',
+  '.wcrow .wcn{flex:1;min-width:0;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+  '.wcrow .wcc{font:10px var(--w-mono);color:var(--w-dim);border:1px solid var(--w-line);border-radius:4px;padding:1px 5px}',
+  '.wcrow .wcch{flex:0 0 auto;color:var(--w-dim);font-size:12px}',
+  '.wcrow.here{background:#13203a;border-left:3px solid var(--w-acc)}',
+  '.wcrow.here .wcn{color:#fff;font-weight:700}',
+  '.wcempty{padding:16px 12px;color:var(--w-dim);font-size:12.5px}',
 ].join('\n');
 
 // Each area's tree, built from the corpus and the page map. The area comes from the
@@ -125,127 +116,170 @@ export function tocIndex(data) {
 // shell-data.js is only the index - the 788KB payload was the thing every record
 // page paid for and most page views never opened).
 export const TOC_JS = [
+  // The cascade behaviour, one implementation for the record pages and the ask
+  // page. It reads WIKI_TREE_INDEX (the three branches) and WIKI_HERE (the
+  // record's pre-computed node chain), fetches one node file only when a level is
+  // opened, and pre-walks the chain only when the reader opens it on a record.
   '(function () {',
-  '  var D = window.WIKI_TOC, HERE = window.WIKI_HERE || null, OPEN = window.WIKI_TOC_OPEN || null;',
-  '  if (!D || !D.areas || !D.areas.length) return;',
-  '  var BASE = window.WIKI_TOC_BASE || \'\';',
-  '  var root = null, entry = null, railOpen = true, opened = {};',
+  '  var IDX = window.WIKI_TREE_INDEX, HERE = window.WIKI_HERE || null;',
+  '  if (!IDX || !IDX.branches || !IDX.branches.length) return;',
+  '  var BASE = window.WIKI_TREE_BASE || "";',
+  '  var CACHE = {}, path = [], nodes = [], open = false, pushed = false;',
+  '  var herePath = (HERE && HERE.path) || [], hereId = HERE && HERE.id;',
   '  function el(t, c, txt) { var e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; }',
-  '  function entryByName(n) { for (var i = 0; i < D.areas.length; i++) if (D.areas[i].n === n) return D.areas[i]; return D.areas[0]; }',
-  '  function tree() { return window.WIKI_TOC_AREA && entry && window.WIKI_TOC_AREA.n === entry.n ? window.WIKI_TOC_AREA : null; }',
-  '  function hereName() { return HERE && HERE.area ? HERE.area : null; }',
-  '  function hereGroup() { var t = tree(); if (!HERE || !t) return \'\'; for (var j = 0; j < t.g.length; j++) { var p = t.g[j].p; for (var k = 0; k < p.length; k++) if (p[k].i === HERE.id) return t.g[j].n; } return \'\'; }',
-  '  function load(cb) {',
-  '    if (tree()) { cb(); return; }',
-  '    var old = document.getElementById(\'wtocdata\'); if (old) old.parentNode.removeChild(old);',
-  '    var s = document.createElement(\'script\'); s.id = \'wtocdata\'; s.src = BASE + entry.f;',
-  '    s.onload = function () { cb(); };',
-  '    s.onerror = function () { window.WIKI_TOC_AREA = { n: entry.n, g: [] }; cb(); };',
+  '  function loadNode(f, cb) {',
+  '    if (CACHE[f]) { cb(CACHE[f]); return; }',
+  '    var s = document.createElement("script");',
+  '    s.src = BASE + f;',
+  '    s.onload = function () { CACHE[f] = window.WIKI_TREE_NODE; cb(CACHE[f]); };',
+  '    s.onerror = function () { CACHE[f] = { n: f, kids: [], recs: [] }; cb(CACHE[f]); };',
   '    document.head.appendChild(s);',
   '  }',
-  '  function build() {',
-  '    root = el(\'div\', \'wtoc hidden\'); root.id = \'wtoc\';',
-  '    var scrim = el(\'div\', \'wscrim\'); scrim.setAttribute(\'data-toc-close\', \'1\');',
-  '    var sheet = el(\'div\', \'wsheet\');',
-  '    var bar = el(\'div\', \'wshbar\');',
-  '    bar.appendChild(el(\'span\', \'wshtitle\', \'Wiki\'));',
-  '    bar.appendChild(el(\'span\', \'wsub\', \'two panes\'));',
-  '    var x = el(\'button\', \'wclose\', \'\u00d7\'); x.type = \'button\'; x.setAttribute(\'data-toc-close\', \'1\'); x.setAttribute(\'aria-label\', \'Close\');',
-  '    bar.appendChild(x);',
-  '    var panes = el(\'div\', \'wpanes\'); panes.id = \'wpanes\';',
-  '    var foot = el(\'div\', \'wtreefoot\'); foot.id = \'wfoot\';',
-  '    sheet.appendChild(bar); sheet.appendChild(panes); sheet.appendChild(foot);',
-  '    root.appendChild(scrim); root.appendChild(sheet);',
-  '    document.body.appendChild(root);',
+  '  function current() { return path.length ? nodes[nodes.length - 1] : { n: "Wiki", lvl: "root", kids: IDX.branches, recs: [] }; }',
+  '  function names() { if (path.length) return path.map(function (p) { return p.n; }); if (herePath.length) return herePath.map(function (p) { return p.n; }); return []; }',
+  '  function crumbs() {',
+  '    var b = el("span", "wcbpath"), n = names(), i;',
+  '    b.appendChild(el("span", "wcblead", "Wiki"));',
+  '    for (i = 0; i < n.length; i++) { b.appendChild(el("span", "wcsep", " \u203a ")); b.appendChild(el("span", null, n[i])); }',
+  '    if (herePath.length && !path.length && HERE && HERE.title) { b.appendChild(el("span", "wcsep", " \u203a ")); b.appendChild(el("span", "wcbhere", HERE.title)); }',
+  '    if (!n.length) b.appendChild(el("span", "wcsep", " \u203a Browse rules"));',
+  '    return b;',
   '  }',
   '  function render() {',
-  '    if (!entry) return;',
-  '    var t = tree() || { n: entry.n, g: [] };',
-  '    var panes = root.querySelector(\'#wpanes\');',
-  '    panes.className = railOpen ? \'wpanes\' : \'wpanes wrail-off\';',
-  '    var rail = el(\'nav\', \'wrail\');',
-  '    rail.appendChild(el(\'div\', \'wrailhead\', \'Areas\'));',
-  '    for (var i = 0; i < D.areas.length; i++) {',
-  '      var a = D.areas[i];',
-  '      var r = el(\'div\', \'wra\' + (a.n === entry.n ? \' on\' : \'\'));',
-  '      r.setAttribute(\'data-area\', a.n);',
-  '      r.appendChild(el(\'span\', \'wdot\'));',
-  '      r.appendChild(el(\'span\', null, a.n));',
-  '      r.appendChild(el(\'span\', \'wcount\', String(a.c)));',
-  '      rail.appendChild(r);',
+  '    var b = document.getElementById("wcbar"), o = document.getElementById("wcasc"), i;',
+  '    if (b) { b.textContent = ""; b.appendChild(crumbs()); b.setAttribute("aria-expanded", open ? "true" : "false"); }',
+  '    if (!o) return;',
+  '    if (open) o.classList.remove("hidden"); else o.classList.add("hidden");',
+  '    var hp = document.getElementById("wcascpath");',
+  '    if (hp) { hp.textContent = ""; hp.appendChild(crumbs()); }',
+  '    if (!open) return;',
+  '    var col = document.getElementById("wccol"), pane = document.getElementById("wcpane");',
+  '    if (!col || !pane) return;',
+  '    col.textContent = "";',
+  '    var levels = [{ n: "Wiki" }].concat(path);',
+  '    for (i = 0; i < levels.length; i++) {',
+  '      var cr = el("div", "wccolrow" + (i === levels.length - 1 ? " on" : ""));',
+  '      cr.setAttribute("data-wc-jump", String(i - 1));',
+  '      cr.appendChild(el("span", "wcdot"));',
+  '      cr.appendChild(el("span", null, levels[i].n));',
+  '      col.appendChild(cr);',
   '    }',
-  '    var body = el(\'div\', \'wbody\');',
-  '    var hdr = el(\'div\', \'wareahdr\');',
-  '    hdr.appendChild(el(\'div\', \'wan\', t.n));',
-  '    var pages = 0; for (var g1 = 0; g1 < t.g.length; g1++) pages += t.g[g1].c;',
-  '    hdr.appendChild(el(\'div\', \'wad\', t.g.length + \' sections \u00b7 \' + pages + \' pages\'));',
-  '    body.appendChild(hdr);',
-  '    var list = el(\'div\', \'wlist\');',
-  '    var hg = hereGroup();',
-  '    if (!hg && !HERE && t.g.length) opened[t.n + \'|\' + t.g[0].n] = true;',
-  '    for (var q = 0; q < t.g.length; q++) {',
-  '      var g = t.g[q];',
-  '      var open = !!opened[t.n + \'|\' + g.n] || g.n === hg;',
-  '      var grp = el(\'div\', \'wgrp\' + (open ? \' wopen\' : \'\'));',
-  '      var grow = el(\'div\', \'wrow\'); grow.setAttribute(\'data-group\', g.n);',
-  '      grow.appendChild(el(\'span\', \'wchev\', \'\u25b8\'));',
-  '      grow.appendChild(el(\'span\', \'wglabel\', g.n));',
-  '      grow.appendChild(el(\'span\', \'wcount\', String(g.c)));',
-  '      grp.appendChild(grow);',
-  '      if (open) {',
-  '        var kids = el(\'div\', \'wkids\');',
-  '        for (var z = 0; z < g.p.length; z++) {',
-  '          var p = g.p[z];',
-  '          var isHere = HERE && p.i === HERE.id;',
-  '          var pw = el(\'div\', \'wpage\');',
-  '          var pr = el(\'div\', \'wrow\' + (isHere ? \' where\' : \'\'));',
-  '          pr.setAttribute(\'data-page\', p.i);',
-  '          pr.setAttribute(\'data-file\', p.f);',
-  '          pr.appendChild(el(\'span\', \'wpdot\'));',
-  '          pr.appendChild(el(\'span\', \'wplabel\', p.t));',
-  '          if (isHere) pr.appendChild(el(\'span\', \'wyoutag\', \'You are here\'));',
-  '          pw.appendChild(pr);',
-  '          kids.appendChild(pw);',
-  '        }',
-  '        grp.appendChild(kids);',
-  '      }',
-  '      list.appendChild(grp);',
-  '    }',
-  '    body.appendChild(list);',
-  '    panes.textContent = \'\';',
-  '    panes.appendChild(rail);',
-  '    panes.appendChild(body);',
-  '    var foot = root.querySelector(\'#wfoot\');',
-  '    foot.textContent = \'\';',
-  '    foot.appendChild(el(\'div\', \'wlbl\', \'Area\'));',
-  '    var chips = el(\'div\', \'wchips\');',
-  '    var chip = el(\'button\', \'wchip on\', t.n);',
-  '    chip.type = \'button\'; chip.setAttribute(\'data-rail-open\', \'1\');',
-  '    chips.appendChild(chip);',
-  '    foot.appendChild(chips);',
+  '    pane.textContent = "";',
+  '    pane.appendChild(level(current()));',
+  '    if (hereId) { var hr = pane.querySelector(".wcrow.here"); if (hr && hr.scrollIntoView) hr.scrollIntoView({ block: "center" }); }',
   '  }',
-  '  function show() { if (!root) build(); root.classList.remove(\'hidden\'); }',
-  '  function hide() { if (root) root.classList.add(\'hidden\'); }',
-  '  function openAt(name) {',
-  '    show();',
-  '    entry = entryByName(name || hereName() || OPEN || \'Core Rules\');',
-  '    load(function () {',
-  '      var hg = hereGroup(); if (hg) opened[entry.n + \'|\' + hg] = true;',
+  '  function level(node) {',
+  '    var box = el("div", "wcrows"), any = false, i, j;',
+  '    var kids = node.kids || [], recs = node.recs || [];',
+  '    for (i = 0; i < kids.length; i++) {',
+  '      var k = kids[i];',
+  '      if (k.recs) {',
+  '        box.appendChild(el("div", "wcgrp", k.n));',
+  '        for (j = 0; j < k.recs.length; j++) { box.appendChild(recRow(k.recs[j])); any = true; }',
+  '      } else { box.appendChild(nodeRow(k)); any = true; }',
+  '    }',
+  '    if (recs.length) {',
+  '      var label = node.lvl === "faction" ? "Faction rules" : node.lvl === "detachment" ? "Detachment" : "";',
+  '      if (label) box.appendChild(el("div", "wcgrp", label));',
+  '      for (j = 0; j < recs.length; j++) { box.appendChild(recRow(recs[j])); any = true; }',
+  '    }',
+  '    if (!any) box.appendChild(el("div", "wcempty", "Nothing under this node."));',
+  '    return box;',
+  '  }',
+  '  function nodeRow(k) {',
+  '    var r = el("div", "wcrow");',
+  '    r.setAttribute("data-wc-node", k.f);',
+  '    r.setAttribute("data-wc-name", k.n);',
+  '    r.appendChild(el("span", "wcn", k.n));',
+  '    if (k.c) r.appendChild(el("span", "wcc", String(k.c)));',
+  '    r.appendChild(el("span", "wcch", "\u203a"));',
+  '    return r;',
+  '  }',
+  '  function recRow(rec) {',
+  '    var r = el("div", "wcrow" + (hereId && rec.i === hereId ? " here" : ""));',
+  '    r.setAttribute("data-wc-rec", rec.f);',
+  '    r.appendChild(el("span", "wcn", rec.t));',
+  '    return r;',
+  '  }',
+  '  function prewalk(done) {',
+  '    var i = 0;',
+  '    function step() {',
+  '      if (i >= herePath.length) { done(); return; }',
+  '      var k = herePath[i++];',
+  '      loadNode(k.f, function (n) {',
+  '        path.push({ n: k.n, f: k.f });',
+  '        nodes.push(n || { n: k.n, kids: [], recs: [] });',
+  '        render();',
+  '        step();',
+  '      });',
+  '    }',
+  '    step();',
+  '  }',
+  '  function pushOpen() { if (!pushed) { pushed = true; try { history.pushState({ wc: 1 }, ""); } catch (e) { pushed = false; } } }',
+  '  function openUp() {',
+  '    if (open) { render(); return; }',
+  '    open = true; pushOpen();',
+  '    if (herePath.length && !path.length) prewalk(function () { render(); });',
+  '    render();',
+  '  }',
+  '  function closeUp() {',
+  '    if (!open) return;',
+  '    open = false; render();',
+  '    if (pushed) { pushed = false; try { history.back(); } catch (e) {} }',
+  '  }',
+  '  function jump(at) {',
+  '    if (at < 0) { path = []; nodes = []; } else { path = path.slice(0, at + 1); nodes = nodes.slice(0, at + 1); }',
+  '    render();',
+  '  }',
+  '  function drill(f, name) {',
+  '    loadNode(f, function (n) {',
+  '      path.push({ n: name || f, f: f });',
+  '      nodes.push(n || { n: name || f, kids: [], recs: [] });',
   '      render();',
   '    });',
   '  }',
-  '  document.addEventListener(\'click\', function (e) {',
+  '  function openRec(f) {',
+  '    if (!f) return;',
+  '    open = false; pushed = false; render();',
+  '    location.href = BASE + f;',
+  '  }',
+  '  function mount() {',
+  '    var host = document.querySelector(".wtop") || document.querySelector("header") || document.body;',
+  '    var b = el("button", "wcbar");',
+  '    b.id = "wcbar"; b.type = "button"; b.setAttribute("data-wc-open", "1"); b.setAttribute("aria-label", "Open the wiki index");',
+  '    host.insertBefore(b, host.firstChild);',
+  '    var o = el("div", "wcasc hidden"); o.id = "wcasc";',
+  '    var head = el("div", "wcaschead");',
+  '    var x = el("button", "wcclose", "\u00d7"); x.type = "button"; x.setAttribute("data-wc-close", "1"); x.setAttribute("aria-label", "Close");',
+  '    head.appendChild(x);',
+  '    var t = el("span", "wcbpath"); t.id = "wcascpath";',
+  '    head.appendChild(t);',
+  '    o.appendChild(head);',
+  '    var panes = el("div", "wcpans");',
+  '    var col = el("nav", "wccol"); col.id = "wccol";',
+  '    var pane = el("div", "wcpane"); pane.id = "wcpane";',
+  '    panes.appendChild(col); panes.appendChild(pane);',
+  '    o.appendChild(panes);',
+  '    document.body.appendChild(o);',
+  '  }',
+  '  document.addEventListener("click", function (e) {',
   '    var t = e.target;',
-  '    if (t && t.closest && t.closest(\'[data-toc-open]\')) { e.preventDefault(); openAt(); return; }',
-  '    if (!root || !t || !t.closest) return;',
-  '    if (t.closest(\'[data-toc-close]\')) { hide(); return; }',
-  '    if (t.closest(\'[data-rail-open]\')) { railOpen = true; render(); return; }',
-  '    var ra = t.closest(\'[data-area]\'); if (ra) { entry = entryByName(ra.getAttribute(\'data-area\')); railOpen = false; load(render); return; }',
-  '    var gr = t.closest(\'[data-group]\'); if (gr) { opened[entry.n + \'|\' + gr.getAttribute(\'data-group\')] = true; render(); return; }',
-  '    var pg = t.closest(\'[data-page]\'); if (pg) { var f = pg.getAttribute(\'data-file\'); if (f) location.href = f; return; }',
+  '    if (!t || !t.closest) return;',
+  '    if (t.closest("[data-wc-open]") || t.closest("[data-toc-open]")) { e.preventDefault(); openUp(); return; }',
+  '    if (t.closest("[data-wc-close]")) { e.preventDefault(); closeUp(); return; }',
+  '    var j = t.closest("[data-wc-jump]"); if (j) { jump(parseInt(j.getAttribute("data-wc-jump"), 10)); return; }',
+  '    var n = t.closest("[data-wc-node]"); if (n) { drill(n.getAttribute("data-wc-node"), n.getAttribute("data-wc-name")); return; }',
+  '    var r = t.closest("[data-wc-rec]"); if (r) { openRec(r.getAttribute("data-wc-rec")); return; }',
   '  });',
-  '  document.addEventListener(\'keydown\', function (e) { if (e.key === \'Escape\') hide(); });',
-  '  if (OPEN || (window.WIKI_TOC_ALWAYS)) openAt();',
+  '  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeUp(); });',
+  '  window.addEventListener("popstate", function () { if (open) { open = false; pushed = false; render(); } });',
+  '  window.WIKI_CASCADE = {',
+  '    state: function () { return { open: open, path: path.map(function (p) { return p.n; }), names: names(), node: current().n, fetched: Object.keys(CACHE), here: hereId || "" }; },',
+  '    open: openUp,',
+  '    close: closeUp,',
+  '  };',
+  '  mount();',
+  '  render();',
   '})();',
 ].join('\n');
 
@@ -390,11 +424,17 @@ function uniqueSlug(base, used) {
 export function tocTree(records, pageOf, opts) {
   const roster = opts.roster, factionOf = opts.factionOf, allianceOf = opts.allianceOf;
   const files = {};
+  // record id -> the chain of nodes the cascade walks to reach it. The render
+  // writes it into the record page's WIKI_HERE, so opening the cascade on a
+  // record pre-walks exactly these files instead of guessing from the heading.
+  const paths = new Map();
   const ent = r => ({ i: r.id, t: leafTitle(r), f: pageOf.get(r.id) || '' });
 
   // --- Rules -> book -> chapter -> section ----------------------------------
   const bookNodes = [];
+  const rulesRef = { n: 'Rules', lvl: 'branch', f: 'tree/rules.js' };
   for (const book of TREE_BOOKS) {
+    const bookRef = { n: book.name, lvl: 'book', f: 'tree/rules/' + book.slug + '.js' };
     const recs = records.filter(r => r.set === 'rules' && book.sources.indexOf(r.source) !== -1);
     const byHeading = new Map();
     for (const r of recs) { const h = String(r.heading || ''); if (!byHeading.has(h)) byHeading.set(h, []); byHeading.get(h).push(r); }
@@ -422,6 +462,8 @@ export function tocTree(records, pageOf, opts) {
       const file = 'tree/rules/' + book.slug + '/' + slug + '.js';
       ch.recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
       files[file] = { n: ch.title, lvl: 'chapter', c: ch.recs.length, recs: ch.recs.map(ent) };
+      const chapterRef = { n: ch.title, lvl: 'chapter', f: file };
+      for (const r of ch.recs) paths.set(r.id, [rulesRef, bookRef, chapterRef]);
       kids.push({ n: ch.title, lvl: 'chapter', c: ch.recs.length, f: file });
     }
     kids.sort((a, b) => a.n.localeCompare(b.n));
@@ -435,6 +477,7 @@ export function tocTree(records, pageOf, opts) {
   // --- Missions -> Events / Primary / Secondary -> section -------------------
   const ev = records.filter(r => r.set === 'rules' && r.source === 'event-companion');
   const partNodes = [];
+  const missionsRef = { n: 'Missions', lvl: 'branch', f: 'tree/missions.js' };
   for (const part of MISSION_PARTS) {
     const recs = ev.filter(r => {
       const h = String(r.heading || '').split(' > ')[0];
@@ -443,6 +486,8 @@ export function tocTree(records, pageOf, opts) {
     const file = 'tree/missions/' + nodeSlug(part.name) + '.js';
     recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
     files[file] = { n: part.name, lvl: 'part', c: recs.length, recs: recs.map(ent) };
+    const partRef = { n: part.name, lvl: 'part', f: file };
+    for (const r of recs) paths.set(r.id, [missionsRef, partRef]);
     partNodes.push({ n: part.name, lvl: 'part', c: recs.length, f: file });
   }
   files['tree/missions.js'] = { n: 'Missions', lvl: 'branch', c: ev.length, kids: partNodes };
@@ -462,7 +507,9 @@ export function tocTree(records, pageOf, opts) {
     byFaction.get(f).push(r);
   }
   const allianceNodes = [];
+  const factionsRef = { n: 'Factions', lvl: 'branch', f: 'tree/factions.js' };
   for (const alliance of ALLIANCE_ORDER) {
+    const allianceRef = { n: alliance, lvl: 'alliance', f: 'tree/factions/' + nodeSlug(alliance) + '.js' };
     const facNodes = [];
     for (const f of roster.filter(x => allianceOf.get(x.name) === alliance)) {
       const recs = byFaction.get(f.name) || [];
@@ -484,6 +531,9 @@ export function tocTree(records, pageOf, opts) {
         (r.kind === 'enhancement' ? detGroups.get(n).enh : detGroups.get(n).strat).push(r);
       }
       const base = 'tree/factions/' + nodeSlug(alliance) + '/' + f.slug;
+      const facRef = { n: f.name, lvl: 'faction', f: base + '.js' };
+      const detGroupRef = { n: 'Detachments', lvl: 'group', f: base + '/detachments.js' };
+      const unitsRef = { n: 'Units', lvl: 'group', f: base + '/units.js' };
       const used = new Set(), detKids = [];
       for (const n of [...detGroups.keys()].sort((a, b) => a.localeCompare(b))) {
         const g = detGroups.get(n);
@@ -495,6 +545,8 @@ export function tocTree(records, pageOf, opts) {
         g.recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
         const c = g.recs.length + g.enh.length + g.strat.length;
         files[file] = { n: n, lvl: 'detachment', c: c, recs: g.recs.map(ent), kids: kids, synthetic: g.synthetic ? 1 : 0 };
+        const detRef = { n: n, lvl: 'detachment', f: file };
+        for (const r of g.recs.concat(g.enh, g.strat)) paths.set(r.id, [factionsRef, allianceRef, facRef, detGroupRef, detRef]);
         detKids.push({ n: n, lvl: 'detachment', c: c, f: file, synthetic: g.synthetic ? 1 : 0 });
       }
       const detFile = base + '/detachments.js';
@@ -503,6 +555,7 @@ export function tocTree(records, pageOf, opts) {
       units.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
       const unitsFile = base + '/units.js';
       files[unitsFile] = { n: 'Units', lvl: 'group', c: units.length, recs: units.map(ent) };
+      for (const r of units) paths.set(r.id, [factionsRef, allianceRef, facRef, unitsRef]);
       rules.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
       const facC = detC + units.length + rules.length;
       const facFile = base + '.js';
@@ -510,6 +563,7 @@ export function tocTree(records, pageOf, opts) {
         { n: 'Detachments', lvl: 'group', c: detC, f: detFile },
         { n: 'Units', lvl: 'group', c: units.length, f: unitsFile },
       ] };
+      for (const r of rules) paths.set(r.id, [factionsRef, allianceRef, facRef]);
       facNodes.push({ n: f.name, lvl: 'faction', c: facC, f: facFile });
     }
     facNodes.sort((a, b) => a.n.localeCompare(b.n));
@@ -531,7 +585,7 @@ export function tocTree(records, pageOf, opts) {
     ],
     excluded: excludedIds.length ? [{ k: 'index', c: excludedIds.length, why: 'navigation stubs, not corpus content' }] : [],
   };
-  return { index: index, files: files, stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: ev.length, factions: facTotal } };
+  return { index: index, files: files, paths: paths, stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: ev.length, factions: facTotal } };
 }
 
 // The real corpus, wired once: the render and the tests both call this, so there

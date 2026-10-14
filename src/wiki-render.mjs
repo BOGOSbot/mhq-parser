@@ -62,7 +62,11 @@ const NAV = '<a href="index.html">Index</a><a href="search.html">Search</a><a hr
 // asset (src/wiki-shell.mjs), not a copy; the page carries its own record id and
 // area so the Wiki control can open the tree where the reader is.
 function productPage(title, body, r, openArea) {
-  const here = r ? JSON.stringify({ id: r.id, heading: r.heading || '', area: r.area || '' }).replace(/</g, '\\u003c') : '';
+  // The cascade opens on where the reader is: WIKI_HERE carries the record's own
+  // node chain (path), computed by the tree, so the UI pre-walks exactly those
+  // files instead of guessing from the heading. The path inlines names and file
+  // refs only - the files themselves are fetched when the cascade is opened.
+  const here = r ? JSON.stringify({ id: r.id, heading: r.heading || '', title: title, area: r.area || '', path: r.path || [] }).replace(/</g, '\\u003c') : '';
   return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n' + shellHead({}) + '</head>\n<body class="wpage">\n' + body + '\n'
     + (here ? '<script>window.WIKI_HERE = ' + here + ';</script>\n' : '')
     + (openArea ? '<script>window.WIKI_TOC_OPEN = ' + JSON.stringify(openArea) + ';</script>\n' : '')
@@ -269,11 +273,12 @@ for (const r of records) {
   // The product shell: the top bar the ask page has, over the record itself. The
   // developer furniture (the link block, the reading aids) moves into one row of
   // links at the foot, so nothing is lost and nothing is in the reader's way.
+  const leaf = crumbs.length ? crumbs[crumbs.length - 1] : (r.heading || r.id);
   const body = [
     topBar({}),
     '<main class="wrec">',
     '<p class="wcrumb">' + (crumbHtml || '<a href="index.html">index</a>') + '</p>',
-    '<h1 class="wtitle">' + esc(crumbs.length ? crumbs[crumbs.length - 1] : (r.heading || r.id)) + '</h1>',
+    '<h1 class="wtitle">' + esc(leaf) + '</h1>',
     '<p class="wmeta">' + esc(r.id) + ' &middot; ' + esc(r.kind) + ' &middot; ' + esc(r.source) + ' &middot; ' + r.chars + ' chars</p>',
     // The record body: the structured card for a datasheet or unitrules record,
     // the flat text for everything else (and for the 111 card records whose CSV
@@ -289,7 +294,7 @@ for (const r of records) {
     '<div class="wdev"><a href="index.html">Index</a><a href="search.html">Search</a><a href="anomalies.html">Reading aids</a></div>',
     '</main>',
   ].filter(Boolean).join('\n');
-  fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), productPage(r.heading || r.id, body, Object.assign({}, r, { area: areaOf.get(r.id) || '' })));
+  fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), productPage(leaf, body, Object.assign({}, r, { area: areaOf.get(r.id) || '', path: tree.paths.get(r.id) || [] })));
   written++;
 }
 // The record -> page map, so a server can link a finding's record to its page
@@ -308,7 +313,9 @@ const homeBody = [
   '<p class="wfoot">Every page is also reachable from the Wiki control above, and the developer index is at <a href="index.html">index.html</a>.</p>',
   '</main>',
 ].join('\n');
-fs.writeFileSync(path.join(OUT, 'home.html'), productPage('40k rules', homeBody, null, 'Core Rules'));
+// The cold /wiki/: no record context, so the cascade rests at the root and its
+// bar shows the three branches one tap away.
+fs.writeFileSync(path.join(OUT, 'home.html'), productPage('40k rules', homeBody, null, null));
 fs.writeFileSync(path.join(OUT, 'map.json'), JSON.stringify(Object.fromEntries(pageOf)));
 console.log('wiki-render -> ' + OUT);
 console.log('  records rendered      ' + written);

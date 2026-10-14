@@ -11,8 +11,10 @@
      top bar and the tree are one asset on both surfaces. -->
 <link rel="stylesheet" href="/wiki/shell.css">
 <!-- The tree: one implementation, written by the wiki render and served from
-     there. The Wiki control below opens it on whatever area the reader is in. -->
-<script src="/wiki/shell-data.js" defer></script>
+     there. tree/index.js is the cascade's root (three branches); shell.js fetches
+     one node at a time, under /wiki/, when the Wiki control opens a level. -->
+<script>window.WIKI_TREE_BASE = '/wiki/';</script>
+<script src="/wiki/tree/index.js" defer></script>
 <script src="/wiki/shell.js" defer></script>
 <style>
 :root{
