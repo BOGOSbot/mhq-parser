@@ -20,18 +20,19 @@ const UNIT_REC = 'datasheet#000000882';
 const STRAT = 'stratagem#000008931007';
 const SECONDARY = 'event-companion#Secondary-Mission-deck';
 const SEC = 'core-rules#Battle-shock-Rolls';
+const MUSTER = 'core-rules#Muster-Armies';
 const PLAIN_Q = 'core-rules#Battle-shock-Rolls->-If-a-unit-becomes-battle-shocked-after-starting-an-action-does-it-stop-performing-that-action-?';
 const all = readAllCorpus();
 const tree = wikiTree(all);
 const names = id => (tree.paths.get(id) || []).map(p => p.n);
 
 // --- the pre-walked path, per record kind ------------------------------------
-t('a section deep in Rules walks branch / book / chapter', names(RULES_REC), ['Rules', 'Core Rules', 'Muster Armies']);
+t('a section deep in Rules walks branch / book / chapter', names(RULES_REC), ['Rules', 'Core Rules', '25 Muster Armies']);
 t('a unit inside a faction walks branch / alliance / faction / Units', names(UNIT_REC), ['Factions', 'Imperium', 'Adeptus Custodes', 'Units']);
 t('a stratagem walks to its own detachment', names(STRAT), ['Factions', 'Imperium', 'Adeptus Custodes', 'Detachments', 'Auric Champions']);
 t('a secondary mission walks Missions / Secondary', names(SECONDARY), ['Missions', 'Secondary', 'Secondary Mission deck']);
-t('NAMED: 2. Move Units Step pre-walks to Movement Phase', names('core-rules#2.-Move-Units-Step'), ['Rules', 'Core Rules', 'Movement Phase']);
-t('NAMED: 2. Shoot pre-walks to Shooting Phase', names('core-rules#2.-Shoot'), ['Rules', 'Core Rules', 'Shooting Phase']);
+t('NAMED: 2. Move Units Step pre-walks to Movement Phase', names('core-rules#2.-Move-Units-Step'), ['Rules', 'Core Rules', '09 Movement Phase']);
+t('NAMED: 2. Shoot pre-walks to Shooting Phase', names('core-rules#2.-Shoot'), ['Rules', 'Core Rules', '10 Shooting Phase']);
 ok('every placed record has a pre-walked path', tree.paths.size === tree.stats.placed);
 ok('every step of every path names a file that exists', [...tree.paths.values()].every(p => p.length && p.every(s => !!tree.files[s.f])));
 t('the 163 navigation stubs have no path (they are not in the tree)', (tree.paths.get('faction-index#faction-ac') || []).length, 0);
@@ -40,7 +41,7 @@ ok('the path files are the per-node files, not one tree file', [...tree.paths.va
 // --- the record page carries that path, and nothing else ---------------------
 const outDir = path.join(ROOT, 'workspace', 'wiki-cascade-test');
 fs.rmSync(outDir, { recursive: true, force: true });
-const ids = [RULES_REC, UNIT_REC, STRAT, SECONDARY, SEC, PLAIN_Q].join(',');
+const ids = [RULES_REC, UNIT_REC, STRAT, SECONDARY, SEC, PLAIN_Q, MUSTER].join(',');
 const rendered = await new Promise(resolve => {
   const c = spawn(process.execPath, [path.join(ROOT, 'src', 'wiki-render.mjs')], { cwd: ROOT, env: Object.assign({}, process.env, { WIKI_RENDER_DIR: outDir, WIKI_RENDER_ONLY: ids }), stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '';
@@ -53,7 +54,7 @@ const map = JSON.parse(fs.readFileSync(path.join(outDir, 'map.json'), 'utf8'));
 const pageOf = id => fs.readFileSync(path.join(outDir, map[id]), 'utf8');
 const hereOf = id => JSON.parse(/window\.WIKI_HERE = (\{.*?\});<\/script>/.exec(pageOf(id).replace(/\n/g, ''))[1]);
 for (const [label, id, want] of [
-  ['rules section', RULES_REC, ['Rules', 'Core Rules', 'Muster Armies']],
+  ['rules section', RULES_REC, ['Rules', 'Core Rules', '25 Muster Armies']],
   ['unit', UNIT_REC, ['Factions', 'Imperium', 'Adeptus Custodes', 'Units']],
   ['stratagem', STRAT, ['Factions', 'Imperium', 'Adeptus Custodes', 'Detachments', 'Auric Champions']],
   ['secondary mission', SECONDARY, ['Missions', 'Secondary', 'Secondary Mission deck']],
@@ -69,11 +70,16 @@ for (const [label, id, want] of [
 // The annotations are folded into their section's page, and point back to it.
 const secPage = pageOf(SEC);
 ok('the annotated section page renders its folded Q&A', secPage.indexOf('Questions and errata (7)') !== -1 && secPage.indexOf('href="' + map[PLAIN_Q] + '"') !== -1);
-t('and its WIKI_HERE still walks to its chapter', hereOf(SEC).path.map(p => p.n), ['Rules', 'Core Rules', 'Core Concepts']);
+t('and its WIKI_HERE still walks to its chapter', hereOf(SEC).path.map(p => p.n), ['Rules', 'Core Rules', '01 Core Concepts']);
 const qPage = pageOf(PLAIN_Q);
 ok('a folded question keeps its own page and points back to its section', qPage.indexOf('Folded into') !== -1 && qPage.indexOf(map[SEC]) !== -1);
 t('and its WIKI_HERE opens the cascade on its section', hereOf(PLAIN_Q).at, SEC);
-ok('with the section path, not its own', hereOf(PLAIN_Q).path.map(p => p.n).join(' > '), ['Rules', 'Core Rules', 'Core Concepts'].join(' > '));
+ok('with the section path, not its own', hereOf(PLAIN_Q).path.map(p => p.n).join(' > '), ['Rules', 'Core Rules', '01 Core Concepts'].join(' > '));
+// A rule page's sections and subsections collapse with native <details>.
+const musterPage = pageOf(MUSTER);
+ok('the rule page renders its sections as collapsible details', musterPage.indexOf('<details class="wsec"') !== -1 && musterPage.indexOf('Sections (') !== -1 && musterPage.indexOf('<summary>') !== -1);
+ok('and needs no script for them', musterPage.indexOf('onclick') === -1 && musterPage.indexOf('addEventListener') === -1);
+ok('the folded Q&A are collapsible too', secPage.indexOf('<details class="wqa"') !== -1 && secPage.indexOf('<summary>') !== -1);
 // The payload before the cascade is opened: the root only, never a node file.
 const rootJs = fs.readFileSync(path.join(outDir, 'tree', 'index.js'), 'utf8');
 ok('the root the record page loads is the 3-branch index and nothing else', rootJs.indexOf('"branches"') !== -1 && rootJs.indexOf('"lvl":"chapter"') === -1 && rootJs.length < 1024);
@@ -113,7 +119,7 @@ t('MUTATION: and the old detachment file no longer names it', (moved.paths.get(S
 const promoted = mutate(copy => { copy.find(r => r.id === SECONDARY).heading = 'Primary Mission deck > X'; });
 t('MUTATION: moving a secondary record to the primary deck changes its part and chapter', (promoted.paths.get(SECONDARY) || []).map(p => p.n), ['Missions', 'Primary', 'Primary Mission deck']);
 const reparented = mutate(copy => { const r = copy.find(x => x.id === RULES_REC); r.heading = 'Floating Question'; r.parent = 'core-rules#1.-Hit-Roll'; });
-t('MUTATION: reparenting a record moves it to the parent\u2019s chapter', (reparented.paths.get(RULES_REC) || []).map(p => p.n), ['Rules', 'Core Rules', 'Attack Sequence']);
+t('MUTATION: reparenting a record moves it to the parent\u2019s chapter', (reparented.paths.get(RULES_REC) || []).map(p => p.n), ['Rules', 'Core Rules', '05 Attack Sequence']);
 fs.rmSync(outDir, { recursive: true, force: true });
 
 console.log(pass + ' passed, ' + fail + ' failed');

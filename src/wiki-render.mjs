@@ -19,7 +19,7 @@ import { readAllCorpus } from './rules-corpus.mjs';
 import { renderLinks } from './wiki-plan.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
 import { SHELL_CSS, shellHead, topBar } from './wiki-shell.mjs';
-import { TOC_CSS, TOC_JS, tocData, tocIndex, tocTree, pageNamer, factionRoster, factionAssigner, allianceAssigner } from './wiki-toc.mjs';
+import { TOC_CSS, TOC_JS, tocData, tocIndex, tocTree, pageNamer, factionRoster, factionAssigner, allianceAssigner, isAnnotation } from './wiki-toc.mjs';
 import { cardTables } from './unit-card.mjs';
 
 const OUT = process.env.WIKI_RENDER_DIR || path.join('workspace', 'wiki-render');
@@ -47,6 +47,15 @@ const CSS = [
   , 'input[type=search] { width:100%; padding:.7rem .8rem; font-size:1rem; border:1px solid var(--line); border-radius:.5rem; background:var(--bg); color:var(--ink); }'
   , 'ul.plain { list-style:none; padding:0; } ul.plain li { border-bottom:1px solid var(--line); padding:.45rem 0; }'
   , '.num { color:var(--dim); font-size:.85rem; }'
+  // A rule page's sections and subsections are native <details>: collapsible,
+  // keyboard-operable with no script, and reset on navigation (nothing persists).
+  , 'details.wsec,details.wqa { border-top:1px solid var(--line); padding:.15rem 0; }'
+  , 'details.wsec > summary,details.wqa > summary { cursor:pointer; font-weight:650; padding:.5rem 0; font-size:.95rem; }'
+  , 'details.wsec > summary:focus-visible,details.wqa > summary:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }'
+  , '.wsecbody { border-left:3px solid var(--line); padding:.15rem 0 .15rem .7rem; margin:.1rem 0 .5rem; overflow-wrap:break-word; white-space:pre-wrap; }'
+  , '.wsecbody .text { border-left:0; padding-left:0; margin:0; }'
+  , '.wseclink { font-size:.78rem; margin:0 0 .5rem; }'
+  , 'details.wsec details.wsec { margin-left:.7rem; }'
   , '@media (max-width:600px){ main{padding:0 .7rem 3rem;} h1{font-size:1.2rem;} .text{font-size:.95rem;} }'
 ].join('\n');
 
@@ -260,6 +269,22 @@ fs.writeFileSync(path.join(OUT, 'anomalies.html'), page('Reading aids', NAV, [
   listOf(emptiest, r => '<li>' + recLink(r) + ' <span class="num">' + r.chars + 'c</span></li>'),
 ].join('\n')));
 
+
+// A rule page's sections and subsections collapse: the corpus's own child
+// records that are sections in the same chapter, rendered as nested native
+// <details>. The body embedded is bounded and links to the full page; there is
+// no script, so the open/closed state is per page load and does not survive
+// navigation.
+const leafOf = rec => { const p = String(rec.heading || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : rec.id; };
+// The tree's own nesting: a subsection is never a sibling of its parent.
+const sectionKids = rec => (tree.childrenOf.get(rec.id) || []).map(id => byId.get(id)).filter(Boolean);
+const sectionText = rec => { const t = String(rec.text || ''); return '<pre class="text">' + esc(t.length > 1600 ? t.slice(0, 1600) + '\n…' : t) + '</pre>'; };
+const sectionsHtml = (rec, depth) => {
+  if (depth <= 0) return '';
+  const kids = sectionKids(rec);
+  if (!kids.length) return '';
+  return '<h2>Sections (' + kids.length + ')</h2>' + kids.map(c => '<details class="wsec" open><summary>' + esc(leafOf(c)) + '</summary><div class="wsecbody">' + sectionText(c) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(c.id)) + '">Open section</a></p>' + sectionsHtml(c, depth - 1) + '</details>').join('');
+};
 // one page per record. WIKI_RENDER_ONLY=<id>[,<id>] renders just those: it is what
 // the two-paths test uses to compare this render's fragment with the one the
 // server serves on demand, without paying for 6,705 pages to prove one.
@@ -282,6 +307,7 @@ for (const r of records) {
   const annoTitle = a => { const p = String(a.heading || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : a.id; };
   const folded = tree.attach.get(r.id) || [];
   const foldsInto = tree.attachTarget.get(r.id) || '';
+  const sections = (r.kind === 'rule' && !isAnnotation(r)) ? sectionsHtml(r, 2) : '';
   const body = [
     topBar({}),
     '<main class="wrec">',
@@ -292,11 +318,13 @@ for (const r of records) {
     // the flat text for everything else (and for the 111 card records whose CSV
     // row is missing, which fall back to the same text).
     recordBody(r, { corpora, index: cardIdx, href: id => pageOf.get(id) || '' }),
+    // The rule's own sections and subsections, each a collapsible <details>.
+    sections,
     // A folded annotation still has its own page, and points back to its section.
     (foldsInto && byId.has(foldsInto)) ? '<p class="qa-back">Folded into <a href="' + esc(pageOf.get(foldsInto)) + '">' + esc(byId.get(foldsInto).heading) + '</a></p>' : '',
     // The annotation's section carries the folded questions and errata, so they
     // stay reachable from the tree even though they are not tree rows.
-    folded.length ? '<h2>Questions and errata (' + folded.length + ')</h2><ul class="plain">' + folded.map(a => '<li><a href="' + esc(pageOf.get(a.id)) + '">' + esc(annoTitle(a)) + '</a></li>').join('') + '</ul>' : '',
+    folded.length ? '<h2>Questions and errata (' + folded.length + ')</h2>' + folded.map(a => '<details class="wqa"><summary>' + esc(annoTitle(a)) + '</summary><div class="wsecbody">' + esc(String(a.text || '').slice(0, 1200)) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(a.id)) + '">Open question</a></p></details>').join('') : '',
     '<h2>Links (' + r.links.length + ')</h2>',
     linkChips(r.links, true),
     r.parent && byId.has(r.parent) ? '<p class="num">Parent: <a href="' + esc(pageOf.get(r.parent)) + '">' + esc(byId.get(r.parent).heading) + '</a></p>' : '',

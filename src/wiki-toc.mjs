@@ -414,18 +414,19 @@ function leafTitle(r) {
 }
 
 // One rule for what an annotation is, in one place: a kind-rule record whose
-// heading names a FAQ or an Errata block, or whose heading carries a question.
-// A question segment is one ending in "?", one starting with the "Q:" label, or
-// one under a FAQ block. The label is NOT required - 64 of the questions have no
-// "Q:" and 28 of those do not even end in "?" (the corpus truncates them with
-// "...") - but where it exists it is the only signal left. Non-rule records are
-// never annotations (a stratagem named "WHERE D'YA FINK YOU'RE GOING?" is a name).
+// heading names a FAQ, Errata, Duplicated Abilities or [TORRENT] block, or whose
+// heading carries a question. A question segment is one ending in "?", one
+// starting with the "Q:" label, or one under a FAQ block. The label is NOT
+// required - 64 of the questions have no "Q:" and 28 of those do not even end in
+// "?" (the corpus truncates them with "...") - but where it exists it is the
+// only signal left. Non-rule records are never annotations (a stratagem named
+// "WHERE D'YA FINK YOU'RE GOING?" is a name).
 export function headingSegments(r) { return String(r.heading || '').split(' > ').filter(Boolean); }
 export function isAnnotation(r) {
   if (r.kind !== 'rule') return false;
   for (const seg of headingSegments(r)) {
     const x = String(seg).trim();
-    if (/^FAQ$/i.test(x) || /^Errata$/i.test(x) || /^Q:/i.test(x) || /\?\s*$/.test(x)) return true;
+    if (/^FAQ$/i.test(x) || /^Errata$/i.test(x) || /^Duplicated Abilities$/i.test(x) || /^\[TORRENT\]$/i.test(x) || /^Q:/i.test(x) || /\?\s*$/.test(x)) return true;
   }
   return false;
 }
@@ -470,7 +471,7 @@ export function coreOutline(file) {
     const h = headings[i];
     const part = /super_header/.test(h.cls);
     const chapter = !part && (/outline_header_book/.test(h.cls) || /^[0-9]+$/.test(h.num));
-    if (chapter) cur = { key: h.id || ('num:' + h.num) || h.name, name: h.name || h.text, order: i };
+    if (chapter) cur = { key: h.id || ('num:' + h.num) || h.name, name: h.name || h.text, num: h.num || '', order: i };
     chaptersOf[i] = cur;
   }
   const byAnchor = new Map(), byNum = new Map(), byName = new Map();
@@ -579,48 +580,124 @@ export function tocTree(records, pageOf, opts) {
     }
     return { sections: sections, annotations: annotations };
   };
+
+  // Core-stratagem records that are not stratagems, by their OWN Type line: the
+  // 15 "Movement Ability" and 7 "Shooting Ability" records are move/shoot type
+  // definitions whose text names the chapter they belong to ("as described in
+  // Moving (03)", "... Making Attacks (04)"), so they go to those chapters. The 9
+  // "Challenger" records are mission-format stratagems with no core home and no
+  // detachment, so they join the event machinery as Missions > Events >
+  // Challenger. Core Rules > Stratagems keeps only the core stratagems.
+  const stratType = r => (/Type:\s*(.+)/.exec(String(r.text || '')) || [])[1] || '';
+  const forcedChapter = new Map();
+  const challengers = [];
+  for (const r of records) {
+    if (r.source !== 'core-stratagems' || r.kind !== 'stratagem') continue;
+    const ty = stratType(r);
+    if (/^Movement Ability/i.test(ty)) forcedChapter.set(r.id, '03');
+    else if (/^Shooting Ability/i.test(ty)) forcedChapter.set(r.id, '04');
+    else if (/^Challenger/i.test(ty)) challengers.push(r);
+  }
+  const challengerIds = new Set(challengers.map(r => r.id));
+  const childrenOf = new Map();
   const bookNodes = [];
   const rulesRef = { n: 'Rules', lvl: 'branch', f: 'tree/rules.js' };
   const unattachedBooks = {};
+  const dropped = [];
+  let uruRecord = null;
+  // A chapter's number is the leading integer of its records' ruleIds (the page
+  // outline's own number agrees); 00 sorts after 25, an unnumbered chapter - the
+  // appendix's local [ONE SHOT] - after that.
+  const chapterNum = (ch, recs) => {
+    if (ch && ch.num) return ch.num;
+    const counts = new Map();
+    for (const r of recs) { const m = /^(\d+)/.exec(String(r.ruleId || '')); if (m) counts.set(m[1], (counts.get(m[1]) || 0) + 1); }
+    let best = '', n = 0;
+    for (const [k, v] of counts) if (v > n) { best = k; n = v; }
+    return best;
+  };
+  const chapterLabel = (num, title) => (num ? String(num).padStart(2, '0') + ' ' : '') + title;
+  const chapterRank = ch => ch.num === '' ? 300 : (ch.num === '00' ? 200 : parseInt(ch.num, 10));
   for (const book of TREE_BOOKS) {
     const bookRef = { n: book.name, lvl: 'book', f: 'tree/rules/' + book.slug + '.js' };
-    const bookRecs = records.filter(r => r.set === 'rules' && book.sources.indexOf(r.source) !== -1);
-    const before = unattached.length;
+    const bookRecs = records.filter(r => r.set === 'rules' && book.sources.indexOf(r.source) !== -1 && !challengerIds.has(r.id));
+    const before = unattached.length, beforeDropped = dropped.length;
     const folded = fold(bookRecs);
     unattachedBooks[book.slug] = unattached.length - before;
+    // Universal Rules Updates is the 00 chapter at the end of the Rules branch.
+    const u = folded.sections.findIndex(r => r.id.indexOf('Universal-Rules-Updates') !== -1);
+    if (u >= 0) uruRecord = folded.sections.splice(u, 1)[0];
     const chapters = new Map();
     for (const r of folded.sections) {
-      const ch = resolveChapter(r, book);
+      const forced = forcedChapter.has(r.id) ? (outline && outline.byNumber(forcedChapter.get(r.id))) : null;
+      const ch = forced || resolveChapter(r, book);
+      // Books is the edition/history front matter, not a chapter.
+      if (ch && ch.key === 'Books') { dropped.push(r); continue; }
       const key = ch ? ch.key : '\u0000unplaced';
-      if (!chapters.has(key)) chapters.set(key, { title: ch ? ch.name : 'Unplaced', order: ch ? ch.order : 1e9, recs: [] });
+      if (!chapters.has(key)) chapters.set(key, { title: ch ? ch.name : 'Unplaced', num: ch ? (ch.num || '') : '', order: ch ? ch.order : 1e9, recs: [] });
       chapters.get(key).recs.push(r);
     }
-    const ordered = [...chapters.values()].sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+    for (const ch of chapters.values()) ch.num = chapterNum(ch, ch.recs);
+    const ordered = [...chapters.values()].sort((a, b) => chapterRank(a) - chapterRank(b) || a.title.localeCompare(b.title));
     const used = new Set(), kids = [];
     for (const ch of ordered) {
       const slug = uniqueSlug(nodeSlug(ch.title), used);
       const file = 'tree/rules/' + book.slug + '/' + slug + '.js';
+      const label = chapterLabel(ch.num, ch.title);
       ch.recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+      // A subsection is never a sibling of its own parent: within a chapter, a
+      // section whose heading extends another section's heading nests under it.
+      const parentOfSection = new Map(), nestedSection = new Set();
+      for (const r of ch.recs) {
+        const h = String(r.heading || '');
+        let best = null, bestLen = -1;
+        for (const o of ch.recs) {
+          if (o.id === r.id) continue;
+          const oh = String(o.heading || '');
+          if (oh && h.indexOf(oh + ' > ') === 0 && oh.length > bestLen) { best = o; bestLen = oh.length; }
+        }
+        if (best) { parentOfSection.set(r.id, best.id); nestedSection.add(r.id); }
+      }
+      for (const r of ch.recs) {
+        const subs = ch.recs.filter(x => parentOfSection.get(x.id) === r.id).map(x => x.id);
+        if (subs.length) childrenOf.set(r.id, subs);
+      }
       let counted = 0;
-      const list = ch.recs.map(r => {
+      const entryFor = r => {
         const q = (attach.get(r.id) || []).length;
         counted += 1 + q;
         const e = ent(r);
         if (q) e.q = q;
+        const subs = ch.recs.filter(x => parentOfSection.get(x.id) === r.id);
+        if (subs.length) e.s = subs.map(entryFor);
         return e;
-      });
-      files[file] = { n: ch.title, lvl: 'chapter', c: counted, recs: list };
-      const chapterRef = { n: ch.title, lvl: 'chapter', f: file };
+      };
+      const list = ch.recs.filter(r => !nestedSection.has(r.id)).map(entryFor);
+      files[file] = { n: label, lvl: 'chapter', c: counted, recs: list };
+      const chapterRef = { n: label, lvl: 'chapter', f: file };
       for (const r of ch.recs) {
         paths.set(r.id, [rulesRef, bookRef, chapterRef]);
         for (const a of (attach.get(r.id) || [])) paths.set(a.id, [rulesRef, bookRef, chapterRef]);
       }
-      kids.push({ n: ch.title, lvl: 'chapter', c: counted, f: file });
+      kids.push({ n: label, lvl: 'chapter', c: counted, f: file });
     }
-    const bookC = bookRecs.length - (unattached.length - before);
+    const bookC = bookRecs.length - (unattached.length - before) - (dropped.length - beforeDropped) - (u >= 0 ? 1 : 0);
     const file = 'tree/rules/' + book.slug + '.js';
     files[file] = { n: book.name, lvl: 'book', c: bookC, kids: kids };
     bookNodes.push({ n: book.name, lvl: 'book', c: bookC, f: file });
+  }
+  // The 00 chapter, at the Rules level after the two books.
+  if (uruRecord) {
+    const q = (attach.get(uruRecord.id) || []).length;
+    const counted = 1 + q;
+    const file = 'tree/rules/universal-rules-updates.js';
+    const e = ent(uruRecord);
+    if (q) e.q = q;
+    files[file] = { n: '00 Universal Rules Updates', lvl: 'chapter', c: counted, recs: [e] };
+    const uruRef = { n: '00 Universal Rules Updates', lvl: 'chapter', f: file };
+    paths.set(uruRecord.id, [rulesRef, uruRef]);
+    for (const a of (attach.get(uruRecord.id) || [])) paths.set(a.id, [rulesRef, uruRef]);
+    bookNodes.push({ n: '00 Universal Rules Updates', lvl: 'chapter', c: counted, f: file });
   }
   const rulesTotal = bookNodes.reduce((n, b) => n + b.c, 0);
   files['tree/rules.js'] = { n: 'Rules', lvl: 'branch', c: rulesTotal, kids: bookNodes };
@@ -634,10 +711,13 @@ export function tocTree(records, pageOf, opts) {
   const foldedM = fold(ev);
   const missionsUnattached = () => unattached.length - beforeM;
   unattachedBooks['event-companion'] = missionsUnattached();
+  // The 9 Challenger mission stratagems join Events as one chapter.
+  const evSections = foldedM.sections.concat(challengers);
   const partNodes = [];
   const missionsRef = { n: 'Missions', lvl: 'branch', f: 'tree/missions.js' };
   for (const part of MISSION_PARTS) {
-    const recs = foldedM.sections.filter(r => {
+    const recs = evSections.filter(r => {
+      if (challengerIds.has(r.id)) return part.name === 'Events';
       const h = String(r.heading || '').split(' > ')[0];
       return part.heading === null ? (h !== 'Primary Mission deck' && h !== 'Secondary Mission deck') : h === part.heading;
     });
@@ -645,7 +725,7 @@ export function tocTree(records, pageOf, opts) {
     const partRef = { n: part.name, lvl: 'part', f: partFile };
     const chapters = new Map();
     for (const r of recs) {
-      const first = headingSegments(r)[0] || 'Other';
+      const first = challengerIds.has(r.id) ? 'Challenger' : (headingSegments(r)[0] || 'Other');
       if (!chapters.has(first)) chapters.set(first, []);
       chapters.get(first).push(r);
     }
@@ -674,7 +754,7 @@ export function tocTree(records, pageOf, opts) {
     files[partFile] = { n: part.name, lvl: 'part', c: partC, kids: kids };
     partNodes.push({ n: part.name, lvl: 'part', c: partC, f: partFile });
   }
-  const missionsC = ev.length - missionsUnattached();
+  const missionsC = ev.length + challengers.length - missionsUnattached();
   files['tree/missions.js'] = { n: 'Missions', lvl: 'branch', c: missionsC, kids: partNodes };
 
   // --- Factions -> alliance -> faction -> Detachments / Units ---------------
@@ -776,9 +856,11 @@ export function tocTree(records, pageOf, opts) {
     // lists them on the section's page), attachTarget is annotation id -> section
     // id (so the cascade opens on the section), unattached is the ones with no
     // section, counted per book and never given an invented home.
-    attach: attach, attachTarget: attachTarget, unattached: unattached.map(r => r.id),
+    attach: attach, attachTarget: attachTarget, unattached: unattached.map(r => r.id), childrenOf: childrenOf,
     stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: missionsC, factions: facTotal,
-      annotations: annotationTotal, annotated: annotationTotal - unattached.length, unattached: unattached.length, unattachedByBook: unattachedBooks },
+      annotations: annotationTotal, annotated: annotationTotal - unattached.length, unattached: unattached.length, unattachedByBook: unattachedBooks,
+      dropped: dropped.length },
+    dropped: dropped.map(r => r.id),
   };
 }
 
