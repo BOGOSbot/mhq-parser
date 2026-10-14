@@ -188,6 +188,7 @@ export const TOC_JS = [
   '  }',
   '  function nodeRow(k) {',
   '    var r = el("div", "wcrow");',
+  '    if (k.pg) { r.setAttribute("data-wc-rec", k.pg); r.appendChild(el("span", "wcn", k.n)); if (k.c) r.appendChild(el("span", "wcc", String(k.c))); r.appendChild(el("span", "wcch", "\u203a")); return r; }',
   '    r.setAttribute("data-wc-node", k.f);',
   '    r.setAttribute("data-wc-name", k.n);',
   '    r.appendChild(el("span", "wcn", k.n));',
@@ -757,9 +758,26 @@ export function tocTree(records, pageOf, opts) {
   const missionsC = ev.length + challengers.length - missionsUnattached();
   files['tree/missions.js'] = { n: 'Missions', lvl: 'branch', c: missionsC, kids: partNodes };
 
-  // --- Factions -> alliance -> faction -> Detachments / Units ---------------
+  // --- Factions -> alliance -> faction -> Army rules / Detachments / Units ---
+  // Two filters and one merge, all on the record's own Source line:
+  //  - "(edition 0)" and "(Warhammer Legends)" datasheets are legacy content
+  //    and leave the tree; every Legends record is also edition 0, so the two
+  //    tests remove the same set. The loose word "Legends" would also hit 4
+  //    prose mentions (2 stratagems, 1 rule, 1 detachment), so the Source
+  //    marker, not the word, is the test. A legacy datasheet's unitrules twin
+  //    leaves with it.
+  //  - unitrules#<n> pairs with datasheet#<n>: one page per datasheet. The card
+  //    already carries the keywords and the abilities, so the merged record
+  //    contributes nothing the page does not already show; it is kept on the
+  //    page as a collapsed section, not as a row. A unitrules with no datasheet
+  //    stays a unit of its own.
+  //  - one faction rule is the 10th-edition Strands of Fate, dropped by id: the
+  //    corpus puts no edition marker on any of its 63 faction rules.
+  const LEGACY = /\(edition 0\)|\(Warhammer Legends\)/i;
+  const TENTH_EDITION = new Set(['faction-rule#000008445']);
   const byFaction = new Map();
-  const excludedIds = [];
+  const excludedIds = [], filteredIds = [], mergedIds = [], pages = [];
+  const owned = new Map(), mergedOn = new Map();
   for (const r of records) {
     if (r.set !== 'factions') continue;
     // The 163 index records are generated link stubs, not corpus content: 92
@@ -772,63 +790,99 @@ export function tocTree(records, pageOf, opts) {
     byFaction.get(f).push(r);
   }
   const allianceNodes = [];
+  const sorter = (a, b) => String(a.heading || '').localeCompare(String(b.heading || ''));
   const factionsRef = { n: 'Factions', lvl: 'branch', f: 'tree/factions.js' };
   for (const alliance of ALLIANCE_ORDER) {
     const allianceRef = { n: alliance, lvl: 'alliance', f: 'tree/factions/' + nodeSlug(alliance) + '.js' };
     const facNodes = [];
     for (const f of roster.filter(x => allianceOf.get(x.name) === alliance)) {
       const recs = byFaction.get(f.name) || [];
-      const rules = recs.filter(r => r.kind === 'faction-rule');
-      const units = recs.filter(r => r.kind === 'datasheet' || r.kind === 'unitrules');
+      const base = 'tree/factions/' + nodeSlug(alliance) + '/' + f.slug;
+      const facRef = { n: f.name, lvl: 'faction', f: base + '.js' };
+      // Army rules: the faction-rule records and the "Detachment: Army Rules"
+      // stratagems, collected on one synthetic page with no subsection beneath.
+      const rules = [];
+      for (const r of recs.filter(r => r.kind === 'faction-rule').sort(sorter)) {
+        if (TENTH_EDITION.has(r.id)) { filteredIds.push(r.id); continue; }
+        rules.push(r);
+      }
       const detGroups = new Map();
       for (const d of recs.filter(r => r.kind === 'detachment')) {
         const n = stripSuffix(d.heading);
-        if (!detGroups.has(n)) detGroups.set(n, { name: n, recs: [], enh: [], strat: [], synthetic: false });
+        if (!detGroups.has(n)) detGroups.set(n, { name: n, recs: [], enh: [], strat: [] });
         detGroups.get(n).recs.push(d);
       }
       for (const r of recs.filter(r => r.kind === 'enhancement' || r.kind === 'stratagem')) {
-        // The corpus marks the attachment in the record itself: "Detachment: X"
-        // inside the enhancement or stratagem. A value with no detachment record
-        // (Aeldari's 6 "Army Rules" stratagems) keeps its own node, marked
-        // synthetic, so nothing is flattened into a pile.
-        const n = detachmentName(r) || 'Army Rules';
-        if (!detGroups.has(n)) detGroups.set(n, { name: n, recs: [], enh: [], strat: [], synthetic: true });
+        // The corpus marks the attachment in the record itself: "Detachment: X".
+        // "Army Rules" is not a detachment: it goes on the faction's army-rules
+        // page. No faction record has an empty Detachment value (measured).
+        const n = detachmentName(r);
+        if (!n || n === 'Army Rules') { rules.push(r); continue; }
+        if (!detGroups.has(n)) detGroups.set(n, { name: n, recs: [], enh: [], strat: [] });
         (r.kind === 'enhancement' ? detGroups.get(n).enh : detGroups.get(n).strat).push(r);
       }
-      const base = 'tree/factions/' + nodeSlug(alliance) + '/' + f.slug;
-      const facRef = { n: f.name, lvl: 'faction', f: base + '.js' };
+      // Units: one page per datasheet, the legacy rows out, the twins merged.
+      const datasheets = recs.filter(r => r.kind === 'datasheet').sort(sorter);
+      const unitrules = recs.filter(r => r.kind === 'unitrules');
+      const urByNum = new Map(unitrules.map(r => [r.id.replace('unitrules#', ''), r]));
+      const dsNums = new Set(datasheets.map(r => r.id.replace('datasheet#', '')));
+      const units = [], mergedHere = [];
+      let mergedC = 0;
+      for (const d of datasheets) {
+        const num = d.id.replace('datasheet#', ''), u = urByNum.get(num);
+        if (LEGACY.test(String(d.text || ''))) { filteredIds.push(d.id); if (u) filteredIds.push(u.id); continue; }
+        units.push(d);
+        if (u) { mergedIds.push(u.id); mergedHere.push(u.id); mergedOn.set(d.id, u.id); mergedC += 1; }
+      }
+      // An unpaired unitrules is a unit of its own; its "- keywords and abilities"
+      // suffix is the twin marker, not a name, so the row drops it.
+      for (const u of unitrules) if (!dsNums.has(u.id.replace('unitrules#', ''))) units.push(Object.assign({}, u, { heading: String(u.heading || '').replace(/\s*-\s*keywords and abilities(\s*\(\d+\/\d+\))?$/i, '') }));
+      // Detachments: one page per detachment record; its enhancements and
+      // stratagems live on that page, and nothing nests beneath either.
       const detGroupRef = { n: 'Detachments', lvl: 'group', f: base + '/detachments.js' };
-      const unitsRef = { n: 'Units', lvl: 'group', f: base + '/units.js' };
-      const used = new Set(), detKids = [];
+      const detRows = [];
+      const usedDet = new Set();
+      let detC = 0;
       for (const n of [...detGroups.keys()].sort((a, b) => a.localeCompare(b))) {
         const g = detGroups.get(n);
-        const slug = uniqueSlug(nodeSlug(n), used);
-        const file = base + '/detachments/' + slug + '.js';
-        const kids = [];
-        if (g.enh.length) { g.enh.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || ''))); kids.push({ n: 'Enhancements', lvl: 'group', c: g.enh.length, recs: g.enh.map(ent) }); }
-        if (g.strat.length) { g.strat.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || ''))); kids.push({ n: 'Stratagems', lvl: 'group', c: g.strat.length, recs: g.strat.map(ent) }); }
-        g.recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+        g.enh.sort(sorter); g.strat.sort(sorter); g.recs.sort(sorter);
         const c = g.recs.length + g.enh.length + g.strat.length;
-        files[file] = { n: n, lvl: 'detachment', c: c, recs: g.recs.map(ent), kids: kids, synthetic: g.synthetic ? 1 : 0 };
-        const detRef = { n: n, lvl: 'detachment', f: file };
-        for (const r of g.recs.concat(g.enh, g.strat)) paths.set(r.id, [factionsRef, allianceRef, facRef, detGroupRef, detRef]);
-        detKids.push({ n: n, lvl: 'detachment', c: c, f: file, synthetic: g.synthetic ? 1 : 0 });
+        detC += c;
+        const d = g.recs[0];
+        if (d) {
+          owned.set(d.id, { name: n, enh: g.enh.map(r => r.id), strat: g.strat.map(r => r.id) });
+          detRows.push({ i: d.id, t: n, f: pageOf.get(d.id) || '', q: c });
+          for (const r of g.recs) paths.set(r.id, [factionsRef, allianceRef, facRef, detGroupRef]);
+        } else {
+          // A Detachment value with no detachment record still gets one page: a
+          // synthetic page holding what it owns. The corpus has none today (only
+          // "Army Rules", which is not a detachment); this is the guard rail.
+          const file = base + '/detachment-' + uniqueSlug(nodeSlug(n), usedDet) + '.html';
+          pages.push({ f: file, n: n, lvl: 'detachment', area: f.name, path: [factionsRef, allianceRef, facRef], recs: g.enh.concat(g.strat).map(r => r.id) });
+          detRows.push({ i: 'page:' + file, t: n, f: file, q: c });
+        }
+        for (const r of g.enh.concat(g.strat)) paths.set(r.id, [factionsRef, allianceRef, facRef, detGroupRef]);
       }
-      const detFile = base + '/detachments.js';
-      const detC = detKids.reduce((n, k) => n + k.c, 0);
-      files[detFile] = { n: 'Detachments', lvl: 'group', c: detC, kids: detKids };
-      units.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
-      const unitsFile = base + '/units.js';
-      files[unitsFile] = { n: 'Units', lvl: 'group', c: units.length, recs: units.map(ent) };
+      files[base + '/detachments.js'] = { n: 'Detachments', lvl: 'group', c: detC, recs: detRows };
+      const unitsRef = { n: 'Units', lvl: 'group', f: base + '/units.js' };
+      files[base + '/units.js'] = { n: 'Units', lvl: 'group', c: units.length, recs: units.map(ent) };
       for (const r of units) paths.set(r.id, [factionsRef, allianceRef, facRef, unitsRef]);
-      rules.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
-      const facC = detC + units.length + rules.length;
-      const facFile = base + '.js';
-      files[facFile] = { n: f.name, lvl: 'faction', c: facC, recs: rules.map(ent), kids: [
-        { n: 'Detachments', lvl: 'group', c: detC, f: detFile },
-        { n: 'Units', lvl: 'group', c: units.length, f: unitsFile },
-      ] };
+      // A merged twin still has a page: it pre-walks to the Units level too.
+      for (const u of mergedHere) paths.set(u, [factionsRef, allianceRef, facRef, unitsRef]);
+      let army = null;
+      if (rules.length) {
+        const armyFile = base + '/army-rules.html';
+        army = { n: 'Army rules', lvl: 'army-rules', c: rules.length, f: armyFile };
+        pages.push({ f: armyFile, n: 'Army rules', lvl: 'army-rules', area: f.name, path: [factionsRef, allianceRef, facRef], recs: rules.map(r => r.id) });
+      }
       for (const r of rules) paths.set(r.id, [factionsRef, allianceRef, facRef]);
+      const facC = detC + units.length + rules.length + mergedC;
+      const facFile = base + '.js';
+      files[facFile] = { n: f.name, lvl: 'faction', c: facC, recs: [], kids: [
+        ...(army ? [{ n: army.n, lvl: army.lvl, c: army.c, pg: army.f }] : []),
+        { n: 'Detachments', lvl: 'group', c: detC, f: base + '/detachments.js' },
+        { n: 'Units', lvl: 'group', c: units.length, f: base + '/units.js' },
+      ] };
       facNodes.push({ n: f.name, lvl: 'faction', c: facC, f: facFile });
     }
     facNodes.sort((a, b) => a.n.localeCompare(b.n));
@@ -857,10 +911,13 @@ export function tocTree(records, pageOf, opts) {
     // id (so the cascade opens on the section), unattached is the ones with no
     // section, counted per book and never given an invented home.
     attach: attach, attachTarget: attachTarget, unattached: unattached.map(r => r.id), childrenOf: childrenOf,
+    // One page per detachment and one page per army-rules set: the tree carves
+    // the collections, the render writes their pages.
+    owned: owned, mergedOn: mergedOn, pages: pages,
     stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: missionsC, factions: facTotal,
       annotations: annotationTotal, annotated: annotationTotal - unattached.length, unattached: unattached.length, unattachedByBook: unattachedBooks,
-      dropped: dropped.length },
-    dropped: dropped.map(r => r.id),
+      dropped: dropped.length, filtered: filteredIds.length, merged: mergedIds.length },
+    dropped: dropped.map(r => r.id), filtered: filteredIds, merged: mergedIds,
   };
 }
 

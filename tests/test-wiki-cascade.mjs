@@ -29,7 +29,7 @@ const names = id => (tree.paths.get(id) || []).map(p => p.n);
 // --- the pre-walked path, per record kind ------------------------------------
 t('a section deep in Rules walks branch / book / chapter', names(RULES_REC), ['Rules', 'Core Rules', '25 Muster Armies']);
 t('a unit inside a faction walks branch / alliance / faction / Units', names(UNIT_REC), ['Factions', 'Imperium', 'Adeptus Custodes', 'Units']);
-t('a stratagem walks to its own detachment', names(STRAT), ['Factions', 'Imperium', 'Adeptus Custodes', 'Detachments', 'Auric Champions']);
+t('a stratagem walks to the Detachments level, where its detachment is a row', names(STRAT), ['Factions', 'Imperium', 'Adeptus Custodes', 'Detachments']);
 t('a secondary mission walks Missions / Secondary', names(SECONDARY), ['Missions', 'Secondary', 'Secondary Mission deck']);
 t('NAMED: 2. Move Units Step pre-walks to Movement Phase', names('core-rules#2.-Move-Units-Step'), ['Rules', 'Core Rules', '09 Movement Phase']);
 t('NAMED: 2. Shoot pre-walks to Shooting Phase', names('core-rules#2.-Shoot'), ['Rules', 'Core Rules', '10 Shooting Phase']);
@@ -41,7 +41,8 @@ ok('the path files are the per-node files, not one tree file', [...tree.paths.va
 // --- the record page carries that path, and nothing else ---------------------
 const outDir = path.join(ROOT, 'workspace', 'wiki-cascade-test');
 fs.rmSync(outDir, { recursive: true, force: true });
-const ids = [RULES_REC, UNIT_REC, STRAT, SECONDARY, SEC, PLAIN_Q, MUSTER].join(',');
+const AURIC = [...tree.owned.entries()].find(pair => pair[1].strat.indexOf(STRAT) !== -1)[0];
+const ids = [RULES_REC, UNIT_REC, STRAT, SECONDARY, SEC, PLAIN_Q, MUSTER, AURIC].join(',');
 const rendered = await new Promise(resolve => {
   const c = spawn(process.execPath, [path.join(ROOT, 'src', 'wiki-render.mjs')], { cwd: ROOT, env: Object.assign({}, process.env, { WIKI_RENDER_DIR: outDir, WIKI_RENDER_ONLY: ids }), stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '';
@@ -56,7 +57,7 @@ const hereOf = id => JSON.parse(/window\.WIKI_HERE = (\{.*?\});<\/script>/.exec(
 for (const [label, id, want] of [
   ['rules section', RULES_REC, ['Rules', 'Core Rules', '25 Muster Armies']],
   ['unit', UNIT_REC, ['Factions', 'Imperium', 'Adeptus Custodes', 'Units']],
-  ['stratagem', STRAT, ['Factions', 'Imperium', 'Adeptus Custodes', 'Detachments', 'Auric Champions']],
+  ['stratagem', STRAT, ['Factions', 'Imperium', 'Adeptus Custodes', 'Detachments']],
   ['secondary mission', SECONDARY, ['Missions', 'Secondary', 'Secondary Mission deck']],
 ]) {
   const here = hereOf(id);
@@ -75,6 +76,11 @@ const qPage = pageOf(PLAIN_Q);
 ok('a folded question keeps its own page and points back to its section', qPage.indexOf('Folded into') !== -1 && qPage.indexOf(map[SEC]) !== -1);
 t('and its WIKI_HERE opens the cascade on its section', hereOf(PLAIN_Q).at, SEC);
 ok('with the section path, not its own', hereOf(PLAIN_Q).path.map(p => p.n).join(' > '), ['Rules', 'Core Rules', '01 Core Concepts'].join(' > '));
+// One page per detachment: its own enhancements and stratagems, no subsection row.
+const detPage = pageOf(AURIC);
+ok('the detachment page holds its enhancements and stratagems', detPage.indexOf('Enhancements (') !== -1 && detPage.indexOf('Stratagems (') !== -1 && detPage.indexOf(map[STRAT]) !== -1);
+ok('the detachment is a row in the Detachments level, with its owned count and no kids', (function () { const f = tree.files['tree/factions/imperium/adeptus-custodes/detachments.js']; const row = f.recs.find(r => r.i === AURIC); return !!(row && row.q > 0 && !('kids' in f)); })());
+ok('the datasheet page carries its merged unitrules twin as a collapsed section', pageOf(UNIT_REC).indexOf('Unit rules text (merged)') !== -1 && tree.mergedOn.has(UNIT_REC));
 // A rule page's sections and subsections collapse with native <details>.
 const musterPage = pageOf(MUSTER);
 ok('the rule page renders its sections as collapsible details', musterPage.indexOf('<details class="wsec"') !== -1 && musterPage.indexOf('Sections (') !== -1 && musterPage.indexOf('<summary>') !== -1);
@@ -114,8 +120,9 @@ const roster = factionRoster(cardTables().factionName, cardTables().factionLink)
 const wire = { roster: roster, factionOf: factionAssigner(roster), allianceOf: allianceAssigner(roster, cardTables().datasheets, cardTables().keywords) };
 const mutate = fn => { const copy = all.map(r => Object.assign({}, r)); fn(copy); return tocTree(copy, pageNamer(copy), wire); };
 const moved = mutate(copy => { const s = copy.find(r => r.id === STRAT); s.text = s.text.replace('Detachment: Auric Champions', 'Detachment: Renamed Host'); });
-t('MUTATION: changing the Detachment line moves the stratagem in its path', (moved.paths.get(STRAT) || []).map(p => p.n).slice(-1), ['Renamed Host']);
-t('MUTATION: and the old detachment file no longer names it', (moved.paths.get(STRAT) || []).map(p => p.f).indexOf('tree/factions/imperium/adeptus-custodes/detachments/auric-champions.js'), -1);
+ok('MUTATION: changing the Detachment line takes the stratagem off its old detachment', ((moved.owned.get(AURIC) || {}).strat || []).indexOf(STRAT) === -1);
+ok('MUTATION: and a page for the new detachment now owns it', moved.pages.some(pg => pg.n === 'Renamed Host' && pg.recs.indexOf(STRAT) !== -1));
+t('MUTATION: the path still lands on the Detachments level', (moved.paths.get(STRAT) || []).map(p => p.n).join(' > '), 'Factions > Imperium > Adeptus Custodes > Detachments');
 const promoted = mutate(copy => { copy.find(r => r.id === SECONDARY).heading = 'Primary Mission deck > X'; });
 t('MUTATION: moving a secondary record to the primary deck changes its part and chapter', (promoted.paths.get(SECONDARY) || []).map(p => p.n), ['Missions', 'Primary', 'Primary Mission deck']);
 const reparented = mutate(copy => { const r = copy.find(x => x.id === RULES_REC); r.heading = 'Floating Question'; r.parent = 'core-rules#1.-Hit-Roll'; });

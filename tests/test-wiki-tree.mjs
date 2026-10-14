@@ -37,13 +37,13 @@ const idWithHeading = h => (all.find(r => r.heading === h && tree.paths.has(r.id
 t('three branches: Rules, Missions, Factions', idx.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
 t('Rules holds the 621 placed records (444 core-rules + 176 appendix + 00)', idx.branches[0].c, 621);
 t('Missions holds the 82 placed records (73 event-companion + 9 Challenger)', idx.branches[1].c, 82);
-t('Factions holds 5,828 placed records', idx.branches[2].c, 5828);
-t('of which placed', idx.placed, 6531);
+t('Factions holds 4,998 placed records (5,828 less the 830 filtered)', idx.branches[2].c, 4998);
+t('of which placed', idx.placed, 5701);
 t('the 163 index stubs are still counted', idx.excluded, [{ k: 'index', c: 163, why: 'navigation stubs, not corpus content' }]);
 t('the annotation total and the attached/unattached split', [tree.stats.annotations, tree.stats.annotated, tree.stats.unattached], [270, 261, 9]);
 t('unattached per book', tree.stats.unattachedByBook, { 'core-rules': 0, 'rules-appendix': 1, 'event-companion': 8 });
 t('Books is dropped as front matter', [tree.stats.dropped, tree.dropped.slice().sort()], [2, ['core-rules#Introduction', 'core-rules#Introduction#2']]);
-t('placed + excluded + unattached + dropped is the whole corpus', idx.placed + idx.excluded[0].c + tree.stats.unattached + tree.stats.dropped, 6705);
+t('placed + excluded + unattached + dropped + filtered is the whole corpus', idx.placed + idx.excluded[0].c + tree.stats.unattached + tree.stats.dropped + tree.stats.filtered, 6705);
 
 // --- Rules -> book -> numbered chapter -> section -----------------------------
 const crBook = 'tree/rules/core-rules.js', raBook = 'tree/rules/rules-appendix.js';
@@ -84,6 +84,35 @@ t('the Stratagems chapter is core stratagems plus its own text', [recs(strat).fi
 ok('NAMED: a Movement Ability moves to 03 Moving', (tree.paths.get('core-stratagem#000010851002') || []).map(p => p.n).join(' > ') === 'Rules > Core Rules > 03 Moving' && !findRec(strat, 'core-stratagem#000010851002'));
 ok('NAMED: a Shooting Ability moves to 04 Making Attacks', (tree.paths.get('core-stratagem#000010812002') || []).map(p => p.n).join(' > ') === 'Rules > Core Rules > 04 Making Attacks');
 ok('NAMED: the 9 Challenger records move to Missions > Events > Challenger', (tree.paths.get('core-stratagem#000010254002') || []).map(p => p.n).join(' > ') === 'Missions > Events > Challenger' && files['tree/missions/events/challenger.js'].recs.length === 9);
+
+
+// --- Factions: Army rules / Detachments / Units, filtered and merged -----------
+t('the three alliances hold 1,810 / 1,374 / 1,814 records', [files['tree/factions/imperium.js'].c, files['tree/factions/chaos.js'].c, files['tree/factions/xenos.js'].c], [1810, 1374, 1814]);
+t('the filters removed 830 records: 420 edition-0 datasheets, 409 unitrules with a filtered datasheet, 1 tenth-edition faction rule', [tree.stats.filtered, tree.filtered.length], [830, 830]);
+const filteredKinds = tree.filtered.reduce((a, id) => { const r = byId.get(id); const k = r ? r.kind : '(gone)'; a[k] = (a[k] || 0) + 1; return a; }, {});
+t('and they are those kinds', filteredKinds, { datasheet: 420, unitrules: 409, 'faction-rule': 1 });
+t('1,033 unitrules twin a datasheet and were merged into its page', tree.stats.merged, 1033);
+ok('no filtered record is a row anywhere', (function () { const f = new Set(tree.filtered); for (const n of Object.values(files)) for (const x of (n.recs || [])) if (f.has(x.i)) return false; return true; })());
+ok('no row is titled "keywords and abilities"', Object.values(files).every(n => !(n.recs || []).some(x => /keywords and abilities/i.test(String(x.t)))));
+ok('an unpaired unitrules is a unit of its own, with the twin marker off its name', (function () { const u = files['tree/factions/xenos/aeldari/units.js'].recs.find(x => x.i.indexOf('unitrules#') === 0); return u && u.t === 'Corsair Voidscarred'; })());
+ok('no unitrules is a Units row unless it has no datasheet', Object.values(files).every(n => (n.recs || []).every(x => { if (x.i.indexOf('unitrules#') !== 0) return true; const num = x.i.replace('unitrules#', ''); return !all.some(d => d.id === 'datasheet#' + num); })));
+
+// Aeldari, printed as a tree: exactly three children, and nothing beneath them.
+const ael = files['tree/factions/xenos/aeldari.js'];
+t('Aeldari has exactly three children', ael.kids.map(k => k.n), ['Army rules', 'Detachments', 'Units']);
+t('and no records of its own', ael.recs.length, 0);
+t('Army rules is 8: Agile Manoeuvres, Battle Focus and the 6 army-rule stratagems', [ael.kids[0].c, tree.pages.filter(p => p.area === 'Aeldari').length], [8, 1]);
+t('Detachments is 19 pages, Units is 76 rows', [ael.kids[1].c, ael.kids[2].c], [176, 76]);
+const aelArmy = tree.pages.find(p => p.area === 'Aeldari');
+t('the army-rules page holds exactly those 8 records', aelArmy.recs.length, 8);
+ok('NAMED: Agile Manoeuvres and Battle Focus are on the army-rules page', aelArmy.recs.some(id => /Agile Manoeuvres/i.test(byId.get(id).heading)) && aelArmy.recs.some(id => /Battle Focus/i.test(byId.get(id).heading)));
+ok('NAMED: Strands of Fate appears nowhere in the tree', (function () { for (const [f, n] of Object.entries(files)) { if (/Strands of Fate/i.test(String(n.n || ''))) return false; for (const x of (n.recs || [])) if (/Strands of Fate/i.test(String(x.t || ''))) return false; } return true; })());
+t('the 19 detachment rows are the detachment records, one page each', files['tree/factions/xenos/aeldari/detachments.js'].recs.length, 19);
+ok('no detachment group is a node with kids any more', Object.entries(files).every(([f, n]) => !/\/detachments\.js$/.test(f) || !('kids' in n)));
+ok('and no per-detachment node file exists', !Object.keys(files).some(f => /\/detachments\/[^/]+\.js$/.test(f)));
+ok('every detachment row is a record row with a page and its owned count', files['tree/factions/xenos/aeldari/detachments.js'].recs.every(x => x.i.indexOf('detachment#') === 0 && x.f && x.q > 0));
+ok('NAMED: the army-rule stratagems are no longer under Detachments', !files['tree/factions/xenos/aeldari/detachments.js'].recs.some(x => x.t === 'Army Rules'));
+t('a real detachment owns its enhancements and stratagems on its page', (function () { const d = [...tree.owned.values()].find(o => o.enh.length && o.strat.length); return !!(d && d.name); })(), true);
 
 // --- the duplicated abilities fold -------------------------------------------
 const caId = 'core-rules#Abilities';
@@ -149,8 +178,18 @@ ok('MUTATION: a subsection that loses its prefix becomes a root', !(flattened.ch
 const unfolded = mutate(copy => { const r = copy.find(x => x.heading === 'Abilities > [TORRENT] > DAMAGED'); r.heading = 'Abilities > DAMAGED'; });
 t('MUTATION: a [TORRENT] expansion that loses its marker becomes a row', unfolded.stats.annotations, 269);
 const dropped = mutate(copy => { const i = copy.findIndex(r => r.id === 'stratagem#000008931007'); copy.splice(i, 1); });
-t('MUTATION: dropping a record drops the Factions count by exactly one', dropped.index.branches[2].c, 5827);
-t('MUTATION: and the placed total with it', dropped.index.placed, 6530);
+t('MUTATION: dropping a record drops the Factions count by exactly one', dropped.index.branches[2].c, 4997);
+t('MUTATION: and the placed total with it', dropped.index.placed, 5700);
+
+const legacyDs = tree.filtered.filter(id => id.indexOf('datasheet#') === 0 && byId.has('unitrules#' + id.replace('datasheet#', '')))[0];
+const unlegacy = mutate(copy => { const r = copy.find(x => x.id === legacyDs); r.text = r.text.replace(/\(edition 0\)/i, '(edition 11)').replace(/\(Warhammer Legends\)/i, '(edition 11)'); });
+t('MUTATION: lifting the legacy marker puts the datasheet and its twin back in the tree', unlegacy.stats.filtered, 828);
+const paired = tree.mergedOn.get('datasheet#000000882');
+const orphaned = mutate(copy => { const i = copy.findIndex(x => x.id === 'datasheet#000000882'); copy.splice(i, 1); });
+ok('MUTATION: dropping a datasheet makes its merged twin a unit row of its own', !orphaned.mergedOn.has('datasheet#000000882') && JSON.stringify(orphaned.files['tree/factions/imperium/adeptus-custodes/units.js'].recs.map(x => x.i)).indexOf(paired) !== -1);
+const noArmy = mutate(copy => { const r = copy.find(x => x.id === 'stratagem#000009895007'); r.text = r.text.replace('Detachment: Army Rules', 'Detachment: Renamed'); });
+t('MUTATION: a stratagem that stops being an army rule leaves the army-rules page', noArmy.pages.find(pg => pg.area === 'Aeldari' && pg.n === 'Army rules').recs.length, 7);
+ok('MUTATION: and the renamed detachment gets its own page', noArmy.pages.some(pg => pg.n === 'Renamed'));
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

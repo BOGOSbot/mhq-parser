@@ -308,6 +308,17 @@ for (const r of records) {
   const folded = tree.attach.get(r.id) || [];
   const foldsInto = tree.attachTarget.get(r.id) || '';
   const sections = (r.kind === 'rule' && !isAnnotation(r)) ? sectionsHtml(r, 2) : '';
+  // A detachment's own enhancements and stratagems live on its page: one page
+  // per detachment, and nothing nests beneath it in the tree.
+  const detOwned = tree.owned.get(r.id);
+  const ownedHtml = detOwned ? [['Enhancements', detOwned.enh], ['Stratagems', detOwned.strat]].filter(pair => pair[1].length).map(pair => {
+    const list = pair[1].map(id => byId.get(id)).filter(Boolean).sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+    return '<h2>' + pair[0] + ' (' + list.length + ')</h2>' + list.map(x => '<details class="wsec" open><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 1200)) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(x.id)) + '">Open record</a></p></details>').join('');
+  }).join('') : '';
+  // The datasheet and its unitrules twin are one page: the card already carries
+  // the keywords and abilities, so the twin is a collapsed section, not a row.
+  const mergedId = tree.mergedOn.get(r.id);
+  const mergedHtml = (mergedId && byId.has(mergedId)) ? '<h2>Unit rules text (merged)</h2><details class="wsec"><summary>' + esc(leafOf(byId.get(mergedId))) + '</summary><div class="wsecbody">' + esc(String(byId.get(mergedId).text || '').slice(0, 4000)) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(mergedId)) + '">Open the merged record</a></p></details>' : '';
   const body = [
     topBar({}),
     '<main class="wrec">',
@@ -320,6 +331,8 @@ for (const r of records) {
     recordBody(r, { corpora, index: cardIdx, href: id => pageOf.get(id) || '' }),
     // The rule's own sections and subsections, each a collapsible <details>.
     sections,
+    ownedHtml,
+    mergedHtml,
     // A folded annotation still has its own page, and points back to its section.
     (foldsInto && byId.has(foldsInto)) ? '<p class="qa-back">Folded into <a href="' + esc(pageOf.get(foldsInto)) + '">' + esc(byId.get(foldsInto).heading) + '</a></p>' : '',
     // The annotation's section carries the folded questions and errata, so they
@@ -337,6 +350,26 @@ for (const r of records) {
   ].filter(Boolean).join('\n');
   fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), productPage(leaf, body, Object.assign({}, r, { area: areaOf.get(r.id) || '', path: tree.paths.get(r.id) || [], at: tree.attachTarget.get(r.id) || '' })));
   written++;
+}
+// One page per army-rules set: a synthetic page, not a record. Its members are
+// rendered inline, so the tree holds a single row and nothing nests beneath it.
+let synthetic = 0;
+for (const p of tree.pages) {
+  const members = p.recs.map(id => byId.get(id)).filter(Boolean);
+  const synthBody = [
+    topBar({}),
+    '<main class="wrec">',
+    '<p class="wcrumb">' + p.path.map(s => esc(s.n)).join(' &rsaquo; ') + '</p>',
+    '<h1 class="wtitle">' + esc(p.n) + '</h1>',
+    '<p class="wmeta">' + esc(p.area) + ' &middot; ' + members.length + (p.lvl === 'army-rules' ? ' army rules' : ' records') + '</p>',
+    members.map(x => '<details class="wsec" open><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 4000)) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(x.id)) + '">Open record</a></p></details>').join(''),
+    '<p class="wfoot">' + (p.lvl === 'army-rules' ? 'One page holding every army rule of this faction.' : 'One page holding everything this detachment owns.') + ' Nothing nests beneath it.</p>',
+    '</main>',
+  ].join('\n');
+  const out = path.join(OUT, p.f);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, productPage(p.n, synthBody, null, null));
+  synthetic += 1;
 }
 // The record -> page map, so a server can link a finding's record to its page
 // without re-deriving the slug - the slug carries a hash this script owns, and a
@@ -362,6 +395,8 @@ console.log('wiki-render -> ' + OUT);
 console.log('  records rendered      ' + written);
 console.log('  tree branches         ' + tree.index.branches.map(b => b.n + ' ' + b.c).join(', ') + '  (placed ' + tree.stats.placed + ' of ' + tree.stats.total + ', excluded ' + tree.stats.excluded + ' index stubs)');
 console.log('  tree node files       ' + (Object.keys(tree.files).length + 1));
+console.log('  synthetic pages       ' + synthetic + ' (one per army-rules set, one per page for a detachment)');
+console.log('  filtered records      ' + tree.stats.filtered + ' (edition 0 / Warhammer Legends) / merged unitrules ' + tree.stats.merged);
 console.log('  kept segments         ' + kept.length + ' records');
 console.log('  debris                ' + debris.length);
 console.log('  dangling links        ' + dangling.length + ' records');
