@@ -40,19 +40,26 @@ typed, up to about seven lines, and then scrolls, and the form's controls sit at
 its top rather than centred on it. **Enter asks; Shift+Enter adds a line** - a
 textarea does not submit its form on Enter, so the key is handled on the field
 itself. Voice transcription, an example chip and the translation's re-ask all
-fill the same box and grow it.
+fill the same box and grow it. The translation box under the question is the
+same widget and grows the same way.
 
-**The translation has its own box under the question, in the header.** The
-server already sends it: the stream's `translation` event carries `detected`
-and `translated`, and a reply that is not streamed carries the same text as
-`translation`; one box takes whichever arrived. It shows the English the index,
-the judge and the writer actually read, and it is editable: *Search this English
-text* re-asks with `english: true`, so the corrected text is neither detected
-nor translated again. That is the path a mangled unit name needs - the wrong
-English word retrieves the wrong rule, and only the reader knows which name they
-meant. The box belongs to the question rather than to a result: it is drawn once
-per question, so a findings event cannot wipe an edit, and a rerun - which does
-not translate again - leaves it in place.
+**The translation has its own box under the question, in the header, with its
+button at its right.** The server already sends the text: the stream's
+`translation` event carries `detected` and `translated`, and a reply that is not
+streamed carries the same text as `translation`; one box takes whichever arrived.
+It shows the English the index, the judge and the writer actually read, and it is
+editable: *Search this English text* re-asks with `english: true`, so the
+corrected text is neither detected nor translated again. That is the path a
+mangled unit name needs - the wrong English word retrieves the wrong rule, and
+only the reader knows which name they meant. The box belongs to the question
+rather than to a result: it is drawn once per question, so a findings event
+cannot wipe an edit, and a rerun - which does not translate again - leaves it in
+place. There is no note under the title: the sentence that explained the box is
+the button's tooltip, where it costs no height. The box is one line at rest like
+the question box, grows while a correction is typed as well as when the card is
+drawn, and scrolls at the same 168px cap; the box and the button share the ask
+row's shape, and a phone too narrow for both wraps the button under the box
+rather than squeezing the text.
 
 The retention line is at the top of the body, not in the header. A run hides the
 intro block; the retention line is not inside it, so the note about what the

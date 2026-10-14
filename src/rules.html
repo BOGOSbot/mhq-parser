@@ -95,14 +95,21 @@ ol.cites li{display:flex;gap:10px;align-items:flex-start}
 .cbody a:hover{text-decoration:underline}
 .csec{color:var(--dim);font-size:12.5px;margin-top:1px}
 .cscore{font:11px var(--mono);color:var(--dim);margin-left:6px}
-.trbox{width:100%;min-height:64px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:9px 10px;font:13px system-ui;margin:0 0 8px;resize:vertical}
+/* #q and the translation box #tr are the same growing textarea: one line at
+   rest, grown to their content and scrolling past the page's own cap. resize is
+   off - the page sizes them from what is in them and a hand-drag would fight
+   that. The min-width is what stops the translation box being squeezed beside
+   its button: below it the row wraps the button under the box instead. */
+.trbox{flex:1;min-width:120px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:9px 10px;font:13.5px system-ui;line-height:1.45;resize:none;overflow-y:auto;min-height:40px;max-height:168px}
 .trbox:focus{outline:none;border-color:var(--acc)}
+/* The translation row copies the ask row's shape: the textarea takes the width
+   and the button sits at its right, wrapping under it when both do not fit. */
+.trrow{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
 /* The translation is its own box under the question, in the header: the server
    already sends it, the reader corrects it there, and the correction is the next
    ask. The header is tight, so the card loses its outer margins. */
 #trslot .card{margin:10px 0 0;padding:12px 14px}
 #trslot .card h2{margin-bottom:6px}
-#trslot .trbox{margin-bottom:6px}
 details{margin-top:5px}
 details summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 details summary:hover{color:var(--txt)}
@@ -660,17 +667,20 @@ function t(key) {
   if (table && table[key] !== undefined) return table[key];
   return I18N.en[key] !== undefined ? I18N.en[key] : key;
 }
-// --- the question box --------------------------------------------------------
-// A textarea that grows with its text and then scrolls, where a one-line input
-// hid the end of a long question. The cap is this page's own: past it the box
-// scrolls rather than pushing the form off the screen.
+// --- the growing boxes --------------------------------------------------------
+// #q and the translation box #tr are the same widget: a textarea that grows with
+// its text and then scrolls, where a one-line input hid the end of a long
+// question. Each cap is this page's own and lives in the CSS as max-height, so
+// the constant below has to stay in step with the rule it names.
 var QCAPPX = 168;   // px, kept in step with textarea#q's CSS max-height
-function growQuestion() {
-  var q = $('#q');
-  if (!q) return;
-  q.style.height = 'auto';
-  q.style.height = Math.min(q.scrollHeight + 2, QCAPPX) + 'px';
+var TRCAPPX = 168;  // px, kept in step with .trbox's CSS max-height
+function growBox(box, cap) {
+  if (!box) return;
+  box.style.height = 'auto';
+  box.style.height = Math.min(box.scrollHeight + 2, cap) + 'px';
 }
+function growQuestion() { growBox($('#q'), QCAPPX); }
+function growTranslation() { growBox($('#tr'), TRCAPPX); }
 // Enter asks; Shift+Enter is a new line. A textarea does not submit the form it
 // sits in on Enter, and asking must not need a reach for the button.
 $('#q').addEventListener('keydown', function (e) {
@@ -945,15 +955,21 @@ function termsCard(terms) {
 function translationCard(tr) {
   var from = tr.detected && tr.detected !== 'und' ? tr.detected : t('translationTitle');
   var card = sectionCard(t('translationTitle') + t('translationFrom') + from + t('translationTo'));
-  card.appendChild(el('div', 'note', t('translationNote')));
   var ta = document.createElement('textarea');
   ta.className = 'trbox';
   ta.id = 'tr';
+  ta.rows = 1;   // a textarea defaults to two rows, which is not 'one line at rest'
   ta.spellcheck = false;
   ta.value = tr.translated || '';
-  card.appendChild(ta);
+  // Same widget as the question box, so the same growth: it adapts while the
+  // reader corrects a name, not only when the card is first drawn.
+  ta.addEventListener('input', growTranslation);
   var btn = el('button', null, t('translationButton'));
   btn.type = 'button';
+  // The paragraph that explained the box took four lines in the header. The same
+  // sentence is the button's tooltip: a novice can still learn why the box is
+  // there, at no height on the page.
+  btn.title = t('translationNote');
   btn.addEventListener('click', function () {
     var text = (ta.value || '').trim();
     if (text.length < 3) { setStatus(t('translationTooShort'), 'err'); return; }
@@ -961,7 +977,11 @@ function translationCard(tr) {
     growQuestion();
     ask({ question: text, english: true });
   });
-  card.appendChild(btn);
+  // The ask row's shape: the box takes the width, the button sits at its right.
+  var row = el('div', 'trrow');
+  row.appendChild(ta);
+  row.appendChild(btn);
+  card.appendChild(row);
   return card;
 }
 
@@ -976,6 +996,8 @@ function renderTranslation(state) {
   if (!state || !state.translation) { slot.classList.add('hidden'); return; }
   slot.appendChild(translationCard(state.translation));
   slot.classList.remove('hidden');
+  // Grown once the card is visible: a hidden box reports no scrollHeight.
+  growTranslation();
 }
 
 // A new question starts with no translation: the box belongs to the question

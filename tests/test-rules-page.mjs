@@ -183,10 +183,27 @@ ok('the harvest prints the reader pick', promote.indexOf('const reader = readerP
 const formHtml = PAGE.slice(PAGE.indexOf('<form id="f">'), PAGE.indexOf('</form>'));
 ok('the question box is a textarea, not a one-line input',
   formHtml.indexOf('<textarea id="q"') !== -1 && formHtml.indexOf('<input id="q"') === -1);
+const growHelper = code.slice(code.indexOf('function growBox'), code.indexOf('function growQuestion'));
 const growBlock = code.slice(code.indexOf('function growQuestion'), code.indexOf('function renderExamples'));
-ok('the box grows to its scrollHeight', /q\.scrollHeight/.test(growBlock));
-ok('and stops at the cap', /Math\.min\([^)]*QCAPPX\)/.test(growBlock));
-ok('the cap is the CSS max-height', /textarea#q\{[^}]*max-height:\d+px/.test(PAGE));
+ok('one helper grows both boxes',
+  code.indexOf('function growBox(box, cap)') !== -1
+  && /function growQuestion\(\) \{ growBox\(\$\('#q'\), QCAPPX\); \}/.test(code)
+  && /function growTranslation\(\) \{ growBox\(\$\('#tr'\), TRCAPPX\); \}/.test(code));
+ok('the box grows to its scrollHeight', /box\.scrollHeight/.test(growHelper));
+ok('and stops at the cap', /Math\.min\([^)]*cap\)/.test(growHelper));
+// Each cap is one number in two places: the CSS max-height the box scrolls at,
+// and the JS constant that stops the growth. A CSS cap moved without its
+// constant would let the box grow past the style that is supposed to hold it.
+function cssCaps(re) {
+  const m = re.exec(PAGE);
+  return m ? Array.from(m[1].matchAll(/max-height:(\d+)px/g)).map(x => Number(x[1])) : [];
+}
+const qCapCss = cssCaps(/textarea#q\{([^}]*)\}/);
+const trCapCss = cssCaps(/\.trbox\{([^}]*)\}/);
+t('the question cap is the only one in its rule', qCapCss.length, 1);
+t('the translation cap is the only one in its rule', trCapCss.length, 1);
+t('the question JS cap is that CSS number', Number((/var QCAPPX = (\d+)/.exec(code) || [])[1]), qCapCss[0]);
+t('the translation JS cap is that CSS number', Number((/var TRCAPPX = (\d+)/.exec(code) || [])[1]), trCapCss[0]);
 ok('Enter asks and Shift+Enter adds a line',
   /e\.key !== 'Enter' \|\| e\.shiftKey/.test(growBlock) && /e\.preventDefault\(\)/.test(growBlock) && /ask\(\);/.test(growBlock));
 const voiceBlock = code.slice(code.indexOf('rec.onresult'), code.indexOf('rec.onerror'));
@@ -204,6 +221,30 @@ ok('a new question clears it', /clearTranslation\(\);/.test(code));
 ok('the correction path re-asks in English', /ask\(\{ question: text, english: true \}\)/.test(code));
 const trKeys = ['translationTitle', 'translationFrom', 'translationTo', 'translationNote', 'translationButton', 'translationTooShort'];
 t('the translation labels exist in both languages', trKeys.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined), []);
+
+// Slice 1b, the three fixes Mandal asked for on the translation card. Each is one
+// edit away from being undone and none is visible to an i18n check, so each is
+// asserted structurally.
+const trBlock = code.slice(code.indexOf('function translationCard'), code.indexOf('function renderTranslation'));
+// 1. No visible note: the sentence that explained the box is the button's
+// tooltip now, so a novice still finds it and the header loses the four lines.
+ok('the translation card draws no visible note', trBlock.indexOf("el('div', 'note', t('translationNote'))") === -1);
+ok('the same sentence is the button tooltip', /btn\.title = t\('translationNote'\)/.test(trBlock));
+// 2. The box adapts to its text, through the question box's own helper, and it
+// grows while the reader corrects it as well as when the card is drawn.
+ok('the translation box grows through the shared helper', /ta\.addEventListener\('input', growTranslation\)/.test(trBlock));
+ok('and is grown once the card is visible', /slot\.appendChild\(translationCard\(state\.translation\)\);[\s\S]{0,180}growTranslation\(\);/.test(code));
+ok('the box lost its fixed 64px height and its drag handle',
+  /\.trbox\{[^}]*min-height:40px/.test(PAGE) && /\.trbox\{[^}]*resize:none/.test(PAGE)
+  && /\.trbox\{[^}]*overflow-y:auto/.test(PAGE) && !/\.trbox\{[^}]*min-height:64px/.test(PAGE));
+// 3. The button sits at the right of the box in the ask row's shape, and the
+// box keeps a floor so a phone wraps the row rather than squeezing it to nothing.
+ok('the card puts the box and its button in one row',
+  /el\('div', 'trrow'\)/.test(trBlock) && /row\.appendChild\(ta\)/.test(trBlock)
+  && /row\.appendChild\(btn\)/.test(trBlock) && /card\.appendChild\(row\)/.test(trBlock));
+ok('the row is the ask row shape', /\.trrow\{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap\}/.test(PAGE));
+ok('the box keeps a min width so the row wraps instead of squeezing', /\.trbox\{[^}]*min-width:120px/.test(PAGE));
+ok('the box starts at one row, like the question box', /ta\.rows = 1;/.test(trBlock));
 
 // The matching close of a div, so 'in the body' cannot mean 'inside the block a
 // run hides'.
