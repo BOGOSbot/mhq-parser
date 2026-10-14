@@ -19,6 +19,8 @@ const RULES_REC = 'core-rules#Muster-Armies->-Q:-Can-a-unit-have-both-an-Upgrade
 const UNIT_REC = 'datasheet#000000882';
 const STRAT = 'stratagem#000008931007';
 const SECONDARY = 'event-companion#Secondary-Mission-deck';
+const SEC = 'core-rules#Battle-shock-Rolls';
+const PLAIN_Q = 'core-rules#Battle-shock-Rolls->-If-a-unit-becomes-battle-shocked-after-starting-an-action-does-it-stop-performing-that-action-?';
 const all = readAllCorpus();
 const tree = wikiTree(all);
 const names = id => (tree.paths.get(id) || []).map(p => p.n);
@@ -38,7 +40,7 @@ ok('the path files are the per-node files, not one tree file', [...tree.paths.va
 // --- the record page carries that path, and nothing else ---------------------
 const outDir = path.join(ROOT, 'workspace', 'wiki-cascade-test');
 fs.rmSync(outDir, { recursive: true, force: true });
-const ids = [RULES_REC, UNIT_REC, STRAT, SECONDARY].join(',');
+const ids = [RULES_REC, UNIT_REC, STRAT, SECONDARY, SEC, PLAIN_Q].join(',');
 const rendered = await new Promise(resolve => {
   const c = spawn(process.execPath, [path.join(ROOT, 'src', 'wiki-render.mjs')], { cwd: ROOT, env: Object.assign({}, process.env, { WIKI_RENDER_DIR: outDir, WIKI_RENDER_ONLY: ids }), stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '';
@@ -64,6 +66,14 @@ for (const [label, id, want] of [
   ok('the ' + label + ' page inlines no node file (the cascade fetches on open)', page.indexOf('WIKI_TREE_NODE') === -1 && page.indexOf('"kids"') === -1 && page.indexOf('"recs"') === -1);
   ok('the ' + label + ' page stays small enough to load on a phone', page.length < 70000);
 }
+// The annotations are folded into their section's page, and point back to it.
+const secPage = pageOf(SEC);
+ok('the annotated section page renders its folded Q&A', secPage.indexOf('Questions and errata (7)') !== -1 && secPage.indexOf('href="' + map[PLAIN_Q] + '"') !== -1);
+t('and its WIKI_HERE still walks to its chapter', hereOf(SEC).path.map(p => p.n), ['Rules', 'Core Rules', 'Core Concepts']);
+const qPage = pageOf(PLAIN_Q);
+ok('a folded question keeps its own page and points back to its section', qPage.indexOf('Folded into') !== -1 && qPage.indexOf(map[SEC]) !== -1);
+t('and its WIKI_HERE opens the cascade on its section', hereOf(PLAIN_Q).at, SEC);
+ok('with the section path, not its own', hereOf(PLAIN_Q).path.map(p => p.n).join(' > '), ['Rules', 'Core Rules', 'Core Concepts'].join(' > '));
 // The payload before the cascade is opened: the root only, never a node file.
 const rootJs = fs.readFileSync(path.join(outDir, 'tree', 'index.js'), 'utf8');
 ok('the root the record page loads is the 3-branch index and nothing else', rootJs.indexOf('"branches"') !== -1 && rootJs.indexOf('"lvl":"chapter"') === -1 && rootJs.length < 1024);

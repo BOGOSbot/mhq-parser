@@ -125,7 +125,7 @@ export const TOC_JS = [
   '  if (!IDX || !IDX.branches || !IDX.branches.length) return;',
   '  var BASE = window.WIKI_TREE_BASE || "";',
   '  var CACHE = {}, path = [], nodes = [], open = false, pushed = false;',
-  '  var herePath = (HERE && HERE.path) || [], hereId = HERE && HERE.id;',
+  '  var herePath = (HERE && HERE.path) || [], hereId = HERE && (HERE.at || HERE.id);',
   '  function el(t, c, txt) { var e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; }',
   '  function loadNode(f, cb) {',
   '    if (CACHE[f]) { cb(CACHE[f]); return; }',
@@ -199,6 +199,7 @@ export const TOC_JS = [
   '    var r = el("div", "wcrow" + (hereId && rec.i === hereId ? " here" : ""));',
   '    r.setAttribute("data-wc-rec", rec.f);',
   '    r.appendChild(el("span", "wcn", rec.t));',
+  '    if (rec.q) r.appendChild(el("span", "wcc", String(rec.q)));',
   '    return r;',
   '  }',
   '  function prewalk(done) {',
@@ -411,6 +412,24 @@ function leafTitle(r) {
   const path = String(r.heading || '').split(' > ').filter(Boolean);
   return path.length ? path[path.length - 1] : String(r.id);
 }
+
+// One rule for what an annotation is, in one place: a kind-rule record whose
+// heading names a FAQ or an Errata block, or whose heading carries a question.
+// A question segment is one ending in "?", one starting with the "Q:" label, or
+// one under a FAQ block. The label is NOT required - 64 of the questions have no
+// "Q:" and 28 of those do not even end in "?" (the corpus truncates them with
+// "...") - but where it exists it is the only signal left. Non-rule records are
+// never annotations (a stratagem named "WHERE D'YA FINK YOU'RE GOING?" is a name).
+export function headingSegments(r) { return String(r.heading || '').split(' > ').filter(Boolean); }
+export function isAnnotation(r) {
+  if (r.kind !== 'rule') return false;
+  for (const seg of headingSegments(r)) {
+    const x = String(seg).trim();
+    if (/^FAQ$/i.test(x) || /^Errata$/i.test(x) || /^Q:/i.test(x) || /\?\s*$/.test(x)) return true;
+  }
+  return false;
+}
+
 function nodeSlug(s) {
   const base = String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
   return base || 'node';
@@ -525,13 +544,52 @@ export function tocTree(records, pageOf, opts) {
     }
     return null;
   };
+  // An annotation is not a section: it attaches to the section it annotates.
+  // Target, in order: the parent chain's nearest non-annotation record; the
+  // longest heading prefix that is a section; the nearest earlier section with
+  // the same first heading segment (the entry an errata annotates sits above
+  // it). No target means unattached, counted per book, never invented.
+  const attach = new Map();
+  const attachTarget = new Map();
+  const unattached = [];
+  let annotationTotal = 0;
+  const fold = bookRecs => {
+    const annotations = bookRecs.filter(isAnnotation);
+    annotationTotal += annotations.length;
+    const sections = bookRecs.filter(r => !isAnnotation(r));
+    const bySectionHeading = new Map();
+    for (const r of sections) if (!bySectionHeading.has(r.heading)) bySectionHeading.set(r.heading, r);
+    const pos = new Map(bookRecs.map((r, i) => [r.id, i]));
+    for (const a of annotations) {
+      let target = null;
+      let cur = a.parent ? byIdAll.get(a.parent) : null, guard = 0;
+      while (cur && guard++ < 24) { if (!isAnnotation(cur)) { target = cur; break; } cur = cur.parent ? byIdAll.get(cur.parent) : null; }
+      if (!target) {
+        const seg = headingSegments(a);
+        for (let i = seg.length - 1; i >= 1; i--) { const pre = seg.slice(0, i).join(' > '); const hit = bySectionHeading.get(pre); if (hit) { target = hit; break; } }
+      }
+      if (!target) {
+        const first = headingSegments(a)[0], at = pos.get(a.id);
+        for (let i = at - 1; i >= 0; i--) { const c = bookRecs[i]; if (isAnnotation(c)) continue; if (headingSegments(c)[0] === first) { target = c; break; } }
+      }
+      if (!target) { unattached.push(a); continue; }
+      if (!attach.has(target.id)) attach.set(target.id, []);
+      attach.get(target.id).push(a);
+      attachTarget.set(a.id, target.id);
+    }
+    return { sections: sections, annotations: annotations };
+  };
   const bookNodes = [];
   const rulesRef = { n: 'Rules', lvl: 'branch', f: 'tree/rules.js' };
+  const unattachedBooks = {};
   for (const book of TREE_BOOKS) {
     const bookRef = { n: book.name, lvl: 'book', f: 'tree/rules/' + book.slug + '.js' };
-    const recs = records.filter(r => r.set === 'rules' && book.sources.indexOf(r.source) !== -1);
+    const bookRecs = records.filter(r => r.set === 'rules' && book.sources.indexOf(r.source) !== -1);
+    const before = unattached.length;
+    const folded = fold(bookRecs);
+    unattachedBooks[book.slug] = unattached.length - before;
     const chapters = new Map();
-    for (const r of recs) {
+    for (const r of folded.sections) {
       const ch = resolveChapter(r, book);
       const key = ch ? ch.key : '\u0000unplaced';
       if (!chapters.has(key)) chapters.set(key, { title: ch ? ch.name : 'Unplaced', order: ch ? ch.order : 1e9, recs: [] });
@@ -543,29 +601,43 @@ export function tocTree(records, pageOf, opts) {
       const slug = uniqueSlug(nodeSlug(ch.title), used);
       const file = 'tree/rules/' + book.slug + '/' + slug + '.js';
       ch.recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
-      files[file] = { n: ch.title, lvl: 'chapter', c: ch.recs.length, recs: ch.recs.map(ent) };
+      let counted = 0;
+      const list = ch.recs.map(r => {
+        const q = (attach.get(r.id) || []).length;
+        counted += 1 + q;
+        const e = ent(r);
+        if (q) e.q = q;
+        return e;
+      });
+      files[file] = { n: ch.title, lvl: 'chapter', c: counted, recs: list };
       const chapterRef = { n: ch.title, lvl: 'chapter', f: file };
-      for (const r of ch.recs) paths.set(r.id, [rulesRef, bookRef, chapterRef]);
-      kids.push({ n: ch.title, lvl: 'chapter', c: ch.recs.length, f: file });
+      for (const r of ch.recs) {
+        paths.set(r.id, [rulesRef, bookRef, chapterRef]);
+        for (const a of (attach.get(r.id) || [])) paths.set(a.id, [rulesRef, bookRef, chapterRef]);
+      }
+      kids.push({ n: ch.title, lvl: 'chapter', c: counted, f: file });
     }
+    const bookC = bookRecs.length - (unattached.length - before);
     const file = 'tree/rules/' + book.slug + '.js';
-    files[file] = { n: book.name, lvl: 'book', c: recs.length, kids: kids };
-    bookNodes.push({ n: book.name, lvl: 'book', c: recs.length, f: file });
+    files[file] = { n: book.name, lvl: 'book', c: bookC, kids: kids };
+    bookNodes.push({ n: book.name, lvl: 'book', c: bookC, f: file });
   }
   const rulesTotal = bookNodes.reduce((n, b) => n + b.c, 0);
   files['tree/rules.js'] = { n: 'Rules', lvl: 'branch', c: rulesTotal, kids: bookNodes };
 
   // --- Missions -> Events / Primary / Secondary -> chapter -> section -------
   // The coarse level is the decks and the event machinery, not the questions.
-  // A record's first heading segment picks its part; inside a deck its second
-  // segment FAQ/Errata becomes its own leaf (the annotations are not the deck);
-  // the event machinery keeps its own top-level parts, and their FAQ sits with
-  // the part it annotates.
+  // Folding happens first, so no FAQ/Errata/question is a section here either;
+  // a record's first heading segment still picks its part and its chapter.
   const ev = records.filter(r => r.set === 'rules' && r.source === 'event-companion');
+  const beforeM = unattached.length;
+  const foldedM = fold(ev);
+  const missionsUnattached = () => unattached.length - beforeM;
+  unattachedBooks['event-companion'] = missionsUnattached();
   const partNodes = [];
   const missionsRef = { n: 'Missions', lvl: 'branch', f: 'tree/missions.js' };
   for (const part of MISSION_PARTS) {
-    const recs = ev.filter(r => {
+    const recs = foldedM.sections.filter(r => {
       const h = String(r.heading || '').split(' > ')[0];
       return part.heading === null ? (h !== 'Primary Mission deck' && h !== 'Secondary Mission deck') : h === part.heading;
     });
@@ -573,26 +645,37 @@ export function tocTree(records, pageOf, opts) {
     const partRef = { n: part.name, lvl: 'part', f: partFile };
     const chapters = new Map();
     for (const r of recs) {
-      const seg = String(r.heading || '').split(' > ').filter(Boolean);
-      const first = seg[0] || 'Other', second = seg[1] || '';
-      const leaf = (part.name !== 'Events' && (second === 'FAQ' || second === 'Errata')) ? second : first;
-      if (!chapters.has(leaf)) chapters.set(leaf, []);
-      chapters.get(leaf).push(r);
+      const first = headingSegments(r)[0] || 'Other';
+      if (!chapters.has(first)) chapters.set(first, []);
+      chapters.get(first).push(r);
     }
     const used = new Set(), kids = [];
     for (const leaf of [...chapters.keys()].sort((a, b) => a.localeCompare(b))) {
       const slug = uniqueSlug(nodeSlug(leaf), used);
       const file = 'tree/missions/' + nodeSlug(part.name) + '/' + slug + '.js';
       const list = chapters.get(leaf).sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
-      files[file] = { n: leaf, lvl: 'chapter', c: list.length, recs: list.map(ent) };
+      let counted = 0;
+      const rows = list.map(r => {
+        const q = (attach.get(r.id) || []).length;
+        counted += 1 + q;
+        const e = ent(r);
+        if (q) e.q = q;
+        return e;
+      });
+      files[file] = { n: leaf, lvl: 'chapter', c: counted, recs: rows };
       const chapterRef = { n: leaf, lvl: 'chapter', f: file };
-      for (const r of list) paths.set(r.id, [missionsRef, partRef, chapterRef]);
-      kids.push({ n: leaf, lvl: 'chapter', c: list.length, f: file });
+      for (const r of list) {
+        paths.set(r.id, [missionsRef, partRef, chapterRef]);
+        for (const a of (attach.get(r.id) || [])) paths.set(a.id, [missionsRef, partRef, chapterRef]);
+      }
+      kids.push({ n: leaf, lvl: 'chapter', c: counted, f: file });
     }
-    files[partFile] = { n: part.name, lvl: 'part', c: recs.length, kids: kids };
-    partNodes.push({ n: part.name, lvl: 'part', c: recs.length, f: partFile });
+    const partC = recs.reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
+    files[partFile] = { n: part.name, lvl: 'part', c: partC, kids: kids };
+    partNodes.push({ n: part.name, lvl: 'part', c: partC, f: partFile });
   }
-  files['tree/missions.js'] = { n: 'Missions', lvl: 'branch', c: ev.length, kids: partNodes };
+  const missionsC = ev.length - missionsUnattached();
+  files['tree/missions.js'] = { n: 'Missions', lvl: 'branch', c: missionsC, kids: partNodes };
 
   // --- Factions -> alliance -> faction -> Detachments / Units ---------------
   const byFaction = new Map();
@@ -677,17 +760,26 @@ export function tocTree(records, pageOf, opts) {
   const facTotal = allianceNodes.reduce((n, k) => n + k.c, 0);
   files['tree/factions.js'] = { n: 'Factions', lvl: 'branch', c: facTotal, kids: allianceNodes };
 
-  const placed = rulesTotal + ev.length + facTotal;
+  const placed = rulesTotal + missionsC + facTotal;
   const index = {
     v: 1, n: 'Wiki', total: records.length, placed: placed,
     branches: [
       { n: 'Rules', lvl: 'branch', c: rulesTotal, f: 'tree/rules.js' },
-      { n: 'Missions', lvl: 'branch', c: ev.length, f: 'tree/missions.js' },
+      { n: 'Missions', lvl: 'branch', c: missionsC, f: 'tree/missions.js' },
       { n: 'Factions', lvl: 'branch', c: facTotal, f: 'tree/factions.js' },
     ],
     excluded: excludedIds.length ? [{ k: 'index', c: excludedIds.length, why: 'navigation stubs, not corpus content' }] : [],
   };
-  return { index: index, files: files, paths: paths, outline: outline, stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: ev.length, factions: facTotal } };
+  return {
+    index: index, files: files, paths: paths, outline: outline,
+    // The folded annotations: attach is section id -> its annotations (the render
+    // lists them on the section's page), attachTarget is annotation id -> section
+    // id (so the cascade opens on the section), unattached is the ones with no
+    // section, counted per book and never given an invented home.
+    attach: attach, attachTarget: attachTarget, unattached: unattached.map(r => r.id),
+    stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: missionsC, factions: facTotal,
+      annotations: annotationTotal, annotated: annotationTotal - unattached.length, unattached: unattached.length, unattachedByBook: unattachedBooks },
+  };
 }
 
 // The real corpus, wired once: the render and the tests both call this, so there

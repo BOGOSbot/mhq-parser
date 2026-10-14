@@ -35,32 +35,32 @@ const factionNode = name => {
 
 // --- the three branches exist, and their counts are stated --------------------
 t('three branches: Rules, Missions, Factions', idx.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
-t('Rules holds 633 records (401 core-rules + 54 core stratagems + 178 appendix)', idx.branches[0].c, 633);
-t('Missions holds the 81 event-companion records', idx.branches[1].c, 81);
+t('Rules holds the 632 placed records (455 core-rules + 177 appendix)', idx.branches[0].c, 632);
+t('Missions holds the 73 placed event-companion records', idx.branches[1].c, 73);
 t('Factions holds 5,828 placed records', idx.branches[2].c, 5828);
-t('placed + excluded is the whole corpus', idx.placed + idx.excluded[0].c, 6705);
-t('of which placed', idx.placed, 6542);
-t('the 163 index stubs are counted, named and not silently dropped', idx.excluded, [{ k: 'index', c: 163, why: 'navigation stubs, not corpus content' }]);
+t('of which placed', idx.placed, 6533);
+t('the 163 index stubs are still counted', idx.excluded, [{ k: 'index', c: 163, why: 'navigation stubs, not corpus content' }]);
+// Annotations are not nodes: 235 across the corpus, 226 attached to a section,
+// 9 with no section (1 appendix, 8 in the event companion).
+t('the annotation total and the attached/unattached split', [tree.stats.annotations, tree.stats.annotated, tree.stats.unattached], [253, 244, 9]);
+t('unattached per book', tree.stats.unattachedByBook, { 'core-rules': 0, 'rules-appendix': 1, 'event-companion': 8 });
+t('placed + excluded + unattached is the whole corpus', idx.placed + idx.excluded[0].c + tree.stats.unattached, 6705);
 
 // --- Rules -> book -> chapter -> section --------------------------------------
 t('Rules has the two books', kids('tree/rules.js').map(k => k.n), ['Core Rules', 'Rules Appendix']);
-t('Core Rules book count folds core-stratagems in, once', kids('tree/rules.js')[0].c, 455);
-t('Rules Appendix book is on its own', kids('tree/rules.js')[1].c, 178);
+t('Core Rules book count keeps every record, folded annotations included', kids('tree/rules.js')[0].c, 455);
+t('Rules Appendix is one shorter: one question has no section to attach to', kids('tree/rules.js')[1].c, 177);
 const crBook = 'tree/rules/core-rules.js', raBook = 'tree/rules/rules-appendix.js';
 t('the rule records land in chapters', kids(crBook).reduce((n, k) => n + k.c, 0), 455);
-t('the appendix records land in chapters', kids(raBook).reduce((n, k) => n + k.c, 0), 178);
+t('the appendix records land in chapters', kids(raBook).reduce((n, k) => n + k.c, 0), 177);
 // The chapters come from the saved page outline now, not the heading string.
 const crNames = kids(crBook).map(k => k.n);
 t('Core Rules is down from 69 heading-string chapters to 26 from the page outline', kids(crBook).length, 26);
 ok('the coarse chapters are there: Movement Phase, Making Attacks, Shooting Phase, Muster Armies', ['Movement Phase', 'Making Attacks', 'Shooting Phase', 'Muster Armies', 'Terrain'].every(n => crNames.indexOf(n) !== -1));
 ok('and no numbered subsection is a chapter', crNames.every(n => !/^[0-9]+\./.test(n)) && crNames.indexOf('2. Move Units Step') === -1 && crNames.indexOf('1. Hit Roll') === -1);
-ok('no Core Rules record is left unplaced', crNames.indexOf('Unplaced') === -1);
 ok('NAMED: 2. Move Units Step is a section under Movement Phase', !!findRec('tree/rules/core-rules/movement-phase.js', 'core-rules#2.-Move-Units-Step'));
 ok('NAMED: 2. Shoot is a section under Shooting Phase', !!findRec('tree/rules/core-rules/shooting-phase.js', 'core-rules#2.-Shoot'));
 ok('1. Hit Roll is a section under its outline chapter, not a chapter itself', (function () { const p = tree.paths.get('core-rules#1.-Hit-Roll') || []; return p.length === 3 && p[2].n !== '1. Hit Roll' && !!findRec(p[2].f, 'core-rules#1.-Hit-Roll'); })());
-const muster = kids(crBook).find(k => k.n === 'Muster Armies');
-ok('an FAQ whose middle prefix is not a record still lands under its chapter', muster && recs(muster.f).some(r => r.i === 'core-rules#Muster-Armies->-Errata->-01.02.06-Splitting-Units'));
-ok('NAMED: a core-rules record sits under its book and its chapter', !!findRec('tree/rules/core-rules/muster-armies.js', 'core-rules#Muster-Armies->-Q:-Can-a-unit-have-both-an-Upgrade-and-an-enhancement-?'));
 ok('a core stratagem folds into the Stratagems chapter', !!findRec('tree/rules/core-rules/stratagems.js', 'core-stratagem#000010252002'));
 let coreStrat = 0;
 for (const k of kids(crBook)) for (const r of recs(k.f)) if (r.i.indexOf('core-stratagem#') === 0) coreStrat++;
@@ -71,21 +71,35 @@ ok('the anchorless ability records join the Core Abilities chapter', abilities &
 const raNames = kids(raBook).map(k => k.n);
 ok('the appendix keeps the same coarse chapters', ['Core Concepts', 'Movement Phase', 'Transports'].every(n => raNames.indexOf(n) !== -1));
 const oneShot = kids(raBook).find(k => k.n === '[ONE SHOT]');
-ok('its own [ONE SHOT] block becomes an appendix-local chapter', oneShot && oneShot.c === 37);
-ok('no Rules Appendix record is left unplaced', raNames.indexOf('Unplaced') === -1);
+ok('its [ONE SHOT] block keeps its 7 sections and carries its folded questions', oneShot && oneShot.c === 76 && recs(oneShot.f).length === 7);
 ok('NAMED: an appendix entry sits under its core chapter', !!findRec('tree/rules/rules-appendix/core-concepts.js', 'rules-appendix#You'));
+
+// --- annotations are folded into their section, never rows --------------------
+const annIds = new Set([...tree.attachTarget.keys(), ...tree.unattached]);
+let annRows = 0;
+for (const f of Object.values(files)) for (const r of (f.recs || [])) if (annIds.has(r.i)) annRows++;
+t('no question, FAQ or errata is a row at any level', annRows, 0);
+const allChapterNames = Object.values(files).filter(f => f.lvl === 'chapter').map(f => f.n);
+ok('no chapter is a FAQ, an Errata or a question', allChapterNames.every(n => !/^(FAQ|Errata)$/i.test(n) && n.indexOf('?') === -1));
+// Named proof: a question with no "Q:" prefix folds into the section it annotates.
+const PLAIN_Q = 'core-rules#Battle-shock-Rolls->-If-a-unit-becomes-battle-shocked-after-starting-an-action-does-it-stop-performing-that-action-?';
+t('NAMED: a question without the Q: prefix attaches to its section', tree.attachTarget.get(PLAIN_Q), 'core-rules#Battle-shock-Rolls');
+ok('the section carries its six questions', (tree.attach.get('core-rules#Battle-shock-Rolls') || []).length === 7 && !!findRec('tree/rules/core-rules/core-concepts.js', 'core-rules#Battle-shock-Rolls'));
+ok('the section row carries the folded count', (recs('tree/rules/core-rules/core-concepts.js').find(r => r.i === 'core-rules#Battle-shock-Rolls') || {}).q === 7);
+t('NAMED: an errata folds into the section it annotates', tree.attachTarget.get('core-rules#Muster-Armies->-Errata->-01.02.06-Splitting-Units'), 'core-rules#Muster-Armies');
+ok('and the Muster Armies row carries it', (recs('tree/rules/core-rules/muster-armies.js').find(r => r.i === 'core-rules#Muster-Armies') || {}).q >= 1);
 
 // --- Missions -> parts -> chapters -> sections -------------------------------
 t('Missions has its three parts', kids('tree/missions.js').map(k => k.n), ['Events', 'Primary', 'Secondary']);
 t('Primary is the primary deck', kids('tree/missions.js')[1].c, 13);
 t('Secondary is the secondary deck', kids('tree/missions.js')[2].c, 24);
-t('Events is the tournament machinery and holds the rest', kids('tree/missions.js')[0].c, 44);
-t('the event machinery is its own chapters, not one pile', kids('tree/missions/events.js').map(k => k.n).sort(), ['\u2018Cumulative\u2019 and \u2018Or\u2019 Conditions', 'Books', 'Deployment Card Key', 'Deployment deck', 'Force Disposition Cards', 'Generating Command Points', 'Leaves the Battelefield', 'Pairing Players', 'Ranking Players', 'VP Up to a Limit', 'Welcome to the Warhammer Event Companion!', 'When Drawn'].sort());
-t('a deck separates its own records from the FAQ and Errata', kids('tree/missions/secondary.js').map(k => k.n + ':' + k.c), ['Errata:12', 'FAQ:6', 'Secondary Mission deck:6']);
+t('Events keeps its machinery, less the 8 questions with no section', kids('tree/missions.js')[0].c, 36);
+t('the event machinery is its own chapters, and no FAQ chapter exists', kids('tree/missions/events.js').map(k => k.n).sort(), ['\u2018Cumulative\u2019 and \u2018Or\u2019 Conditions', 'Deployment Card Key', 'Deployment deck', 'Force Disposition Cards', 'Generating Command Points', 'Leaves the Battelefield', 'Pairing Players', 'Ranking Players', 'VP Up to a Limit', 'Welcome to the Warhammer Event Companion!', 'When Drawn'].sort());
+t('a deck is one chapter holding its own records and its folded annotations', kids('tree/missions/secondary.js').map(k => k.n + ':' + k.c), ['Secondary Mission deck:24']);
+ok('the deck row carries its 18 folded questions and errata', (recs('tree/missions/secondary/secondary-mission-deck.js').find(r => r.i === 'event-companion#Secondary-Mission-deck') || {}).q === 18);
 ok('NAMED: a secondary mission sits under its deck, not directly under Secondary', !!findRec('tree/missions/secondary/secondary-mission-deck.js', 'event-companion#Secondary-Mission-deck'));
-ok('NAMED: a secondary FAQ sits under its FAQ leaf', recs('tree/missions/secondary/faq.js').some(r => r.i.indexOf('event-companion#Secondary-Mission-deck->-FAQ->') === 0));
-ok('the mission FAQ (Books) sits with Books in Events', kids('tree/missions/events.js').some(k => k.n === 'Books') && recs('tree/missions/events/books.js').some(r => r.i.indexOf('event-companion#Books->-FAQ->') === 0));
 ok('and the primary deck is under Primary', !!findRec('tree/missions/primary/primary-mission-deck.js', 'event-companion#Primary-Mission-deck'));
+ok('the Books questions have no section, so they are not rows', tree.unattached.some(id => id.indexOf('event-companion#Books->-FAQ->') === 0));
 
 // --- Factions -> alliance -> faction -> Detachments / Units --------------------
 t('Factions has the three alliances', kids('tree/factions.js').map(k => k.n), ['Imperium', 'Chaos', 'Xenos']);
@@ -169,7 +183,7 @@ t('MUTATION: the stratagem leaves Auric Champions when its Detachment line chang
 ok('MUTATION: and lands under the named synthetic node instead', !!findIn(moved.files, 'tree/factions/imperium/adeptus-custodes/detachments/renamed-host.js', 'stratagem#000008931007'));
 const dropped = mutate(copy => { const i = copy.findIndex(r => r.id === 'stratagem#000008931007'); copy.splice(i, 1); });
 t('MUTATION: dropping a record drops the Factions count by exactly one', dropped.index.branches[2].c, 5827);
-t('MUTATION: and the placed total with it', dropped.index.placed, 6541);
+t('MUTATION: and the placed total with it', dropped.index.placed, 6532);
 // Chapter mutations: the page outline is what places these, not the heading string.
 const flat = mutate(copy => { copy.find(r => r.id === 'core-rules#2.-Move-Units-Step').heading = 'Floating Question'; });
 t('MUTATION: the outline still places a record whose heading string is lost', flat.paths.get('core-rules#2.-Move-Units-Step').map(p => p.n), ['Rules', 'Core Rules', 'Movement Phase']);
@@ -180,5 +194,12 @@ t('MUTATION: changing the anchor moves the record to another chapter', movedChap
 const movedMission = mutate(copy => { copy.find(r => r.id === 'event-companion#Secondary-Mission-deck').heading = 'Primary Mission deck > Card'; });
 t('MUTATION: moving a deck record changes its part and its chapter', movedMission.paths.get('event-companion#Secondary-Mission-deck').map(p => p.n), ['Missions', 'Primary', 'Primary Mission deck']);
 
+const unfolded = mutate(copy => { copy.find(r => r.id === PLAIN_Q).heading = 'Battle-shock Rolls > Not a question'; });
+t('MUTATION: a question that loses its question form stops being an annotation', unfolded.stats.annotations, 252);
+ok('MUTATION: and it becomes a section row instead', !!findIn(unfolded.files, 'tree/rules/core-rules/core-concepts.js', PLAIN_Q) && !unfolded.attachTarget.has(PLAIN_Q));
+const reTargeted = mutate(copy => { copy.find(r => r.id === PLAIN_Q).parent = 'core-rules#Units-and-Models'; });
+t('MUTATION: changing the parent moves the fold to another section', reTargeted.attachTarget.get(PLAIN_Q), 'core-rules#Units-and-Models');
+const typed = mutate(copy => { copy.find(r => r.id === PLAIN_Q).kind = 'stratagem'; });
+t('MUTATION: a non-rule record is never an annotation', typed.stats.annotations, 252);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

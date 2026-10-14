@@ -66,7 +66,7 @@ function productPage(title, body, r, openArea) {
   // node chain (path), computed by the tree, so the UI pre-walks exactly those
   // files instead of guessing from the heading. The path inlines names and file
   // refs only - the files themselves are fetched when the cascade is opened.
-  const here = r ? JSON.stringify({ id: r.id, heading: r.heading || '', title: title, area: r.area || '', path: r.path || [] }).replace(/</g, '\\u003c') : '';
+  const here = r ? JSON.stringify({ id: r.id, heading: r.heading || '', title: title, area: r.area || '', path: r.path || [], at: r.at || '' }).replace(/</g, '\\u003c') : '';
   return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n' + shellHead({}) + '</head>\n<body class="wpage">\n' + body + '\n'
     + (here ? '<script>window.WIKI_HERE = ' + here + ';</script>\n' : '')
     + (openArea ? '<script>window.WIKI_TOC_OPEN = ' + JSON.stringify(openArea) + ';</script>\n' : '')
@@ -279,6 +279,9 @@ for (const r of records) {
   // developer furniture (the link block, the reading aids) moves into one row of
   // links at the foot, so nothing is lost and nothing is in the reader's way.
   const leaf = crumbs.length ? crumbs[crumbs.length - 1] : (r.heading || r.id);
+  const annoTitle = a => { const p = String(a.heading || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : a.id; };
+  const folded = tree.attach.get(r.id) || [];
+  const foldsInto = tree.attachTarget.get(r.id) || '';
   const body = [
     topBar({}),
     '<main class="wrec">',
@@ -289,6 +292,11 @@ for (const r of records) {
     // the flat text for everything else (and for the 111 card records whose CSV
     // row is missing, which fall back to the same text).
     recordBody(r, { corpora, index: cardIdx, href: id => pageOf.get(id) || '' }),
+    // A folded annotation still has its own page, and points back to its section.
+    (foldsInto && byId.has(foldsInto)) ? '<p class="qa-back">Folded into <a href="' + esc(pageOf.get(foldsInto)) + '">' + esc(byId.get(foldsInto).heading) + '</a></p>' : '',
+    // The annotation's section carries the folded questions and errata, so they
+    // stay reachable from the tree even though they are not tree rows.
+    folded.length ? '<h2>Questions and errata (' + folded.length + ')</h2><ul class="plain">' + folded.map(a => '<li><a href="' + esc(pageOf.get(a.id)) + '">' + esc(annoTitle(a)) + '</a></li>').join('') + '</ul>' : '',
     '<h2>Links (' + r.links.length + ')</h2>',
     linkChips(r.links, true),
     r.parent && byId.has(r.parent) ? '<p class="num">Parent: <a href="' + esc(pageOf.get(r.parent)) + '">' + esc(byId.get(r.parent).heading) + '</a></p>' : '',
@@ -299,7 +307,7 @@ for (const r of records) {
     '<div class="wdev"><a href="index.html">Index</a><a href="search.html">Search</a><a href="anomalies.html">Reading aids</a></div>',
     '</main>',
   ].filter(Boolean).join('\n');
-  fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), productPage(leaf, body, Object.assign({}, r, { area: areaOf.get(r.id) || '', path: tree.paths.get(r.id) || [] })));
+  fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), productPage(leaf, body, Object.assign({}, r, { area: areaOf.get(r.id) || '', path: tree.paths.get(r.id) || [], at: tree.attachTarget.get(r.id) || '' })));
   written++;
 }
 // The record -> page map, so a server can link a finding's record to its page
