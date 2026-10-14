@@ -36,7 +36,7 @@ import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, row
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
-import { unitCard } from './unit-card.mjs';
+import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(__dirname, 'index.html');
@@ -735,26 +735,49 @@ function corpusById() {
   return byIdCache;
 }
 
-// The links a finding exposes, resolved against the corpus: the record's own
-// link list, each target carrying its heading, anchor and url so the page renders
-// a chip from the payload and never parses a '- section: X' line out of the
-// text - one source, or the two drift. A link whose target is not in the corpus
-// is dropped rather than drawn as a dead chip, the rule the build already
-// follows. It is pure, and it is the only place a chip's href comes from.
-function decorateLinks(links, index) {
-  const out = [];
-  for (const l of links || []) {
-    const target = l && l.to ? index.get(l.to) : null;
-    if (!target) continue;
-    out.push({
-      to: l.to,
-      title: l.title || target.heading || '',
-      kind: l.kind || '',
-      anchor: target.anchor || '',
-      url: target.url || '',
-    });
+// --- the static wiki, on this origin ----------------------------------------
+// src/wiki-render.mjs writes a directory of pages under workspace/wiki-render;
+// it is a render of the corpus, never committed, and the record view opens it as
+// the navigation surface. The route resolves inside that directory and refuses
+// anything that climbs out of it.
+const WIKI_DIR = process.env.WIKI_RENDER_DIR || path.join(__dirname, '..', 'workspace', 'wiki-render');
+const WIKI_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.txt': 'text/plain; charset=utf-8',
+};
+function handleWiki(req, res, u) {
+  let rel = '';
+  try { rel = decodeURIComponent(u.pathname.slice('/wiki'.length)).replace(/^\/+/, ''); }
+  catch (e) { return fail(res, 400, 'bad wiki path'); }
+  if (!rel) rel = 'index.html';
+  const root = path.resolve(WIKI_DIR);
+  const abs = path.resolve(root, rel);
+  if (abs !== root && !abs.startsWith(root + path.sep)) return fail(res, 404, 'not found');
+  let body = null;
+  try { body = fs.readFileSync(abs); } catch (e) { body = null; }
+  if (!body) return fail(res, 404, 'not in the wiki render: ' + rel);
+  return send(res, 200, body, WIKI_TYPES[path.extname(abs).toLowerCase()] || 'application/octet-stream');
+}
+
+// The wiki page for a record id, from the map the render writes beside its pages.
+// Absent map (an older render, or no render at all) is no link: a dead one is
+// worse than none, the same rule the link resolution follows.
+let wikiMapCache = null;
+function wikiPageFor(id) {
+  if (wikiMapCache === null) {
+    try { wikiMapCache = JSON.parse(fs.readFileSync(path.join(WIKI_DIR, 'map.json'), 'utf8')) || {}; }
+    catch (e) { wikiMapCache = {}; }
   }
-  return out;
+  const page = wikiMapCache[String(id || '')];
+  return page ? '/wiki/' + page : '';
 }
 
 // A cheap guess, only used when the client does not say. The page sends its
@@ -821,6 +844,19 @@ async function handleRulesLabels(req, res) {
   let saved = false;
   try { saved = labelsTrace(id, { positive: positive || [], negative: negative || [] }); } catch (e) { saved = false; }
   return json(res, 200, { ok: true, saved });
+}
+
+// One record, for the full-screen view: the same builder for every category the
+// view opens - unit, faction, detachment, rules section. Ids only, resolved
+// against the corpus this process already holds, so a client cannot ask for a
+// record the corpus does not have, and the page never asks the model for one.
+async function handleRulesRecord(req, res, u) {
+  const id = String((u && u.searchParams.get('id')) || '');
+  if (!id) return fail(res, 400, 'need ?id=<record id>');
+  let record = null;
+  try { record = recordCard(id, { corpora: corpora(), index: corpusById() }); } catch (e) { record = null; }
+  if (!record) return fail(res, 404, 'no such record: ' + id);
+  return json(res, 200, { ok: true, record, wiki: wikiPageFor(id) });
 }
 
 async function handleRulesAsk(req, res) {
@@ -1001,7 +1037,7 @@ async function handleRulesAsk(req, res) {
       vectorRank: f.vectorRank || 0, vectorScore: f.vectorScore,
       lexicalRank: f.lexicalRank || 0, lexicalScore: f.lexicalScore,
       matchedTerms: f.matchedTerms || [],
-      links: decorateLinks((byId.get(f.id) || {}).links, byId),
+      links: resolveRecordLinks((byId.get(f.id) || {}).links, byId),
     }));
 
     // The reader picks the setting: fast asks the judge not to reason and takes
@@ -1348,6 +1384,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/rules/vote') return handleRulesVote(req, res);
   if (req.method === 'POST' && u.pathname === '/rules/answered') return handleRulesAnswered(req, res);
   if (req.method === 'POST' && u.pathname === '/rules/labels') return handleRulesLabels(req, res);
+  if (req.method === 'GET' && u.pathname === '/rules/record') return handleRulesRecord(req, res, u);
+  if (req.method === 'GET' && (u.pathname === '/wiki' || u.pathname.indexOf('/wiki/') === 0)) return handleWiki(req, res, u);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 

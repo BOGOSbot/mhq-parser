@@ -205,6 +205,11 @@ for (const r of records) {
   fs.writeFileSync(path.join(OUT, pageOf.get(r.id)), page(r.heading || r.id, NAV, body));
   written++;
 }
+// The record -> page map, so a server can link a finding's record to its page
+// without re-deriving the slug - the slug carries a hash this script owns, and a
+// second implementation of it would drift. Missing map = no deep link, never a
+// dead one.
+fs.writeFileSync(path.join(OUT, 'map.json'), JSON.stringify(Object.fromEntries(pageOf)));
 console.log('wiki-render -> ' + OUT);
 console.log('  records rendered      ' + written);
 console.log('  kept segments         ' + kept.length + ' records');

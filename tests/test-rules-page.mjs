@@ -57,7 +57,10 @@ const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild',
   'rerunTitle', 'rerunNote', 'rerankHelp', 'rerankButton',
   // The hero card's controls and the provenance its dev toggle opens.
   'heroCaret', 'heroCaretOn', 'heroIgnore', 'heroIgnoreOn', 'heroTop', 'heroIgnored',
-  'heroDev', 'heroDevHide', 'heroLinks', 'foundBy', 'legUnknown'];
+  'heroDev', 'heroDevHide', 'heroLinks', 'foundBy', 'legUnknown',
+  // The full-screen record, the wiki link and the four categories it opens.
+  'wikiNav', 'recordOpen', 'recordClose', 'recordSwipe', 'recordWiki', 'recordSource', 'recordText', 'recordLinks',
+  'kindUnit', 'kindFaction', 'kindDetachment', 'kindRule', 'kindStratagem', 'kindEnhancement', 'kindAbility', 'kindIndex', 'kindOther'];
 const absent = needed.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined);
 t('the new display labels exist in both languages', absent, []);
 
@@ -71,7 +74,7 @@ t('no reader-facing label is hardcoded in the script', hardcoded, []);
 // The passage popup reads the payload, never the network: one fetch of /health
 // is the only fetch outside /rules/ask on the page.
 const fetchCalls = Array.from(new Set(Array.from(PAGE.matchAll(/fetch\('([^']+)'/g)).map(m => m[1]))).sort();
-t('the page only fetches the five routes it needs', fetchCalls, ['/health', '/rules/answered', '/rules/ask', '/rules/labels', '/rules/vote']);
+t('the page only fetches the six routes it needs', fetchCalls, ['/health', '/rules/answered', '/rules/ask', '/rules/labels', '/rules/record?id=', '/rules/vote']);
 
 // The display the task asks for, asserted where it can be seen: findings above
 // the prose, re-rendered whenever a findings event lands, popup over payload.
@@ -168,6 +171,7 @@ ok('the pick is not gated on the rerank selection', code.slice(code.indexOf('fun
 ok('a pick waits for the run that writes its trace', /if \(state\.runDone\) \{ state\.pickPending = false; postPick\(state\); \}/.test(code));
 ok('one pick per question: a second replaces the first', /state\.pick = none \? 'none' : String\(by \|\| ''\)/.test(code));
 const server = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.mjs'), 'utf8');
+const unit = fs.readFileSync(path.join(__dirname, '..', 'src', 'unit-card.mjs'), 'utf8');
 const jsonReplies = server.split('return json(res, 200,').slice(1);
 const withDisagreement = jsonReplies.filter(x => x.slice(0, 900).indexOf('judgeDisagreement') !== -1);
 const withBoth = withDisagreement.filter(x => x.slice(0, 900).indexOf('judgeDowngrade') !== -1 && x.slice(0, 900).indexOf('judgeDissentFrom') !== -1);
@@ -209,10 +213,48 @@ ok('the labels are written into the trace they name', server.indexOf('labelsTrac
 ok('a label is checked against the findings the trace holds', traces.indexOf('new Set((t.findings || []).map(f => f && f.id))') !== -1);
 ok('a named record the trace never showed is refused', traces.indexOf('if (positive.length || negative.length) return false;') !== -1);
 // The links a finding carries are resolved from the record it points at, so the
-// page's chips and the record's own links are one source.
-ok('the findings payload carries the links', /links: decorateLinks\(/.test(server));
-ok('the link targets are resolved against the corpus', /const target = l && l\.to \? index\.get\(l\.to\) : null;/.test(server) && /if \(!target\) continue;/.test(server));
-ok('a link keeps the target anchor and url', /anchor: target\.anchor \|\| ''[\s\S]{0,60}url: target\.url \|\| ''/.test(server));
+// page's chips and the record's own links are one source. The resolver lives in
+// unit-card.mjs, where the record card uses it too: one implementation, two
+// callers, and neither can drift from the other.
+ok('the findings payload carries the links', /links: resolveRecordLinks\(/.test(server));
+ok('the link targets are resolved against the corpus', /const target = l && l\.to \? byId\.get\(l\.to\) : null;/.test(unit) && /if \(!target\) continue;/.test(unit));
+ok('a link keeps the target anchor and url', /anchor: target\.anchor \|\| ''[\s\S]{0,60}url: target\.url \|\| ''/.test(unit));
+ok('the record card resolves them through the same function', /links: resolveRecordLinks\(rec\.links, byId\)/.test(unit));
+
+// Task-41: a card tap opens the record full screen, one shape for the four
+// categories, with the same controls, a swipe through the findings, and the
+// static wiki wired in on the same origin. Each is one edit from being undone
+// and none is visible to an i18n check, so each is asserted structurally.
+ok('a card tap opens the record', /openRecord\(state, f\.id\)/.test(code));
+ok('the controls do not open it', code.indexOf(".closest('.fctl, .fdev, .flinks, .pickbtn, .ftitle')") !== -1);
+ok('the whole card is the tap target', /\.fitem\.hero\{cursor:pointer\}/.test(PAGE));
+ok('the record is a full-screen dialog', /el\('div', 'record hidden'\)/.test(code) && /setAttribute\('role', 'dialog'\)/.test(code));
+ok('the record draws one shape for every category', /function renderRecord\(state\)/.test(code) && /recordKindLabel\(/.test(code));
+ok('the unit category reuses the CSV card view', /body\.appendChild\(unitCardView\(data\.card\)\)/.test(code));
+ok('the other categories draw the record text and its links', /passageBody\(\{ passage: \(data && data\.text\) \|\| f\.passage/.test(code) && /linkChips\(\{ links: \(data && data\.links/.test(code));
+ok('the record carries the same three controls', /ctl\.appendChild\(findingControls\(state, f, isFirsted\(state, f\), isIgnored\(state, f\)\)\)/.test(code));
+ok('and the dev toggle opens the same provenance line', /body\.appendChild\(findingMeta\(f\)\)/.test(code));
+ok('a swipe moves through the findings', /addEventListener\('touchstart'/.test(code) && /addEventListener\('touchend'/.test(code) && /Math\.abs\(dx\) > 46 && Math\.abs\(dx\) > Math\.abs\(dy\)/.test(code) && /recordStep\(RECORD_STATE, dx < 0 \? 1 : -1\)/.test(code));
+ok('the arrow keys move too', /e\.key === 'ArrowLeft' \|\| e\.key === 'ArrowRight'/.test(code));
+ok('a swipe walks the order the list draws', /var order = heroOrder\(state\.findings, state\.cited, state\);/.test(code));
+ok('the ends hold rather than wrap', /if \(next < 0 \|\| next >= order\.length\) return;/.test(code));
+ok('the x is the top-right way back', /el\('button', 'recclose'/.test(code) && /\.recclose\{[^}]*width:44px/.test(PAGE));
+ok('no horizontal scroll in the record', /\.recbody\{[^}]*overflow-x:hidden/.test(PAGE) && /\.recbody \*\{max-width:100%\}/.test(PAGE));
+ok('the record body scrolls while the page behind does not', /body\.recopen\{overflow:hidden\}/.test(PAGE));
+ok('the record is fetched once and cached', /if \(state\.recordCache && state\.recordCache\[id\]\) return;/.test(code) && /state\.recordCache\[id\] = out\.record;/.test(code));
+ok('a failed record fetch leaves the passage readable', /the payload passage stays readable/.test(code));
+ok('the record re-renders with the list on every mark', /function refresh\(state\)/.test(code) && /if \(!state \|\| !state\.recordId\) return;/.test(code));
+// The wiki, on this origin: the page links to it, the server serves the render
+// directory, and the route refuses a path that climbs out of it.
+ok('the header links to the wiki', /id="wikinav" href="\/wiki\/"/.test(PAGE) && /wk\.textContent = t\('wikiNav'\)/.test(code));
+ok('the record links to the wiki page when it has one', /wiki\.href = state\.recordWiki \|\| '\/wiki\/';/.test(code));
+ok('the server serves the wiki render', server.indexOf("u.pathname.indexOf('/wiki/') === 0") !== -1 && server.indexOf('function handleWiki(') !== -1);
+ok('and refuses a path outside it', /!abs\.startsWith\(root \+ path\.sep\)/.test(server));
+ok('the record route exists', server.indexOf("'/rules/record'") !== -1 && server.indexOf('handleRulesRecord') !== -1 && /recordCard\(id, \{ corpora: corpora\(\), index: corpusById\(\) \}\)/.test(server));
+ok('the route refuses an id the corpus does not hold', /if \(!record\) return fail\(res, 404/.test(server));
+ok('the wiki page comes from the render map, never a second slug', /path\.join\(WIKI_DIR, 'map\.json'\)/.test(server));
+ok('the render writes that map', fs.readFileSync(path.join(__dirname, '..', 'src', 'wiki-render.mjs'), 'utf8').indexOf("path.join(OUT, 'map.json')") !== -1);
+
 
 // The layout of the question: the box grows with its text, the translation has
 // its own box under it, and the retention line is in the body where a run cannot

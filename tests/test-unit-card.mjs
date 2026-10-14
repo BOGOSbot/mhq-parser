@@ -1,5 +1,5 @@
 import {
-  ABILITY_CHARS, abilityRuleIds, buildUnitCard, cardTables, findAbilityRecord, findDatasheet, resetCardTables, unitCard, unitCardEnabled, wantsUnitCard,
+  ABILITY_CHARS, abilityRuleIds, buildUnitCard, cardTables, findAbilityRecord, findDatasheet, recordCard, resetCardTables, resolveRecordLinks, unitCard, unitCardEnabled, wantsUnitCard,
 } from '../src/unit-card.mjs';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
 import { buildTrace } from '../src/rules-traces.mjs';
@@ -154,6 +154,43 @@ t('a card trace carries no findings and no answer', [tr.findings, tr.answer], [[
 resetCardTables();
 t('a reloaded table set gives the same card', buildUnitCard('000000574').models[0].T, '3');
 ok('the table cache is one object', cardTables() === cardTables());
+
+// --- the record card: one builder for the four categories --------------------
+// The full-screen view opens a unit, a faction, a detachment or a rules section
+// through this one function, so a datasheet id must find the CSV card, and every
+// other category must come back as the record itself with its links resolved.
+const allRecords = readAllCorpus();
+const bothHalves = { rules: readAllCorpus('rules'), factions: readAllCorpus('factions') };
+const byId = new Map(allRecords.map(r => [r.id, r]));
+const pickKind = kind => allRecords.find(r => (r.kind || '') === kind);
+const dsRec = pickKind('datasheet');
+const dsCard = recordCard(dsRec.id, { corpora: bothHalves });
+ok('a datasheet record opens the unit card', !!(dsCard && dsCard.card && dsCard.card.models.length));
+t('and the category says unit', dsCard.kind, 'datasheet');
+t('the record id keeps its corpus prefix', dsCard.id, dsRec.id);
+t('the CSV lookup gets the bare id, not the prefix', dsCard.card.name, buildUnitCard(dsRec.id.replace(/^datasheet#/, '')).name);
+const urRec = allRecords.find(r => r.kind === 'unitrules' && r.id === 'unitrules#' + dsRec.id.replace(/^datasheet#/, ''));
+ok('the keywords half of the same datasheet opens the same card', !!(urRec && recordCard(urRec.id, { corpora: bothHalves }).card) && recordCard(urRec.id, { corpora: bothHalves }).card.name === dsCard.card.name);
+const detRec = pickKind('detachment');
+const detCard = recordCard(detRec.id, { corpora: bothHalves });
+t('a detachment is a record, not a unit card', [detCard.kind, detCard.card], ['detachment', null]);
+ok('and it keeps its own text', detCard.text.length > 0);
+// An index target has no source page of its own, so a resolved link keeps its
+// to and title and carries a url only when the target has one.
+ok('its links stay resolved', detCard.links.length > 0 && detCard.links.every(l => l.to && l.title));
+const ruleRec = allRecords.find(r => r.kind === 'rule' && (r.links || []).length > 0);
+const ruleCard = recordCard(ruleRec.id, { corpora: bothHalves });
+t('a rules section is a rules section', ruleCard.kind, 'rule');
+t('and the breadcrumb is split off its heading', ruleCard.crumb.join(' > '), ruleRec.heading.split(' > ').slice(0, -1).join(' > '));
+t('the title is the last heading segment', ruleCard.title, ruleRec.heading.split(' > ').pop());
+t('a faction rule is a faction record', recordCard(pickKind('faction-rule').id, { corpora: bothHalves }).kind, 'faction-rule');
+t('an id the corpus does not hold is null', recordCard('nope#nope', { corpora: bothHalves }), null);
+t('an empty id is null', recordCard('', { corpora: bothHalves }), null);
+// A dead link is dropped rather than rendered, the rule the build follows.
+t('a link with no target in the index is dropped', resolveRecordLinks([{ to: 'ghost#1', title: 'Ghost', kind: 'rule' }], byId), []);
+const withAnchor = allRecords.find(r => (r.links || []).some(l => byId.has(l.to) && byId.get(l.to).anchor));
+const resolved = resolveRecordLinks(withAnchor.links, byId).find(l => l.anchor);
+ok('a resolved link keeps the target anchor and url', !!(resolved && resolved.url && resolved.to && resolved.title));
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

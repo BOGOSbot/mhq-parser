@@ -330,6 +330,18 @@ matched - the words it matched.
   draws a chip per link whose hover or focus preview is built from that target's
   own title and url. The `- section: X` lines the wiki build writes into the text
   are never parsed: one source, or the two drift.
+- **A card tap opens the record full screen.** The record is one shape for the
+  four categories - unit, faction, detachment, rules section - built by
+  `recordCard(id)` in `src/unit-card.mjs`: the CSV unit card for a datasheet or
+  its keywords half, and the record with its resolved links for every other
+  category. The payload's own passage is drawn at once and the structured card
+  from `GET /rules/record?id=` replaces it when it lands, so the tap never waits
+  and a failed fetch stays readable. The view carries the same caret, x and dev
+  controls, a top-right x back, and a horizontal swipe (or the arrow keys) that
+  walks the findings in the hero list's own order; the ends hold rather than wrap.
+  The static wiki (`src/wiki-render.mjs`) is served on the same origin under
+  `/wiki`, and the render's `map.json` gives each record its own page, so the
+  view links to it without a second implementation of the slug.
 - **The evidence behind a verdict is never collapsed.** The list shown whole is
   the union of the top five by rank and the passages the judge names in its
   verdict, in the rerank's order, the cited ones badged (`cité par le juge`), with no

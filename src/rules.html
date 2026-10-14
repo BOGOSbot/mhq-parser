@@ -242,6 +242,32 @@ ol.cites li.fitem{display:block}
 .linkprev b{display:block;margin-bottom:3px;color:var(--txt);font:600 12px var(--sans)}
 .linkprev span{color:var(--dim)}
 .linkchip:hover .linkprev,.linkchip:focus-visible .linkprev{display:block}
+/* The card is a tap target: it opens the record full screen. The controls on it
+   stop the tap, so a caret or an x is never swallowed by the navigation. */
+.fitem.hero{cursor:pointer}
+/* The record, full screen: one shape for every category, the top-right x the way
+   back, and no horizontal scroll on a 390px phone. The unit card inside is the
+   same unitCardView the question path already draws. */
+body.recopen{overflow:hidden}
+.record{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.record.hidden{display:none}
+.recbar{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;padding:8px 10px;border-bottom:1px solid var(--line);background:var(--panel);min-height:52px}
+.reckind{flex:0 0 auto;font:600 9.5px var(--mono);letter-spacing:.4px;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:2px 6px;color:var(--dim)}
+.rectitle{flex:1 1 auto;min-width:0;font:600 14px var(--sans);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recpos{flex:0 0 auto;color:var(--dim);font:11px var(--mono)}
+.recclose{flex:0 0 auto;width:44px;height:44px;padding:0;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--txt);font:600 20px var(--sans);line-height:1;cursor:pointer}
+.recclose:hover{border-color:var(--acc);color:var(--acc)}
+.recbody{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:12px 14px 48px;max-width:100%}
+.recbody *{max-width:100%}
+.reccrumb{color:var(--dim);font:11.5px var(--mono);margin-bottom:8px;overflow-wrap:anywhere}
+.recctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.recctl .fctl{margin-left:0}
+.recwiki{min-height:44px;display:inline-flex;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--acc);font:600 13px var(--sans);text-decoration:none}
+.recwiki:hover{border-color:var(--acc)}
+.rectext{overflow-wrap:anywhere}
+.rectext p{margin:0 0 10px;line-height:1.6}
+.recswipe{color:var(--dim);font:11.5px var(--sans);margin:14px 0 0}
+@media (min-width:640px){.recbody{width:100%;max-width:46rem;margin:0 auto}}
 details.moref{margin-top:10px}
 details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 /* The passage popup. The record is already in the payload, so it never
@@ -315,6 +341,7 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
     <h1 id="h1">40k <span>rules</span></h1>
     <a class="nav" id="navparse" href="/">Army-list parser</a>
     <a class="nav" id="wahalink" href="https://wahapedia.ru/" target="_blank" rel="noopener">Wahapedia</a>
+    <a class="nav" id="wikinav" href="/wiki/" target="_blank" rel="noopener">Wiki</a>
     <span class="spacer"></span>
   </div>
   <form id="f">
@@ -452,6 +479,24 @@ var I18N = {
   heroLinks: 'Inside this passage',
   foundBy: 'found by ',
   legUnknown: 'no provenance',
+  // The full-screen record and the wiki it opens onto.
+  wikiNav: 'Wiki',
+  recordOpen: 'open the full record',
+  recordClose: 'close the record',
+  recordSwipe: 'swipe left or right for the next finding',
+  recordWiki: 'Browse the wiki',
+  recordSource: 'Open the source',
+  recordText: 'Record',
+  recordLinks: 'Inside this record',
+  kindUnit: 'unit',
+  kindFaction: 'faction',
+  kindDetachment: 'detachment',
+  kindRule: 'rules section',
+  kindStratagem: 'stratagem',
+  kindEnhancement: 'enhancement',
+  kindAbility: 'ability',
+  kindIndex: 'index',
+  kindOther: 'record',
     citedByJudge: 'the judge cites this',
     verdictEvidence: 'passages it rests on:',
     close: 'Close',
@@ -611,6 +656,23 @@ var I18N = {
   heroLinks: 'À l\u2019intérieur de ce passage',
   foundBy: 'trouvé par ',
   legUnknown: 'sans provenance',
+  wikiNav: 'Wiki',
+  recordOpen: 'ouvrir la fiche complète',
+  recordClose: 'fermer la fiche',
+  recordSwipe: 'balayez à gauche ou à droite pour passer au constat suivant',
+  recordWiki: 'Parcourir le wiki',
+  recordSource: 'Ouvrir la source',
+  recordText: 'Fiche',
+  recordLinks: 'Dans cette fiche',
+  kindUnit: 'unité',
+  kindFaction: 'faction',
+  kindDetachment: 'détachement',
+  kindRule: 'section de règles',
+  kindStratagem: 'stratagème',
+  kindEnhancement: 'amélioration',
+  kindAbility: 'capacité',
+  kindIndex: 'index',
+  kindOther: 'fiche',
     citedByJudge: 'cité par le juge',
     verdictEvidence: 'passages sur lesquels il s\u2019appuie :',
     close: 'Fermer',
@@ -823,6 +885,7 @@ function paintSend(btn, label) {
 function applyLang() {
   document.documentElement.lang = LANG;
   var np = $('#navparse'); if (np) np.textContent = t('navparse');
+  var wk = $('#wikinav'); if (wk) wk.textContent = t('wikiNav');
   var q = $('#q'); if (q) q.setAttribute('placeholder', t('placeholder'));
   var go = $('#go'); if (go) paintSend(go, t('ask'));
   var ml = $('#miclabel'); if (ml) ml.textContent = t('voice');
@@ -1085,8 +1148,8 @@ function postPick(state) {
   var body = none ? { id: state.traceId, none: true } : { id: state.traceId, by: state.pick };
   fetch('/rules/answered', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
     .then(function (r) { return r.json(); })
-    .then(function (out) { state.pickPending = false; state.pickSaved = !(out && out.saved === false); renderFindings(state); })
-    .catch(function () { state.pickPending = false; renderFindings(state); });
+    .then(function (out) { state.pickPending = false; state.pickSaved = !(out && out.saved === false); refresh(state); })
+    .catch(function () { state.pickPending = false; refresh(state); });
 }
 
 function sendPick(state, by, none) {
@@ -1095,7 +1158,7 @@ function sendPick(state, by, none) {
   state.pickSaved = undefined;
   if (state.runDone) { state.pickPending = false; postPick(state); }
   else state.pickPending = true;
-  renderFindings(state);
+  refresh(state);
 }
 
 // The pick row, drawn under the findings - and under the 'nothing matched' note,
@@ -1116,6 +1179,40 @@ function pickRow(state) {
     : (state.pickPending ? t('pickWaiting') : '');
   row.appendChild(el('div', 'picknote', note));
   return row;
+}
+
+// The reader's two marks, in one place: a careted record (the positive example)
+// and an ignored one (the negative). Both only exist while the first answer is
+// the one on screen.
+function isFirsted(state, f) {
+  return !!(state && state.selectable && !state.rerun && f && (state.positive || []).indexOf(f.id) !== -1);
+}
+function isIgnored(state, f) {
+  return !!(state && state.selectable && !state.rerun && f && state.keep[f.id] === false);
+}
+
+// The order the reader sees, in one place: the caret's picks first (newest
+// first), then the passages the judge cited, then rank order, then the ignored
+// ones. The hero list draws it and a swipe in the full-screen record walks it,
+// so the two surfaces cannot disagree about what comes next. The judge's
+// citations and the reader's picks both resort, and the reader wins.
+function heroOrder(findings, cited, state) {
+  findings = sortedFindings(findings);
+  cited = cited || [];
+  var picked = [], citedOnes = [], rest = [], dropped = [];
+  for (var j = 0; j < findings.length; j++) {
+    var f = findings[j];
+    if (isIgnored(state, f)) dropped.push(f);
+    else if (isFirsted(state, f)) picked.push(f);
+    else if (cited.indexOf(f.n) !== -1) citedOnes.push(f);
+    else rest.push(f);
+  }
+  // The caret's order is the reader's, newest first: the sort is on the record's
+  // position in state.positive, not on its rank.
+  if (state && state.selectable && !state.rerun) {
+    picked.sort(function (a, b) { return state.positive.indexOf(a.id) - state.positive.indexOf(b.id); });
+  }
+  return picked.concat(citedOnes, rest, dropped);
 }
 
 function findingsCard(findings, counts, cited, state) {
@@ -1143,26 +1240,10 @@ function findingsCard(findings, counts, cited, state) {
   var isCited = function (f) { return cited.indexOf(f.n) !== -1; };
   var prominent = {};
   for (var i = 0; i < findings.length; i++) if (i < 5 || isCited(findings[i])) prominent[findings[i].id] = true;
-  // The rerank. The judge's citations and the reader's own picks both resort the
-  // list, and the reader wins: a careted record is first, then the cited ones,
-  // then rank order. An ignored record sinks to the end but never leaves the
-  // page, because the evidence behind a verdict stays readable even when the
-  // reader disagrees with it.
   var selectable = !!(state && state.selectable && !state.rerun);
-  var firsted = function (f) { return selectable && (state.positive || []).indexOf(f.id) !== -1; };
-  var ignored = function (f) { return selectable && state.keep[f.id] === false; };
-  var picked = [], citedOnes = [], rest = [], dropped = [];
-  for (var j = 0; j < findings.length; j++) {
-    var f = findings[j];
-    if (ignored(f)) dropped.push(f);
-    else if (firsted(f)) picked.push(f);
-    else if (isCited(f)) citedOnes.push(f);
-    else rest.push(f);
-  }
-  // The caret's order is the reader's, newest first: the sort is on the record's
-  // position in state.positive, not on its rank.
-  if (selectable) picked.sort(function (a, b) { return state.positive.indexOf(a.id) - state.positive.indexOf(b.id); });
-  var order = picked.concat(citedOnes, rest, dropped);
+  var firsted = function (f) { return isFirsted(state, f); };
+  var ignored = function (f) { return isIgnored(state, f); };
+  var order = heroOrder(findings, cited, state);
   var shown = [], behind = [], shownIds = {};
   for (var k = 0; k < order.length; k++) {
     var g = order[k];
@@ -1296,9 +1377,19 @@ function findingItem(f, prominent, cited, state) {
   var parts = crumbs(f.heading);
   var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + (parts.length ? parts[parts.length - 1] : f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
   a.href = f.href || f.url; a.target = '_blank'; a.rel = 'noopener';
+  // The title opens the record, not the source page: the source is one tap
+  // further in, inside the record, where the reader is already looking.
+  a.setAttribute('aria-label', t('recordOpen') + ': ' + a.textContent);
+  a.addEventListener('click', function (ev) { ev.preventDefault(); openRecord(state, f.id); });
   head.appendChild(a);
   if (selectable) head.appendChild(findingControls(state, f, first, ignored));
   li.appendChild(head);
+  // The whole card is the tap target; the controls are not, so a caret or an x
+  // is never swallowed by the navigation.
+  li.addEventListener('click', function (ev) {
+    if (ev.target && ev.target.closest && ev.target.closest('.fctl, .fdev, .flinks, .pickbtn, .ftitle')) return;
+    openRecord(state, f.id);
+  });
   if (parts.length > 1) li.appendChild(el('div', 'fcrumbs', parts.slice(0, -1).join(' \u203a ')));
   // One line at rest: the card says what the passage is, and the dev toggle opens
   // the whole record instead of a wall of prose above the answer.
@@ -1344,8 +1435,10 @@ function findingControls(state, f, first, ignored) {
 // The dev view: the provenance spelled out - which retriever found it, at what
 // rank and score, the words the lexical leg matched - and the whole chunk. This
 // is where the similarity is visibly a rank score and not a confidence.
-function devPanel(f, state) {
-  var box = el('div', 'fdev');
+// The provenance line: which retriever found the record, at what rank and score,
+// and the words the lexical leg matched. One builder for the card's dev panel and
+// the full-screen record, so the two cannot say different things.
+function findingMeta(f) {
   var meta = el('div', 'fmeta');
   meta.appendChild(el('span', null, t('rankN') + (f.rank || f.n)));
   meta.appendChild(el('span', 'devleg', t('foundBy') + (legLabel(f.leg) || t('legUnknown'))));
@@ -1357,7 +1450,12 @@ function devPanel(f, state) {
   if ((f.leg === 'lexical' || f.leg === 'both') && f.matchedTerms && f.matchedTerms.length) {
     meta.appendChild(el('span', 'words', t('matchedWords') + f.matchedTerms.join(', ')));
   }
-  box.appendChild(meta);
+  return meta;
+}
+
+function devPanel(f, state) {
+  var box = el('div', 'fdev');
+  box.appendChild(findingMeta(f));
   box.appendChild(passageBody(f));
   // The reader's own 'this passage answered it': an assertion about the answer,
   // one per question, replacing any earlier pick. It sits in the dev view because
@@ -1429,6 +1527,182 @@ function linkChips(f) {
   return box.childNodes.length ? box : null;
 }
 
+// --- the record, full screen -------------------------------------------------
+// Tapping a hero card opens the record the finding points at: unit, faction,
+// detachment or rules section, one shape for all four. The payload's own passage
+// is drawn at once - it is already in memory - and the structured card from
+// /rules/record replaces it when it lands, so a tap never waits on a request and
+// a failed one leaves the passage readable rather than blank. The unit category
+// is the CSV card (unitCardView); the other three are the record plus its links.
+var RECORD_STATE = null;
+
+function recordKindLabel(kind) {
+  var map = {
+    datasheet: 'kindUnit', unitrules: 'kindUnit', detachment: 'kindDetachment',
+    rule: 'kindRule', stratagem: 'kindStratagem', enhancement: 'kindEnhancement',
+    ability: 'kindAbility', index: 'kindIndex', 'faction-rule': 'kindFaction',
+  };
+  return t(map[kind] || 'kindOther');
+}
+
+// The overlay is built once and reused: the swipe listener lives on it, so it
+// must not be re-attached on every render. A horizontal swipe moves through the
+// findings, a vertical one scrolls the record.
+function recordNode() {
+  var node = document.getElementById('record');
+  if (node) return node;
+  node = el('div', 'record hidden');
+  node.id = 'record';
+  node.setAttribute('role', 'dialog');
+  node.setAttribute('aria-modal', 'true');
+  node.setAttribute('aria-labelledby', 'recordtitle');
+  var sx = 0, sy = 0;
+  node.addEventListener('touchstart', function (e) {
+    var touch = e.changedTouches && e.changedTouches[0];
+    if (!touch) return;
+    sx = touch.clientX; sy = touch.clientY;
+  }, { passive: true });
+  node.addEventListener('touchend', function (e) {
+    var touch = e.changedTouches && e.changedTouches[0];
+    if (!touch) return;
+    var dx = touch.clientX - sx, dy = touch.clientY - sy;
+    if (Math.abs(dx) > 46 && Math.abs(dx) > Math.abs(dy)) recordStep(RECORD_STATE, dx < 0 ? 1 : -1);
+  }, { passive: true });
+  document.body.appendChild(node);
+  return node;
+}
+
+function openRecord(state, id) {
+  if (!state || !id) return;
+  state.recordId = id;
+  state.recordData = (state.recordCache && state.recordCache[id]) || null;
+  state.recordWiki = (state.recordWikiMap && state.recordWikiMap[id]) || '';
+  RECORD_STATE = state;
+  var node = recordNode();
+  node.classList.remove('hidden');
+  document.body.classList.add('recopen');
+  renderRecord(state);
+  var close = document.getElementById('recclose');
+  if (close) close.focus();
+  loadRecord(state);
+}
+
+function closeRecord(state) {
+  var node = document.getElementById('record');
+  if (node) { node.classList.add('hidden'); node.textContent = ''; }
+  document.body.classList.remove('recopen');
+  if (state) { state.recordId = ''; state.recordData = null; }
+  RECORD_STATE = null;
+}
+
+// One step through the findings the reader is looking at, in the hero list's own
+// order. The ends hold rather than wrap: a swipe past the last finding is not a
+// jump back to the first.
+function recordStep(state, delta) {
+  if (!state || !state.recordId) return;
+  var order = heroOrder(state.findings, state.cited, state);
+  var at = -1;
+  for (var i = 0; i < order.length; i++) if (order[i].id === state.recordId) { at = i; break; }
+  if (at === -1) return;
+  var next = at + delta;
+  if (next < 0 || next >= order.length) return;
+  openRecord(state, order[next].id);
+}
+
+// The structured card, fetched once per record and cached on the state. A
+// failure is silent by design: the payload's passage is already on screen.
+function loadRecord(state) {
+  if (!state || !state.recordId) return;
+  var id = state.recordId;
+  if (state.recordCache && state.recordCache[id]) return;
+  fetch('/rules/record?id=' + encodeURIComponent(id))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (out) {
+      if (!out || !out.record) return;
+      state.recordCache = state.recordCache || {};
+      state.recordWikiMap = state.recordWikiMap || {};
+      state.recordCache[id] = out.record;
+      state.recordWikiMap[id] = out.wiki || '';
+      if (state.recordId === id) {
+        state.recordData = out.record;
+        state.recordWiki = out.wiki || '';
+        renderRecord(state);
+      }
+    })
+    .catch(function () { /* the payload passage stays readable */ });
+}
+
+function renderRecord(state) {
+  var node = recordNode();
+  var id = state && state.recordId;
+  var order = heroOrder(state.findings, state.cited, state);
+  var at = -1;
+  for (var i = 0; i < order.length; i++) if (order[i].id === id) { at = i; break; }
+  if (at === -1) { closeRecord(state); return; }
+  var f = order[at];
+  var data = state.recordData && state.recordData.id === id ? state.recordData : null;
+  node.textContent = '';
+  var bar = el('div', 'recbar');
+  bar.appendChild(el('span', 'reckind', recordKindLabel(data ? data.kind : (f.kind || (f.set === 'factions' ? 'faction' : 'rule')))));
+  var title = el('div', 'rectitle', data ? data.title : (crumbs(f.heading).slice(-1)[0] || f.heading || f.id));
+  title.id = 'recordtitle';
+  bar.appendChild(title);
+  bar.appendChild(el('span', 'recpos', (at + 1) + ' / ' + order.length));
+  var close = el('button', 'recclose', '\u00d7');
+  close.type = 'button';
+  close.id = 'recclose';
+  close.setAttribute('aria-label', t('recordClose'));
+  close.title = t('recordClose');
+  close.addEventListener('click', function () { closeRecord(state); });
+  bar.appendChild(close);
+  node.appendChild(bar);
+  var body = el('div', 'recbody');
+  var parts = data ? data.crumb : crumbs(f.heading).slice(0, -1);
+  if (parts && parts.length) body.appendChild(el('div', 'reccrumb', parts.join(' \u203a ')));
+  var ctl = el('div', 'recctl');
+  if (state.selectable && !state.rerun) ctl.appendChild(findingControls(state, f, isFirsted(state, f), isIgnored(state, f)));
+  var wiki = el('a', 'recwiki', t('recordWiki'));
+  wiki.href = state.recordWiki || '/wiki/';
+  wiki.target = '_blank';
+  wiki.rel = 'noopener';
+  ctl.appendChild(wiki);
+  var source = el('a', 'recwiki', t('recordSource'));
+  source.href = f.href || f.url || (data && data.href) || '#';
+  source.target = '_blank';
+  source.rel = 'noopener';
+  ctl.appendChild(source);
+  body.appendChild(ctl);
+  // The dev control opens the same provenance panel it opens on the card.
+  if (state.devOpen && state.devOpen[f.id]) body.appendChild(findingMeta(f));
+  if (data && data.card) {
+    body.appendChild(unitCardView(data.card));
+  } else {
+    body.appendChild(el('h2', null, t('recordText')));
+    var text = el('div', 'rectext');
+    text.appendChild(passageBody({ passage: (data && data.text) || f.passage, excerpt: f.excerpt, leg: f.leg, matchedTerms: f.matchedTerms }));
+    body.appendChild(text);
+  }
+  var links = linkChips({ links: (data && data.links && data.links.length) ? data.links : f.links });
+  if (links) {
+    body.appendChild(el('h3', null, t('recordLinks')));
+    body.appendChild(links);
+  }
+  body.appendChild(el('p', 'recswipe', t('recordSwipe')));
+  node.appendChild(body);
+}
+
+// Redraw everything the state feeds: the hero list, and the open record when
+// there is one. One place, so a caret tapped inside the record view re-renders
+// both surfaces and neither goes stale.
+function refresh(state) {
+  renderFindings(state);
+  if (!state || !state.recordId) return;
+  var present = false;
+  for (var i = 0; i < state.findings.length; i++) if (state.findings[i].id === state.recordId) { present = true; break; }
+  if (!present) { closeRecord(state); return; }
+  renderRecord(state);
+}
+
 // The caret: rank this record first, or take the rank back. The reader's order
 // wins over the judge's citations, and the record it names is the positive
 // example the trace keeps. Careting a record the reader had ignored restores it
@@ -1440,7 +1714,7 @@ function toggleFirst(state, id) {
   if (i === -1) { state.positive.unshift(id); state.keep[id] = true; }
   else state.positive.splice(i, 1);
   state.labelsTouched = true;
-  renderFindings(state);
+  refresh(state);
   markLabels(state);
 }
 
@@ -1456,7 +1730,7 @@ function toggleIgnore(state, id) {
     if (i !== -1) state.positive.splice(i, 1);
   }
   state.labelsTouched = true;
-  renderFindings(state);
+  refresh(state);
   markLabels(state);
 }
 
@@ -1464,7 +1738,7 @@ function toggleDev(state, id) {
   if (!state || !id) return;
   state.devOpen = state.devOpen || {};
   if (state.devOpen[id]) delete state.devOpen[id]; else state.devOpen[id] = true;
-  renderFindings(state);
+  refresh(state);
 }
 
 // The caret and the x are labelled examples, and the trace that holds them is
@@ -1853,6 +2127,10 @@ function newState() {
     // re-render; the caret and the x are also the trace's labelled examples, so
     // they wait for the run that writes it (labelsPending), exactly like the pick.
     positive: [], devOpen: {}, labelsTouched: false, labelsPending: false,
+    // The full-screen record: which finding is open, the structured card once it
+    // has landed, the wiki page for it, and the per-record caches so a swipe back
+    // to a record already opened costs no request.
+    recordId: '', recordData: null, recordWiki: '', recordCache: null, recordWikiMap: null,
     // The reader's pick - a record id, or 'none' - and whether it has landed.
     // It is sent only once the run has finished writing its trace, so a pick made
     // while the prose is still being written is not lost to a record that does not
@@ -2085,8 +2363,8 @@ function applyEvent(ev, state) {
     state.rest.textContent = '';
     if (state.terms.length) state.rest.appendChild(termsCard(state.terms));
     // Re-rendered on every pass, so a widened search replaces the narrower list
-    // rather than leaving one list under the other.
-    renderFindings(state);
+    // rather than leaving one list under the other, and the open record with it.
+    refresh(state);
     if (ev.attempt > 0) flash(state.findingSlot);
     doneStage(ev.attempt > 0 ? 'widen' : 'retrieve', ev.elapsedMs);
     if (ev.attempt > 0) setStageActive('judge');
@@ -2111,7 +2389,7 @@ function applyEvent(ev, state) {
       // collapse and badged, so the evidence behind a verdict is never hidden in
       // the collapsed remainder.
       state.cited = Array.isArray(ev.judge && ev.judge.passages) ? ev.judge.passages.slice() : [];
-      if (state.findings.length) renderFindings(state);
+      if (state.findings.length) refresh(state);
     }
     renderVerdicts(state);
     flash(state.verdict);
@@ -2383,7 +2661,17 @@ async function ask(over) {
 
 $('#f').addEventListener('submit', function (e) { e.preventDefault(); ask(); });
 document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') { closePassage(); $('#q').blur(); }
+  var inRecord = !!(RECORD_STATE && RECORD_STATE.recordId);
+  if (e.key === 'Escape') {
+    if (inRecord) { closeRecord(RECORD_STATE); return; }
+    closePassage(); $('#q').blur();
+    return;
+  }
+  // The record walks the findings with the arrow keys the same way a swipe does.
+  if (inRecord && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    e.preventDefault();
+    recordStep(RECORD_STATE, e.key === 'ArrowRight' ? 1 : -1);
+  }
 });
 growQuestion();
 $('#q').focus();

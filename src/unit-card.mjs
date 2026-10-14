@@ -320,6 +320,68 @@ export function buildUnitCard(id, opts) {
   };
 }
 
+// A record's links, resolved against an index of the corpus: each target carries
+// its heading, anchor and url so a caller renders a chip from this array and
+// never parses the '- section: X' text. A target the index does not hold is
+// dropped - a dead link is worse than no link, the rule the build follows.
+// Exported because the findings payload and the record card are its two callers
+// and they must not drift.
+export function resolveRecordLinks(links, byId) {
+  const out = [];
+  for (const l of links || []) {
+    const target = l && l.to ? byId.get(l.to) : null;
+    if (!target) continue;
+    out.push({
+      to: l.to,
+      title: l.title || target.heading || '',
+      kind: l.kind || '',
+      anchor: target.anchor || '',
+      url: target.url || '',
+    });
+  }
+  return out;
+}
+
+// Any corpus record as a card, for the full-screen view: the CSV unit card when
+// the record is a datasheet or its keywords-and-abilities half, and for every
+// other category the record itself, its breadcrumb and its resolved links. One
+// builder for the four categories the view opens - unit, faction, detachment,
+// rules section - so the page renders one shape instead of a renderer per kind.
+// Null when the id is not in the corpus: a half card is never shown.
+export function recordCard(id, opts) {
+  const o = opts || {};
+  const corpora = o.corpora || {};
+  const byId = o.index || new Map(
+    ([]).concat(corpora.rules || [], corpora.factions || []).map(r => [r.id, r]));
+  const rec = byId.get(String(id == null ? '' : id));
+  if (!rec) return null;
+  const kind = rec.kind || '';
+  // The CSV card is keyed by the bare datasheet id; the corpus record carries a
+  // source prefix. `datasheet#X` and `unitrules#X` are the two halves of one
+  // datasheet and both open the same card.
+  const bare = String(rec.id).replace(/^(?:datasheet|unitrules)#/, '');
+  const card = (kind === 'datasheet' || kind === 'unitrules')
+    ? buildUnitCard(bare, { corpora: corpora })
+    : null;
+  const parts = String(rec.heading || '').split(' > ').filter(Boolean);
+  return {
+    id: rec.id,
+    kind,
+    set: rec.set || '',
+    source: rec.source || '',
+    faction: rec.faction || '',
+    heading: rec.heading || '',
+    ruleId: rec.ruleId || '',
+    title: parts.length ? parts[parts.length - 1] : (rec.heading || rec.id),
+    crumb: parts.slice(0, -1),
+    text: String(rec.text || ''),
+    url: rec.url || '',
+    href: hrefFor(rec),
+    links: resolveRecordLinks(rec.links, byId),
+    card,
+  };
+}
+
 // The whole decision, for a caller that has the question and its translation:
 // a card, or null and the prose path stays exactly as it was.
 export function unitCard(question, opts) {
@@ -330,4 +392,4 @@ export function unitCard(question, opts) {
   return d ? buildUnitCard(d.id, { corpora: o.corpora }) : null;
 }
 
-export default { CARD_INTENT, ABILITY_CHARS, cardTables, resetCardTables, unitCardEnabled, wantsUnitCard, findDatasheet, buildUnitCard, unitCard, abilityRuleIds, findAbilityRecord };
+export default { CARD_INTENT, ABILITY_CHARS, cardTables, resetCardTables, unitCardEnabled, wantsUnitCard, findDatasheet, buildUnitCard, recordCard, resolveRecordLinks, unitCard, abilityRuleIds, findAbilityRecord };

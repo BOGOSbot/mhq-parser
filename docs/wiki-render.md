@@ -27,6 +27,9 @@ closed circle as a folder.
   and the text can be compared by eye; parent and 'linked from' navigation;
 - `search.html`: every heading, filtered in the browser by an inline script;
 - `index.html`: the corpus by kind and by source;
+- `map.json`: record id to page, so the rules page can link a finding to its own
+  page without re-deriving the slug; `src/server.mjs` serves the directory under
+  `/wiki` on the same origin (`WIKI_RENDER_DIR` moves it there too);
 - `anomalies.html`: the reading aids - records still carrying another rule's text, links
   that point nowhere, records whose text and link array disagree, bodies that are mostly
   someone else's rule, biggest and emptiest, islands with no links and no parent.
