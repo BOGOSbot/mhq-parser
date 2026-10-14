@@ -19,6 +19,8 @@ import { readAllCorpus } from './rules-corpus.mjs';
 import { renderLinks } from './wiki-plan.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
 import { SHELL_CSS, shellHead, topBar } from './wiki-shell.mjs';
+import { TOC_CSS, TOC_JS, tocData } from './wiki-toc.mjs';
+import { cardTables } from './unit-card.mjs';
 
 const OUT = process.env.WIKI_RENDER_DIR || path.join('workspace', 'wiki-render');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -61,9 +63,12 @@ const NAV = '<a href="index.html">Index</a><a href="search.html">Search</a><a hr
 // A record page in the product shell. The top bar and the CSS are the shared
 // asset (src/wiki-shell.mjs), not a copy; the page carries its own record id and
 // area so the Wiki control can open the tree where the reader is.
-function productPage(title, body, r) {
-  const here = JSON.stringify({ id: r.id, heading: r.heading || '' }).replace(/</g, '\\u003c');
-  return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n' + shellHead({}) + '</head>\n<body class="wpage">\n' + body + '\n<script>window.WIKI_HERE = ' + here + ';</script>\n</body>\n</html>\n';
+function productPage(title, body, r, openArea) {
+  const here = r ? JSON.stringify({ id: r.id, heading: r.heading || '' }).replace(/</g, '\\u003c') : '';
+  return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n' + shellHead({}) + '</head>\n<body class="wpage">\n' + body + '\n'
+    + (here ? '<script>window.WIKI_HERE = ' + here + ';</script>\n' : '')
+    + (openArea ? '<script>window.WIKI_TOC_OPEN = ' + JSON.stringify(openArea) + ';</script>\n' : '')
+    + '</body>\n</html>\n';
 }
 
 const all = readAllCorpus();
@@ -137,7 +142,11 @@ fs.writeFileSync(path.join(OUT, 'wiki.css'), CSS);
 fs.writeFileSync(path.join(OUT, 'card.css'), CARD_CSS);
 // The product shell's stylesheet, from the one export in src/wiki-shell.mjs. The
 // ask page links the same file as /wiki/shell.css: one asset, two surfaces.
-fs.writeFileSync(path.join(OUT, 'shell.css'), SHELL_CSS);
+fs.writeFileSync(path.join(OUT, 'shell.css'), SHELL_CSS + '\n' + TOC_CSS);
+// The tree: its data is a JS assignment so a page opened from a folder has it
+// without a fetch, and its behaviour is one file both surfaces load.
+fs.writeFileSync(path.join(OUT, 'shell.js'), TOC_JS);
+fs.writeFileSync(path.join(OUT, 'shell-data.js'), 'window.WIKI_TOC = ' + JSON.stringify(tocData(records, pageOf, cardTables().factionName)) + ';');
 
 const counts = {};
 for (const r of records) counts[r.kind || '(none)'] = (counts[r.kind || '(none)'] || 0) + 1;
@@ -252,6 +261,19 @@ for (const r of records) {
 // without re-deriving the slug - the slug carries a hash this script owns, and a
 // second implementation of it would drift. Missing map = no deep link, never a
 // dead one.
+// The product entry: /wiki/ serves this, with the tree open on Core Rules. The
+// developer index stays where it is (reachable from the foot) until slice 8.
+const tocAreas = tocData(records, pageOf, cardTables().factionName).areas;
+const homeBody = [
+  topBar({}),
+  '<main class="wrec">',
+  '<p class="wcrumb">Wiki</p>',
+  '<h1 class="wtitle">40k rules</h1>',
+  '<p class="wmeta">' + records.length + ' records \u00b7 ' + tocAreas.length + ' areas</p>',
+  '<p class="wfoot">Every page is also reachable from the Wiki control above, and the developer index is at <a href="index.html">index.html</a>.</p>',
+  '</main>',
+].join('\n');
+fs.writeFileSync(path.join(OUT, 'home.html'), productPage('40k rules', homeBody, null, 'Core Rules'));
 fs.writeFileSync(path.join(OUT, 'map.json'), JSON.stringify(Object.fromEntries(pageOf)));
 console.log('wiki-render -> ' + OUT);
 console.log('  records rendered      ' + written);

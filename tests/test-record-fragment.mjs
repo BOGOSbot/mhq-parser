@@ -131,13 +131,33 @@ async function main() {
     ok('the record page carries the product top bar', page874.indexOf(shellSrc.topBar({})) !== -1);
     ok('and links the shared shell stylesheet', page874.indexOf('href="shell.css"') !== -1 && page874.indexOf('href="card.css"') !== -1);
     ok('and tells the tree which record it is', /window\.WIKI_HERE = \{/.test(page874));
-    t('the render writes the one shell stylesheet', fs.readFileSync(path.join(outDir, 'shell.css'), 'utf8'), shellSrc.SHELL_CSS);
+    t('the render writes the one shell stylesheet plus the tree', fs.readFileSync(path.join(outDir, 'shell.css'), 'utf8'), shellSrc.SHELL_CSS + '\n' + (await import('../src/wiki-toc.mjs')).TOC_CSS);
     const servedShell = await request(port, '/wiki/shell.css');
     t('and serves it for the ask page', servedShell.status, 200);
-    t('byte for byte', servedShell.body, shellSrc.SHELL_CSS);
+    t('byte for byte', servedShell.body, shellSrc.SHELL_CSS + '\n' + (await import('../src/wiki-toc.mjs')).TOC_CSS);
     const askPage = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
     ok('the ask page links the same asset', askPage.indexOf('href="/wiki/shell.css"') !== -1);
     ok('and keeps no copy of the shell stylesheet', askPage.indexOf('.wtop{') === -1 && askPage.indexOf('.wrec{') === -1);
+    // --- the two-pane tree, one implementation for both surfaces ---------------
+    const tocSrc = await import('../src/wiki-toc.mjs');
+    const dataJs = fs.readFileSync(path.join(outDir, 'shell-data.js'), 'utf8');
+    const tree = JSON.parse(dataJs.replace(/^window\.WIKI_TOC = /, '').replace(/;$/, ''));
+    t('the tree is built from the corpus', Array.isArray(tree.areas) && tree.areas.length > 20, true);
+    t('with Core Rules first and counted', [tree.areas[0].n, tree.areas[0].c > 0], ['Core Rules', true]);
+    ok('every area carries groups and pages of its own', tree.areas.every(a => a.g.length && a.g.every(g => g.c > 0 && g.p.length === g.c)));
+    ok('and every page carries the id and the file the dialog needs', tree.areas.every(a => a.g.every(g => g.p.every(p => p.i && typeof p.f === 'string'))));
+    const shellJs = await request(port, '/wiki/shell.js');
+    t('the behaviour is served for the ask page', shellJs.status, 200);
+    t('and is the one implementation', shellJs.body, tocSrc.TOC_JS);
+    t('the data is served too', (await request(port, '/wiki/shell-data.js')).body, dataJs);
+    ok('the two-tap rule: a group opens, a page navigates', /data-group/.test(tocSrc.TOC_JS) && /data-page/.test(tocSrc.TOC_JS) && /opened\[area\.n \+ '\|' \+ gr\.getAttribute\('data-group'\)\] = true; render\(\); return; \}/.test(tocSrc.TOC_JS) && /location\.href = f/.test(tocSrc.TOC_JS));
+    ok('and a group is never collapsed by a tap', /opened\[[^\]]*\] = true/.test(tocSrc.TOC_JS) && !/opened\[[^\]]*\] = false/.test(tocSrc.TOC_JS) && tocSrc.TOC_JS.indexOf('delete opened') === -1);
+    ok('the rail collapses to the current-area chip', /wrail-off/.test(tocSrc.TOC_CSS) && /data-rail-open/.test(tocSrc.TOC_JS) && /wchip on/.test(tocSrc.TOC_JS));
+    const home = await request(port, '/wiki/');
+    t('a cold /wiki/ serves the product', home.status, 200);
+    ok('with the top bar', home.body.indexOf('class="wtop"') !== -1);
+    ok('and the tree open on Core Rules', /window\.WIKI_TOC_OPEN = "Core Rules"/.test(home.body));
+    ok('while the developer index stays reachable', home.body.indexOf('index.html') !== -1);
     const missing = await request(port, '/rules/record?id=nope&format=html');
     t('an unknown id is still a 404', missing.status, 404);
   } finally {

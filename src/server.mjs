@@ -872,7 +872,7 @@ function handleWiki(req, res, u) {
   let rel = '';
   try { rel = decodeURIComponent(u.pathname.slice('/wiki'.length)).replace(/^\/+/, ''); }
   catch (e) { return fail(res, 400, 'bad wiki path'); }
-  if (!rel) rel = 'index.html';
+  if (!rel) rel = fs.existsSync(path.join(path.resolve(WIKI_DIR), 'home.html')) ? 'home.html' : 'index.html';
   const root = path.resolve(WIKI_DIR);
   const abs = path.resolve(root, rel);
   if (abs !== root && !abs.startsWith(root + path.sep)) return fail(res, 404, 'not found');

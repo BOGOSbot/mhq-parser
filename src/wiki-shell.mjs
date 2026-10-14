@@ -64,7 +64,7 @@ export function topBar(opts) {
 export function shellHead(opts) {
   const o = opts || {};
   const nav = o.nav || '';
-  return '<link rel="stylesheet" href="shell.css">\n<link rel="stylesheet" href="card.css">\n' + nav;
+  return '<link rel="stylesheet" href="shell.css">\n<link rel="stylesheet" href="card.css">\n<script src="shell-data.js" defer></script>\n<script src="shell.js" defer></script>\n' + nav;
 }
 
 export default { SHELL_CSS, topBar, shellHead };
