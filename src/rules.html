@@ -1632,6 +1632,29 @@ function loadRecord(state) {
       }
     })
     .catch(function () { /* the payload passage stays readable */ });
+  // The BODY is the shared fragment - the same bytes the static wiki page carries,
+  // rendered by src/wiki-cards.mjs on the server. The dialog keeps its own shell
+  // (marks, chips, wiki link, swipe) and builds no record markup at all.
+  state.recordFrag = state.recordFrag || {};
+  if (state.recordFrag[id] === undefined) {
+    fetch('/rules/record?id=' + encodeURIComponent(id) + '&format=html')
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (html) {
+        state.recordFrag[id] = html || '';
+        if (state.recordId === id) renderRecord(state);
+      })
+      .catch(function () { state.recordFrag[id] = ''; });
+  }
+}
+
+// The fragment's internal links are wiki FILE names, because the static render
+// also opens from a folder, offline. In this document they have to be /wiki/<file>.
+function wikiHrefs(root) {
+  var as = root && root.querySelectorAll ? root.querySelectorAll('a[href]') : [];
+  for (var i = 0; i < as.length; i++) {
+    var h = as[i].getAttribute('href') || '';
+    if (h && h.indexOf('://') === -1 && h.charAt(0) !== '/' && h.charAt(0) !== '#') as[i].setAttribute('href', '/wiki/' + h);
+  }
 }
 
 function renderRecord(state) {
@@ -1676,14 +1699,20 @@ function renderRecord(state) {
   body.appendChild(ctl);
   // The dev control opens the same provenance panel it opens on the card.
   if (state.devOpen && state.devOpen[f.id]) body.appendChild(findingMeta(f));
-  if (data && data.card) {
-    body.appendChild(unitCardView(data.card));
+  // One body, from one renderer. Until the fragment lands the payload's own
+  // passage is on screen, so the dialog is never empty and a failed fetch still
+  // leaves the reader what the findings carried.
+  var frag = el('div', 'recfrag');
+  var fragHtml = state.recordFrag ? state.recordFrag[id] : undefined;
+  if (typeof fragHtml === 'string' && fragHtml) {
+    frag.innerHTML = fragHtml;
+    wikiHrefs(frag);
   } else {
-    body.appendChild(el('h2', null, t('recordText')));
     var text = el('div', 'rectext');
     text.appendChild(passageBody({ passage: (data && data.text) || f.passage, excerpt: f.excerpt, leg: f.leg, matchedTerms: f.matchedTerms }));
-    body.appendChild(text);
+    frag.appendChild(text);
   }
+  body.appendChild(frag);
   var links = linkChips({ links: (data && data.links && data.links.length) ? data.links : f.links });
   if (links) {
     body.appendChild(el('h3', null, t('recordLinks')));

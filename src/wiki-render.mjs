@@ -192,9 +192,14 @@ fs.writeFileSync(path.join(OUT, 'anomalies.html'), page('Reading aids', NAV, [
   listOf(emptiest, r => '<li>' + recLink(r) + ' <span class="num">' + r.chars + 'c</span></li>'),
 ].join('\n')));
 
-// one page per record
+// one page per record. WIKI_RENDER_ONLY=<id>[,<id>] renders just those: it is what
+// the two-paths test uses to compare this render's fragment with the one the
+// server serves on demand, without paying for 6,705 pages to prove one.
+const ONLY = String(process.env.WIKI_RENDER_ONLY || '').split(',').map(s => s.trim()).filter(Boolean);
+const onlySet = ONLY.length ? new Set(ONLY) : null;
 let written = 0;
 for (const r of records) {
+  if (onlySet && !onlySet.has(r.id)) continue;
   const crumbs = String(r.heading || '').split(' > ').filter(Boolean);
   const crumbHtml = crumbs.map((c, i) => {
     const prefix = crumbs.slice(0, i + 1).join(' > ');

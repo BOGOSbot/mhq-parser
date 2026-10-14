@@ -39,6 +39,7 @@ import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKe
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
+import { cardIndex, recordBody } from './wiki-cards.mjs';
 import { lookupRecord } from './header-index.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -828,6 +829,27 @@ function corpusById() {
   return byIdCache;
 }
 
+// The one record renderer's index, built once: the corpus by id plus the two keys
+// an ability link carries. Same module and same arguments as the static wiki
+// render, so the fragment served on demand IS the fragment the render wrote.
+let cardIdxCache = null;
+function cardIdx() {
+  if (!cardIdxCache) cardIdxCache = cardIndex(corpusById());
+  return cardIdxCache;
+}
+
+// The wiki page FILE for a record (not the URL): the static render links to its
+// neighbours by file name because it also opens from a folder, offline. The
+// dialog rewrites these to /wiki/<file> once it has inserted the fragment.
+let wikiFileCache = null;
+function wikiFileFor(id) {
+  if (wikiFileCache === null) {
+    try { wikiFileCache = JSON.parse(fs.readFileSync(path.join(WIKI_DIR, 'map.json'), 'utf8')) || {}; }
+    catch (e) { wikiFileCache = {}; }
+  }
+  return wikiFileCache[String(id || '')] || '';
+}
+
 // --- the static wiki, on this origin ----------------------------------------
 // src/wiki-render.mjs writes a directory of pages under workspace/wiki-render;
 // it is a render of the corpus, never committed, and the record view opens it as
@@ -949,6 +971,15 @@ async function handleRulesRecord(req, res, u) {
   let record = null;
   try { record = recordCard(id, { corpora: corpora(), index: corpusById() }); } catch (e) { record = null; }
   if (!record) return fail(res, 404, 'no such record: ' + id);
+  // The SAME fragment the static wiki render writes, on demand, for the ask page's
+  // record dialog to insert. One renderer (src/wiki-cards.mjs), one index, one link
+  // resolver - the two paths cannot drift because they are the same function. The
+  // shell around it (marks, chips, wiki link, swipe) stays the page's.
+  if (String(u.searchParams.get('format') || '').toLowerCase() === 'html') {
+    const raw = corpusById().get(id);
+    if (!raw) return fail(res, 404, 'no such record: ' + id);
+    return send(res, 200, recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor }), 'text/html; charset=utf-8');
+  }
   return json(res, 200, { ok: true, record, wiki: wikiPageFor(id) });
 }
 

@@ -82,6 +82,15 @@ t('the page only fetches the seven routes it needs', fetchCalls, ['/health', '/r
 // the prose, re-rendered whenever a findings event lands, popup over payload.
 ok('the findings slot is placed before the trailing block', code.indexOf("host.appendChild(findingSlot)") !== -1 && code.indexOf("host.appendChild(findingSlot)") < code.indexOf("host.appendChild(rest)"));
 ok('the findings slot is rebuilt on every findings event', /state\.findingSlot\.textContent = ''/.test(code));
+// Slice 2: the record dialog no longer builds record markup. It fetches the one
+// fragment - the same bytes the static wiki page carries - and keeps only its own
+// shell around it: the marks, the link chips, the wiki link and the swipe.
+ok('the dialog fetches the shared fragment',
+  /'\/rules\/record\?id=' \+ encodeURIComponent\(id\) \+ '&format=html'/.test(code) && /frag\.innerHTML = fragHtml/.test(code));
+ok('and builds no card of its own anymore', code.indexOf('body.appendChild(unitCardView(data.card))') === -1);
+ok('the fragment links are rebased into the wiki', /function wikiHrefs\(root\)/.test(code) && /setAttribute\('href', '\/wiki\/' \+ h\)/.test(code) && /frag\.innerHTML = fragHtml;\s*wikiHrefs\(frag\)/.test(code));
+ok('while the dialog keeps its shell: marks, chips, wiki link, swipe',
+  ['findingControls(state, f, isFirsted(state, f), isIgnored(state, f))', "el('a', 'recwiki', t('recordWiki'))", "el('h3', null, t('recordLinks'))", "el('p', 'recswipe', t('recordSwipe'))"].every(function (s) { return code.indexOf(s) !== -1; }));
 ok('a widening flashes the rebuilt list', /if \(ev\.attempt > 0\) flash\(state\.findingSlot\)/.test(code));
 ok('the popup reads the passage from the payload', /f\.passage \|\| f\.excerpt/.test(code));
 ok('the similarity is labelled a rank score', /rankScoreTitle/.test(code));
@@ -256,8 +265,14 @@ ok('the controls do not open it', code.indexOf(".closest('.fctl, .fdev, .flinks,
 ok('the whole card is the tap target', /\.fitem\.hero\{cursor:pointer\}/.test(PAGE));
 ok('the record is a full-screen dialog', /el\('div', 'record hidden'\)/.test(code) && /setAttribute\('role', 'dialog'\)/.test(code));
 ok('the record draws one shape for every category', /function renderRecord\(state\)/.test(code) && /recordKindLabel\(/.test(code));
-ok('the unit category reuses the CSV card view', /body\.appendChild\(unitCardView\(data\.card\)\)/.test(code));
-ok('the other categories draw the record text and its links', /passageBody\(\{ passage: \(data && data\.text\) \|\| f\.passage/.test(code) && /linkChips\(\{ links: \(data && data\.links/.test(code));
+// Slice 2 moved the dialog's body to the server's shared fragment, so the card
+// branch is gone from renderRecord - and the CSV card view is still there for the
+// question path that draws a card inline, which is a different surface.
+ok('the unit category no longer draws its own card in the dialog', code.indexOf("body.appendChild(unitCardView(data.card))") === -1);
+ok('but the CSV card view still exists for the question path', /function unitCardView\(/.test(code) && /state\.cardSlot\.appendChild\(unitCardView\(ev\.card\)\)/.test(code));
+ok('the dialog fetches the one fragment instead', /'\/rules\/record\?id=' \+ encodeURIComponent\(id\) \+ '&format=html'/.test(code) && /frag\.innerHTML = fragHtml/.test(code));
+ok('while a record with no fragment still shows the payload passage', /passageBody\(\{ passage: \(data && data\.text\) \|\| f\.passage/.test(code));
+ok('and the links stay the dialog\'s own', /linkChips\(\{ links: \(data && data\.links/.test(code));
 ok('the record carries the same three controls', /ctl\.appendChild\(findingControls\(state, f, isFirsted\(state, f\), isIgnored\(state, f\)\)\)/.test(code));
 ok('and the dev toggle opens the same provenance line', /body\.appendChild\(findingMeta\(f\)\)/.test(code));
 ok('a swipe moves through the findings', /addEventListener\('touchstart'/.test(code) && /addEventListener\('touchend'/.test(code) && /Math\.abs\(dx\) > 46 && Math\.abs\(dx\) > Math\.abs\(dy\)/.test(code) && /recordStep\(RECORD_STATE, dx < 0 \? 1 : -1\)/.test(code));
