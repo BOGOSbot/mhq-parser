@@ -58,6 +58,12 @@ button{background:var(--acc);color:#0b1020;border:0;border-radius:7px;padding:9p
   font:600 13px system-ui;cursor:pointer}
 button:hover{filter:brightness(1.1)}
 button:disabled{opacity:.55;cursor:default}
+/* One send control for both asks: the main Ask and the translation's search are
+   the same button. The icon is its only visible label, so the accessible name
+   is an aria-label (and the same string as the tooltip), it gets the 44px phone
+   target the other tap controls have, and the running state keeps the icon. */
+button.sendbtn{width:44px;height:44px;padding:0;display:inline-flex;align-items:center;
+  justify-content:center;flex:0 0 auto;border-radius:9px}
 .status{font:12px var(--mono);color:var(--dim);min-height:16px;margin-top:9px}
 .status.err{color:var(--err)}
 .status.busy{color:var(--acc)}
@@ -109,7 +115,6 @@ ol.cites li{display:flex;gap:10px;align-items:flex-start}
    already sends it, the reader corrects it there, and the correction is the next
    ask. The header is tight, so the card loses its outer margins. */
 #trslot .card{margin:10px 0 0;padding:12px 14px}
-#trslot .card h2{margin-bottom:6px}
 details{margin-top:5px}
 details summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 details summary:hover{color:var(--txt)}
@@ -289,7 +294,7 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
   <form id="f">
     <textarea id="q" rows="1" spellcheck="false" autocomplete="off"
            placeholder="Ask a rules question — e.g. can a unit shoot after it Fell Back?"></textarea>
-    <button id="go" type="submit">Ask</button>
+    <button id="go" type="submit" class="sendbtn"></button>
     <button type="button" id="mic" class="mic" title="Ask by voice"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg><span id="miclabel">Voice</span></button>
     <!-- Two settings for the search and the judge. Fast asks the judge not to
          reason and ranks fewer findings; deep lets it think and looks wider. -->
@@ -760,11 +765,23 @@ function renderFoot() {
   host.textContent = parts.join(' \u00b7 ');
 }
 
+// The send icon is one shape for both asks, and paintSend is the one place a
+// send button is labelled: textContent would wipe the icon, so the name goes on
+// aria-label and the tooltip. Icon-only controls with no accessible name are
+// unusable with a screen reader.
+var SEND_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
+function paintSend(btn, label) {
+  if (!btn) return;
+  if (!btn.firstChild) btn.innerHTML = SEND_ICON;
+  btn.setAttribute('aria-label', label);
+  btn.title = label;
+}
+
 function applyLang() {
   document.documentElement.lang = LANG;
   var np = $('#navparse'); if (np) np.textContent = t('navparse');
   var q = $('#q'); if (q) q.setAttribute('placeholder', t('placeholder'));
-  var go = $('#go'); if (go) go.textContent = t('ask');
+  var go = $('#go'); if (go) paintSend(go, t('ask'));
   var ml = $('#miclabel'); if (ml) ml.textContent = t('voice');
   var ls = $('#lang'); if (ls) ls.setAttribute('title', t('langTitle'));
   labelModes();
@@ -953,8 +970,9 @@ function termsCard(terms) {
 // names is the failure this exists for: the wrong English word retrieves the
 // wrong rule, and only the reader knows which name they meant.
 function translationCard(tr) {
-  var from = tr.detected && tr.detected !== 'und' ? tr.detected : t('translationTitle');
-  var card = sectionCard(t('translationTitle') + t('translationFrom') + from + t('translationTo'));
+  // No heading: the card is the box and its send button, under the question it
+  // belongs to. The detected language still arrives, but it is not drawn.
+  var card = el('div', 'card');
   var ta = document.createElement('textarea');
   ta.className = 'trbox';
   ta.id = 'tr';
@@ -964,12 +982,10 @@ function translationCard(tr) {
   // Same widget as the question box, so the same growth: it adapts while the
   // reader corrects a name, not only when the card is first drawn.
   ta.addEventListener('input', growTranslation);
-  var btn = el('button', null, t('translationButton'));
+  // The same send button as the main ask, with this card's own name.
+  var btn = el('button', 'sendbtn');
   btn.type = 'button';
-  // The paragraph that explained the box took four lines in the header. The same
-  // sentence is the button's tooltip: a novice can still learn why the box is
-  // there, at no height on the page.
-  btn.title = t('translationNote');
+  paintSend(btn, t('translationButton'));
   btn.addEventListener('click', function () {
     var text = (ta.value || '').trim();
     if (text.length < 3) { setStatus(t('translationTooShort'), 'err'); return; }

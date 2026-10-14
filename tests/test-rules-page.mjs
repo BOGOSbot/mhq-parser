@@ -229,7 +229,7 @@ const trBlock = code.slice(code.indexOf('function translationCard'), code.indexO
 // 1. No visible note: the sentence that explained the box is the button's
 // tooltip now, so a novice still finds it and the header loses the four lines.
 ok('the translation card draws no visible note', trBlock.indexOf("el('div', 'note', t('translationNote'))") === -1);
-ok('the same sentence is the button tooltip', /btn\.title = t\('translationNote'\)/.test(trBlock));
+ok('the note key is table-only, drawn nowhere', code.indexOf("t('translationNote')") === -1);
 // 2. The box adapts to its text, through the question box's own helper, and it
 // grows while the reader corrects it as well as when the card is drawn.
 ok('the translation box grows through the shared helper', /ta\.addEventListener\('input', growTranslation\)/.test(trBlock));
@@ -245,6 +245,34 @@ ok('the card puts the box and its button in one row',
 ok('the row is the ask row shape', /\.trrow\{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap\}/.test(PAGE));
 ok('the box keeps a min width so the row wraps instead of squeezing', /\.trbox\{[^}]*min-width:120px/.test(PAGE));
 ok('the box starts at one row, like the question box', /ta\.rows = 1;/.test(trBlock));
+
+// Slice 1c: the card loses its heading, and the main ask and the correction are
+// one up-arrow send button. The icon is its only visible label, so the accessible
+// name (aria-label and tooltip) comes from the tables and the target is 44px.
+ok('the translation card has no heading',
+  trBlock.indexOf('sectionCard(') === -1 && trBlock.indexOf("el('h2'") === -1
+  && trBlock.indexOf("el('div', 'card')") !== -1);
+ok('the dead detected-language caption is gone', trBlock.indexOf('var from = ') === -1);
+const goHtml = formHtml.slice(formHtml.indexOf('<button id="go"'), formHtml.indexOf('</button>', formHtml.indexOf('<button id="go"')));
+ok('the main ask is the same send button',
+  /class="sendbtn"/.test(goHtml) && /type="submit"/.test(goHtml) && goHtml.indexOf('>Ask<') === -1);
+ok('the translation button is a send button too', /el\('button', 'sendbtn'\)/.test(trBlock));
+const sendBlock = code.slice(code.indexOf('var SEND_ICON'), code.indexOf('function applyLang'));
+ok('one svg shape is shared by both buttons', (sendBlock.match(/<svg /g) || []).length === 1 && /btn\.innerHTML = SEND_ICON/.test(sendBlock));
+ok('and only set when the button has no icon yet', /if \(!btn\.firstChild\) btn\.innerHTML = SEND_ICON;/.test(sendBlock));
+ok('the label is an accessible name and a tooltip, never text',
+  /btn\.setAttribute\('aria-label', label\)/.test(sendBlock) && /btn\.title = label/.test(sendBlock));
+ok('both send buttons are painted with their own table key',
+  /paintSend\(go, t\('ask'\)\)/.test(code) && /paintSend\(btn, t\('translationButton'\)\)/.test(trBlock));
+ok('the main button no longer writes its label as text', code.indexOf("go.textContent = t('ask')") === -1);
+ok('the send control is a 44px target',
+  /button\.sendbtn\{[^}]*width:44px/.test(PAGE) && /button\.sendbtn\{[^}]*height:44px/.test(PAGE));
+ok('the main button keeps its disabled state during a run',
+  /var btn = \$\('#go'\);\s*\n\s*btn\.disabled = true;/.test(code) && /btn\.disabled = false;/.test(code));
+ok('the correction keeps its short-text guard', trBlock.indexOf("t('translationTooShort')") !== -1);
+ok('the voice button is untouched: mic icon and visible label',
+  /id="mic" class="mic"/.test(formHtml) && /id="miclabel"/.test(formHtml) && formHtml.indexOf('id="mic" class="mic sendbtn"') === -1);
+t('the send buttons have names in both languages', ['ask', 'translationButton'].filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined), []);
 
 // The matching close of a div, so 'in the body' cannot mean 'inside the block a
 // run hides'.

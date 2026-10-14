@@ -39,27 +39,36 @@ The question box is a textarea, not a one-line input: it grows with what is
 typed, up to about seven lines, and then scrolls, and the form's controls sit at
 its top rather than centred on it. **Enter asks; Shift+Enter adds a line** - a
 textarea does not submit its form on Enter, so the key is handled on the field
-itself. Voice transcription, an example chip and the translation's re-ask all
-fill the same box and grow it. The translation box under the question is the
-same widget and grows the same way.
+itself. The Ask control is an up-arrow send button rather than a word (below).
+Voice transcription, an example chip and the translation's re-ask all fill the
+same box and grow it. The translation box under the question is the same widget
+and grows the same way.
 
-**The translation has its own box under the question, in the header, with its
-button at its right.** The server already sends the text: the stream's
-`translation` event carries `detected` and `translated`, and a reply that is not
-streamed carries the same text as `translation`; one box takes whichever arrived.
-It shows the English the index, the judge and the writer actually read, and it is
-editable: *Search this English text* re-asks with `english: true`, so the
-corrected text is neither detected nor translated again. That is the path a
-mangled unit name needs - the wrong English word retrieves the wrong rule, and
-only the reader knows which name they meant. The box belongs to the question
-rather than to a result: it is drawn once per question, so a findings event
-cannot wipe an edit, and a rerun - which does not translate again - leaves it in
-place. There is no note under the title: the sentence that explained the box is
-the button's tooltip, where it costs no height. The box is one line at rest like
-the question box, grows while a correction is typed as well as when the card is
+**The translation has its own box under the question, in the header, with a send
+button at its right.** There is no heading line: the card is the box and the
+button. The server already sends the text: the stream's `translation` event
+carries `detected` and `translated`, and a reply that is not streamed carries the
+same text as `translation`; one box takes whichever arrived. It shows the English
+the index, the judge and the writer actually read, and it is editable: the send
+button re-asks with `english: true`, so the corrected text is neither detected
+nor translated again. That is the path a mangled unit name needs - the wrong
+English word retrieves the wrong rule, and only the reader knows which name they
+meant. The box belongs to the question rather than to a result: it is drawn once
+per question, so a findings event cannot wipe an edit, and a rerun - which does
+not translate again - leaves it in place. The box is one line at rest like the
+question box, grows while a correction is typed as well as when the card is
 drawn, and scrolls at the same 168px cap; the box and the button share the ask
 row's shape, and a phone too narrow for both wraps the button under the box
 rather than squeezing the text.
+
+**The ask and the correction are the same send button**: one `sendbtn` class,
+one up-arrow svg, a 44px target. The icon is the only visible label, so each
+carries its name as both `aria-label` and `title`, from the tables (`t('ask')`
+for the main one and `t('translationButton')` for the correction) - an icon-only
+control with no accessible name is unusable with a screen reader. The main
+button stays `type="submit"` and keeps its icon while it is disabled during a
+run; the correction keeps its too-short-to-search guard. The Voice button is not
+one of these: it keeps its mic and its visible label.
 
 The retention line is at the top of the body, not in the header. A run hides the
 intro block; the retention line is not inside it, so the note about what the
