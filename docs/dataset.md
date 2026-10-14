@@ -188,8 +188,40 @@ allowed to name the rule, started reciting the passage - exactly the failure the
 run-length check was meant to catch, and the prompt alone does not hold it. A
 question that contains three or more words of the passage teaches a copy shortcut,
 so the constraint has to be enforced mechanically (regenerate or drop a question
-whose passage run is 3) before this lane is emitted. That is the next fix, and it
-is deliberately not in this commit.
+whose passage run is 3) before this lane is emitted. That fix landed in the third
+sample below.
+
+### The third sample: length, the naming mix, and the body gate (2026-10-14)
+
+Three corrections went in together: the prompt asks for SHORT questions (one clause,
+44 characters is the target), it allows the rule's name in at most one of the three
+shapes and asks the other two to describe the situation, and a **mechanical body
+gate** regenerates a record once when a question recites three or more words of its
+passage, then rejects the question. The bank is the reference population.
+
+| | bank (real) | v1 name banned | v2 name allowed | **v3 all three** |
+|---|---|---|---|---|
+| questions | 33 | 282 | 300 | **275** |
+| median chars / words, p90 chars | 44 / 8, 67 | 97 / 17 | 111 / 20, 163 | **52 / 10, 70** |
+| name exact, strict | 15.2% | 0% | 25.7% | **12%** |
+| any leaf word, strict | 54.5% | 13.8% | 90.7% | **29.5%** |
+| passage run within 2 words | - | 85.8% | 43% | **100%** (gated) |
+| self-retrieval hit@1 | ~30% | 1.8% | 13.7% | 8% |
+| calls / records lost | - | 100 / 6 | 135 / 0 (35 swept) | 183 / 0 (39 swept) |
+| cost per record | - | 24.0 s wall | 8.4 s wall | 11.7 s wall, 17.2 s of calls |
+
+Length is now in the right population (52 characters against 44, p90 70 against 67,
+from 111), exact naming matches the bank (12% against 15.2%), and the passage run is
+two words or fewer **by construction**: 44 records needed one regeneration and 79
+candidate questions were rejected for reciting the passage. What is still under the
+bank's distribution is the *any* reading - 29.5% against 54.5%: the prompt's "at most
+one of the three may name the rule" is closer to a third than to half, and the next
+nudge is to allow one or two. Self-retrieval fell from 13.7% to 8% at rank 1, and that
+is the expected direction, not a regression: v2's high rank-20 number was partly the
+copied passage words, and a correct pair the retriever cannot find is the training
+signal - see the framing above.
+
+
 
 The strategic half: this lane supplies the **easy mass** - a player who names the
 rule they want. The hard cases, a player who describes a situation without knowing
@@ -197,5 +229,35 @@ the rule's name, can only come from real questions; that is another reason the
 deploy matters, and it is the honest ceiling on what this lane can teach. Whether
 even the easy mass is worth training on is still settled only by training on
 generated questions and evaluating on the bank.
+
+### What has to match reality (the framing)
+
+**Do not chase the bank's self-retrieval rate.** For training, a pair has to be
+CORRECT, not easy: a set the current retriever cannot find is the training signal,
+not a defect - it is exactly what an embedder is for. What has to match reality is
+the **distribution**: how long a real question is, how it is phrased, and how often
+it names the rule. The bank is 44 characters and eight words at the median, 44
+characters / eight words (p90: 67 characters), and it names the expected record
+exactly in about one question in six and carries one of its words in about half.
+
+### The fast-route audit (reasoning eating the budget)
+
+The generator's empty responses were a call-shaped bug, not a lane bug, and the
+same shape was audited everywhere else the fast route is called:
+
+| caller | budget | reasoning | result |
+|---|---|---|---|
+| `expandQuery` (search terms) | 900 | route default `medium` | **broken**: 0 characters, where reasoning off returns 156; fixed to `reasoning: 'none'` |
+| `translateQuestion` | 3,000 (json) | route default `medium` | holds: all 45 foreign questions in the deployed traces carry a translation |
+| `judgeCoverage` | 4,000 (json), 1,200 fallback | the mode's (none fast, medium deep) | holds: 0 of 76 judged traces returned an unparseable verdict |
+| `compilePrompt` (writer) | 8,000 | `none` | by design |
+
+The rule behind it: **reasoning is billed to the same `max_tokens` as the answer**,
+and an empty body is read as "nothing to say" - a silent failure. At 1,200 tokens
+with reasoning `medium` the model spent all 1,200 on thinking and returned 0
+characters. A caller that leaves reasoning at the default must either budget for
+the thinking or turn it off; `expandQuery` now turns it off, because writing search
+terms is a rewrite.
+
 
 

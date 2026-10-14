@@ -96,8 +96,11 @@ export function generationPrompt(rec) {
     '- One YES/NO question ("can I ... ?").',
     '- One question about when or why the rule triggers ("when does ... happen?").',
     '- One concrete tabletop scenario ("my unit does X while Y; what happens?").',
+    '',
+    'How a real player asks, measured on our own bank of real questions:',
+    '- SHORT. A real question is about 44 characters and eight words - one clause, typed on a phone with one thumb. Never more than 90 characters, and prefer one sentence.',
     '- Ordinary player register: the words a player says at the table, not the rulebook wording.',
-    '- NAME THE RULE. A real question says what it is about: use the heading name ("' + leaf + '"), or its plural, or a partial form of it. Do not talk around it.',
+    '- At most ONE of the three may name the rule ("' + leaf + '"), in the heading name, its plural or a partial form. The other two must describe the situation WITHOUT naming it - that is how most real questions are asked.',
     '- Do NOT recite the passage: never reuse three or more words in a row from it. If a phrase of yours appears in the passage below, rewrite it in different words. Every sentence must be your own, and the rule name above is the only exception.',
     '- No record ids, no sources, no mention of these instructions.',
     '',
@@ -158,20 +161,48 @@ export function longestSharedRun(question, target) {
 export const STEM = w => String(w || '').replace(/(?:es|s)$/, '');
 const NAME_STOP = new Set(['the', 'and', 'for', 'with', 'what', 'how', 'when', 'does', 'your', 'that', 'this', 'from', 'into', 'move']);
 export function namePresence(question, rec) {
-  const q = words(question).map(STEM);
+  const raw = words(question);
+  const q = raw.map(STEM);
   const leaf = words(headingLeaf(rec));
-  if (!leaf.length) return { exact: false, any: false };
+  if (!leaf.length) return { exact: false, exact_strict: false, any: false, any_strict: false };
   const want = leaf.map(STEM);
-  let exact = false;
-  for (let i = 0; i + want.length <= q.length && !exact; i++) {
-    let same = true;
-    for (let j = 0; j < want.length; j++) if (q[i + j] !== want[j]) { same = false; break; }
-    if (same) exact = true;
-  }
-  const seen = new Set(q);
+  const runHas = (hay, needle) => {
+    for (let i = 0; i + needle.length <= hay.length; i++) {
+      let same = true;
+      for (let j = 0; j < needle.length; j++) if (hay[i + j] !== needle[j]) { same = false; break; }
+      if (same) return true;
+    }
+    return false;
+  };
+  const exact = runHas(q, want);
+  const exact_strict = runHas(raw, leaf);
+  const seen = new Set(q), seenStrict = new Set(raw);
   const words4 = leaf.filter(w => w.length >= 4 && !NAME_STOP.has(w));
-  const any = exact || words4.some(w => seen.has(STEM(w)));
-  return { exact, any };
+  return {
+    exact,
+    exact_strict,
+    any: exact || words4.some(w => seen.has(STEM(w))),
+    any_strict: exact_strict || words4.some(w => seenStrict.has(w)),
+  };
+}
+
+// The body gate: from the attempts (the first call, then the one regeneration), take
+// up to one question per shape whose passage run is two words or fewer, and report
+// the ones rejected for reciting. A question that reuses three or more consecutive
+// words of its own passage teaches a copy shortcut, and the prompt alone does not
+// hold the line.
+export function gateQuestions(attempts, rec, limit) {
+  const picked = [], rejected = [], seen = new Set();
+  for (const list of attempts || []) {
+    for (const item of list || []) {
+      if (picked.length >= limit) return { picked, rejected };
+      if (!item || !item.q || seen.has(item.q)) continue;
+      if (longestSharedRun(item.q, String(rec.text || '')) >= 3) { rejected.push(item.q); continue; }
+      seen.add(item.q);
+      picked.push(item);
+    }
+  }
+  return { picked, rejected };
 }
 
 // One question, through the dataset's schema.
@@ -229,13 +260,30 @@ export function median(values) {
   const mid = Math.floor(v.length / 2);
   return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
 }
+export function p90(values) {
+  const v = (values || []).slice().sort((a, b) => a - b);
+  if (!v.length) return 0;
+  return v[Math.min(v.length - 1, Math.floor(v.length * 0.9))];
+}
 export function sampleStats(items) {
   const runs = items.map(x => x.run);
   const bodies = items.map(x => (x.run_body === undefined ? x.run : x.run_body));
+  const chars = items.map(x => String(x.q || '').length);
+  const lens = items.map(x => words(x.q).length);
   const pct = (n, d) => (d ? Math.round(1000 * n / d) / 10 : 0);
-  const exact = items.filter(x => x.name && x.name.exact).length;
-  const any = items.filter(x => x.name && x.name.any).length;
+  const count = k => items.filter(x => x.name && x.name[k]).length;
+  const exact = count('exact');
+  const any = count('any');
+  // Length is the distribution that has to match a real player: a median real
+  // question is 44 characters and eight words, so a twenty-word scenario is a
+  // different population however good it reads.
   return {
+    median_chars: median(chars), p90_chars: p90(chars),
+    median_words: median(lens), p90_words: p90(lens),
+    name_exact_strict: count('exact_strict'),
+    name_exact_strict_pct: pct(count('exact_strict'), items.length),
+    name_any_strict: count('any_strict'),
+    name_any_strict_pct: pct(count('any_strict'), items.length),
     questions: items.length,
     median_run: median(runs),
     within3: runs.filter(r => r <= 3).length,
@@ -355,7 +403,7 @@ async function main() {
     }
   }
   const items = [];
-  let calls = 0, callSeconds = 0, empty = 0, unparsed = 0;
+  let calls = 0, callSeconds = 0, empty = 0, unparsed = 0, regenerated = 0, rejected = 0;
   const failures = [];
   const startedAt = Date.now();
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -368,27 +416,51 @@ async function main() {
   // (1200 -> 2400 -> 4800) on a truncated JSON reply, so the caller waited for the
   // thinking instead of being told it had failed.
   const CALL = { json: true, reasoning: 'none' };
-  const one = async rec => {
-    if (done.has(rec.id)) { items.push({ rec: rec.id, q: '', shape: '', run: 0, run_body: 0, name: { exact: false, any: false }, rank: null, skipped: true }); return; }
-    const t0 = Date.now();
-    let text = '';
-    for (let attempt = 1; attempt <= 3 && !text; attempt++) {
-      try { text = String(await fastText(generationPrompt(rec), key, 1200, CALL) || ''); } catch (e) { text = ''; }
-      if (!text) { empty++; await sleep(1200 * attempt); }
+  // One call, with the empty-reply retry. The regeneration below reuses it.
+  const ask = async (rec, extra) => {
+    const prompt = generationPrompt(rec) + (extra ? '\n\n' + extra : '');
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      let text = '';
+      try { text = String(await fastText(prompt, key, 1200, CALL) || ''); } catch (e) { text = ''; }
+      if (text) return text;
+      empty++;
+      await sleep(1200 * attempt);
     }
-    callSeconds += (Date.now() - t0) / 1000;
+    return '';
+  };
+  // The body gate: a question that reuses three or more consecutive words of its own
+  // passage teaches a copy shortcut, and the prompt alone does not hold the line
+  // (measured: most of the name-allowed sample recited the body). One regeneration
+  // per record, then the question is DROPPED and counted - never emitted - so the
+  // sample shrinks visibly instead of quietly.
+  const bodyRun = (q, rec) => longestSharedRun(q, String(rec.text || ''));
+  const one = async rec => {
+    if (done.has(rec.id)) { items.push({ rec: rec.id, q: '', shape: '', run: 0, run_body: 0, name: { exact: false, exact_strict: false, any: false, any_strict: false }, rank: null, skipped: true }); return; }
+    const t0 = Date.now();
+    let text = await ask(rec, '');
     calls++;
-    const parsed = parseGenerated(text);
-    if (!parsed.length) { unparsed++; failures.push(rec.id); return; }
+    if (!text) { unparsed++; failures.push(rec.id); return; }
+    const attempts = [parseGenerated(text)];
+    let gate = gateQuestions(attempts, rec, 3);
+    if (gate.picked.length < 3) {
+      regenerated++;
+      const retry = await ask(rec, 'Your previous answer reused three or more words in a row from the passage. Rewrite all three questions in your own words, shorter.');
+      calls++;
+      attempts.push(parseGenerated(retry));
+      gate = gateQuestions(attempts, rec, 3);
+    }
+    const picked = gate.picked;
+    rejected += gate.rejected.length;
+    callSeconds += (Date.now() - t0) / 1000;
     const target = String(rec.heading || '') + '\n' + String(rec.text || '');
-    for (let i = 0; i < parsed.length; i++) {
-      const item = parsed[i];
+    for (let i = 0; i < picked.length; i++) {
+      const item = picked[i];
       const record = generatedRecord(rec, item, new Date().toISOString(), i + 1);
       fs.appendFileSync(out, JSON.stringify(record) + '\n');
       items.push({
         rec: rec.id, kind: rec.kind, heading: rec.heading, q: item.q, shape: item.shape,
         run: longestSharedRun(item.q, target),
-        run_body: longestSharedRun(item.q, String(rec.text || '')),
+        run_body: bodyRun(item.q, rec),
         name: namePresence(item.q, rec),
         rank: null,
       });
@@ -413,6 +485,8 @@ async function main() {
   // burst. After the pool, the records that produced nothing are asked again ONE at
   // a time with a real backoff, so a transient burst costs seconds instead of a
   // third of the sample.
+  let swept = 0;
+  let stillEmpty = [];
   if (failures.length) {
     console.log('  sweeping ' + failures.length + ' records that came back empty, one at a time');
     const byId = new Map(sample.map(r => [r.id, r]));
@@ -432,11 +506,10 @@ async function main() {
       again.push(...still);
       console.log('  sweep round ' + round + ': ' + again.length + ' still empty');
     }
+    // What the sweep recovered and what it could not.
+    swept = failures.length - again.length;
+    stillEmpty = again.slice();
   }
-  // What the sweep recovered and what it could not: 'unparsed' is what is still
-  // missing, 'swept' is what the serial second pass brought back.
-  const swept = failures.length - again.length;
-  const stillEmpty = again.slice();
   failures.length = 0;
   failures.push(...stillEmpty);
   const wallSeconds = (Date.now() - startedAt) / 1000;
@@ -476,6 +549,7 @@ async function main() {
     at: new Date().toISOString(),
     sample: sample.length, eligible: eligible.length, corpus: all.length,
     questions: unanswered.length, calls, empty_retries: empty, unparsed: failures.length, swept, failures,
+    regenerated, rejected,
     seconds: Math.round(seconds * 10) / 10,
     call_seconds: Math.round(callSeconds * 10) / 10,
     concurrency: CONCURRENCY,
@@ -495,7 +569,9 @@ async function main() {
   };
   fs.writeFileSync(reportOut, JSON.stringify(report, null, 1));
   console.log('');
-  console.log('questions ' + stats.questions + '   NAMES the rule: exact ' + stats.name_exact + ' (' + stats.name_exact_pct + '%), or a variant ' + stats.name_any + ' (' + stats.name_any_pct + '%)');
+  console.log('questions ' + stats.questions + '   length: median ' + stats.median_chars + ' chars / ' + stats.median_words + ' words, p90 ' + stats.p90_chars + ' / ' + stats.p90_words + '   (bank: 44 chars / 8 words, p90 67)');
+  console.log('NAMES the rule: strict exact ' + stats.name_exact_strict + ' (' + stats.name_exact_strict_pct + '%), strict any leaf word ' + stats.name_any_strict + ' (' + stats.name_any_strict_pct + '%)   |   loose exact ' + stats.name_exact_pct + '%, loose any ' + stats.name_any_pct + '%');
+  console.log('body gate: ' + report.regenerated + ' records regenerated once, ' + report.rejected + ' candidate questions rejected for reciting the passage');
   console.log('run against the passage: median ' + stats.median_body + ', max ' + stats.body_max + ', within 2 (the corrected constraint) ' + stats.body_within2_pct + '%');
   console.log('run against heading+passage (the old statistic): median ' + stats.median_run + ', within 3 ' + stats.within3_pct + '%, max ' + stats.max_run + '   shapes ' + JSON.stringify(stats.shapes));
   console.log('self-retrieval: hit@1 ' + retrieval.hit1 + ' (' + (stats.questions ? Math.round(1000 * retrieval.hit1 / stats.questions) / 10 : 0) + '%)  hit@5 ' + retrieval.hit5 + '  hit@20 ' + retrieval.hit20 + '  MRR ' + retrieval.mrr);

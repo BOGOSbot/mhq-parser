@@ -1559,9 +1559,15 @@ export function parseJsonObject(text) {
   return null;
 }
 
+// The search terms are a rewrite, not a deliberation, so they run with reasoning
+// OFF. They used to inherit the fast route's default 'medium' at a 900-token
+// budget, and that budget went to the thinking: measured on the bank's own
+// question, the call returned 0 characters where the same call with reasoning off
+// returned 156 characters of terms. An empty term list is silent - the lexical
+// grep simply has nothing to match and the reader never knows.
 export async function expandQuery(question, key, opts) {
   if (!key) return [];
-  return parseTerms(await fastText(expansionPrompt(question), key, 900));
+  return parseTerms(await fastText(expansionPrompt(question), key, 900, { reasoning: 'none' }));
 }
 
 // A French question against an English corpus. Grep cannot match a word that is

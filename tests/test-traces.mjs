@@ -409,16 +409,18 @@ resetPendingLabels();
 // constraints, the leak and run measurements, and the record it emits. The model
 // is not called here - the parse, the filter and the metrics are what the sample's
 // numbers rest on.
-import { exclusionReason, generatedRecord, generationPrompt, headingLeaf, isRuleRecord, longestSharedRun, median, namePresence, parseGenerated, sampleRecords, sampleStats, words } from './generate-questions.mjs';
+import { exclusionReason, gateQuestions, generatedRecord, generationPrompt, headingLeaf, isRuleRecord, longestSharedRun, median, namePresence, p90, parseGenerated, sampleRecords, sampleStats, words } from './generate-questions.mjs';
 
 t('the leaf is the last segment without its faction', headingLeaf({ heading: 'Using Stratagems > RAPID INGRESS (Adeptus Custodes)' }), 'RAPID INGRESS');
 // The bank names the rule: 24% of its graded questions carry the leaf phrase word
 // for word, and nearly all the rest a variant ('Battle-shock' against 'battle-shock
 // rolls'). These are the two readings of naming.
-t('a question that names the rule word for word is exact', namePresence('what is coherency', { heading: 'Coherency' }), { exact: true, any: true });
-t('a plural of the whole phrase is still exact', namePresence('what is a hazard roll', { heading: 'Hazard Rolls' }), { exact: true, any: true });
-t('a plural or partial form is a variant', namePresence('how does battle-shock work', { heading: 'Battle-shock Rolls' }), { exact: false, any: true });
-t('and talking around the name is neither', namePresence('can my models be spread out too far', { heading: 'Coherency' }), { exact: false, any: false });
+const NONE = { exact: false, exact_strict: false, any: false, any_strict: false };
+t('a question that names the rule word for word is exact', namePresence('what is coherency', { heading: 'Coherency' }), { exact: true, exact_strict: true, any: true, any_strict: true });
+t('a plural is exact loosely and not strictly', namePresence('what is a hazard roll', { heading: 'Hazard Rolls' }), { exact: true, exact_strict: false, any: true, any_strict: true });
+t('a plural-only match is loose, not strict', namePresence('what is a roll', { heading: 'X > Rolls' }), { exact: true, exact_strict: false, any: true, any_strict: false });
+t('a partial form is a variant', namePresence('how does battle-shock work', { heading: 'Battle-shock Rolls' }), { exact: false, exact_strict: false, any: true, any_strict: true });
+t('and talking around the name is neither', namePresence('can my models be spread out too far', { heading: 'Coherency' }), NONE);
 
 t('the run is the longest consecutive overlap', longestSharedRun('the quick brown fox jumps', 'a quick brown fox sleeps'), 3);
 t('a single shared word is one', longestSharedRun('what is coherency', 'A unit is in coherency while every model is close'), 1);
@@ -435,7 +437,8 @@ t('a points line is not a rule', exclusionReason({ id: 'datasheet#2', kind: 'rul
 t('a keyword list is not a rule', exclusionReason({ id: 'unitrules#1', kind: 'rule', heading: 'X > Tactical Profile', text: 'IMPERIUM ADEPTUS ASTARTES INFANTRY BATTLELINE GRENADES SMOKE TACTICAL WALKER VEHICLE ' + 'x'.repeat(200) }), 'a keyword list');
 
 const prompt = generationPrompt(goodRule);
-t('the prompt asks for the name', prompt.indexOf('NAME THE RULE') !== -1 && prompt.indexOf('Coherency') !== -1, true);
+t('the prompt gives the name as the one exception', prompt.indexOf('may name the rule') !== -1 && prompt.indexOf('Coherency') !== -1, true);
+t('and asks for short questions', prompt.indexOf('44 characters') !== -1 && prompt.indexOf('Never more than 90') !== -1, true);
 t('and no longer forbids it', prompt.indexOf('NEVER write the rule') === -1, true);
 t('what it protects is the passage body', prompt.indexOf('three or more words in a row') !== -1, true);
 t('and asks for the three shapes', prompt.indexOf('YES/NO') !== -1 && prompt.indexOf('tabletop scenario') !== -1, true);
@@ -446,6 +449,19 @@ t('a bare array parses too', parseGenerated('[{"q":"Can my models be spread out 
 t('and the shapes default in order', parseGenerated('[{"q":"Can my models be spread out too far?"},{"q":"When does that matter at all?"}]').map(x => x.shape), ['yesno', 'when']);
 t('a refusal is no questions', parseGenerated('I am sorry, I cannot help with that.'), []);
 t('a fragment question is dropped', parseGenerated('{"questions":[{"q":"hi"}]}'), []);
+
+const gateRec = { id: 'core-rules#X', kind: 'rule', heading: 'X', text: 'A unit within range of a marker may not shoot at a target it cannot see at all.' };
+const dirty = { q: 'may a unit within range of a marker shoot at a target', shape: 'yesno' };
+const clean = { q: 'can my squad fire at an unseen enemy?', shape: 'yesno' };
+t('the gate rejects a question that recites the passage', gateQuestions([[dirty]], gateRec, 3), { picked: [], rejected: [dirty.q] });
+t('and takes the clean ones in order', gateQuestions([[clean, { q: 'when does that apply in a turn?', shape: 'when' }]], gateRec, 3).picked.map(x => x.shape), ['yesno', 'when']);
+t('the regeneration is used when the first answer was rejected', gateQuestions([[dirty], [clean]], gateRec, 3).picked.map(x => x.q), [clean.q]);
+t('and a duplicate is not two questions', gateQuestions([[clean, clean]], gateRec, 3).picked.length, 1);
+t('the gate stops at the limit', gateQuestions([[{ q: 'a', shape: 'yesno' }, { q: 'b', shape: 'when' }, { q: 'c', shape: 'scenario' }, { q: 'd', shape: 'yesno' }]], gateRec, 3).picked.length, 3);
+t('the heading is the name, not the body, so a heading run is allowed', (function () {
+  const named = { id: 'x', kind: 'rule', heading: 'Rapid Ingress Move', text: 'A unit may arrive from reserves and set up away from enemy models.' };
+  return gateQuestions([[{ q: 'can I use rapid ingress move this turn?', shape: 'yesno' }]], named, 3).picked.length;
+})(), 1);
 
 t('the record is the dataset schema, one required group', generatedRecord(goodRule, { q: 'Can my models be spread out too far?', shape: 'yesno' }, '2026-10-14T00:00:00.000Z', 2),
   { id: 'gen/core-rules#Coherency/2', q: 'Can my models be spread out too far?', lang: 'en', translation: null, answer: null, gold: [['core-rules#Coherency']], gold_how: 'generated', negatives: [], source: 'generated', at: '2026-10-14T00:00:00.000Z', split: 'train' });
@@ -462,13 +478,20 @@ t('--only picks one kind', sampleRecords(many, 6, { only: 'detachment' }).every(
 
 t('the median of an odd list is the middle', median([1, 5, 2]), 2);
 t('and of an even list the midpoint', median([1, 2]), 1.5);
-t('the sample stats read names, bodies and runs', sampleStats([
-  { run: 1, run_body: 1, name: { exact: true, any: true }, shape: 'yesno' },
-  { run: 3, run_body: 2, name: { exact: false, any: true }, shape: 'when' },
-  { run: 3, run_body: 2, name: { exact: false, any: false }, shape: 'scenario' },
-  { run: 6, run_body: 4, name: { exact: false, any: true }, shape: 'yesno' },
-]),
-  { questions: 4, median_run: 3, within3: 3, within3_pct: 75, max_run: 6, median_body: 2, body_max: 4, body_within2: 3, body_within2_pct: 75, name_exact: 1, name_exact_pct: 25, name_any: 3, name_any_pct: 75, shapes: { yesno: 2, when: 1, scenario: 1 } });
+const N = (exact, strict, any, anyStrict) => ({ exact, exact_strict: strict, any, any_strict: anyStrict });
+const statsSample = sampleStats([
+  { q: 'can my tank explode', run: 1, run_body: 1, name: N(true, true, true, true), shape: 'yesno' },
+  { q: 'when is my squad too spread out to fire?', run: 3, run_body: 2, name: N(false, false, true, true), shape: 'when' },
+  { q: 'a long enough question about nothing at all', run: 3, run_body: 2, name: N(false, false, false, false), shape: 'scenario' },
+  { q: 'does this one recite the passage?', run: 6, run_body: 4, name: N(false, false, true, false), shape: 'yesno' },
+]);
+t('the sample stats read names, bodies and runs', [statsSample.questions, statsSample.median_run, statsSample.within3, statsSample.within3_pct, statsSample.max_run, statsSample.median_body, statsSample.body_max, statsSample.body_within2, statsSample.body_within2_pct],
+  [4, 3, 3, 75, 6, 2, 4, 3, 75]);
+t('and the strict name readings', [statsSample.name_exact_strict, statsSample.name_exact_strict_pct, statsSample.name_any_strict, statsSample.name_any_strict_pct], [1, 25, 2, 50]);
+t('and the loose readings', [statsSample.name_exact, statsSample.name_exact_pct, statsSample.name_any, statsSample.name_any_pct], [1, 25, 3, 75]);
+t('and the length distribution', [statsSample.median_chars, statsSample.median_words, statsSample.p90_chars, statsSample.p90_words], [36.5, 7, 43, 9]);
+t('p90 is the ninetieth, not the maximum', p90([...Array(20).keys()]), 18);
+t('and the shapes', statsSample.shapes, { yesno: 2, when: 1, scenario: 1 });
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
