@@ -1,5 +1,7 @@
 # /rules — handoff (2026-10-12)
 
+> **Current state (2026-10-14).** The corpus is a wiki build: 6,705 records, 714 rules / 5,991 factions, parity id for id, phase C and task-30 landed at `19128fe`. The restart point - server, verification commands, the measured numbers and the gotchas - is `notes/mhq-handoff.md` in the vault (`C:\agentic\bulle`). **Everything below predates phase C**: its chunking notes, index counts and open items are history, not state. Current detail lives in `docs/corpus-wiki.md`, `docs/corpus-storage.md`, `docs/wiki-render.md`, `docs/rules-page.md` and `docs/question-traces.md`.
+
 Everything below is on the `rules-page` branch, which carries the source layout
 (sources in `src/`, docs in `docs/`, working data in `workspace/`). The server is
 running detached on 127.0.0.1:8787 (started with `node src/server.mjs`, logs under
