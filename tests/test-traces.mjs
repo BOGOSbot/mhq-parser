@@ -335,6 +335,14 @@ t('a gold id the corpus lost turns the record query-only, and is counted', (func
   return [b.records[0].gold, b.stats.gold_lost_records, b.stats.ids_missing];
 })(), [[], 1, 1]);
 t('the negatives count includes what was shown', buildDataset([{ id: 'n1', question: 'q', findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], judge: { cited: [1] } }], [], LIVE).stats.negatives, 1);
+t('the generated lane goes through the same resolution', (function () {
+  const b = buildDataset([], [], LIVE, [{ id: 'gen/core#A/1', q: 'q', gold: [['core#A']], gold_how: 'generated', source: 'generated', split: 'train', negatives: [] }]);
+  return [b.records[0].gold, b.records[0].gold_how, b.stats.generated, b.stats.by_source.generated];
+})(), [[['core#A']], 'generated', 1, 1]);
+t('and a generated question whose target is gone loses its gold', (function () {
+  const b = buildDataset([], [], LIVE, [{ id: 'gen/gone/1', q: 'q', gold: [['gone#Z']], gold_how: 'generated', source: 'generated', split: 'train', negatives: [] }]);
+  return [b.records[0].gold, b.records[0].gold_how, b.stats.ids_missing];
+})(), [[], '', 1]);
 
 t('a group is satisfied by any member, and every group is required', scoreRanks([['a'], ['b']], ['x', 'b', 'a']), { rank: 2, rank_all: 3 });
 t('and a group none of whose members came back leaves the question unanswered', scoreRanks([['a'], ['z']], ['x', 'a']).rank_all, null);
@@ -395,6 +403,63 @@ t('the hold is capped rather than unbounded', (function () {
   return pendingLabelCount();
 })(), PENDING_LABEL_MAX);
 resetPendingLabels();
+
+// --- the generation lane ----------------------------------------------------
+// Questions written FROM a record: what can be asked about at all, the prompt's
+// constraints, the leak and run measurements, and the record it emits. The model
+// is not called here - the parse, the filter and the metrics are what the sample's
+// numbers rest on.
+import { exclusionReason, generatedRecord, generationPrompt, headingLeaf, isRuleRecord, longestSharedRun, median, nameLeak, parseGenerated, sampleRecords, sampleStats, words } from './generate-questions.mjs';
+
+t('the leaf is the last segment without its faction', headingLeaf({ heading: 'Using Stratagems > RAPID INGRESS (Adeptus Custodes)' }), 'RAPID INGRESS');
+t('a question the rule can answer by title leaks its name', nameLeak('what is coherency', { heading: 'Coherency' }), true);
+t('and one that paraphrases it does not', nameLeak('can my models be spread out too far', { heading: 'Coherency' }), false);
+t('the name is matched as a phrase, not a word', nameLeak('what is deadly about it', { heading: 'Abilities > DEADLY DEMISE' }), false);
+t('and a phrase leak is caught', nameLeak('what does deadly demise do', { heading: 'Abilities > DEADLY DEMISE' }), true);
+
+t('the run is the longest consecutive overlap', longestSharedRun('the quick brown fox jumps', 'a quick brown fox sleeps'), 3);
+t('a single shared word is one', longestSharedRun('what is coherency', 'A unit is in coherency while every model is close'), 1);
+t('and no overlap is zero', longestSharedRun('can my tank explode', 'Models within range of a marker'), 0);
+t('words are folded to plain lowercase tokens', words("The unit's 2\" range"), ['the', "unit's", '2', 'range']);
+
+const goodRule = { id: 'core-rules#Coherency', kind: 'rule', heading: 'Coherency', text: 'A unit is in coherency if every model in the unit is within 2 inches of at least one other model in that unit. '.padEnd(220, 'If a unit is not in coherency it cannot be selected to shoot or fight. ') };
+t('a real rule can be asked about', [isRuleRecord(goodRule), exclusionReason(goodRule)], [true, '']);
+t('an index page is not a rule', exclusionReason({ id: 'core-rules#Datasheets', kind: 'index', heading: 'Datasheets', text: 'x'.repeat(300) }), 'not a rule record (index)');
+t('a stat block is not a rule', exclusionReason({ id: 'datasheet#1', kind: 'datasheet', heading: 'Tyrannofex', text: 'x'.repeat(300) }), 'not a rule record (datasheet)');
+t('a bare container heading is not a rule', exclusionReason({ id: 'core-rules#Abilities', kind: 'rule', heading: 'Abilities', text: 'x'.repeat(300) }), 'a bare container heading');
+t('a fragment is not a rule', exclusionReason({ id: 'core-rules#X', kind: 'rule', heading: 'X > Y', text: 'too short' }), 'a fragment, not a rule');
+t('a points line is not a rule', exclusionReason({ id: 'datasheet#2', kind: 'rule', heading: 'Havocs', text: 'Points: 5 models 135 pts; 5 models 145 pts - ' + 'x'.repeat(240) }), 'a points fragment');
+t('a keyword list is not a rule', exclusionReason({ id: 'unitrules#1', kind: 'rule', heading: 'X > Tactical Profile', text: 'IMPERIUM ADEPTUS ASTARTES INFANTRY BATTLELINE GRENADES SMOKE TACTICAL WALKER VEHICLE ' + 'x'.repeat(200) }), 'a keyword list');
+
+const prompt = generationPrompt(goodRule);
+t('the prompt states the name to avoid', prompt.indexOf('NEVER write the rule') !== -1 && prompt.indexOf('Coherency') !== -1, true);
+t('and forbids three consecutive words', prompt.indexOf('three consecutive words') !== -1, true);
+t('and asks for the three shapes', prompt.indexOf('YES/NO') !== -1 && prompt.indexOf('tabletop scenario') !== -1, true);
+
+t('the asked-for JSON parses', parseGenerated('{"questions":[{"q":"Can my models be spread out too far?","shape":"yesno"},{"q":"When does that matter?","shape":"when"}]}'),
+  [{ q: 'Can my models be spread out too far?', shape: 'yesno' }, { q: 'When does that matter?', shape: 'when' }]);
+t('a bare array parses too', parseGenerated('[{"q":"Can my models be spread out too far?"},{"q":"When does that matter at all?"}]').length, 2);
+t('and the shapes default in order', parseGenerated('[{"q":"Can my models be spread out too far?"},{"q":"When does that matter at all?"}]').map(x => x.shape), ['yesno', 'when']);
+t('a refusal is no questions', parseGenerated('I am sorry, I cannot help with that.'), []);
+t('a fragment question is dropped', parseGenerated('{"questions":[{"q":"hi"}]}'), []);
+
+t('the record is the dataset schema, one required group', generatedRecord(goodRule, { q: 'Can my models be spread out too far?', shape: 'yesno' }, '2026-10-14T00:00:00.000Z', 2),
+  { id: 'gen/core-rules#Coherency/2', q: 'Can my models be spread out too far?', lang: 'en', translation: null, answer: null, gold: [['core-rules#Coherency']], gold_how: 'generated', negatives: [], source: 'generated', at: '2026-10-14T00:00:00.000Z', split: 'train' });
+
+const many = [];
+for (const kind of ['rule', 'stratagem', 'detachment', 'enhancement']) for (let i = 0; i < 3; i++) many.push({ id: kind + '#' + i, kind, heading: 'R' + i, text: 'x'.repeat(200) });
+const picked = sampleRecords(many, 6);
+t('the sample takes the limit', picked.length, 6);
+t('and spreads the kinds rather than draining the first', new Set(picked.map(r => r.kind)).size, 4);
+t('and never takes the same record twice', new Set(picked.map(r => r.id)).size, 6);
+t('it is deterministic', sampleRecords(many, 6).map(r => r.id).join(','), picked.map(r => r.id).join(','));
+t('--ids picks exactly those', sampleRecords(many, 6, { ids: ['stratagem#2'] }).map(r => r.id), ['stratagem#2']);
+t('--only picks one kind', sampleRecords(many, 6, { only: 'detachment' }).every(r => r.kind === 'detachment'), true);
+
+t('the median of an odd list is the middle', median([1, 5, 2]), 2);
+t('and of an even list the midpoint', median([1, 2]), 1.5);
+t('the sample stats read the runs', sampleStats([{ run: 1, leak: false, shape: 'yesno' }, { run: 3, leak: true, shape: 'when' }, { run: 3, leak: false, shape: 'scenario' }, { run: 6, leak: false, shape: 'yesno' }]),
+  { questions: 4, median_run: 3, within3: 3, within3_pct: 75, max_run: 6, leaks: 1, leak_pct: 25, shapes: { yesno: 2, when: 1, scenario: 1 } });
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

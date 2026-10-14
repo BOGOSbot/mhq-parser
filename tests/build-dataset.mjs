@@ -195,13 +195,28 @@ export function bankRecord(entry, live) {
 }
 
 // --- the build ---------------------------------------------------------------
-export function buildDataset(traces, bank, live) {
+export function buildDataset(traces, bank, live, generated) {
   const records = [], metas = [];
   for (const t of traces) { const r = traceRecord(t, live); records.push(r.record); metas.push(r.meta); }
   for (const e of bank) { const r = bankRecord(e, live); records.push(r.record); metas.push(r.meta); }
+  // The generation lane arrives already in the schema (tests/generate-questions.mjs)
+  // and is resolved against the corpus here like every other id: a question whose
+  // target the corpus no longer holds loses its gold and is counted, not kept.
+  for (const g of generated || []) {
+    const before = (g.gold || []).reduce((n, group) => n + group.length, 0);
+    const resolved = resolveGroups(g.gold, live);
+    records.push(Object.assign({}, g, { gold: resolved.groups, gold_how: resolved.groups.length ? (g.gold_how || 'generated') : '' }));
+    metas.push({
+      label_how: g.gold_how || 'generated',
+      gold_before: before, gold_missing: resolved.missing,
+      gold_groups_before: (g.gold || []).length, gold_groups_after: resolved.groups.length,
+      negatives_missing: [], shown: 0,
+    });
+  }
   const stats = {
     traces: traces.length,
     bank: bank.length,
+    generated: (generated || []).length,
     records: records.length,
     by_split: {},
     by_source: {},
@@ -292,7 +307,7 @@ export async function measureRetrieval(records, traces, opts) {
       rank = scored.rank;
       rankAll = scored.rank_all;
     } catch (e) { error = String((e && e.message) || e); }
-    rows.push({ id: rec.id, q: rec.q, asked: q, gold_how: rec.gold_how, split: rec.split, groups: rec.gold.length, rank, rank_all: rankAll, error });
+    rows.push({ id: rec.id, q: rec.q, asked: q, gold_how: rec.gold_how, source: rec.source, split: rec.split, groups: rec.gold.length, rank, rank_all: rankAll, error });
     if (o.onRow) o.onRow(rows[rows.length - 1]);
   }
   return rows;
@@ -324,12 +339,19 @@ async function main() {
   const live = new Set(readAllCorpus().map(r => r.id));
   const traces = loadTraces(dir);
   const bank = loadBank(bankFile);
-  const { records, stats } = buildDataset(traces, bank, live);
+  // The generation lane, when it has been staged: one file, same schema, resolved
+  // here like every other id. --no-generated builds the user lanes alone.
+  const generatedFile = path.resolve(flag('generated', path.join(path.dirname(out), 'generated.jsonl')));
+  const generated = (process.argv.indexOf('--no-generated') === -1 && fs.existsSync(generatedFile))
+    ? fs.readFileSync(generatedFile, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l))
+    : [];
+  const { records, stats } = buildDataset(traces, bank, live, generated);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, records.map(r => JSON.stringify(r)).join('\n') + '\n');
-  fs.writeFileSync(manifestFile, JSON.stringify({ at: new Date().toISOString(), dir, bank: bankFile, stats }, null, 1));
+  fs.writeFileSync(manifestFile, JSON.stringify({ at: new Date().toISOString(), dir, bank: bankFile, generated: stats.generated ? generatedFile : null, stats }, null, 1));
   console.log('dataset -> ' + out);
-  console.log('  records           ' + stats.records + '  (traces ' + stats.traces + ', bank ' + stats.bank + ')');
+  console.log('  records           ' + stats.records + '  (traces ' + stats.traces + ', bank ' + stats.bank + ', generated ' + stats.generated + ')');
+  if (stats.generated) console.log('  generated from    ' + generatedFile);
   console.log('  split             ' + JSON.stringify(stats.by_split));
   console.log('  source            ' + JSON.stringify(stats.by_source));
   console.log('  with gold         ' + stats.with_gold + '   query-only ' + stats.query_only);
@@ -359,11 +381,12 @@ async function retrievalMain(datasetFile, dir) {
       fs.writeFileSync(outFile, JSON.stringify({ at: new Date().toISOString(), partial: true, rows }, null, 1));
     },
   });
-  const reader = rows.filter(r => r.split === 'train' && (r.gold_how === 'caret' || r.gold_how === 'vote'));
+  const reader = rows.filter(r => r.source === 'trace' && (r.gold_how === 'caret' || r.gold_how === 'vote'));
   const judge = rows.filter(r => r.gold_how === 'judge');
-  const bankRows = rows.filter(r => r.split === 'eval');
+  const bankRows = rows.filter(r => r.source === 'bank');
+  const generatedRows = rows.filter(r => r.source === 'generated');
   for (const row of rows) console.log('  ' + (row.rank ? '#' + row.rank : '  -') + ' all:' + (row.rank_all ? '#' + row.rank_all : '-') + '  groups ' + row.groups + '  ' + (row.gold_how || '-').padEnd(6) + '  ' + row.q.slice(0, 52) + (row.error ? '  ERROR ' + row.error : ''));
-  for (const [name, set] of [['reader gold (caret/vote)', reader], ['judge gold (circular)', judge], ['all trace gold', rows.filter(r => r.split === 'train')], ['bank eval (authored)', bankRows]]) {
+  for (const [name, set] of [['reader gold (caret/vote)', reader], ['judge gold (circular)', judge], ['all trace gold', rows.filter(r => r.source === 'trace')], ['bank eval (authored)', bankRows], ['generated (written from the record)', generatedRows]]) {
     const s = rankStats(set);
     console.log(name + ': n ' + s.n + '  [any] hit@1 ' + s.hit1 + ' (' + pct(s.hit1, s.n) + ')  hit@5 ' + s.hit5 + '  hit@20 ' + s.hit20 + '  found ' + s.found + '  MRR ' + s.mrr.toFixed(3)
       + '   [every group] @1 ' + s.all1 + ' @5 ' + s.all5 + ' @20 ' + s.all20 + ' (' + pct(s.all20, s.n) + ')  all found ' + s.all);

@@ -94,3 +94,73 @@ is clicked and the server holds it against the question's id until the line land
 reader. The one `caret` record today is the `answeredBy` pick; the only caret/x
 labels that exist are in an E2E scratch store, and running the builder on it
 (`--dir`) produces the caret gold as it should.
+## The generation lane
+
+The trace and bank lanes need users; this one does not. `tests/generate-questions.mjs`
+takes one corpus record, asks the FAST ROUTE for three questions a player would
+type whose answer is exactly that record, and emits each through the dataset's
+own schema: `gold: [[recordId]]` (one required group of one), `gold_how:
+generated`, `source: generated`, `split: train`. It writes
+`workspace/dataset/generated.jsonl`, and `build-dataset.mjs` folds that file in
+when it is there (`--no-generated` builds the user lanes alone). The bank is never
+touched.
+
+The constraints are the calibrated ones, in the prompt as given: never the rule's
+name, never three consecutive words from the heading or the text, ordinary player
+register, and one shape each - a yes/no, a when/why, and a concrete tabletop
+scenario. One call per record asks for all three.
+
+**What is not a rule is excluded before generating**, and the run reports each
+reason:
+
+| excluded | n |
+|---|---|
+| datasheets (a stat block; its name is its only handle and the constraints forbid it) | 1,548 |
+| unitrules (keyword lists) | 1,504 |
+| index pages | 163 |
+| fragments under 140 characters | 15 |
+| bare container headings | 8 |
+| keyword lists (more than 45% shouted keywords) | 4 |
+| points fragments | 3 |
+
+That leaves **3,460 records** a question can be written from. A question written
+from a points line - `models 135 pts; 5 models 145 pts` - trains nothing, which is
+why the filter runs first.
+
+**The honest risk, and no number in this file settles it:** a question written FROM
+a rule may still be easier than one written by a confused player. The only test
+that settles it is training on generated questions and evaluating on the bank.
+Until that runs, the sample below says the generator is calibrated to real
+phrasing - not that it is as hard.
+### The sample (2026-10-14, 100 records)
+
+| | |
+|---|---|
+| questions | 282 (yes/no 94, when 94, scenario 94) |
+| longest shared run with the target | median **2**, **97.9% within 3**, max 4 |
+| questions that wrote the rule's name | **0 (0%)** |
+| self-retrieval, the exact record | hit@1 **5 (1.8%)**, hit@5 36, hit@20 105, MRR 0.078 |
+| self-retrieval, any record of the same rule | hit@1 10 (3.5%), hit@5 44, hit@20 115, MRR 0.105 |
+| calls | 100 for 100 records (65 empty retries, 6 records unparsed) |
+| cost | 2,402 s wall at concurrency 4 (24.0 s/record); 9,466 s of calls (94.7 s/record) |
+| projection to 3,460 records | ~23 h wall at concurrency 4, ~9,750 questions |
+
+The run-length calibration holds - median 2 and 97.9% within 3, against the real
+bank's 85% within 3 - and no question writes the rule's name. **The self-retrieval
+does not hold**: a question written from a record finds that record 1.8% of the
+time at rank 1 and 37% at rank 20. The reason is the constraint working as
+designed: a question that shares no name and no three-word run with its record
+gives the retriever almost nothing to hold. A control says the retriever is not
+the broken half - "What is Firing Deck?" ranks an ability copy at 1 while the three
+headless questions about that rule rank 3, 11 and nothing - and corpus duplication
+is not the explanation either, since scoring ANY record of the same rule only moves
+hit@1 from 1.8% to 3.5%.
+
+So the honest reading: the generator writes player-register questions that are not
+identifiable by the page's own search. That is either a generator paraphrasing past
+the point of searchability or a constraint that removes the retriever's only
+handle, and this sample cannot tell the two apart. One shape with the name allowed,
+or a four-word run, would. The train-on-generated / evaluate-on-the-bank test
+remains the only one that settles whether these questions are worth training on.
+
+
