@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readAllCorpus } from './rules-corpus.mjs';
 import { renderLinks } from './wiki-plan.mjs';
+import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
 
 const OUT = process.env.WIKI_RENDER_DIR || path.join('workspace', 'wiki-render');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -46,6 +47,9 @@ const CSS = [
   , 'ul.plain { list-style:none; padding:0; } ul.plain li { border-bottom:1px solid var(--line); padding:.45rem 0; }'
   , '.num { color:var(--dim); font-size:.85rem; }'
   , '@media (max-width:600px){ main{padding:0 .7rem 3rem;} h1{font-size:1.2rem;} .text{font-size:.95rem;} }'
+  // The datasheet card's own CSS. The shell's chrome stays as it is: this is only
+  // what a card needs, under .wcard-* names a restyle can target.
+  , CARD_CSS,
 ].join('\n');
 
 function page(title, nav, body) {
@@ -56,6 +60,14 @@ const NAV = '<a href="index.html">Index</a><a href="search.html">Search</a><a hr
 const all = readAllCorpus();
 const byId = new Map(all.map(r => [r.id, r]));
 const pageOf = new Map(all.map(r => [r.id, slug(r.id) + '.html']));
+// The two things a record body needs besides the record itself: the card builder's
+// corpora (the ability resolver reads both halves) and one index for the ability
+// links, built once rather than per datasheet.
+const corpora = {
+  rules: all.filter(r => r.set === 'rules'),
+  factions: all.filter(r => r.set === 'factions'),
+};
+const cardIdx = cardIndex(byId);
 const records = all.map(r => ({
   id: r.id, heading: r.heading || '', kind: r.kind || '', source: r.source || '', set: r.set || '',
   text: String(r.text || ''), links: Array.isArray(r.links) ? r.links : [], parent: r.parent || '', children: Array.isArray(r.children) ? r.children : [],
@@ -194,7 +206,10 @@ for (const r of records) {
     '<p class="crumb">' + (crumbHtml || '<a href="index.html">index</a>') + '</p>',
     '<h1>' + esc(crumbs.length ? crumbs[crumbs.length - 1] : (r.heading || r.id)) + '</h1>',
     '<p class="meta">' + esc(r.id) + ' &middot; ' + esc(r.kind) + ' &middot; ' + esc(r.source) + ' &middot; ' + r.chars + ' chars</p>',
-    '<pre class="text">' + esc(r.text) + '</pre>',
+    // The record body: the structured card for a datasheet or unitrules record,
+    // the flat text for everything else (and for the 111 card records whose CSV
+    // row is missing, which fall back to the same text).
+    recordBody(r, { corpora, index: cardIdx, href: id => pageOf.get(id) || '' }),
     (r.onlyText.length || r.onlyArray.length) ? '<p class="num missing">This page\'s text and its link array disagree: ' + r.onlyText.length + ' link(s) only in the text, ' + r.onlyArray.length + ' only in the array.</p>' : '',
     '<h2>Links (' + r.links.length + ')</h2>',
     linkChips(r.links, true),
