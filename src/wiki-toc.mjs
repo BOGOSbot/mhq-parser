@@ -304,6 +304,9 @@ export default { TOC_CSS, TOC_JS, tocData, tocIndex, tocTree, wikiTree, pageName
 // kids are child refs { n, lvl, c, f } - or, for a detachment's Enhancements and
 // Stratagems, an inline group { n, lvl, c, recs } because those leaves are small
 // and belong to their detachment, not to a file of their own.
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readAllCorpus } from './rules-corpus.mjs';
 import { cardTables } from './unit-card.mjs';
 
@@ -419,6 +422,56 @@ function uniqueSlug(base, used) {
   return s;
 }
 
+// --- the saved page outline, the authority for the Rules chapters ------------
+// workspace/rules-corpus/core-rules.html is the scraped page, and its own TOC
+// (the .mw2 list) is the true tree: an i10 entry is a rulebook chapter, an i30
+// one of its sections. The page body repeats the same headings in document
+// order, so the chapter a record belongs to is the chapter heading in force at
+// the record's anchor. The BASIC RULES / ADVANCED RULES / REFERENCE super
+// headers are parts, not chapters, and are skipped.
+export function coreOutline(file) {
+  const at = file || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'workspace', 'rules-corpus', 'core-rules.html');
+  let html = '';
+  try { html = fs.readFileSync(at, 'utf8'); } catch (e) { return null; }
+  const re = /<h([1-4])([^>]*)>([\s\S]*?)<\/h\1>/g;
+  const clean = s => s.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  const headings = [];
+  let m;
+  while ((m = re.exec(html))) {
+    const attrs = m[2], text = clean(m[3]);
+    const id = /(?:^|\s)id="([^"]*)"/.exec(attrs);
+    const cls = /(?:^|\s)class="([^"]*)"/.exec(attrs);
+    const num = /([0-9]+(?:\.[0-9]+)*)\s*$/.exec(text);
+    const name = num ? text.slice(0, num.index).trim() : text;
+    headings.push({ lvl: +m[1], id: id ? id[1] : '', cls: cls ? cls[1] : '', text: text, num: num ? num[1] : '', name: name });
+  }
+  const chaptersOf = new Array(headings.length).fill(null);
+  let cur = null;
+  for (let i = 0; i < headings.length; i++) {
+    const h = headings[i];
+    const part = /super_header/.test(h.cls);
+    const chapter = !part && (/outline_header_book/.test(h.cls) || /^[0-9]+$/.test(h.num));
+    if (chapter) cur = { key: h.id || ('num:' + h.num) || h.name, name: h.name || h.text, order: i };
+    chaptersOf[i] = cur;
+  }
+  const byAnchor = new Map(), byNum = new Map(), byName = new Map();
+  for (let i = 0; i < headings.length; i++) {
+    const h = headings[i];
+    if (h.id && !byAnchor.has(h.id)) byAnchor.set(h.id, i);
+    if (h.num && !byNum.has(h.num)) byNum.set(h.num, i);
+    if (h.name && !byName.has(h.name)) byName.set(h.name, i);
+  }
+  const chapterAt = i => (i == null || i < 0) ? null : chaptersOf[i];
+  const byNumber = num => {
+    if (!num) return null;
+    const p = String(num).split('.');
+    for (let i = p.length; i >= 1; i--) { const cand = p.slice(0, i).join('.'); if (byNum.has(cand)) return chapterAt(byNum.get(cand)); }
+    return null;
+  };
+  const chapterCount = chaptersOf.filter((c, i) => c && c.order === i).length;
+  return { headings: headings, byAnchor: byAnchor, byNum: byNum, byName: byName, chapterAt: chapterAt, byNumber: byNumber, byIdName: a => chapterAt(byAnchor.get(String(a))), byText: t => chapterAt(byName.get(String(t).trim())), chapterCount: chapterCount };
+}
+
 // The tree itself, pure: it takes the records, their page names and the faction
 // wiring, so a test can build it from a mutated corpus.
 export function tocTree(records, pageOf, opts) {
@@ -431,33 +484,62 @@ export function tocTree(records, pageOf, opts) {
   const ent = r => ({ i: r.id, t: leafTitle(r), f: pageOf.get(r.id) || '' });
 
   // --- Rules -> book -> chapter -> section ----------------------------------
+  // Core Rules chapters come from the saved page's own outline (coreOutline):
+  // the rulebook chapters, not whatever heading string a record carries. The
+  // appendix has no saved page, so its records follow the same chapters through
+  // their parent (which points at a core-rules record), their ruleId, or the
+  // known ancestor name in their heading. A record with none of those is
+  // counted and shown under an explicit Unplaced chapter, never silently filed.
+  const outline = opts.outline !== undefined ? opts.outline : coreOutline();
+  const byIdAll = new Map(records.map(r => [r.id, r]));
+  const chapterMemo = new Map();
+  const resolveRaw = r => {
+    if (!outline) return null;
+    const chain = [];
+    let cur = r, ch = null;
+    while (cur && chain.length < 24) {
+      if (chapterMemo.has(cur.id)) { ch = chapterMemo.get(cur.id); break; }
+      chain.push(cur);
+      const anchor = cur.anchor || (/^[^#]*#(.+)$/.exec(String(cur.url || '')) || [])[1];
+      ch = anchor ? outline.byIdName(anchor) : null;
+      if (!ch && cur.ruleId) ch = outline.byNumber(cur.ruleId);
+      if (!ch && cur.heading) ch = outline.byText(String(cur.heading).split(' > ')[0]);
+      if (!ch && cur.parent && byIdAll.has(cur.parent)) { cur = byIdAll.get(cur.parent); continue; }
+      break;
+    }
+    for (const c of chain) chapterMemo.set(c.id, ch || null);
+    return ch || null;
+  };
+  const resolveChapter = (r, book) => {
+    const ch = resolveRaw(r);
+    if (ch) return ch;
+    // The 18 ability records carry no page anchor at all: they are the Core
+    // Abilities content, so they join that chapter by kind rather than vanish.
+    if (r.kind === 'ability') { const a = outline && outline.byText('Core Abilities'); if (a) return a; }
+    // The appendix has no saved page; a record whose parent, ruleId, anchor and
+    // ancestor name all miss still names its own group in its heading (the
+    // [ONE SHOT] block), so that first segment becomes an appendix-local chapter.
+    if (book && book.slug === 'rules-appendix') {
+      const seg = String(r.heading || '').split(' > ').filter(Boolean)[0];
+      if (seg) return { key: 'local:' + seg, name: seg, order: 1000 };
+    }
+    return null;
+  };
   const bookNodes = [];
   const rulesRef = { n: 'Rules', lvl: 'branch', f: 'tree/rules.js' };
   for (const book of TREE_BOOKS) {
     const bookRef = { n: book.name, lvl: 'book', f: 'tree/rules/' + book.slug + '.js' };
     const recs = records.filter(r => r.set === 'rules' && book.sources.indexOf(r.source) !== -1);
-    const byHeading = new Map();
-    for (const r of recs) { const h = String(r.heading || ''); if (!byHeading.has(h)) byHeading.set(h, []); byHeading.get(h).push(r); }
-    // Chapter: the nearest ancestor, not a fixed depth. Walk the heading path
-    // from the deepest prefix up; the first prefix that is another record's
-    // heading is the chapter. "Muster Armies > Errata > X" has no record at the
-    // middle prefix, so it lands under Muster Armies; a top-level heading - or a
-    // core stratagem, whose heading is just its name - has no ancestor and falls
-    // back to the book itself.
     const chapters = new Map();
     for (const r of recs) {
-      const path = String(r.heading || '').split(' > ').filter(Boolean);
-      let title = book.name, key = '\u0000book';
-      for (let i = path.length - 2; i >= 0; i--) {
-        const prefix = path.slice(0, i + 1).join(' > ');
-        const hit = byHeading.get(prefix);
-        if (hit && hit.some(x => x.id !== r.id)) { title = path[i]; key = prefix; break; }
-      }
-      if (!chapters.has(key)) chapters.set(key, { title: title, recs: [] });
+      const ch = resolveChapter(r, book);
+      const key = ch ? ch.key : '\u0000unplaced';
+      if (!chapters.has(key)) chapters.set(key, { title: ch ? ch.name : 'Unplaced', order: ch ? ch.order : 1e9, recs: [] });
       chapters.get(key).recs.push(r);
     }
+    const ordered = [...chapters.values()].sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
     const used = new Set(), kids = [];
-    for (const ch of chapters.values()) {
+    for (const ch of ordered) {
       const slug = uniqueSlug(nodeSlug(ch.title), used);
       const file = 'tree/rules/' + book.slug + '/' + slug + '.js';
       ch.recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
@@ -466,7 +548,6 @@ export function tocTree(records, pageOf, opts) {
       for (const r of ch.recs) paths.set(r.id, [rulesRef, bookRef, chapterRef]);
       kids.push({ n: ch.title, lvl: 'chapter', c: ch.recs.length, f: file });
     }
-    kids.sort((a, b) => a.n.localeCompare(b.n));
     const file = 'tree/rules/' + book.slug + '.js';
     files[file] = { n: book.name, lvl: 'book', c: recs.length, kids: kids };
     bookNodes.push({ n: book.name, lvl: 'book', c: recs.length, f: file });
@@ -474,7 +555,12 @@ export function tocTree(records, pageOf, opts) {
   const rulesTotal = bookNodes.reduce((n, b) => n + b.c, 0);
   files['tree/rules.js'] = { n: 'Rules', lvl: 'branch', c: rulesTotal, kids: bookNodes };
 
-  // --- Missions -> Events / Primary / Secondary -> section -------------------
+  // --- Missions -> Events / Primary / Secondary -> chapter -> section -------
+  // The coarse level is the decks and the event machinery, not the questions.
+  // A record's first heading segment picks its part; inside a deck its second
+  // segment FAQ/Errata becomes its own leaf (the annotations are not the deck);
+  // the event machinery keeps its own top-level parts, and their FAQ sits with
+  // the part it annotates.
   const ev = records.filter(r => r.set === 'rules' && r.source === 'event-companion');
   const partNodes = [];
   const missionsRef = { n: 'Missions', lvl: 'branch', f: 'tree/missions.js' };
@@ -483,12 +569,28 @@ export function tocTree(records, pageOf, opts) {
       const h = String(r.heading || '').split(' > ')[0];
       return part.heading === null ? (h !== 'Primary Mission deck' && h !== 'Secondary Mission deck') : h === part.heading;
     });
-    const file = 'tree/missions/' + nodeSlug(part.name) + '.js';
-    recs.sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
-    files[file] = { n: part.name, lvl: 'part', c: recs.length, recs: recs.map(ent) };
-    const partRef = { n: part.name, lvl: 'part', f: file };
-    for (const r of recs) paths.set(r.id, [missionsRef, partRef]);
-    partNodes.push({ n: part.name, lvl: 'part', c: recs.length, f: file });
+    const partFile = 'tree/missions/' + nodeSlug(part.name) + '.js';
+    const partRef = { n: part.name, lvl: 'part', f: partFile };
+    const chapters = new Map();
+    for (const r of recs) {
+      const seg = String(r.heading || '').split(' > ').filter(Boolean);
+      const first = seg[0] || 'Other', second = seg[1] || '';
+      const leaf = (part.name !== 'Events' && (second === 'FAQ' || second === 'Errata')) ? second : first;
+      if (!chapters.has(leaf)) chapters.set(leaf, []);
+      chapters.get(leaf).push(r);
+    }
+    const used = new Set(), kids = [];
+    for (const leaf of [...chapters.keys()].sort((a, b) => a.localeCompare(b))) {
+      const slug = uniqueSlug(nodeSlug(leaf), used);
+      const file = 'tree/missions/' + nodeSlug(part.name) + '/' + slug + '.js';
+      const list = chapters.get(leaf).sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+      files[file] = { n: leaf, lvl: 'chapter', c: list.length, recs: list.map(ent) };
+      const chapterRef = { n: leaf, lvl: 'chapter', f: file };
+      for (const r of list) paths.set(r.id, [missionsRef, partRef, chapterRef]);
+      kids.push({ n: leaf, lvl: 'chapter', c: list.length, f: file });
+    }
+    files[partFile] = { n: part.name, lvl: 'part', c: recs.length, kids: kids };
+    partNodes.push({ n: part.name, lvl: 'part', c: recs.length, f: partFile });
   }
   files['tree/missions.js'] = { n: 'Missions', lvl: 'branch', c: ev.length, kids: partNodes };
 
@@ -585,7 +687,7 @@ export function tocTree(records, pageOf, opts) {
     ],
     excluded: excludedIds.length ? [{ k: 'index', c: excludedIds.length, why: 'navigation stubs, not corpus content' }] : [],
   };
-  return { index: index, files: files, paths: paths, stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: ev.length, factions: facTotal } };
+  return { index: index, files: files, paths: paths, outline: outline, stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: ev.length, factions: facTotal } };
 }
 
 // The real corpus, wired once: the render and the tests both call this, so there
@@ -598,5 +700,6 @@ export function wikiTree(records) {
     roster: roster,
     factionOf: factionAssigner(roster),
     allianceOf: allianceAssigner(roster, t.datasheets, t.keywords),
+    outline: coreOutline(),
   });
 }

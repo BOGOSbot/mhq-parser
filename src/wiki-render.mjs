@@ -87,9 +87,11 @@ const cardIdx = cardIndex(byId);
 const records = all.map(r => ({
   id: r.id, heading: r.heading || '', kind: r.kind || '', source: r.source || '', set: r.set || '',
   text: String(r.text || ''), links: Array.isArray(r.links) ? r.links : [], parent: r.parent || '', children: Array.isArray(r.children) ? r.children : [],
-  // url and faction are what the tree files a record by: a stratagem's source is
-  // 'stratagems' and its faction is empty, and only its url names the faction.
-  url: r.url || '', faction: r.faction || '',
+  // url and faction are what the two-pane tree files a record by; anchor and
+  // ruleId are what the Rules chapters are resolved by (the saved page outline),
+  // so the projection must carry them or the render's tree would drift from the
+  // tests'.
+  url: r.url || '', faction: r.faction || '', anchor: r.anchor || '', ruleId: r.ruleId || '',
 }));
 
 // The tree data and the area of every record, computed once. Each record's area
@@ -179,6 +181,9 @@ const tree = tocTree(records, pageOf, {
   factionOf: factionAssigner(roster),
   allianceOf: allianceAssigner(roster, cardTables().datasheets, cardTables().keywords),
 });
+// A full rebuild: drop the node files of any earlier layout first, so a chapter
+// file that no longer belongs to the tree is not left behind for the server.
+fs.rmSync(path.join(OUT, 'tree'), { recursive: true, force: true });
 for (const rel of Object.keys(tree.files)) {
   const file = path.join(OUT, rel);
   fs.mkdirSync(path.dirname(file), { recursive: true });

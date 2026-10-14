@@ -27,7 +27,9 @@ const names = id => (tree.paths.get(id) || []).map(p => p.n);
 t('a section deep in Rules walks branch / book / chapter', names(RULES_REC), ['Rules', 'Core Rules', 'Muster Armies']);
 t('a unit inside a faction walks branch / alliance / faction / Units', names(UNIT_REC), ['Factions', 'Imperium', 'Adeptus Custodes', 'Units']);
 t('a stratagem walks to its own detachment', names(STRAT), ['Factions', 'Imperium', 'Adeptus Custodes', 'Detachments', 'Auric Champions']);
-t('a secondary mission walks Missions / Secondary', names(SECONDARY), ['Missions', 'Secondary']);
+t('a secondary mission walks Missions / Secondary', names(SECONDARY), ['Missions', 'Secondary', 'Secondary Mission deck']);
+t('NAMED: 2. Move Units Step pre-walks to Movement Phase', names('core-rules#2.-Move-Units-Step'), ['Rules', 'Core Rules', 'Movement Phase']);
+t('NAMED: 2. Shoot pre-walks to Shooting Phase', names('core-rules#2.-Shoot'), ['Rules', 'Core Rules', 'Shooting Phase']);
 ok('every placed record has a pre-walked path', tree.paths.size === tree.stats.placed);
 ok('every step of every path names a file that exists', [...tree.paths.values()].every(p => p.length && p.every(s => !!tree.files[s.f])));
 t('the 163 navigation stubs have no path (they are not in the tree)', (tree.paths.get('faction-index#faction-ac') || []).length, 0);
@@ -52,7 +54,7 @@ for (const [label, id, want] of [
   ['rules section', RULES_REC, ['Rules', 'Core Rules', 'Muster Armies']],
   ['unit', UNIT_REC, ['Factions', 'Imperium', 'Adeptus Custodes', 'Units']],
   ['stratagem', STRAT, ['Factions', 'Imperium', 'Adeptus Custodes', 'Detachments', 'Auric Champions']],
-  ['secondary mission', SECONDARY, ['Missions', 'Secondary']],
+  ['secondary mission', SECONDARY, ['Missions', 'Secondary', 'Secondary Mission deck']],
 ]) {
   const here = hereOf(id);
   t('the ' + label + ' page carries its own path for the cascade', here.path.map(p => p.n), want);
@@ -99,9 +101,9 @@ const moved = mutate(copy => { const s = copy.find(r => r.id === STRAT); s.text 
 t('MUTATION: changing the Detachment line moves the stratagem in its path', (moved.paths.get(STRAT) || []).map(p => p.n).slice(-1), ['Renamed Host']);
 t('MUTATION: and the old detachment file no longer names it', (moved.paths.get(STRAT) || []).map(p => p.f).indexOf('tree/factions/imperium/adeptus-custodes/detachments/auric-champions.js'), -1);
 const promoted = mutate(copy => { copy.find(r => r.id === SECONDARY).heading = 'Primary Mission deck > X'; });
-t('MUTATION: moving a secondary record to the primary deck changes its path', (promoted.paths.get(SECONDARY) || []).map(p => p.n), ['Missions', 'Primary']);
-const flattened = mutate(copy => { copy.find(r => r.id === RULES_REC).heading = 'Floating Question'; });
-t('MUTATION: a record with no ancestor falls back to its book chapter', (flattened.paths.get(RULES_REC) || []).map(p => p.n), ['Rules', 'Core Rules', 'Core Rules']);
+t('MUTATION: moving a secondary record to the primary deck changes its part and chapter', (promoted.paths.get(SECONDARY) || []).map(p => p.n), ['Missions', 'Primary', 'Primary Mission deck']);
+const reparented = mutate(copy => { const r = copy.find(x => x.id === RULES_REC); r.heading = 'Floating Question'; r.parent = 'core-rules#1.-Hit-Roll'; });
+t('MUTATION: reparenting a record moves it to the parent\u2019s chapter', (reparented.paths.get(RULES_REC) || []).map(p => p.n), ['Rules', 'Core Rules', 'Attack Sequence']);
 fs.rmSync(outDir, { recursive: true, force: true });
 
 console.log(pass + ' passed, ' + fail + ' failed');
