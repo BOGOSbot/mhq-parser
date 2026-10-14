@@ -49,12 +49,15 @@ t('and in the French table too', missingFr, []);
 
 // The retrieval display and the unit card are new; their labels have to be in
 // the tables like every other one.
-const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild', 'rankN', 'rankScore', 'rankScoreTitle', 'matchedWords', 'openPassage', 'moreFindings', 'close', 'openSource',
+const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild', 'rankN', 'rankScore', 'rankScoreTitle', 'matchedWords', 'moreFindings', 'close', 'openSource',
   'cardTitle', 'cardRanged', 'cardMelee', 'cardAbilities', 'cardKeywords', 'cardComposition', 'cardPoints', 'cardSourceNote', 'cardOpen',
   'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'judgeDissentTitle', 'judgeDissentWeaker', 'judgeDissentOther',
   'cardReady', 'streamCut', 'citedByJudge', 'verdictEvidence', 'voteHelp', 'voteUp', 'voteDown', 'voteThanks',
   'pickHelp', 'pickThis', 'pickNone', 'pickWaiting', 'pickThanks', 'pickNoneThanks',
-  'rerunTitle', 'rerunNote', 'rerankHelp', 'rerankButton', 'rerankDrop', 'rerankUse'];
+  'rerunTitle', 'rerunNote', 'rerankHelp', 'rerankButton',
+  // The hero card's controls and the provenance its dev toggle opens.
+  'heroCaret', 'heroCaretOn', 'heroIgnore', 'heroIgnoreOn', 'heroTop', 'heroIgnored',
+  'heroDev', 'heroDevHide', 'heroLinks', 'foundBy', 'legUnknown'];
 const absent = needed.filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined);
 t('the new display labels exist in both languages', absent, []);
 
@@ -68,7 +71,7 @@ t('no reader-facing label is hardcoded in the script', hardcoded, []);
 // The passage popup reads the payload, never the network: one fetch of /health
 // is the only fetch outside /rules/ask on the page.
 const fetchCalls = Array.from(new Set(Array.from(PAGE.matchAll(/fetch\('([^']+)'/g)).map(m => m[1]))).sort();
-t('the page only fetches the four routes it needs', fetchCalls, ['/health', '/rules/answered', '/rules/ask', '/rules/vote']);
+t('the page only fetches the five routes it needs', fetchCalls, ['/health', '/rules/answered', '/rules/ask', '/rules/labels', '/rules/vote']);
 
 // The display the task asks for, asserted where it can be seen: findings above
 // the prose, re-rendered whenever a findings event lands, popup over payload.
@@ -110,7 +113,28 @@ ok('one place draws the findings list', /function renderFindings\(state\)/.test(
 // their ids and nothing else, the server runs the judge and the writer over
 // exactly those records, and the second answer is appended rather than replacing
 // the first the reader may already have read.
-ok('each finding carries its own keep/drop', /el\('button', 'keepbtn'/.test(code));
+// The findings are hero cards above the prose, and the reader's three controls
+// are on the card itself: the green caret reranks a record to the top, the x
+// ignores it, and <> opens the whole chunk with the provenance behind it. Each
+// control is one edit away from being undone, so each is asserted structurally.
+ok('each finding is a hero card with its own caret and x', /el\('button', 'herocaret'/.test(code) && /el\('button', 'herox'/.test(code) && /'fitem hero'/.test(code));
+ok('the caret is a positive example in the same trace as the question', code.indexOf('state.positive.unshift(id)') !== -1 && code.indexOf('postLabels(state)') !== -1);
+ok('the x is a negative example in the same trace as the question', /negative: state\.shownIds\.filter/.test(code));
+ok('the caret and the x wait for the run that writes the trace', /if \(state\.runDone\) \{ state\.labelsPending = false; postLabels\(state\); \}/.test(code) && /if \(state\.labelsPending\) postLabels\(state\);/.test(code));
+ok('a widening cannot undo the reader\'s marks', /state\.keep\[sid\] = prevKeep\[sid\] !== false;/.test(code));
+ok('the dev toggle opens the whole passage and its indicators', /function devPanel\(f, state\)/.test(code) && code.indexOf("t('foundBy')") !== -1 && /passageBody\(f\)/.test(code) && code.indexOf("t('rankScore')") !== -1);
+ok('the card shows one line at rest', /\.heroline\{white-space:nowrap;overflow:hidden;text-overflow:ellipsis\}/.test(PAGE));
+ok('the caret is green and a phone-sized target', /\.herocaret\{color:var\(--ok\)/.test(PAGE) && /\.fctl button\{[^}]*min-height:44px/.test(PAGE));
+ok('the judge citations and the reader picks both resort the list', /picked\.concat\(citedOnes, rest, dropped\)/.test(code) && /picked\.sort\(/.test(code));
+ok('and the reader wins over the judge', code.slice(code.indexOf('var picked = []'), code.indexOf('var order = picked')).indexOf('citedOnes') !== -1);
+ok('an ignored record sinks but never leaves the page', /if \(prominent\[g\.id\] \|\| firsted\(g\) \|\| ignored\(g\)\)/.test(code));
+// The links render from the payload's own array and nowhere else: the page must
+// never parse a link line out of the passage text, or the two drift.
+ok('the links render from the payload array', /function linkChips\(f\)/.test(code) && /var links = f\.links \|\| \[\];/.test(code));
+ok('the chip preview is the target title and url', /prev\.appendChild\(el\('b', null, l\.title \|\| l\.to\)\)/.test(code) && /linkHref\(l\)/.test(code));
+ok('the preview is a hover and focus style, not a fetch', /\.linkchip:hover \.linkprev,\.linkchip:focus-visible \.linkprev\{display:block\}/.test(PAGE));
+ok('the page never parses a link line out of the text', code.indexOf("'- section:") === -1 && code.indexOf("'- ability:") === -1);
+ok('the rerun keeps the caret order for the server', /if \(state\.keep\[id1\] !== false && positive\.indexOf\(id1\) !== -1\) kept\.push\(id1\)/.test(code));
 ok('the request carries the kept ids', /keep: Array\.isArray\(o\.keep\) \? o\.keep : undefined/.test(code));
 ok('and the ids the reader was shown', /shown: Array\.isArray\(o\.shown\) \? o\.shown : undefined/.test(code));
 ok('and the trace of the answer it overrides', /over: o\.over \|\| undefined/.test(code));
@@ -175,6 +199,20 @@ ok('the findings payload carries the record id both controls name', payloadAt !=
 ok('a record pick and none replace each other', traces.indexOf('t.answeredNone = true;') !== -1 && traces.indexOf('t.answeredBy = by;') !== -1);
 const promote = fs.readFileSync(path.join(__dirname, 'promote-traces.mjs'), 'utf8');
 ok('the harvest prints the reader pick', promote.indexOf('const reader = readerPick(t);') !== -1 && promote.indexOf("console.log('reader: ' + reader)") !== -1);
+ok('the harvest prints the rerank labels', promote.indexOf('rerankLabels(t)') !== -1 && promote.indexOf("console.log('labels: ' + labels)") !== -1);
+
+// The server side of the rerank labels, where the server and trace text are in
+// scope. The caret and the x go into the SAME trace as the question, through the
+// same find-by-id patch as the thumb and the pick - no second store.
+ok('the server exposes the labels route', server.indexOf("'/rules/labels'") !== -1 && server.indexOf('handleRulesLabels') !== -1);
+ok('the labels are written into the trace they name', server.indexOf('labelsTrace(id, { positive') !== -1 && traces.indexOf('export function labelsTrace') !== -1);
+ok('a label is checked against the findings the trace holds', traces.indexOf('new Set((t.findings || []).map(f => f && f.id))') !== -1);
+ok('a named record the trace never showed is refused', traces.indexOf('if (positive.length || negative.length) return false;') !== -1);
+// The links a finding carries are resolved from the record it points at, so the
+// page's chips and the record's own links are one source.
+ok('the findings payload carries the links', /links: decorateLinks\(/.test(server));
+ok('the link targets are resolved against the corpus', /const target = l && l\.to \? index\.get\(l\.to\) : null;/.test(server) && /if \(!target\) continue;/.test(server));
+ok('a link keeps the target anchor and url', /anchor: target\.anchor \|\| ''[\s\S]{0,60}url: target\.url \|\| ''/.test(server));
 
 // The layout of the question: the box grows with its text, the translation has
 // its own box under it, and the retention line is in the body where a run cannot

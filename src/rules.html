@@ -213,8 +213,35 @@ ol.cites li.fitem{display:block}
 .fmeta .words{color:var(--warn)}
 .ftext{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--txt)}
 .ftext mark,.pbody mark{background:rgba(232,180,74,.22);color:var(--txt);border-radius:3px;padding:0 2px}
-.fopen{background:var(--panel2);color:var(--dim);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font:11.5px system-ui;margin-top:6px}
-.fopen:hover{color:var(--txt);border-color:var(--acc)}
+/* The hero cards. A finding is the product, so it is a card the reader can act
+   on: the green caret reranks the record to the top, the x ignores it, and <>
+   opens the full chunk and the provenance behind it. The controls are 44px so a
+   phone can hit them. */
+.fitem.hero .fhead{align-items:center}
+.fctl{margin-left:auto;display:flex;gap:6px;align-items:center}
+.fctl button{min-width:44px;min-height:44px;padding:0 6px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--dim);font:600 15px var(--sans);cursor:pointer}
+.herocaret{color:var(--ok);border-color:rgba(95,191,127,.5)}
+.herocaret.on{background:rgba(95,191,127,.16);border-color:var(--ok)}
+.herox.on{color:var(--err);border-color:rgba(239,107,107,.5);background:rgba(239,107,107,.10)}
+.herodev.on{color:var(--acc);border-color:var(--acc)}
+.badgetop{color:var(--ok);border-color:rgba(95,191,127,.55)}
+.badgeign{color:var(--err);border-color:rgba(239,107,107,.5)}
+/* One line at rest: the card says what the passage is, and the dev toggle shows
+   the whole record instead of the reader scrolling a wall of prose. */
+.heroline{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fdev{margin-top:8px;padding:8px 10px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.fdev .pbody{margin-top:8px}
+.fdev .devleg{color:var(--dim)}
+/* A link chip renders from the payload's links array, never from a parse of the
+   text, and its preview is the target's own title and url. Pure CSS hover/focus:
+   no script, no fetch, and it works with a keyboard. */
+.flinks{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.linkchip{position:relative;display:inline-block;padding:3px 9px;border:1px solid var(--line);border-radius:999px;background:var(--panel2);color:var(--acc);font:11.5px var(--sans);text-decoration:none}
+.linkchip:hover,.linkchip:focus-visible{border-color:var(--acc)}
+.linkprev{display:none;position:absolute;left:0;top:calc(100% + 6px);z-index:30;min-width:180px;max-width:300px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);box-shadow:0 8px 24px rgba(0,0,0,.4);color:var(--txt);font:11.5px var(--mono);overflow-wrap:anywhere}
+.linkprev b{display:block;margin-bottom:3px;color:var(--txt);font:600 12px var(--sans)}
+.linkprev span{color:var(--dim)}
+.linkchip:hover .linkprev,.linkchip:focus-visible .linkprev{display:block}
 details.moref{margin-top:10px}
 details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 /* The passage popup. The record is already in the payload, so it never
@@ -268,7 +295,6 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 .rerun{margin-top:26px;border-top:1px solid rgba(0,0,0,.14);padding-top:14px}
 .rerun .card{margin-top:0}
 .fitem.dropped{opacity:.45}
-.keepbtn{margin-left:8px;min-height:32px;font-size:.82em}
 .rerunfoot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
 .rerunbtn{min-height:44px}
 /* The reader's pick: an explicit 'this passage answered it', or 'none of these'.
@@ -409,14 +435,23 @@ var I18N = {
     rankScore: 'similarity (rank score) ',
     rankScoreTitle: "the vector leg's similarity - a ranking signal, not a confidence in the answer",
     matchedWords: 'matched: ',
-    openPassage: 'Passage',
-    moreFindings: 'more findings',
+      moreFindings: 'more findings',
   rerunTitle: 'Second answer - on the passages you chose',
   rerunNote: 'This is a second answer to the same question. The first one stays above.',
-  rerankHelp: 'Untick a passage to leave it out, then ask again on what is left.',
+  rerankHelp: 'Rank a passage first with ^, ignore one with x, then ask again on what is left.',
   rerankButton: 'Answer again on my selection',
-  rerankDrop: 'leave this passage out',
-  rerankUse: 'use this passage again',
+  // The hero card's controls, and the provenance the dev toggle opens.
+  heroCaret: 'rank this passage first',
+  heroCaretOn: 'stop ranking this passage first',
+  heroIgnore: 'ignore this passage',
+  heroIgnoreOn: 'use this passage again',
+  heroTop: 'your pick, first',
+  heroIgnored: 'ignored',
+  heroDev: 'show the whole passage and where it came from',
+  heroDevHide: 'hide the passage',
+  heroLinks: 'Inside this passage',
+  foundBy: 'found by ',
+  legUnknown: 'no provenance',
     citedByJudge: 'the judge cites this',
     verdictEvidence: 'passages it rests on:',
     close: 'Close',
@@ -560,14 +595,22 @@ var I18N = {
     rankScore: 'similarité (score de rang) ',
     rankScoreTitle: "la similarité de la jambe vectorielle — un signal de classement, pas une confiance dans la réponse",
     matchedWords: 'correspondance : ',
-    openPassage: 'Passage',
-    moreFindings: 'autres constats',
+      moreFindings: 'autres constats',
   rerunTitle: 'Deuxième réponse - sur les passages que vous avez choisis',
   rerunNote: 'Ceci est une deuxième réponse à la même question. La première reste ci-dessus.',
-  rerankHelp: 'Décochez un passage pour l\'écarter, puis redemandez sur ce qui reste.',
+  rerankHelp: 'Placez un passage en tête avec ^, écartez-en un avec x, puis redemandez sur ce qui reste.',
   rerankButton: 'Répondre à nouveau sur ma sélection',
-  rerankDrop: 'écarter ce passage',
-  rerankUse: 'réutiliser ce passage',
+  heroCaret: 'mettre ce passage en tête',
+  heroCaretOn: 'ne plus mettre ce passage en tête',
+  heroIgnore: 'écarter ce passage',
+  heroIgnoreOn: 'réutiliser ce passage',
+  heroTop: 'votre choix, en tête',
+  heroIgnored: 'écarté',
+  heroDev: 'afficher tout le passage et sa provenance',
+  heroDevHide: 'masquer le passage',
+  heroLinks: 'À l\u2019intérieur de ce passage',
+  foundBy: 'trouvé par ',
+  legUnknown: 'sans provenance',
     citedByJudge: 'cité par le juge',
     verdictEvidence: 'passages sur lesquels il s\u2019appuie :',
     close: 'Fermer',
@@ -1093,42 +1136,75 @@ function findingsCard(findings, counts, cited, state) {
     if (noneOnly) card.appendChild(noneOnly);
     return card;
   }
-  // The top five are the answer-in-waiting: shown whole, above the prose. And a
-  // passage the verdict rests on is shown whole wherever it ranked - the ability
-  // that answered a question once sat at rank 15, inside the collapse, while the
-  // writer cited it: the evidence behind a verdict is never hidden. That is the
-  // union of the two, kept in rank order, a citation never duplicated.
+  // The passages the reader is shown whole whatever their rank: the top five by
+  // rank and the passages the verdict rests on. The evidence behind a verdict is
+  // never collapsed - the ability that answered a question once sat at rank 15,
+  // inside the collapse, while the writer cited it.
   var isCited = function (f) { return cited.indexOf(f.n) !== -1; };
-  var shown = [];
-  var rest = [];
-  for (var i = 0; i < findings.length; i++) {
-    if (i < 5 || isCited(findings[i])) shown.push(findings[i]);
-    else rest.push(findings[i]);
+  var prominent = {};
+  for (var i = 0; i < findings.length; i++) if (i < 5 || isCited(findings[i])) prominent[findings[i].id] = true;
+  // The rerank. The judge's citations and the reader's own picks both resort the
+  // list, and the reader wins: a careted record is first, then the cited ones,
+  // then rank order. An ignored record sinks to the end but never leaves the
+  // page, because the evidence behind a verdict stays readable even when the
+  // reader disagrees with it.
+  var selectable = !!(state && state.selectable && !state.rerun);
+  var firsted = function (f) { return selectable && (state.positive || []).indexOf(f.id) !== -1; };
+  var ignored = function (f) { return selectable && state.keep[f.id] === false; };
+  var picked = [], citedOnes = [], rest = [], dropped = [];
+  for (var j = 0; j < findings.length; j++) {
+    var f = findings[j];
+    if (ignored(f)) dropped.push(f);
+    else if (firsted(f)) picked.push(f);
+    else if (isCited(f)) citedOnes.push(f);
+    else rest.push(f);
   }
+  // The caret's order is the reader's, newest first: the sort is on the record's
+  // position in state.positive, not on its rank.
+  if (selectable) picked.sort(function (a, b) { return state.positive.indexOf(a.id) - state.positive.indexOf(b.id); });
+  var order = picked.concat(citedOnes, rest, dropped);
+  var shown = [], behind = [], shownIds = {};
+  for (var k = 0; k < order.length; k++) {
+    var g = order[k];
+    if (prominent[g.id] || firsted(g) || ignored(g)) { shown.push(g); shownIds[g.id] = true; }
+  }
+  // The more-findings block keeps rank order underneath: the hidden remainder is read
+  // after everything shown whole.
+  for (var m = 0; m < order.length; m++) if (!shownIds[order[m].id]) behind.push(order[m]);
   var ol = el('ol', 'cites');
   for (var c = 0; c < shown.length; c++) ol.appendChild(findingItem(shown[c], true, isCited(shown[c]), state));
   card.appendChild(ol);
-  if (rest.length) {
+  if (behind.length) {
     var det = document.createElement('details');
     det.className = 'moref';
-    det.appendChild(el('summary', null, t('moreFindings') + ' (' + rest.length + ')'));
+    det.appendChild(el('summary', null, t('moreFindings') + ' (' + behind.length + ')'));
     var ol2 = el('ol', 'cites');
-    for (var r = 0; r < rest.length; r++) ol2.appendChild(findingItem(rest[r], false, isCited(rest[r]), state));
+    for (var r = 0; r < behind.length; r++) ol2.appendChild(findingItem(behind[r], false, isCited(behind[r]), state));
     det.appendChild(ol2);
     card.appendChild(det);
   }
-  if (state && state.selectable && !state.rerun) {
+  if (selectable) {
     // The manual rerank footer. The button only exists once the reader has
     // actually changed the selection: a control that re-asks the same list is
-    // noise, and an accidental tap must not spend a judge and a writer.
+    // noise, and an accidental tap must not spend a judge and a writer. The
+    // caret's order travels with the ids, so the second answer is written from
+    // the passages in the order the reader put them.
+    var positive = state.positive || [];
     var kept = [];
-    for (var k = 0; k < state.shownIds.length; k++) if (state.keep[state.shownIds[k]] !== false) kept.push(state.shownIds[k]);
-    var dropped = state.shownIds.length - kept.length;
+    for (var k1 = 0; k1 < state.shownIds.length; k1++) {
+      var id1 = state.shownIds[k1];
+      if (state.keep[id1] !== false && positive.indexOf(id1) !== -1) kept.push(id1);
+    }
+    for (var k2 = 0; k2 < state.shownIds.length; k2++) {
+      var id2 = state.shownIds[k2];
+      if (state.keep[id2] !== false && positive.indexOf(id2) === -1) kept.push(id2);
+    }
+    var droppedN = state.shownIds.length - kept.length;
     var foot = el('div', 'rerunfoot');
     foot.appendChild(el('div', 'note', t('rerankHelp')));
     var again = el('button', 'rerunbtn', t('rerankButton'));
     again.type = 'button';
-    again.disabled = !dropped || !kept.length;
+    again.disabled = !droppedN || !kept.length;
     again.addEventListener('click', function () {
       ask({ question: state.question || $('#q').value, asked: state.asked, over: state.traceId, keep: kept, shown: state.shownIds, append: true, english: true });
     });
@@ -1199,32 +1275,80 @@ function markTerms(text, terms) {
   return frag;
 }
 
+// A finding is a hero card: its title, one line of it, and the reader's three
+// controls. The green caret reranks the record to the top, the x ignores it, and
+// <> opens the whole chunk with the provenance behind it - which retriever found
+// it, at what rank and score, and the words the lexical leg matched. The marks
+// are labelled examples, not local display state: the trace that holds the
+// question gets the caret as a positive for the record id and the x as a
+// negative.
 function findingItem(f, prominent, cited, state) {
-  var li = el('li', 'fitem' + (prominent ? ' top' : ''));
-  var off = state && state.selectable && !state.rerun && state.keep[f.id] === false;
-  if (off) li.className += ' dropped';
+  var selectable = !!(state && state.selectable && !state.rerun);
+  var first = selectable && (state.positive || []).indexOf(f.id) !== -1;
+  var ignored = selectable && state.keep[f.id] === false;
+  var li = el('li', 'fitem hero' + (prominent ? ' top' : '') + (ignored ? ' dropped' : ''));
   var head = el('div', 'fhead');
   head.appendChild(el('span', 'num', '[' + f.n + ']'));
   if (f.leg) head.appendChild(el('span', 'leg ' + legClass(f.leg), legLabel(f.leg)));
-  if (state && state.selectable && !state.rerun) {
-    // The reader's own keep/drop, per passage. A toggle rather than a checkbox so
-    // a phone can hit it, and rebuilt on every render so a verdict landing or a
-    // widening cannot quietly lose the selection.
-    var keep = el('button', 'keepbtn' + (off ? ' off' : ''), off ? t('rerankUse') : t('rerankDrop'));
-    keep.type = 'button';
-    keep.setAttribute('aria-pressed', off ? 'false' : 'true');
-    keep.addEventListener('click', function () { state.keep[f.id] = off; renderFindings(state); });
-    head.appendChild(keep);
-  }
   if (cited) head.appendChild(el('span', 'leg cite', t('citedByJudge')));
+  if (first) head.appendChild(el('span', 'leg badgetop', t('heroTop')));
+  if (ignored) head.appendChild(el('span', 'leg badgeign', t('heroIgnored')));
   var parts = crumbs(f.heading);
   var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + (parts.length ? parts[parts.length - 1] : f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
   a.href = f.href || f.url; a.target = '_blank'; a.rel = 'noopener';
   head.appendChild(a);
+  if (selectable) head.appendChild(findingControls(state, f, first, ignored));
   li.appendChild(head);
   if (parts.length > 1) li.appendChild(el('div', 'fcrumbs', parts.slice(0, -1).join(' \u203a ')));
+  // One line at rest: the card says what the passage is, and the dev toggle opens
+  // the whole record instead of a wall of prose above the answer.
+  var p = el('p', 'ftext heroline');
+  p.appendChild(markTerms(f.excerpt || '', (f.leg === 'lexical' || f.leg === 'both') ? f.matchedTerms : []));
+  li.appendChild(p);
+  var chips = linkChips(f);
+  if (chips) li.appendChild(chips);
+  if (state && state.devOpen && state.devOpen[f.id]) li.appendChild(devPanel(f, state));
+  return li;
+}
+
+// The three controls, in Mandal's order: rank first, ignore, dev. An icon-only
+// control carries its table key as both aria-label and title, so a screen reader
+// has a name and a phone shows what the gesture is.
+function findingControls(state, f, first, ignored) {
+  var ctl = el('span', 'fctl');
+  var caret = el('button', 'herocaret' + (first ? ' on' : ''), '^');
+  caret.type = 'button';
+  caret.setAttribute('aria-pressed', first ? 'true' : 'false');
+  caret.setAttribute('aria-label', first ? t('heroCaretOn') : t('heroCaret'));
+  caret.title = caret.getAttribute('aria-label');
+  caret.addEventListener('click', function () { toggleFirst(state, f.id); });
+  ctl.appendChild(caret);
+  var x = el('button', 'herox' + (ignored ? ' on' : ''), 'x');
+  x.type = 'button';
+  x.setAttribute('aria-pressed', ignored ? 'true' : 'false');
+  x.setAttribute('aria-label', ignored ? t('heroIgnoreOn') : t('heroIgnore'));
+  x.title = x.getAttribute('aria-label');
+  x.addEventListener('click', function () { toggleIgnore(state, f.id); });
+  ctl.appendChild(x);
+  var open = !!(state.devOpen && state.devOpen[f.id]);
+  var dev = el('button', 'herodev' + (open ? ' on' : ''), '<>');
+  dev.type = 'button';
+  dev.setAttribute('aria-expanded', open ? 'true' : 'false');
+  dev.setAttribute('aria-label', open ? t('heroDevHide') : t('heroDev'));
+  dev.title = dev.getAttribute('aria-label');
+  dev.addEventListener('click', function () { toggleDev(state, f.id); });
+  ctl.appendChild(dev);
+  return ctl;
+}
+
+// The dev view: the provenance spelled out - which retriever found it, at what
+// rank and score, the words the lexical leg matched - and the whole chunk. This
+// is where the similarity is visibly a rank score and not a confidence.
+function devPanel(f, state) {
+  var box = el('div', 'fdev');
   var meta = el('div', 'fmeta');
   meta.appendChild(el('span', null, t('rankN') + (f.rank || f.n)));
+  meta.appendChild(el('span', 'devleg', t('foundBy') + (legLabel(f.leg) || t('legUnknown'))));
   if (f.leg === 'vector' || f.leg === 'both') {
     var sc = el('span', 'score', t('rankScore') + fmtScore(f.vectorScore));
     sc.title = t('rankScoreTitle');
@@ -1233,28 +1357,139 @@ function findingItem(f, prominent, cited, state) {
   if ((f.leg === 'lexical' || f.leg === 'both') && f.matchedTerms && f.matchedTerms.length) {
     meta.appendChild(el('span', 'words', t('matchedWords') + f.matchedTerms.join(', ')));
   }
+  box.appendChild(meta);
+  box.appendChild(passageBody(f));
+  // The reader's own 'this passage answered it': an assertion about the answer,
+  // one per question, replacing any earlier pick. It sits in the dev view because
+  // it is made after reading the passage, and it is NOT the caret or the x - the
+  // caret only changes the order, the x only changes what the second answer rests
+  // on, and this one is a candidate for the test bank.
   if (state && state.traceId && f.id) {
-    // The reader's own 'this passage answered it': an explicit assertion, one per
-    // question, replacing any earlier pick. It is not the keep/drop button in the
-    // head above - that one only changes what the second answer rests on.
     var picked = state.pick === f.id;
     var pickBtn = el('button', 'pickbtn' + (picked ? ' on' : ''), t('pickThis'));
     pickBtn.type = 'button';
     pickBtn.setAttribute('aria-pressed', picked ? 'true' : 'false');
     pickBtn.addEventListener('click', function () { sendPick(state, f.id, false); });
-    meta.appendChild(pickBtn);
+    box.appendChild(pickBtn);
   }
-  li.appendChild(meta);
-  if (prominent) {
-    var p = el('p', 'ftext');
-    p.appendChild(markTerms(f.excerpt || '', (f.leg === 'lexical' || f.leg === 'both') ? f.matchedTerms : []));
-    li.appendChild(p);
+  var link = el('a', 'psource', t('openSource'));
+  link.href = f.href || f.url; link.target = '_blank'; link.rel = 'noopener';
+  box.appendChild(link);
+  return box;
+}
+
+// The record's own text, as paragraphs with the lexical leg's words outlined.
+// One renderer for the passage popup and the dev view, so a matched word is
+// marked the same way wherever the passage is read.
+function passageBody(f) {
+  var body = el('div', 'pbody');
+  var text = String(f.passage || f.excerpt || '');
+  var blocks = text.split(/\n\s*\n/);
+  for (var b = 0; b < blocks.length; b++) {
+    var block = blocks[b].replace(/\s*\n\s*/g, ' ').replace(/^\s+|\s+$/g, '');
+    if (!block) continue;
+    var p = el('p');
+    p.appendChild(markTerms(block, (f.leg === 'lexical' || f.leg === 'both') ? f.matchedTerms : []));
+    body.appendChild(p);
   }
-  var btn = el('button', 'fopen', t('openPassage'));
-  btn.type = 'button';
-  btn.addEventListener('click', function () { openPassage(f); });
-  li.appendChild(btn);
-  return li;
+  return body;
+}
+
+// The links a finding carries, as chips. Every field comes from the payload's own
+// link object, which the server resolved from the record the link points at: the
+// chip's name and the preview's title and url are that target's, so the page
+// never parses a link line out of the text and the two cannot drift. The preview
+// is CSS on hover or focus - a phone taps the chip, a desktop hovers it, and
+// neither costs a request.
+function linkHref(l) {
+  var url = String((l && l.url) || '');
+  if (!url) return '';
+  var base = url.split('#')[0];
+  return l.anchor ? base + '#' + l.anchor : base;
+}
+function linkChips(f) {
+  var links = f.links || [];
+  var box = el('div', 'flinks');
+  for (var i = 0; i < links.length; i++) {
+    var l = links[i];
+    var href = linkHref(l);
+    if (!l || !l.to || !href) continue;
+    var parts = crumbs(l.title);
+    var chip = el('a', 'linkchip');
+    chip.href = href;
+    chip.target = '_blank';
+    chip.rel = 'noopener';
+    chip.appendChild(el('span', null, parts.length ? parts[parts.length - 1] : (l.title || l.to)));
+    var prev = el('span', 'linkprev');
+    prev.appendChild(el('b', null, l.title || l.to));
+    prev.appendChild(el('span', null, href));
+    chip.appendChild(prev);
+    box.appendChild(chip);
+  }
+  return box.childNodes.length ? box : null;
+}
+
+// The caret: rank this record first, or take the rank back. The reader's order
+// wins over the judge's citations, and the record it names is the positive
+// example the trace keeps. Careting a record the reader had ignored restores it
+// to the kept set.
+function toggleFirst(state, id) {
+  if (!state || !id) return;
+  state.positive = state.positive || [];
+  var i = state.positive.indexOf(id);
+  if (i === -1) { state.positive.unshift(id); state.keep[id] = true; }
+  else state.positive.splice(i, 1);
+  state.labelsTouched = true;
+  renderFindings(state);
+  markLabels(state);
+}
+
+// The x: ignore this record. It leaves the reader's kept set, so the second
+// answer is not written from it, and it sinks to the end of the list instead of
+// vanishing - the evidence behind a verdict stays readable. The negative is a
+// labelled example for the record id.
+function toggleIgnore(state, id) {
+  if (!state || !id) return;
+  state.keep[id] = state.keep[id] === false;
+  if (state.keep[id] === false) {
+    var i = (state.positive || []).indexOf(id);
+    if (i !== -1) state.positive.splice(i, 1);
+  }
+  state.labelsTouched = true;
+  renderFindings(state);
+  markLabels(state);
+}
+
+function toggleDev(state, id) {
+  if (!state || !id) return;
+  state.devOpen = state.devOpen || {};
+  if (state.devOpen[id]) delete state.devOpen[id]; else state.devOpen[id] = true;
+  renderFindings(state);
+}
+
+// The caret and the x are labelled examples, and the trace that holds them is
+// written after the answer - exactly like the thumb and the pick - so a mark made
+// while the prose is still being written waits for it, and one made after the run
+// posts straight away. Same route shape as the vote: one id, one trace, no second
+// store, and a swept or disabled trace drops it silently.
+function labelBody(state) {
+  return {
+    id: state.traceId,
+    positive: (state.positive || []).slice(),
+    negative: state.shownIds.filter(function (id) { return state.keep[id] === false; }),
+  };
+}
+function postLabels(state) {
+  if (!state || !state.traceId || !state.labelsTouched) return;
+  fetch('/rules/labels', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(labelBody(state)) })
+    .then(function (r) { return r.json(); })
+    .then(function () { state.labelsPending = false; })
+    .catch(function () { state.labelsPending = false; });
+}
+function markLabels(state) {
+  if (!state || !state.traceId) return;
+  if (state.runDone) { state.labelsPending = false; postLabels(state); }
+  else state.labelsPending = true;
 }
 
 // The passage is already in the payload, so the popup never fetches: the whole
@@ -1289,17 +1524,7 @@ function openPassage(f) {
   }
   if (f.ruleId) crumb.appendChild(el('span', 'rid', '  ' + f.ruleId));
   sheet.appendChild(crumb);
-  var body = el('div', 'pbody');
-  var text = String(f.passage || f.excerpt || '');
-  var blocks = text.split(/\n\s*\n/);
-  for (var b = 0; b < blocks.length; b++) {
-    var block = blocks[b].replace(/\s*\n\s*/g, ' ').replace(/^\s+|\s+$/g, '');
-    if (!block) continue;
-    var p = el('p');
-    p.appendChild(markTerms(block, (f.leg === 'lexical' || f.leg === 'both') ? f.matchedTerms : []));
-    body.appendChild(p);
-  }
-  sheet.appendChild(body);
+  sheet.appendChild(passageBody(f));
   var link = el('a', 'psource', t('openSource'));
   link.href = f.href || f.url; link.target = '_blank'; link.rel = 'noopener';
   sheet.appendChild(link);
@@ -1623,6 +1848,11 @@ function newState() {
     // the trace the first answer saved, the ids on screen and which of them the
     // reader is keeping. Only the first answer is selectable.
     question: '', asked: '', traceId: '', shownIds: [], keep: {}, selectable: false, rerun: false,
+    // The one rerank ordering the reader controls: the ids they careted, newest
+    // first, and which records they opened the dev view on. Both survive a
+    // re-render; the caret and the x are also the trace's labelled examples, so
+    // they wait for the run that writes it (labelsPending), exactly like the pick.
+    positive: [], devOpen: {}, labelsTouched: false, labelsPending: false,
     // The reader's pick - a record id, or 'none' - and whether it has landed.
     // It is sent only once the run has finished writing its trace, so a pick made
     // while the prose is still being written is not lost to a record that does not
@@ -1827,14 +2057,23 @@ function applyEvent(ev, state) {
   }
   if (ev.type === 'findings') {
     state.findings = ev.findings || [];
-    // The rereank selection starts as "everything the server sent", and the ids
+    // The rerank selection starts as "everything the server sent", and the ids
     // are kept in the order the server sent them so the rerun's request order is
-    // the order the reader is looking at.
+    // the order the reader is looking at. A widening re-emits the whole list, so
+    // the reader's own marks are carried over for the ids that survive it - an x
+    // or a caret must not be undone by a second pass.
+    var prevKeep = state.keep || {};
+    var prevPositive = state.positive || [];
     state.shownIds = [];
     state.keep = {};
+    state.positive = [];
     for (var si = 0; si < state.findings.length; si++) {
       var sid = state.findings[si].id;
-      if (typeof sid === 'string' && sid) { state.shownIds.push(sid); state.keep[sid] = true; }
+      if (typeof sid === 'string' && sid) {
+        state.shownIds.push(sid);
+        state.keep[sid] = prevKeep[sid] !== false;
+        if (prevPositive.indexOf(sid) !== -1) state.positive.push(sid);
+      }
     }
     state.counts = ev.counts || null;
     state.pass = ev.attempt || 0;
@@ -1926,6 +2165,7 @@ function applyEvent(ev, state) {
     // written can land in its record; a later pick posts straight away.
     state.runDone = true;
     if (state.pickPending) postPick(state);
+    if (state.labelsPending) postLabels(state);
     // A disagreement outlives the request: clearing it here would erase the one
     // line that says the answer is provisional.
     if (state.disputed) { setStatus(t('judgeDisagreeTitle'), 'warn'); return; }

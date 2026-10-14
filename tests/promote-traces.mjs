@@ -96,6 +96,19 @@ export function readerPick(trace) {
   return '';
 }
 
+// The reader's rerank examples, as one line for the harvest: the records they
+// careted (positives) and the ones they x-ed (negatives). The caret and the x are
+// labelled examples and the trace is the dataset's gold slice, so the human
+// promoting a trace sees them beside the pick and the thumb - they are evidence
+// for an expectation, never the expectation itself, which only that human writes.
+export function rerankLabels(trace) {
+  const l = trace && trace.labels;
+  if (!l) return '';
+  const pos = (l.positive || []).map(id => '+' + id);
+  const neg = (l.negative || []).map(id => '-' + id);
+  return pos.concat(neg).join('  ');
+}
+
 // The harvest order (task-27): the traces a human should label first are the ones
 // that already carry a signal. A thumbs-down is a reader saying the answer was
 // wrong; a verdict that cited a passage (judge.cited, or the writer's markers on
@@ -229,6 +242,10 @@ async function main() {
       // answered it, or 'none of these'. A candidate to weigh, not the expectation.
       const reader = readerPick(t);
       if (reader) console.log('reader: ' + reader);
+      // The reader's rerank, when they made one: +record is the caret (rank it
+      // first), -record is the x (ignore it).
+      const labels = rerankLabels(t);
+      if (labels) console.log('labels: ' + labels);
       console.log('judge: answered=' + (j.answered === true) + '  confidence=' + (j.confidence || '-') + '  cited=' + marked + (t.overrideOf ? '  override of ' + t.overrideOf : ''));
       console.log('answer: ' + String(t.answer || '').replace(/\s+/g, ' ').slice(0, 220));
       console.log('findings (' + (t.findings || []).length + ', top ' + Math.min(8, (t.findings || []).length) + '):');

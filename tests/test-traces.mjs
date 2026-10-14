@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
-import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, answeredTrace, appendTrace, buildTrace, firstPerson, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
-import { classifyTrace, harvestOrder, loadTraces, promotedQuestion, tracePriority } from './promote-traces.mjs';
+import { KIND_UNKNOWN, TRACE_RETENTION_MONTHS, answeredTrace, appendTrace, buildTrace, firstPerson, labelsTrace, newTraceId, sweepTraces, termMatch, traceCutoff, traceSignals, tracesEnabled, voteTrace, writerMode } from '../src/rules-traces.mjs';
+import { classifyTrace, harvestOrder, loadTraces, promotedQuestion, rerankLabels, tracePriority } from './promote-traces.mjs';
 import { expectGroups } from './expectation-groups.mjs';
 
 let pass = 0, fail = 0;
@@ -218,6 +218,38 @@ try {
   t('the other record is untouched by the pick', loadTraces(pickDir).find(x => x.id === 'other999').answeredBy, undefined);
   t('the pick adds no identifier either', Object.keys(picked()).filter(k => /^(ip|useragent|cookie|session|account|address)$/i.test(k)).length, 0);
 } finally { fs.rmSync(pickDir, { recursive: true, force: true }); }
+
+// --- the rerank labels: the caret a positive, the x a negative ---------------
+// The findings are a surface the reader reranks: the green caret says 'this
+// record is the answer' (a positive example) and the x says 'not this one' (a
+// negative). Both are labelled examples for a record id the reader was actually
+// shown, and both go into the SAME trace as the question - the dataset's gold
+// slice - which is why the write is the same find-by-id patch as the thumb and
+// the pick, and why there is no second store to keep in step.
+const labelsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-labels-'));
+try {
+  appendTrace(buildTrace({
+    id: 'labellabellabel1', at: '2026-10-13T12:00:00.000Z', question: 'Can a unit shoot after it Fell Back?',
+    answer: 'Yes [1].', judge: { answered: true, passages: [1] },
+    findings: [finding, { n: 2, set: 'rules', source: 'core-rules', ruleId: '18.03', id: 'core-rules#Shooting', heading: 'Shooting', excerpt: 'A unit can shoot.' }],
+  }), labelsDir);
+  appendTrace(buildTrace({ id: 'other999', at: '2026-10-13T12:01:00.000Z', question: 'q2', answer: 'a2' }), labelsDir);
+  const marked = () => loadTraces(labelsDir).find(x => x.id === 'labellabellabel1');
+  t('nothing is marked before the reader taps', marked().labels, undefined);
+  t('a caret lands as a positive in the record it is about', labelsTrace('labellabellabel1', { positive: ['core-rules#Shooting'], negative: [] }, labelsDir), true);
+  t('and names the record the reader ranked', marked().labels, { positive: ['core-rules#Shooting'], negative: [] });
+  t('an x lands as a negative beside the positive', [labelsTrace('labellabellabel1', { positive: ['core-rules#Shooting'], negative: ['core-rules#Embarking'] }, labelsDir), marked().labels], [true, { positive: ['core-rules#Shooting'], negative: ['core-rules#Embarking'] }]);
+  t('a second tap replaces the first, like the thumb', [labelsTrace('labellabellabel1', { positive: ['core-rules#Embarking'], negative: [] }, labelsDir), marked().labels], [true, { positive: ['core-rules#Embarking'], negative: [] }]);
+  t('a record cannot be both: the caret wins', [labelsTrace('labellabellabel1', { positive: ['core-rules#Shooting'], negative: ['core-rules#Shooting'] }, labelsDir), marked().labels], [true, { positive: ['core-rules#Shooting'], negative: [] }]);
+  t('taking every mark back clears the field', [labelsTrace('labellabellabel1', { positive: [], negative: [] }, labelsDir), marked().labels], [true, undefined]);
+  t('a record the trace never showed is refused', labelsTrace('labellabellabel1', { positive: ['core-rules#NotShown'], negative: [] }, labelsDir), false);
+  t('and the refusal changes nothing', marked().labels, undefined);
+  t('a mark for an unknown question is refused', labelsTrace('nope', { positive: ['core-rules#Embarking'], negative: [] }, labelsDir), false);
+  t('a request that is not a pair of sets is refused', labelsTrace('labellabellabel1', { positive: ['core-rules#Embarking'] }, labelsDir), false);
+  t('the other record is untouched', loadTraces(labelsDir).find(x => x.id === 'other999').labels, undefined);
+  t('the labels add no identifier either', Object.keys(marked()).filter(k => /^(ip|useragent|cookie|session|account|address)$/i.test(k)).length, 0);
+} finally { fs.rmSync(labelsDir, { recursive: true, force: true }); }
+t('the harvest shows the marks as + and -', [rerankLabels({ labels: { positive: ['a'], negative: ['b', 'c'] } }), rerankLabels({})], ['+a  -b  -c', '']);
 
 // --- the harvest order, for the promotion path -------------------------------
 // The listing a human labels from is ordered by what already carries a signal:

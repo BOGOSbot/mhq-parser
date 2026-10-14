@@ -35,7 +35,7 @@ import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarni
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
-import { answeredTrace, appendTrace, buildTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
+import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 import { unitCard } from './unit-card.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -722,6 +722,41 @@ function corpora() {
   return corpusCache;
 }
 
+// Every record of both halves, by id, for the one job a finding's links cannot do
+// on their own: a link is a target id, and a chip needs that target's own anchor
+// and url. Built once beside the corpus cache, because it is 6,700 records and a
+// second parse per question would be the whole corpus read again.
+let byIdCache = null;
+function corpusById() {
+  if (!byIdCache) {
+    byIdCache = new Map();
+    for (const half of ['rules', 'factions']) for (const sec of corpora()[half] || []) byIdCache.set(sec.id, sec);
+  }
+  return byIdCache;
+}
+
+// The links a finding exposes, resolved against the corpus: the record's own
+// link list, each target carrying its heading, anchor and url so the page renders
+// a chip from the payload and never parses a '- section: X' line out of the
+// text - one source, or the two drift. A link whose target is not in the corpus
+// is dropped rather than drawn as a dead chip, the rule the build already
+// follows. It is pure, and it is the only place a chip's href comes from.
+function decorateLinks(links, index) {
+  const out = [];
+  for (const l of links || []) {
+    const target = l && l.to ? index.get(l.to) : null;
+    if (!target) continue;
+    out.push({
+      to: l.to,
+      title: l.title || target.heading || '',
+      kind: l.kind || '',
+      anchor: target.anchor || '',
+      url: target.url || '',
+    });
+  }
+  return out;
+}
+
 // A cheap guess, only used when the client does not say. The page sends its
 // own answer, because the voice control already knows which language it
 // listened for.
@@ -764,6 +799,27 @@ async function handleRulesAnswered(req, res) {
   if (!tracesEnabled()) return json(res, 200, { ok: true, saved: false });
   let saved = false;
   try { saved = answeredTrace(id, { by, none }); } catch (e) { saved = false; }
+  return json(res, 200, { ok: true, saved });
+}
+
+// The reader's rerank, as labelled examples: the green caret on a finding is a
+// POSITIVE for that record id, the x a NEGATIVE. Both are written into the SAME
+// trace as the question - the dataset's gold slice - through the same find-by-id
+// patch the thumb and the pick use, so the reader's judgement sits beside the
+// question, the findings and the verdict it was made about. Same posture as the
+// vote: traces off or a swept line drops it silently ({ saved: false }), there is
+// no second store, and a record id the trace never showed is refused rather than
+// recorded.
+async function handleRulesLabels(req, res) {
+  let body = {};
+  try { body = JSON.parse((await readBody(req, 4096)) || '{}'); } catch (e) { return fail(res, 400, 'bad JSON body'); }
+  const id = typeof body.id === 'string' ? body.id : '';
+  const positive = Array.isArray(body.positive) ? body.positive.filter(x => typeof x === 'string' && x).slice(0, 40) : null;
+  const negative = Array.isArray(body.negative) ? body.negative.filter(x => typeof x === 'string' && x).slice(0, 40) : null;
+  if (!id || (!positive && !negative)) return fail(res, 400, 'need { id, positive: [ids], negative: [ids] }');
+  if (!tracesEnabled()) return json(res, 200, { ok: true, saved: false });
+  let saved = false;
+  try { saved = labelsTrace(id, { positive: positive || [], negative: negative || [] }); } catch (e) { saved = false; }
   return json(res, 200, { ok: true, saved });
 }
 
@@ -933,6 +989,11 @@ async function handleRulesAsk(req, res) {
     // is checked against the findings the trace holds. Without it the page has a
     // list it cannot name a record in, and every keep/drop collapses onto one
     // undefined key.
+    // A finding's links travel with it, resolved from the record the finding
+    // points at: the page draws a chip per link from this array alone, so the
+    // text's own '- section: X' block is never parsed - one source, or the two
+    // drift. A finding whose record is not in the corpus carries none.
+    const byId = corpusById();
     const toPayload = list => list.map(f => ({
       id: f.id, n: f.n, set: f.set, source: f.source, faction: f.faction, heading: f.heading,
       ruleId: f.ruleId, url: f.url, href: f.href, excerpt: f.excerpt, passage: f.text || '',
@@ -940,6 +1001,7 @@ async function handleRulesAsk(req, res) {
       vectorRank: f.vectorRank || 0, vectorScore: f.vectorScore,
       lexicalRank: f.lexicalRank || 0, lexicalScore: f.lexicalScore,
       matchedTerms: f.matchedTerms || [],
+      links: decorateLinks((byId.get(f.id) || {}).links, byId),
     }));
 
     // The reader picks the setting: fast asks the judge not to reason and takes
@@ -1285,6 +1347,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/rules/ask') return handleRulesAsk(req, res);
   if (req.method === 'POST' && u.pathname === '/rules/vote') return handleRulesVote(req, res);
   if (req.method === 'POST' && u.pathname === '/rules/answered') return handleRulesAnswered(req, res);
+  if (req.method === 'POST' && u.pathname === '/rules/labels') return handleRulesLabels(req, res);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 

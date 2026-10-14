@@ -231,6 +231,44 @@ export function voteTrace(id, vote, dir) {
   return patchTrace(id, t => { t.vote = v; return true; }, dir);
 }
 
+// The reader's rerank, as labelled examples: the green caret is a POSITIVE for a
+// record id, the x a NEGATIVE. Both name a record the reader was actually shown,
+// and both go into the SAME trace as the question - which is the dataset's gold
+// slice - through the same find-by-id patch the thumb uses. It is the same
+// mechanism and the same store, deliberately: a second file or a second scan
+// would be a second answer to 'what did the reader mean by that tap'.
+//
+// The sets are the reader's CURRENT state, not an action log: a second caret or a
+// second x replaces the first, exactly as a second thumb does, and an id the
+// trace never held is refused. Clearing every mark clears the field, so a tap the
+// reader took back does not stay in the record - the same reason the pick has one
+// slot rather than a log.
+export function labelsTrace(id, pick, dir) {
+  const p = pick || {};
+  if (!Array.isArray(p.positive) || !Array.isArray(p.negative)) return false;
+  const clean = list => [...new Set(list.filter(x => typeof x === 'string' && x))].slice(0, 40);
+  const positive = clean(p.positive);
+  const negative = clean(p.negative);
+  return patchTrace(id, t => {
+    const shown = new Set((t.findings || []).map(f => f && f.id));
+    const pos = positive.filter(x => shown.has(x));
+    // A record is positive or negative, never both: the caret wins, because the
+    // page clears one when the reader taps the other.
+    const neg = negative.filter(x => shown.has(x) && pos.indexOf(x) === -1);
+    if (!pos.length && !neg.length) {
+      // A request that named records and resolved none of them is refused: the
+      // reader can only mark what the trace actually showed. An empty request is
+      // a deliberate clear - every mark taken back leaves no field, so the record
+      // keeps the reader's final judgement rather than an abandoned tap.
+      if (positive.length || negative.length) return false;
+      delete t.labels;
+      return true;
+    }
+    t.labels = { positive: pos, negative: neg };
+    return true;
+  }, dir);
+}
+
 // The reader's explicit 'this passage answered it', or 'none of these'. It is an
 // ASSERTION about the answer and not the manual rerank's kept set, which is a
 // preference about what the next answer should rest on: the two are different
