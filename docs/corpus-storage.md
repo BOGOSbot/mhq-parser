@@ -20,24 +20,21 @@ after any corpus restructure. `node src/box-snapshot.mjs` tars the corpus, print
 the sha256 and the box recipe; the box side is a few commands and about two
 minutes.
 
-| | |
-|---|---|
-| snapshot id | `5f703039-dc4f-4ae6-b7ed-9ede21a73eb8` |
-| box it was taken from | `darling-molly-53895` (deleted) |
-| snapshot size | 8,338,127 bytes, status ready |
-| taken | 2026-10-14 |
-| holds | `rules-corpus-20261014-0146.tar.gz`, 4,164,914 bytes |
-| sha256 | `2ad929d4e1c699051fa31fe75e3cc247ed0df70e565a7d0d8e6393bb425dfeaa` |
-| restore checked | yes - restored into a fresh box and the sha256 inside matched |
+| snapshot id | taken | holds | sha256 | restore checked |
+|---|---|---|---|---|
+| `5087ed6c-efa1-4bac-8aca-ad02ef6a6c88` | 2026-10-15 | `rules-corpus-20261015.tar.gz`, 4,384,405 B | `e6e89de214b6f04037af189ed8c700de5f9d6a4cf4aaeb1e88e01a5ff182b978` | yes |
+| `5f703039-dc4f-4ae6-b7ed-9ede21a73eb8` | 2026-10-14 | `rules-corpus-20261014-0146.tar.gz`, 4,164,914 B | `2ad929d4e1c699051fa31fe75e3cc247ed0df70e565a7d0d8e6393bb425dfeaa` | yes |
+
+Both boxes are deleted and `box list` is empty. The snapshot's own reported `size_bytes` (10,219 for the 2026-10-15 one) is metadata, **not the payload** - it is no use as a completeness check, and the restored file's sha256 is the only one that counts.
 
 **The trap, written down because it bites:** `box snapshot list` needs a box
 selected, so once the box is deleted the snapshot id is the ONLY handle on the
 recovery point. If the id is not written here, the snapshot is unreachable in
 practice even though it exists.
 
-The corpus has changed since that first snapshot (the task-30 and task-37/38
-restructures), so the next snapshot supersedes it; the cadence is tied to the
-ingest, not to a calendar.
+The 2026-10-15 snapshot carries the rulings branch (154 records, WTC + FEQ) and the
+delivered-set index state. Take the next one after the next ingest - the cadence is
+tied to the ingest, not to a calendar.
 
 ## Why it is not ours to publish
 
