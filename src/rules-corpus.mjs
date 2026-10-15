@@ -1192,6 +1192,130 @@ export function buildRulingsCorpus() {
 }
 
 
+
+// --- the mission decks --------------------------------------------------------
+// The event companion's scrape produced the two decks as 37 arbitrary chunks,
+// all headed 'Primary Mission deck' / 'Secondary Mission deck' and cut mid-card.
+// One record per card, keyed by the card name the text already carries
+// ('BATTLEFIELD DOMINANCE Primary Mission'), so a reader can look a mission up
+// and the tree has 25 primary rows instead of 13 anonymous ones.
+//
+// Integrity is the point: the cards are contiguous slices of the chunks' own
+// text, concatenated in document order, so nothing is authored, tidied or
+// dropped. A leading fragment that no card name covers is kept as its own
+// labelled fragment rather than merged or discarded.
+export const MISSION_DECKS = [
+  { deck: 'Primary Mission deck', label: /Primary\s+Mission/ },
+  { deck: 'Secondary Mission deck', label: /Secondary\s+Mission/ },
+];
+
+function deckChunkOrder(id) {
+  const m = /#(\d+)$/.exec(String(id || ''));
+  return m ? parseInt(m[1], 10) : 1;
+}
+
+// The capitalised run immediately before the 'Primary/Secondary Mission' label,
+// trimmed to something that can only be a card name (one short line, no prose).
+export function missionCardName(text, at) {
+  // A card title sits on its own line, immediately above the 'Primary/Secondary
+  // Mission' label; a scoring run ('10VP', '5VP CUMULATIVE') or the previous
+  // card's last word does not, and rejecting those is what keeps the split at the
+  // deck's real cards instead of inventing '10VP' as a mission.
+  const ok = s => !!s && s.length <= 60 && s.split(' ').length <= 6 && !/^\d/.test(s) && !/\bVP\b/i.test(s);
+  const at0 = (start, end, name) => start + text.slice(start, end).indexOf(name);
+  let lineStart = text.lastIndexOf('\n', at - 1) + 1;
+  const same = text.slice(lineStart, at).replace(/\s+/g, ' ').trim();
+  if (ok(same)) return { name: same, at: at0(lineStart, at, same) };
+  // A blank line between the title and the type line is common ('NO PRISONERS\n\n
+  // Secondary Mission'): walk up over the blanks to the nearest text line.
+  for (let hop = 0; hop < 3; hop++) {
+    const prevEnd = lineStart - 1;
+    if (prevEnd < 0) return '';
+    const prevStart = text.lastIndexOf('\n', prevEnd - 1) + 1;
+    const prev = text.slice(prevStart, prevEnd).replace(/\s+/g, ' ').trim();
+    if (prev) return ok(prev) ? { name: prev, at: at0(prevStart, prevEnd, prev) } : '';
+    lineStart = prevStart;
+  }
+  return '';
+}
+
+// The card boundaries of one deck's joined text: every label match whose name is
+// a plausible card title. Returns the slices, in order, covering the text whole.
+export function splitMissionText(text, label) {
+  const re = new RegExp('(?:' + label.source + ')', 'g');
+  const starts = [];
+  let m;
+  while ((m = re.exec(text))) {
+    // Only the card's own type line splits: it starts a line, and the line above
+    // it is the card's title in capitals. Prose ('... this Primary Mission ...'),
+    // a repeated label mid-line and the scoring lines in between are not titles.
+    if (m.index > 0 && text.charAt(m.index - 1) !== '\n') continue;
+    const found = missionCardName(text, m.index);
+    if (!found || !/^[A-Z0-9'\u2019\-\s]+$/.test(found.name)) continue;
+    starts.push({ name: found.name, at: found.at });
+  }
+  if (!starts.length) return [{ name: '', text: text }];
+  const out = [];
+  if (starts[0].at > 0) out.push({ name: '', text: text.slice(0, starts[0].at) });
+  for (let i = 0; i < starts.length; i++) {
+    const to = i + 1 < starts.length ? starts[i + 1].at : text.length;
+    out.push({ name: starts[i].name, text: text.slice(starts[i].at, to) });
+  }
+  return out;
+}
+
+export function splitMissionDecks() {
+  const payload = readCorpusStamped('event-companion');
+  if (!payload) return null;
+  const sections = payload.sections || [];
+  const next = [];
+  const report = { chunks: 0, cards: 0, fragments: 0, decks: [] };
+  for (const deck of MISSION_DECKS) {
+    const chunks = sections
+      .filter(s => String(s.heading || '').trim() === deck.deck)
+      .sort((a, b) => deckChunkOrder(a.id) - deckChunkOrder(b.id));
+    if (!chunks.length) continue;
+    const joined = chunks.map(s => String(s.text || '')).join('');
+    // The pre-split bytes are kept beside the corpus so the integrity of the
+    // split stays checkable after the chunks are gone: the test concatenates the
+    // new records and compares against this file, byte for byte.
+    fs.writeFileSync(path.join(CORPUS_DIR, 'event-companion.deck-' + deck.deck.split(' ')[0].toLowerCase() + '.presplit.txt'), joined);
+    const parts = splitMissionText(joined, deck.label);
+    if (parts.map(p => p.text).join('') !== joined) throw new Error('mission split lost text in ' + deck.deck);
+    const used = new Set();
+    let cards = 0, fragments = 0;
+    for (const part of parts) {
+      if (!part.text.trim()) continue;
+      const label = part.name || ('Fragment ' + (fragments + 1));
+      if (part.name) cards += 1; else fragments += 1;
+      let slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'fragment';
+      let id = 'event-companion#' + deck.deck.split(' ')[0] + '-Mission-deck->-' + slug;
+      let n = 1;
+      while (used.has(id)) { n += 1; id = 'event-companion#' + deck.deck.split(' ')[0] + '-Mission-deck->-' + slug + '#' + n; }
+      used.add(id);
+      const text = part.text;
+      next.push({
+        id: id, source: 'event-companion', set: 'rules', kind: 'rule',
+        heading: deck.deck + ' > ' + label, ruleId: '', anchor: '', hasAnchor: false,
+        url: chunks[0].url || '', text: text, chars: text.length, hash: textHash(text),
+        parent: '', children: [], links: [],
+        edition: String(chunks[0].edition || '11'),
+      });
+    }
+    report.chunks += chunks.length;
+    report.cards += cards;
+    report.fragments += fragments;
+    report.decks.push({ deck: deck.deck, chunks: chunks.length, cards: cards, fragments: fragments, bytes: joined.length });
+  }
+  // Everything that is not a deck chunk passes through untouched, in order.
+  const deckNames = new Set(MISSION_DECKS.map(d => d.deck));
+  for (const s of sections) if (!deckNames.has(String(s.heading || '').trim())) next.push(s);
+  next.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  const out = Object.assign({}, payload, { sections: next, count: next.length, anchored: next.filter(s => s.hasAnchor).length });
+  writeCorpus('event-companion', out);
+  return report;
+}
+
 // --- the universal ability definitions ----------------------------------------
 // The core rules page states each universal ability verbatim in an
 // <div class="abName"> block ('[LETHAL HITS] 24.23 ...'), but the scraper folds
@@ -1407,6 +1531,9 @@ export async function scrapeAll(only, setName) {
       continue;
     }
     out.push(payload);
+    // A re-scrape rebuilds the mission decks as chunks; re-split them here so the
+    // cards are not a one-off local edit.
+    if (s.name === 'event-companion') { try { splitMissionDecks(); } catch (e) { /* the test reports a lost split */ } }
   }
   return out;
 }
@@ -3421,6 +3548,15 @@ async function main() {
       console.log('total ' + built.count + ' records from ' + CSV_FILES.length + ' CSV files');
       if (scrapeBuildsWiki(argv)) await buildWikiShape(CORPUS_DIR);
       else console.log('--flat: the corpus is NOT the shape the live index was built from.');
+      return;
+    }
+    if (set === 'missions') {
+      // Not a scrape: the decks are already on disk, and the split is a local
+      // transformation of their own text.
+      const built = splitMissionDecks();
+      if (!built || !built.chunks) { console.log('no mission deck chunks left to split'); return; }
+      for (const d of built.decks) console.log('  ' + d.deck.padEnd(24) + String(d.chunks).padStart(3) + ' chunks -> ' + String(d.cards).padStart(3) + ' cards, ' + d.fragments + ' fragment(s), ' + d.bytes + ' bytes');
+      console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 / 0');
       return;
     }
     if (set === 'ability-defs') {
