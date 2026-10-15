@@ -91,6 +91,26 @@ A tie is a win: it also removes the gateway, its cost and its 429 DEGRADED runs.
 
 Arm 1 holds the head -> adopt the Cloudflare reranker, keep Upstash, close the question. Arm 2 beats the deployed reading by more than the noise floor -> then, and only then, discuss moving the index and the host.
 
+## Result (2026-10-15) - Arm 1 does NOT hold the head. Keep Jev.
+
+The arm is wired (4c9ea48) and both runs are clean, but the reading is a loss, not a tie.
+
+**Setup snag, worth knowing:** the first pair of runs printed 78 attempted / 0 answered / 78 failed, 39/39 fallbacks, DEGRADED, **exit 2 with the numbers withheld**. That is the accounting working exactly as intended. Cause: CLOUDFLARE_ACCOUNT_ID held an email address, so every call 404'd ("perhaps your object identifier is invalid"). The token itself verified as valid and active. Fixed to the 32-hex account id; it is **not** a secret, it is in the dashboard URL.
+
+| arm | exact hit@1 | hit@5 | hit@10 | hit@20 | MRR | reachable hit@1 / MRR |
+|---|---|---|---|---|---|---|
+| **Cloudflare bge-reranker-base** | 13/33 **39.4%** | 60.6% | 78.8% | 81.8% | **0.509** | 39.4% / 0.520 |
+| rerank off | 13/33 **39.4%** | 69.7% | 78.8% | 84.8% | **0.513** | 39.4% / 0.546 |
+| Jev (deployed) | 18/33 **54.5%** | 78.8% | 84.8% | 90.9% | **0.633** | 60.6% / 0.696 |
+
+78/78 rerank calls answered, **0 fallbacks**, two byte-identical runs. **The cross-encoder is a wash at hit@1 and slightly worse at hit@5 and MRR** - it does not beat doing nothing, and Jev is +5 questions / +15 points above it.
+
+The model itself is fine: a direct call scored the correct passage 0.329 against an irrelevant one at 0.0001. It is a GENERIC cross-encoder, and this corpus's decisions need domain reasoning, not similarity. This is the second statistical reranker to lose here - the learned logistic reranker was also a measured negative (task-60), for the same reason.
+
+One caveat, not an excuse: **567 contexts were truncated** to the 2,000-character cap, which is the model's 512-token limit and cannot be worked around at this model size.
+
+**Decision: keep Jev. Do not adopt the Cloudflare reranker, and do not start Arm 2** - its premise was that Arm 1 would hold the head. The RULES_RERANK=cf arm stays in the tree, dormant, free and tested, if a stronger model is ever put behind it.
+
 ## Sources
 
 [AI Search REST search](https://developers.cloudflare.com/ai-search/api/search/rest-api/) · [Items REST](https://developers.cloudflare.com/ai-search/api/items/rest-api/) · [hybrid search](https://developers.cloudflare.com/ai-search/configuration/indexing/hybrid-search/) · [reranking](https://developers.cloudflare.com/ai-search/configuration/retrieval/reranking/) · [metadata](https://developers.cloudflare.com/ai-search/configuration/indexing/metadata/) · [supported models](https://developers.cloudflare.com/ai-search/configuration/models/supported-models/) · [limits and pricing](https://developers.cloudflare.com/ai-search/platform/limits-pricing/) · [bge-reranker-base](https://developers.cloudflare.com/workers-ai/models/bge-reranker-base/).
