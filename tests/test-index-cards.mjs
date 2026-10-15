@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TOC_CSS, TOC_JS } from '../src/wiki-toc.mjs';
+import { TOC_CSS, TOC_JS, wikiTree } from '../src/wiki-toc.mjs';
+import { readAllCorpus } from '../src/rules-corpus.mjs';
 
 // task-53 + task-54: the index is a card row in the top bar, and reaching a
 // cutoff expands the entry's full text in place instead of navigating. The
@@ -32,9 +33,11 @@ ok('the old row list is gone', js.indexOf('wcrow') === -1 && js.indexOf('level(c
 ok('a 0x chapter is a non-clickable label, not a card', js.indexOf('wclabel') !== -1 && js.indexOf('test(String(k.n))') !== -1 && js.indexOf('nodeCard(k)') !== -1);
 ok('the expansion walks the child files', js.indexOf('function collectRecords(') !== -1 && js.indexOf('collectRecords(files[i], acc, seen, fin)') !== -1);
 // The exact case that printed '0 record(s)': tree/rulings/wtc.js holds no records
-// of its own (its 120 live in per-faction child files). Walk the real rendered
-// tree files the way collectRecords does and assert the count the reader sees.
-ok('the walk finds the records a node keeps in child files', (function () {
+// of its own (they live in per-faction child files). Assert the INVARIANT, never
+// the counts: the walk finds records the node itself does not hold, and the two
+// documents together add up to the tree's own ruling count. Hard-coded 120/34
+// rotted the moment 79 rulings were folded onto their targets.
+ok('the walk finds the records a node keeps in child files, and they add up', (function () {
   const DIR = path.join(ROOT, 'workspace', 'wiki-render');
   const load = f => {
     const src = fs.readFileSync(path.join(DIR, f), 'utf8');
@@ -48,9 +51,11 @@ ok('the walk finds the records a node keeps in child files', (function () {
     for (const k of (n.kids || [])) if (k.f && !seen[k.f]) { seen[k.f] = 1; walk(k.f, acc, seen); }
     return acc;
   };
+  const wtcNode = load('tree/rulings/wtc.js');
   const wtc = walk('tree/rulings/wtc.js', [], {}).length;
   const feq = walk('tree/rulings/feq.js', [], {}).length;
-  return wtc === 120 && feq === 34;
+  const expected = wikiTree(readAllCorpus()).stats.rulings;
+  return (wtcNode.recs || []).length === 0 && wtc > 0 && feq > 0 && wtc + feq === expected;
 })());
 ok('and the node itself really holds none (the bug was reading only node.recs)', (function () {
   const src = fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-render', 'tree', 'rulings', 'wtc.js'), 'utf8');
