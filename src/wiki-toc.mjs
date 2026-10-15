@@ -1046,6 +1046,34 @@ export function tocTree(records, pageOf, opts) {
   files['tree/rules.js'].kids.push({ n: 'Rulings', lvl: 'chapter', c: rulingsC, f: 'tree/rulings.js' });
   files['tree/rules.js'].c += rulingsC;
 
+  // The cutoff (task-55): the level where the index stops and the entry expands
+  // inline instead of navigating. Measured on the real tree, per branch - Rules
+  // stops at the numbered chapter ('0x header'), Rulings at the WTC/FEQ document,
+  // Factions at a faction's three groups (Army rules / Detachments / Units),
+  // Missions at its three parts. The document is newer than the chapter, so the
+  // Rulings chapter itself is a waypoint, not a cutoff.
+  const CUT_LEVELS = new Set(['chapter', 'doc', 'part', 'group']);
+  let cuts = 0;
+  for (const f of Object.keys(files)) {
+    const n = files[f];
+    if (!CUT_LEVELS.has(n.lvl)) continue;
+    if (n.lvl === 'chapter' && n.n === 'Rulings') continue;
+    n.cut = true;
+    cuts += 1;
+  }
+  // A node that IS one page has nothing to drill into: it is an endpoint of the
+  // index by construction ('Army rules' on a faction, a detachment's own page).
+  for (const f of Object.keys(files)) {
+    if (files[f].pg && !files[f].cut) { files[f].cut = true; cuts += 1; }
+  }
+  // The inline kid lists carry their own copy: a kid that is one page, or that
+  // opens a cutoff file, is a cutoff entry too.
+  for (const f of Object.keys(files)) {
+    for (const k of (files[f].kids || [])) {
+      if (k.pg || (k.f && files[k.f] && files[k.f].cut)) k.cut = true;
+    }
+  }
+
   // A record folded across books - a mission errata into the core rule it names,
   // for instance - attaches after its target's book has been walked, so give every
   // attached record the target's chain here. Every placed record then has its
@@ -1077,7 +1105,7 @@ export function tocTree(records, pageOf, opts) {
     // One page per detachment and one page per army-rules set: the tree carves
     // the collections, the render writes their pages.
     owned: owned, mergedOn: mergedOn, pages: pages,
-    stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesBranchC, missions: missionsC, factions: facTotal, rulings: rulingsC,
+    stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesBranchC, missions: missionsC, factions: facTotal, rulings: rulingsC, cuts: cuts,
       annotations: annotationTotal, annotated: annotationTotal - unattached.length, unattached: unattached.length, unattachedByBook: unattachedBooks,
       dropped: dropped.length, filtered: filteredIds.length, merged: mergedIds.length },
     dropped: dropped.map(r => r.id), filtered: filteredIds, merged: mergedIds,
