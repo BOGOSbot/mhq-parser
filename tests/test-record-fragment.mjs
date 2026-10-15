@@ -153,7 +153,7 @@ async function main() {
     const indexJs = fs.readFileSync(path.join(outDir, 'shell-data.js'), 'utf8');
     const index = JSON.parse(indexJs.replace(/^window\.WIKI_TOC = /, '').replace(/;$/, ''));
     t('25 areas: Core Rules and the 24 factions', index.areas.length, 25);
-    t('and they partition the whole corpus', index.areas.reduce((n, a) => n + a.c, 0), 7287);
+    t('and they partition the whole corpus', index.areas.reduce((n, a) => n + a.c, 0), 7313);
     t('Core Rules first', index.areas[0].n, 'Core Rules');
     const areaFile = (name) => { const a = index.areas.find(x => x.n === name); return { a, data: JSON.parse(fs.readFileSync(path.join(outDir, a.f), 'utf8').replace(/^window\.WIKI_TOC_AREA = /, '').replace(/;$/, '')) }; };
     const cust = areaFile('Adeptus Custodes');

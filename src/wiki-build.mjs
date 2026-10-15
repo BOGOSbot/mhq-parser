@@ -18,7 +18,7 @@
 import fs from 'fs';
 import path from 'path';
 import { planWiki, readPlanInput, distribution, chars } from './wiki-plan.mjs';
-import { readCorpus, textHash } from './rules-corpus.mjs';
+import { readCorpus, textHash, ABILITY_DEFS } from './rules-corpus.mjs';
 
 export const RULES_SOURCES = ['core-rules', 'rules-appendix', 'event-companion', 'core-stratagems'];
 export const FACTION_SOURCES = ['factions-csv'];
@@ -72,8 +72,18 @@ export function writeWikiCorpus(dir, data, opts) {
   // live corpus is built - a datasheet's section says 'faction-ae' while the file
   // is factions-csv.json). Grouping the faction half by that label wrote 254 of
   // 6,829 records and dropped the rest on the floor.
+  // One id, one file. The ability definitions are built into ability-defs.json by
+  // their own builder, but they carry source 'core-rules' (their real page), so the
+  // plan hands them back as core-rules records - writing them here as well is how
+  // three builds turned 19 definitions into 57 duplicates and a red protocol. A
+  // rebuild must replace, never append: ids owned by another builder are skipped,
+  // and any remaining duplicate id is collapsed to its first record.
+  const ownedElsewhere = new Set(((readCorpus(ABILITY_DEFS.name) || {}).sections || []).map(s => s.id));
   const byFile = new Map();
+  const seen = new Set();
   for (const rec of plan.records) {
+    if (ownedElsewhere.has(rec.id) || seen.has(rec.id)) continue;
+    seen.add(rec.id);
     const file = rec.set === 'rules' ? rec.source : FACTION_SOURCES[0];
     if (!byFile.has(file)) byFile.set(file, []);
     byFile.get(file).push(toSection(rec));

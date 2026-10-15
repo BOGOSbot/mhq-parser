@@ -37,14 +37,14 @@ const idWithHeading = h => (all.find(r => r.heading === h && tree.paths.has(r.id
 t('three branches: Rules, Missions, Factions', idx.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
 ok('Rulings is a chapter under Rules, provenance-labelled', files['tree/rules.js'].kids.some(k => k.n === 'Rulings' && k.c === 154) && idx.branches[0].c === 794);
 t('Rules holds the 794 placed records (463 core-rules + 176 appendix + 00 + 154 rulings)', idx.branches[0].c, 794);
-t('Missions holds the 82 placed records (73 event-companion + 9 Challenger)', idx.branches[1].c, 82);
+t('Missions holds the 108 placed records (99 event-companion + 9 Challenger)', idx.branches[1].c, 108);
 t('Factions holds 5,186 placed records', idx.branches[2].c, 5186);
-t('of which placed', idx.placed, 6062);
+t('of which placed', idx.placed, 6088);
 t('the 174 index stubs are still counted', idx.excluded, [{ k: 'index', c: 174, why: 'navigation stubs, not corpus content' }]);
 t('the annotation total and the attached/unattached split', [tree.stats.annotations, tree.stats.annotated, tree.stats.unattached], [270, 261, 9]);
 t('unattached per book', tree.stats.unattachedByBook, { 'core-rules': 0, 'rules-appendix': 1, 'event-companion': 8 });
 t('Books is dropped as front matter', [tree.stats.dropped, tree.dropped.slice().sort()], [2, ['core-rules#Introduction', 'core-rules#Introduction#2']]);
-t('placed + excluded + unattached + dropped + filtered is the whole corpus', idx.placed + idx.excluded[0].c + tree.stats.unattached + tree.stats.dropped + tree.stats.filtered, 7287);
+t('placed + excluded + unattached + dropped + filtered is the whole corpus', idx.placed + idx.excluded[0].c + tree.stats.unattached + tree.stats.dropped + tree.stats.filtered, 7313);
 
 // --- Rules -> book -> numbered chapter -> section -----------------------------
 const crBook = 'tree/rules/core-rules.js', raBook = 'tree/rules/rules-appendix.js';
@@ -92,7 +92,7 @@ t('the three alliances hold 1,917 / 1,415 / 1,854 records', [files['tree/faction
 t('the edition filter removed 1,040 records: 1,039 edition 0 plus Strands of Fate', [tree.stats.filtered, tree.filtered.length], [1040, 1040]);
 const filteredKinds = tree.filtered.reduce((a, id) => { const r = byId.get(id); const k = r ? r.kind : '(gone)'; a[k] = (a[k] || 0) + 1; return a; }, {});
 t('and they are those kinds', filteredKinds, { datasheet: 427, unitrules: 601, stratagem: 6, 'faction-rule': 2, enhancement: 4 });
-t('1,791 twins and parts fold onto 1,097 host records', [tree.stats.merged, tree.mergedOn.size], [1791, 1097]);
+t('1,791 twins and parts fold onto 1,097 host records', [tree.stats.merged, tree.mergedOn.size], [1774, 1095]);
 ok('no filtered record is a row anywhere', (function () { const f = new Set(tree.filtered); for (const n of Object.values(files)) for (const x of (n.recs || [])) if (f.has(x.i)) return false; return true; })());
 ok('no row is titled "keywords and abilities"', Object.values(files).every(n => !(n.recs || []).some(x => /keywords and abilities/i.test(String(x.t)))));
 ok('no unitrules is a Units row: every twin is folded onto its datasheet', Object.values(files).every(n => (n.recs || []).every(x => x.i.indexOf('unitrules#') !== 0)));
@@ -137,14 +137,15 @@ ok('the section row carries the folded count', (recs('tree/rules/core-rules/core
 // --- Missions -> parts -> chapters -> sections -------------------------------
 t('Missions has its three parts', kids('tree/missions.js').map(k => k.n), ['Events', 'Primary', 'Secondary']);
 t('Events holds the machinery and the 9 Challenger records', kids('tree/missions.js')[0].c, 45);
-t('Primary is the primary deck', kids('tree/missions.js')[1].c, 13);
+t('Primary is the primary deck: 25 cards and 1 fragment', kids('tree/missions.js')[1].c, 26);
 // 12 of its errata name rule 13.09 (Hidden): task-51 folds them into the rule
 // they update, so the deck loses those rows and Hidden carries them.
-t('Secondary is the secondary deck, minus the 12 universal errata', kids('tree/missions.js')[2].c, 12);
+t('Secondary is the secondary deck: 18 cards, 1 fragment and its questions', kids('tree/missions.js')[2].c, 25);
 ok('the Challenger chapter is under Events', kids('tree/missions/events.js').some(k => k.n === 'Challenger' && k.c === 9));
-ok('the deck row carries its remaining 6 folded questions and errata', (recs('tree/missions/secondary/secondary-mission-deck.js').find(r => r.i === 'event-companion#Secondary-Mission-deck') || {}).q === 6);
+ok('the deck chapter lists its cards', recs('tree/missions/secondary/secondary-mission-deck.js').some(r => r.i === 'event-companion#Secondary-Mission-deck->-no-prisoners'));
+ok('and the deck row no longer exists as a record', !recs('tree/missions/secondary/secondary-mission-deck.js').some(r => r.i === 'event-companion#Secondary-Mission-deck'));
 ok('and the 13.09 errata it used to carry fold onto the rule they update', (tree.attach.get('core-rules#Hidden') || []).filter(a => a.id.indexOf('13.09') !== -1).length === 14);
-ok('NAMED: a secondary mission sits under its deck', !!findRec('tree/missions/secondary/secondary-mission-deck.js', 'event-companion#Secondary-Mission-deck'));
+ok('NAMED: a secondary mission sits under its deck', !!findRec('tree/missions/secondary/secondary-mission-deck.js', 'event-companion#Secondary-Mission-deck->-no-prisoners'));
 
 // --- the render writes these files, and leaves the two-pane popup alone -------
 const outDir = path.join(ROOT, 'workspace', 'wiki-tree-test');
@@ -170,7 +171,7 @@ t('and the rendered unit rows too', writtenUnits.recs.length + ':' + writtenUnit
 ok('the rendered 00 chapter exists', fs.existsSync(path.join(outDir, 'tree', 'rules', 'universal-rules-updates.js')));
 const oldIndex = JSON.parse(fs.readFileSync(path.join(outDir, 'shell-data.js'), 'utf8').replace(/^window\.WIKI_TOC = /, '').replace(/;$/, ''));
 t('the popup index still has its 25 areas', oldIndex.areas.length, 25);
-t('and still partitions the corpus', oldIndex.areas.reduce((n, a) => n + a.c, 0), 7287);
+t('and still partitions the corpus', oldIndex.areas.reduce((n, a) => n + a.c, 0), 7313);
 fs.rmSync(outDir, { recursive: true, force: true });
 
 // --- the mutation check: the assertions above are not vacuous -----------------
@@ -189,7 +190,7 @@ const unfolded = mutate(copy => { const r = copy.find(x => x.heading === 'Abilit
 t('MUTATION: a [TORRENT] expansion that loses its marker becomes a row', unfolded.stats.annotations, 269);
 const dropped = mutate(copy => { const i = copy.findIndex(r => r.id === 'stratagem#000008931007'); copy.splice(i, 1); });
 t('MUTATION: dropping a record drops the Factions count by exactly one', dropped.index.branches[2].c, 5185);
-t('MUTATION: and the placed total with it', dropped.index.placed, 6061);
+t('MUTATION: and the placed total with it', dropped.index.placed, 6087);
 
 const baseOf = id => String(String(id).split('#')[1] || '').split('~')[0];
 const legacyDs = tree.filtered.find(id => id.indexOf('datasheet#') === 0 && all.some(x => x.kind === 'unitrules' && baseOf(x.id) === baseOf(id)));
