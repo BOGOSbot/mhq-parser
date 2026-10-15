@@ -2596,13 +2596,9 @@ export async function retrieveWide(question, opts) {
   // weakest pick when the result is full.
   const guarded = picked.slice();
   if (process.env.RULES_DEBUG_ANCHORS) console.log('[anchors] ns=' + (o.namespace || '') + ' corpus=' + (corpus || []).length + ' found=' + entityAnchors(question, corpus, o.anchorCap || 2, o.terms).map(a => a.id).join(','));
-  // The records of the unit the question names come first: dropping the answer
-  // to a question about a datasheet is worse than showing one passage too many.
-  for (const anchor of entityAnchors(question, corpus, o.anchorCap || 2, o.terms)) {
-    anchoredIds.add(anchor.id);
-    if (guarded.some(s => s.id === anchor.id)) continue;
-    guarded.unshift(anchor);
-  }
+  // The retriever heads run BEFORE anchoring and on the pick alone, so the
+  // weakest pick is still what a head displaces - never an anchor. Unchanged
+  // from before: it is the rerank's own correction, not anchoring's.
   for (let li = 0; li < lists.length; li++) {
     // The vector leg's own head is not one hit but its first few: on the bank it
     // ranks the expected section first more often than the merged result does,
@@ -2614,12 +2610,22 @@ export async function retrieveWide(question, opts) {
       else guarded[guarded.length - 1] = own;
     }
   }
+  // Anchoring APPENDS: the retrievers' scores decide the topK pick and an anchor
+  // can no longer take a slot in front of it. The guarantee anchoring actually
+  // makes - the records of the unit the question names are present - survives;
+  // what it loses is the power to evict a record a retriever already ranked,
+  // which showed up as scoreless '-' entries sitting above scored hits. Strictly
+  // one-directional: nothing here moves a record up or removes one.
+  const append = rec => { if (rec && !guarded.some(s => s.id === rec.id)) guarded.push(rec); };
+  for (const anchor of entityAnchors(question, corpus, o.anchorCap || 2, o.terms)) {
+    anchoredIds.add(anchor.id);
+    append(anchor);
+  }
   // A rule's own clarifications travel with it, so the condition that limits
   // the answer is on the page even when the reranker only saw the permission.
   for (const child of childSections(guarded.slice(), corpus, o.childPerParent || 1, o.childCap || 3)) {
     childIds.add(child.id);
-    if (guarded.some(s => s.id === child.id)) continue;
-    guarded.push(child);
+    append(child);
   }
   // Anchored and clarifying records may sit past the cut once everything is merged.
   const out = guarded.slice(0, topK + (o.anchorCap || 2) + (o.childCap || 3));
