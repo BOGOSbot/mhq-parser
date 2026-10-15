@@ -33,6 +33,11 @@ ok('no update is silently unattached', !updates.some(u => tree.unattached.indexO
 ok('every unresolved update is a row of the tree, labelled by its number', visible.every(u => tree.paths.has(u.id) && /^\d{2}(\.\d{2}){1,2}\b/.test(String(u.heading).split(' > ').pop().trim())));
 
 // The target is the rule with that number, not a neighbour.
+// NOTE: the tree TITLES a folded update by its content, not by its number. The
+// 13.09 errata shows up as "Change to: 'That model has the INFANTRY/BEASTS/SWARM
+// keyword and is within a terrain...'", so a search for '13.09' in the tree finds
+// nothing and that is correct - the number lives in the record's ruleId and in
+// this test, not in the rendered title. Do not go looking for it.
 const sample = updates.find(u => u.id.indexOf('01.02.06') !== -1 && tree.attachTarget.has(u.id));
 ok('the 01.02.06 update folds into a rule carrying 01.02.06', !!sample && String((all.find(r => r.id === tree.attachTarget.get(sample.id)) || {}).ruleId) === '01.02.06');
 ok('and it is listed on that rule page', !!sample && (tree.attach.get(tree.attachTarget.get(sample.id)) || []).some(a => a.id === sample.id));
