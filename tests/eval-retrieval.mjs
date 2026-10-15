@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { expandQuery, gateHalf, gateHalfLexical, gateVocabularies, grepCorpus, grepTerms, grepWithTerms, jevCalls, jevRank, queryIndex, readAllCorpus, retrieveDual, retrieveWide } from '../src/rules-corpus.mjs';
 import { anchorFor, credential, fastCredential, jevKeyName } from '../src/rules.mjs';
 import { expectGroups, missingGroupLine, missingGroups, partialHeadline, satisfiedGroups } from './expectation-groups.mjs';
+import { resolveExpectation as resolveOne } from './expectations.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const QUESTIONS = path.join(__dirname, 'fixtures', 'rules-questions.json');
@@ -127,22 +128,18 @@ function corpusIndex() {
       const key = s.source + '#' + (s.anchor || anchorFor(s.heading) || 'section');
       if (!byKey.has(key)) byKey.set(key, s.id);
     }
-    corpusIndexCache = { byId, byKey, n: all.length };
+    corpusIndexCache = { byId, byKey, ids: all.map(s => s.id), n: all.length };
   }
   return corpusIndexCache;
 }
 
 const resolveNotes = [];
+// The conventions live in tests/expectations.mjs so the guard test reads the
+// same rules; this wrapper only adds the question to the report line.
 function resolveExpectation(id, question) {
-  const ix = corpusIndex();
-  if (!ix.n || ix.byId.has(id)) return id;
-  const moved = ix.byKey.get(id);
-  if (moved) {
-    resolveNotes.push('  moved      ' + id + '  ->  ' + moved + '   [' + question + ']');
-    return moved;
-  }
-  resolveNotes.push('  NOT FOUND  ' + id + '   [' + question + ']');
-  return id;
+  const r = resolveOne(id, corpusIndex());
+  if (r.note) resolveNotes.push(r.note + '   [' + question + ']');
+  return r;
 }
 
 let rulesIdSet = null, factionsIdSet = null;
@@ -224,7 +221,12 @@ const questions = bank.questions.filter(q => !ONLY_KIND || q.kind === ONLY_KIND)
 // An expectation is a list of groups (tests/expectation-groups.mjs): a plain list
 // is one group per id, a list of lists is the groups as written. Each member is
 // resolved on its own, so one the chunker moved is still named.
-for (const item of questions) item.expect = expectGroups(item.expect).map(g => g.map(e => resolveExpectation(e, item.q)));
+// A split expands to the parts the corpus actually has: the question scores on
+// any of them, which is what "a record the splitter put under it" means here.
+for (const item of questions) item.expect = expectGroups(item.expect).map(g => g.flatMap(e => {
+  const r = resolveExpectation(e, item.q);
+  return r.via === 'split' ? r.parts : [r.resolved];
+}));
 
 // reach=false is the fixture as written: the expected id and nothing else.
 // reach=true also accepts a record the splitter put under it, '<id>->-<title>'.
