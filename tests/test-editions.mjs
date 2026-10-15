@@ -14,7 +14,7 @@ const tally = rows => rows.reduce((a, r) => { const k = r.kind || '(none)'; a[k]
 
 // --- every record carries an edition -----------------------------------------
 t('every record carries a numeric edition', all.filter(r => !/^\d+$/.test(String(r.edition || ''))).length, 0);
-t('the distribution (the 155 rulings are edition 11 too)', editionCounts(all), { 0: 1039, 10: 3, 11: 6227 });
+t('the distribution (the 154 rulings are edition 11 too)', editionCounts(all), { 0: 1039, 10: 3, 11: 6226 });
 t('edition 0 is the Legends / Forge World line, every kind', tally(all.filter(r => String(r.edition) === '0')), { 'faction-rule': 1, datasheet: 427, unitrules: 601, stratagem: 6, enhancement: 4 });
 t('edition 10 is the two leftover 10th-edition datasheets and their half', tally(all.filter(r => String(r.edition) === '10')), { datasheet: 2, unitrules: 1 });
 // The join resolves by the record's own id, not by a name in its text:
