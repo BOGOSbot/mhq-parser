@@ -237,7 +237,8 @@ async function main() {
       const out = value('--out') || path.join(__dirname, '..', 'workspace', 'dataset', 'harvest.jsonl');
       fs.mkdirSync(path.dirname(out), { recursive: true });
       fs.writeFileSync(out, records.map(r => JSON.stringify(r)).join('\n') + (records.length ? '\n' : ''));
-      const labelled = traces.filter(t => t.labels && (t.labels.positive || []).length).length;
+      // A reader-labelled trace is one with a caret OR an x (or a 'None of these').
+      const labelled = traces.filter(t => t.labels && ((t.labels.positive || []).length || (t.labels.negative || []).length)).length;
       console.log('harvest write: ' + records.length + ' labelled question(s) from ' + labelled + ' reader-labelled trace(s) of ' + traces.length + '   asks ' + records.reduce((n, r) => n + r.asks, 0) + '   negatives ' + records.reduce((n, r) => n + r.negatives.length, 0) + '   -> ' + out);
       return;
     }

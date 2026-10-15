@@ -41,7 +41,9 @@ t('with the ask count recorded', dupes[0].asks, 3);
 ok('and the three traces normalize to the same key', normalizeQuestion('Can a unit shoot after it Fell Back?') === normalizeQuestion('CAN A UNIT SHOOT AFTER IT FELL BACK?'));
 
 t('a trace with no reader pick writes nothing', harvestFromTraces([trace({})]).length, 0);
-t('a reader pick of none writes nothing', harvestFromTraces([trace({ labels: { positive: [], negative: ['a'] } })]).length, 0);
+// A rejection is a real example: the zero-positive row keeps the negative.
+const rej = harvestFromTraces([trace({ labels: { positive: [], negative: ['a'] } })]);
+t('a reader rejection is recorded, not dropped', [rej.length, rej[0].gold, rej[0].negatives], [1, [], ['a']]);
 t('an empty question is skipped', harvestFromTraces([trace({ question: '   ', labels: { positive: ['a'] } })]).length, 0);
 ok('asks must be at least 1', validateRecord({ id: 'x', q: 'q', answer: '', gold: [['a']], negatives: [], how: 'vote', edition: '', date: '', source: '', url: '', split: 'train', asks: 0 }).some(p => /asks/.test(p)));
 

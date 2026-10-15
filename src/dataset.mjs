@@ -208,23 +208,30 @@ export function harvestFromTraces(traces) {
   const out = [];
   for (const [k, list] of groups) {
     const picked = list.find(t => t.labels && Array.isArray(t.labels.positive) && t.labels.positive.filter(Boolean).length);
-    if (!picked) continue;
-    const positives = picked.labels.positive.filter(Boolean);
-    const shown = (picked.findings || []).map(f => f.id).filter(Boolean);
+    // A rejection is a real example too: the reader x-ed a shown passage, or
+    // clicked 'None of these' on the whole list. It gets a ZERO-POSITIVE row -
+    // empty gold, the rejected ids as negatives - because inventing a gold for it
+    // would be a lie; the schema accepts empty gold already.
+    const rejected = picked ? null : list.find(t => t.labels && Array.isArray(t.labels.negative) && t.labels.negative.filter(Boolean).length);
+    if (!picked && !rejected) continue;
+    const source = picked || rejected;
+    const positives = picked ? picked.labels.positive.filter(Boolean) : [];
+    const shown = (source.findings || []).map(f => f.id).filter(Boolean);
+    const negatives = source.answeredNone === true ? shown : (source.labels.negative || []).filter(Boolean);
     out.push(questionRecord({
       id: 'harvest/' + k.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60),
-      q: picked.question,
-      answer: picked.answer || '',
+      q: source.question,
+      answer: source.answer || '',
       gold: positives.map(id => [id]),
-      negatives: shown.filter(id => positives.indexOf(id) === -1),
+      negatives: positives.length ? shown.filter(id => positives.indexOf(id) === -1) : negatives,
       how: 'vote',
-      edition: picked.edition || '',
-      date: picked.at || '',
+      edition: source.edition || '',
+      date: source.at || '',
       source: 'trace',
       url: '',
       split: 'train',
       asks: list.length,
-      verifier: { by: 'reader', negative: (picked.labels.negative || []).slice() },
+      verifier: picked ? { by: 'reader', negative: (picked.labels.negative || []).slice() } : { by: 'reader', noneOfThese: true, rejected: negatives.slice() },
     }));
   }
   return out;
