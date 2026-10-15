@@ -1286,6 +1286,10 @@ export function splitMissionDecks() {
     let cards = 0, fragments = 0;
     for (const part of parts) {
       if (!part.text.trim()) continue;
+      // The deck's own title line, captured as a record by the scrape, is not
+      // content: it is the same class of noise as a page's intro row, and it is
+      // dropped by name, not kept as a fragment.
+      if (!part.name && part.text.trim() === deck.deck) continue;
       const label = part.name || ('Fragment ' + (fragments + 1));
       if (part.name) cards += 1; else fragments += 1;
       let slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'fragment';

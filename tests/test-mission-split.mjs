@@ -33,10 +33,15 @@ for (const [deck, cards, file] of [['Primary', 25, 'event-companion.deck-primary
     .map(r => ({ r: r, at: pre.indexOf(String(r.text)) }))
     .sort((a, b) => a.at - b.at);
   const cardCount = list.filter(x => x.r.heading.indexOf('Fragment') === -1).length;
-  t(deck + ': ' + cards + ' cards and one fragment', [cardCount, list.length - cardCount], [cards, 1]);
+  // The deck's own title line was captured as a record; it is not content and is
+  // dropped (the pre-split file still carries it, so the lossless check adds it
+  // back). There is no fragment left on either deck.
+  const preamble = deck + ' Mission deck\n';
+  t(deck + ': ' + cards + ' cards and no fragment', [cardCount, list.length - cardCount], [cards, 0]);
   t(deck + ': every record is a slice of the pre-split bytes', list.every(x => x.at >= 0), true);
-  t(deck + ': the concatenation is byte-identical to the pre-split text', list.map(x => x.r.text).join(''), pre);
-  ok(deck + ': the unattributable fragment is labelled, not dropped', list.some(x => /Fragment 1/.test(String(x.r.heading))) && list.some(x => !String(x.r.text).trim() === false));
+  t(deck + ': the cards plus the dropped preamble are byte-identical to the pre-split text', preamble + list.map(x => x.r.text).join(''), pre);
+  ok(deck + ': the deck title is not a record', !list.some(x => String(x.r.text).trim() === deck + ' Mission deck'));
+  t(deck + ': the preamble row is dropped by id', all.filter(x => x.id === 'event-companion#' + deck + '-Mission-deck->-fragment-1').length, 0);
   ok(deck + ': every card starts at its own name', list.filter(x => x.r.heading.indexOf('Fragment') === -1).every(x => String(x.r.text).indexOf(String(x.r.heading).split(' > ')[1]) === 0));
 }
 
