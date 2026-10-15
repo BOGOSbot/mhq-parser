@@ -6,7 +6,7 @@ import { ASK_MODES, askMode, writerEnabled } from '../src/rules-corpus.mjs';
 // task-22: the fast/deep toggle selects the judge's reasoning. What it moves must
 // be stated, not assumed - ASK_MODES fast already carries second:'medium', so
 // 'fast' is not reason-free overall, and the retrieval scope is mode-bound rather
-// than fixed. The answer/writer call is not touched by the toggle.
+// than fixed. The writer call is OFF and the mode does not touch it; the copy says so.
 let pass = 0, fail = 0;
 function t(name, got, want) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
@@ -43,7 +43,9 @@ t('the page states deep exactly as ASK_MODES does',
   ['medium', 'none', '10', '3', '60', '80']);
 ok('the page maps the two measured accuracies to the two modes', /fast:[^\n]*61\.8%/.test(page) && /deep:[^\n]*79\.4%/.test(page));
 ok('the note says retrieval is mode-bound, not fixed', /Retrieval moves with the mode/.test(html) && /MODE-BOUND/i.test(html));
-ok('the note says the answer call is not affected', /the answer \(writer\) is not affected/.test(html));
+// task-69: the writer is off, and the copy must say so rather than implying prose
+// that never arrives. The behaviour assertions below are unchanged.
+ok('the note says the writer is off and the page is the findings', /The model-written answer is off/.test(html) && /the findings, the judge verdict and the citations are the page/.test(html));
 
 // --- the toggle is real and defaults to fast ----------------------------------
 ok('two toggle buttons with a default fast', /id="modeFast"[^>]*aria-pressed="true"/.test(html) && /id="modeDeep"[^>]*aria-pressed="false"/.test(html));
