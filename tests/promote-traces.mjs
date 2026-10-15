@@ -31,6 +31,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
 import { TRACES_DIR } from '../src/rules-traces.mjs';
+import { harvestFromTraces } from '../src/dataset.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const BANK_PATH = path.join(__dirname, 'fixtures', 'rules-questions.json');
@@ -226,6 +227,20 @@ async function main() {
   if (flag('--harvest')) {
     const all = flag('--all');
     const limit = Number(value('--limit')) || 40;
+    // --write turns the listing into the dataset writer (task-33): the traces the
+    // reader already labelled become TRAIN records - the question, the rule they
+    // said answers it, the rest of the shown findings as mined hard negatives, and
+    // the answer that was written. One normalized question is one record carrying
+    // its ask count, so a question asked six times weighs once.
+    if (flag('--write')) {
+      const records = harvestFromTraces(traces);
+      const out = value('--out') || path.join(__dirname, '..', 'workspace', 'dataset', 'harvest.jsonl');
+      fs.mkdirSync(path.dirname(out), { recursive: true });
+      fs.writeFileSync(out, records.map(r => JSON.stringify(r)).join('\n') + (records.length ? '\n' : ''));
+      const labelled = traces.filter(t => t.labels && (t.labels.positive || []).length).length;
+      console.log('harvest write: ' + records.length + ' labelled question(s) from ' + labelled + ' reader-labelled trace(s) of ' + traces.length + '   asks ' + records.reduce((n, r) => n + r.asks, 0) + '   negatives ' + records.reduce((n, r) => n + r.negatives.length, 0) + '   -> ' + out);
+      return;
+    }
     const byId = new Map(readAllCorpus().map(s => [s.id, s]));
     const rows = harvestOrder(traces).map(t => ({ t, status: traceStatus(t, bankQs) })).filter(r => all || r.status === 'promotable').slice(0, limit);
     let down = 0, cited = 0;

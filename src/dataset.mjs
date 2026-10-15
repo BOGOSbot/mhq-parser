@@ -31,7 +31,11 @@ function leafOf(heading) {
 // overlap (coverage too thin to be a label). tests/dataset-probe.mjs is the
 // tracked script that reproduces both on the traces we hold; run it before
 // proposing either again.
-export const SCHEMA_KEYS = ['id', 'q', 'answer', 'gold', 'how', 'edition', 'date', 'source', 'url', 'split'];
+// negatives are the findings the page SHOWED and the reader did not pick - mined
+// hard negatives, the records closest to the answer that are not it. asks is the
+// number of traces behind one normalized question: a question asked six times is
+// one datapoint with asks 6, never six datapoints.
+export const SCHEMA_KEYS = ['id', 'q', 'answer', 'gold', 'negatives', 'how', 'edition', 'date', 'source', 'url', 'split', 'asks'];
 export const HOW = ['vote', 'title', 'judge', 'generated', 'manual'];
 // Tiers that are train-only: a judge label is circular, a generated label is true
 // by construction because the question was written from the record. Neither may
@@ -45,12 +49,14 @@ export function questionRecord(o) {
     q: String(o.q || ''),
     answer: o.answer == null ? '' : String(o.answer),
     gold: Array.isArray(o.gold) ? o.gold.map(g => (Array.isArray(g) ? g.slice() : [String(g)])) : [],
+    negatives: Array.isArray(o.negatives) ? o.negatives.map(String) : [],
     how: HOW.indexOf(o.how) !== -1 ? o.how : '',
     edition: String(o.edition || ''),
     date: String(o.date || ''),
     source: String(o.source || ''),
     url: String(o.url || ''),
     split: SPLITS.indexOf(o.split) !== -1 ? o.split : 'train',
+    asks: Math.max(1, Math.floor(Number(o.asks) || 1)),
     // Provenance for the tier, not part of the schema's identity: a judge label
     // can never be used for eval, and the record says so itself.
     verifier: o.verifier || null,
@@ -64,6 +70,7 @@ export function validateRecord(r) {
   if (HOW.indexOf(r.how) === -1) problems.push('bad how');
   if (SPLITS.indexOf(r.split) === -1) problems.push('bad split');
   for (const g of r.gold) if (!g.length) problems.push('empty gold group');
+  if (!(r.asks >= 1)) problems.push('asks must be at least 1');
   if (r.split === 'eval' && TRAIN_ONLY_HOW.indexOf(r.how) !== -1) problems.push('a ' + r.how + ' label cannot be eval');
   return problems;
 }
@@ -180,6 +187,47 @@ export function bankRow(row, index) {
     split: 'eval',
     verifier: { by: 'curated-bank', kind: row.kind || '' },
   });
+}
+
+// --- the seed slice: the reader's pick is the label ---------------------------
+// The page already collects a labelled pair for free: the question, the rule the
+// reader says answers it ('This one answers it'), the rest of the findings the
+// page showed (mined hard negatives) and the answer that was written. No
+// permission, no scraping; the volume grows with page usage. One normalized
+// question is ONE record carrying its ask count - a question asked six times is
+// one datapoint, not six (task-33's requirement, measured: 113 traces are 49
+// distinct questions).
+export function harvestFromTraces(traces) {
+  const groups = new Map();
+  for (const t of traces || []) {
+    const k = normalizeQuestion(t.question);
+    if (!k) continue;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(t);
+  }
+  const out = [];
+  for (const [k, list] of groups) {
+    const picked = list.find(t => t.labels && Array.isArray(t.labels.positive) && t.labels.positive.filter(Boolean).length);
+    if (!picked) continue;
+    const positives = picked.labels.positive.filter(Boolean);
+    const shown = (picked.findings || []).map(f => f.id).filter(Boolean);
+    out.push(questionRecord({
+      id: 'harvest/' + k.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60),
+      q: picked.question,
+      answer: picked.answer || '',
+      gold: positives.map(id => [id]),
+      negatives: shown.filter(id => positives.indexOf(id) === -1),
+      how: 'vote',
+      edition: picked.edition || '',
+      date: picked.at || '',
+      source: 'trace',
+      url: '',
+      split: 'train',
+      asks: list.length,
+      verifier: { by: 'reader', negative: (picked.labels.negative || []).slice() },
+    }));
+  }
+  return out;
 }
 
 export function readTraces(dir) {
