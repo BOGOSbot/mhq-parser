@@ -102,8 +102,10 @@ const records = all.map(r => ({
   // carry them or the render's tree would drift from the tests'.
   url: r.url || '', faction: r.faction || '', anchor: r.anchor || '', ruleId: r.ruleId || '',
   edition: r.edition == null ? '' : String(r.edition),
-  // The rulings' provenance travels into the tree's grouping and the card banner.
+  // The rulings' provenance travels into the tree's grouping and the card banner,
+  // and text_en is the additional English the card shows a reader who chose it.
   provenance: r.provenance || null,
+  text_en: r.text_en || '',
 }));
 
 // The tree data and the area of every record, computed once. Each record's area

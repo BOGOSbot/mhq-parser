@@ -116,6 +116,11 @@ export function tocIndex(data) {
 // shell-data.js is only the index - the 788KB payload was the thing every record
 // page paid for and most page views never opened).
 export const TOC_JS = [
+  // The reader's language, when they have chosen one. A ruling shows the French
+  // source by default and reveals the machine translation only when the reader
+  // explicitly asked for English: data-lang, not lang, so a page the reader has
+  // not expressed a preference on never claims one.
+  "(function () { try { var l = localStorage.getItem('rulesLang'); if (l === 'en' || l === 'fr') document.documentElement.dataset.lang = l; } catch (e) { /* private mode */ } })();",
   // The cascade behaviour, one implementation for the record pages and the ask
   // page. It reads WIKI_TREE_INDEX (the three branches) and WIKI_HERE (the
   // record's pre-computed node chain), fetches one node file only when a level is

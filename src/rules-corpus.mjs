@@ -1109,20 +1109,39 @@ export function buildFactionCorpus() {
 // because the product's use is a player showing a card to an opponent, and a
 // paraphrase or a tidy-up would put our words in a third party's mouth. Every
 // record carries its provenance so the card can say whose words they are.
+// Junk rows from the staging that are not rulings. Dropped by id, never by text
+// (a tip could legitimately be the same words) and never by editing the staged
+// CSV, which stays the source of record. wtc11-did-you-know-057 is the 'Did you
+// know' tab's own intro row - 'Did you know that...', 20 chars - a heading that
+// would otherwise render as a card and surface in a findings list as content.
+export const RULING_DROP_IDS = new Set(['wtc11-did-you-know-057']);
+
 export function buildRulingsCorpus() {
   const manifest = JSON.parse(fs.readFileSync(path.join(RULINGS_DIR, 'sources.json'), 'utf8'));
   const bySource = new Map((manifest.sources || []).map(s => [s.source_id, s]));
   const read = f => csvQuotedRows(fs.readFileSync(path.join(RULINGS_DIR, f), 'utf8'));
+  // The staged English for the French document. It is ADDITIONAL to the French,
+  // never a replacement: the normalised CSV stays the source of record, and this
+  // file is a display aid whose own metadata says a human has never read it. It
+  // is joined on the record id, and an orphan key throws at build time - a
+  // silently unmatched translation would be a hole in a ruling.
+  const enPath = path.join(RULINGS_DIR, 'feq-11-faq.en.json');
+  const english = fs.existsSync(enPath) ? JSON.parse(fs.readFileSync(enPath, 'utf8')) : {};
+  const enText = english.text_en || {};
+  const enMeta = english.translation || null;
+  const translated = new Set();
   const sections = [];
   const add = (row, doc) => {
+    if (RULING_DROP_IDS.has(String(row.id))) return false;
     const text = String(row.text == null ? '' : row.text);
     if (!text.trim()) return false;
     const src = bySource.get(row.source_id) || {};
     const heading = doc === 'wtc'
       ? 'WTC ' + (row.faction || row.topic || '') + ' \u2014 ' + (row.facet || '') + (row.entry_no ? ' #' + row.entry_no : '')
       : 'FEQ ' + (row.type_norm || row.topic || 'FAQ') + (row.faction ? ' \u2014 ' + row.faction : '');
-    sections.push({
-      id: String(row.id), source: RULINGS.name, set: 'rulings', kind: 'ruling',
+    const id = String(row.id);
+    const rec = {
+      id: id, source: RULINGS.name, set: 'rulings', kind: 'ruling',
       heading: heading.trim(), ruleId: '', anchor: '', hasAnchor: false, url: src.url || '',
       text: text, chars: text.length, hash: textHash(text),
       // Verbatim provenance, per record: which document, which version, when it
@@ -1137,7 +1156,19 @@ export function buildRulingsCorpus() {
         entry_no: row.entry_no || '', modified: row.modified || '',
       },
       parent: '', children: [], links: [], edition: String(row.edition || '11'),
-    });
+    };
+    const en = enText[id];
+    if (doc === 'feq' && en !== undefined && String(en).trim()) {
+      rec.text_en = String(en);
+      translated.add(id);
+      if (enMeta) {
+        rec.provenance.translation = {
+          from: enMeta.from || '', to: enMeta.to || '', by: enMeta.by || '',
+          reviewed: !!enMeta.reviewed, model: enMeta.model || '', translated_at: enMeta.translated_at || '',
+        };
+      }
+    }
+    sections.push(rec);
     return true;
   };
   let wtc = 0, feq = 0;
@@ -1145,13 +1176,15 @@ export function buildRulingsCorpus() {
   for (const row of read('feq-11-faq.normalised.csv')) if (add(row, 'feq')) feq++;
   const ids = new Set(sections.map(s => s.id));
   if (ids.size !== sections.length) throw new Error('duplicate ruling ids: ' + sections.length + ' rows, ' + ids.size + ' ids');
+  const orphans = Object.keys(enText).filter(id => !translated.has(id));
+  if (orphans.length) throw new Error('FEQ English with no ruling record: ' + orphans.slice(0, 5).join(', '));
   const payload = {
     source: RULINGS.name, set: 'rulings', url: '', edition: '11',
     marker: { kind: 'Rulings normalised CSV', edition: '11', version: '', lastUpdate: '', retrieved_at: manifest.retrieved_at || '' },
     scrapedAt: new Date().toISOString(), count: sections.length, anchored: 0, sections,
   };
   writeCorpus(RULINGS.name, payload);
-  return { count: sections.length, wtc, feq, main: payload };
+  return { count: sections.length, wtc, feq, translated: translated.size, main: payload };
 }
 
 // --- the corpus on disk -----------------------------------------------------
@@ -3297,6 +3330,7 @@ async function main() {
       const built = buildRulingsCorpus();
       console.log('  ' + 'rulings records'.padEnd(24) + String(built.count).padStart(5) + '  (WTC ' + built.wtc + ' en + FEQ ' + built.feq + ' fr) -> ' + corpusPath(RULINGS.name));
       console.log('stored verbatim from the staged normalised CSVs; nothing re-fetched, nothing re-normalised');
+      if (built.translated) console.log('  ' + 'English translation'.padEnd(24) + String(built.translated).padStart(5) + '  (machine, unreviewed - an addition to the French, never a replacement)');
       console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 / 0');
       return;
     }

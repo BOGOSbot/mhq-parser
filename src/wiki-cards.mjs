@@ -40,6 +40,14 @@ export const CARD_CSS = [
   // text, quiet enough not to shout on every card.
   '.wprov { margin:.2rem 0 .9rem; padding:.5rem .6rem; border-left:3px solid var(--line); background:var(--chip); font-size:.8rem; color:var(--dim); }',
   '.wprov strong { color:var(--ink); }',
+  '.wprov-mt { color:var(--dim); }',
+  // The language switch: the French is the source of record and shows by default;
+  // the English pane is revealed only when the reader has chosen English, which
+  // the shell records as data-lang on <html>. Never the other way round.
+  '.wlang-body.wlang-en { display:none; }',
+  'html[data-lang="en"] .wlang-body.wlang-fr { display:none; }',
+  'html[data-lang="en"] .wlang-body.wlang-en { display:block; }',
+  '.wlang-note { font-size:.78rem; color:var(--dim); margin:.35rem 0 0; }',
   '.wcard-line { margin:.2rem 0 .6rem; font-size:.9rem; color:var(--dim); }',
   '.wcard-dot { padding:0 .3rem; }',
   '.wcard-role { color:var(--ink); font-weight:600; }',
@@ -246,17 +254,44 @@ function provenanceBanner(p) {
     p.language ? String(p.language).toUpperCase() : '',
     p.scope ? 'scope: ' + p.scope : '',
   ].filter(Boolean);
+  // A machine translation is never presented as a reviewed one: the banner
+  // carries the fact, the model and the 'no human has read it' flag.
+  const tr = p.translation;
+  const translated = tr ? '<br><span class="wprov-mt">' + esc(String(tr.from || 'fr').toUpperCase()) + '\u2192' + esc(String(tr.to || 'en').toUpperCase())
+    + ' machine translation (' + esc(tr.model || 'unknown model') + '), <strong>not reviewed</strong> \u2014 no human has read this rendering of the ruling. The French is the source of record.</span>' : '';
   return '<aside class="wprov" data-source="' + esc(p.source_id || '') + '"><strong>Third-party ruling</strong> \u2014 '
-    + esc(bits.join(' \u00b7 ')) + '. <em>Not Games Workshop rules text.</em></aside>';
+    + esc(bits.join(' \u00b7 ')) + '. <em>Not Games Workshop rules text.</em>' + translated + '</aside>';
+}
+
+// The ruling's text in the reader's language. Both languages ship in the record:
+// the French is the source of record, the English is an addition. The default
+// (no lang) keeps the French and lets the shell reveal the English only when the
+// reader has said they want English - a French ruling is never defaulted to
+// English. A missing translation falls back to the French, with the fact said
+// out loud rather than an empty body.
+export function rulingBody(record, lang) {
+  const fr = '<pre class="text" lang="fr">' + esc(record && record.text) + '</pre>';
+  const hasEn = !!(record && record.text_en && String(record.text_en).trim());
+  const en = hasEn
+    ? '<pre class="text" lang="en">' + esc(record.text_en) + '</pre>'
+    : '<pre class="text" lang="fr">' + esc(record && record.text) + '</pre>';
+  const note = hasEn
+    ? '<p class="wlang-note">Machine translation, unreviewed \u2014 the French is the source of record.</p>'
+    : '<p class="wlang-note">No English translation yet \u2014 showing the French source.</p>';
+  if (lang === 'en') return en + note;
+  if (lang === 'fr') return fr;
+  return '<div class="wlang"><div class="wlang-body wlang-fr" lang="fr">' + fr + '</div>'
+    + '<div class="wlang-body wlang-en" lang="en">' + en + note + '</div></div>';
 }
 
 export function recordBody(record, opts) {
   const o = opts || {};
   const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
+  if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang);
   const card = cardFor(record, o);
   if (card) return banner + cardHtml(card, o);
   return banner + '<pre class="text">' + esc(record && record.text) + '</pre>';
 }
 
-export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, recordBody };
+export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, recordBody, rulingBody };
 

@@ -913,6 +913,9 @@ function paintMic(btn, label) {
 
 function applyLang() {
   document.documentElement.lang = LANG;
+  // The reader's chosen language, for the ruling cards' FR/EN switch: the French
+  // is the source of record and only an explicit choice reveals the English.
+  document.documentElement.dataset.lang = LANG;
   var np = $('#navparse'); if (np) np.textContent = t('navparse');
   var wk = $('#wikinav'); if (wk) wk.textContent = t('wikiNav');
   var q = $('#q'); if (q) q.setAttribute('placeholder', t('placeholder'));
