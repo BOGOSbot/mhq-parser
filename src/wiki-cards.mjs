@@ -21,13 +21,16 @@
  */
 
 import { buildUnitCard, resolveRecordLinks } from './unit-card.mjs';
+// task-66: one escaper and one linkifier for the whole card and prose path.
+import { linkify, esc } from './wikilinks.mjs';
 
 // The two kinds whose text is a flat transcription of the CSV card. Every other
 // kind (stratagem, enhancement, detachment, rule, ability, index) has no card
 // and keeps the text block exactly as it was.
 export const CARD_KINDS = ['datasheet', 'unitrules'];
 
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// esc lives in wikilinks.mjs: one escaper for the whole card and link path (a
+// second copy is what turned the fr/en ruling-body tests red).
 const norm = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 
 // The CSS the card needs, on top of whatever chrome the shell already has. The
@@ -140,7 +143,7 @@ function abilityRow(a, o) {
   return {
     name: a.name || '',
     type: a.type || '',
-    text: a.description ? '<span class="wcard-ability-text">' + esc(a.description)
+    text: a.description ? '<span class="wcard-ability-text">' + linkify(a.description, { selfId: o.selfId, href: o.href })
       + (a.truncated ? ' <span class="wcard-note">(cut short)</span>' : '') + '</span>' : '',
     link: href ? '<a class="wcard-ability-link" href="' + esc(href) + '">'
       + esc(target.title || a.name || 'the rule') + ' in the rules</a>' : '',
@@ -269,12 +272,14 @@ function provenanceBanner(p) {
 // reader has said they want English - a French ruling is never defaulted to
 // English. A missing translation falls back to the French, with the fact said
 // out loud rather than an empty body.
-export function rulingBody(record, lang) {
-  const fr = '<pre class="text" lang="fr">' + esc(record && record.text) + '</pre>';
+export function rulingBody(record, lang, opts) {
+  const o = opts || {};
+  const link = t => linkify(t, { selfId: record && record.id, href: o.href });
+  const fr = '<pre class="text" lang="fr">' + link(record && record.text) + '</pre>';
   const hasEn = !!(record && record.text_en && String(record.text_en).trim());
   const en = hasEn
-    ? '<pre class="text" lang="en">' + esc(record.text_en) + '</pre>'
-    : '<pre class="text" lang="fr">' + esc(record && record.text) + '</pre>';
+    ? '<pre class="text" lang="en">' + link(record.text_en) + '</pre>'
+    : '<pre class="text" lang="fr">' + link(record && record.text) + '</pre>';
   const note = hasEn
     ? '<p class="wlang-note">Machine translation, unreviewed \u2014 the French is the source of record.</p>'
     : '<p class="wlang-note">No English translation yet \u2014 showing the French source.</p>';
@@ -286,11 +291,17 @@ export function rulingBody(record, lang) {
 
 export function recordBody(record, opts) {
   const o = opts || {};
+  // The card prose gets the same links as the prose path, and the record's own id
+  // is carried so it never links to itself.
+  if (record && !o.selfId) o.selfId = record.id;
   const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
-  if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang);
+  if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang, o);
   const card = cardFor(record, o);
   if (card) return banner + cardHtml(card, o);
-  return banner + '<pre class="text">' + esc(record && record.text) + '</pre>';
+  // An index page carpeted in links is worse than an index with none: kind
+  // 'index' keeps its text plain (cap 0).
+  const cap = record && record.kind === 'index' ? 0 : 40;
+  return banner + '<pre class="text">' + linkify(record && record.text, { selfId: record && record.id, href: o.href, cap: cap }) + '</pre>';
 }
 
 export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, recordBody, rulingBody };
