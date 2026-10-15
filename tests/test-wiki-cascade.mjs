@@ -41,8 +41,9 @@ ok('the path files are the per-node files, not one tree file', [...tree.paths.va
 // --- the record page carries that path, and nothing else ---------------------
 const outDir = path.join(ROOT, 'workspace', 'wiki-cascade-test');
 fs.rmSync(outDir, { recursive: true, force: true });
+const SEER = 'detachment#000001023';
 const AURIC = [...tree.owned.entries()].find(pair => pair[1].strat.indexOf(STRAT) !== -1)[0];
-const ids = [RULES_REC, UNIT_REC, STRAT, SECONDARY, SEC, PLAIN_Q, MUSTER, AURIC].join(',');
+const ids = [RULES_REC, UNIT_REC, STRAT, SECONDARY, SEC, PLAIN_Q, MUSTER, AURIC, SEER].join(',');
 const rendered = await new Promise(resolve => {
   const c = spawn(process.execPath, [path.join(ROOT, 'src', 'wiki-render.mjs')], { cwd: ROOT, env: Object.assign({}, process.env, { WIKI_RENDER_DIR: outDir, WIKI_RENDER_ONLY: ids }), stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '';
@@ -80,7 +81,12 @@ ok('with the section path, not its own', hereOf(PLAIN_Q).path.map(p => p.n).join
 const detPage = pageOf(AURIC);
 ok('the detachment page holds its enhancements and stratagems', detPage.indexOf('Enhancements (') !== -1 && detPage.indexOf('Stratagems (') !== -1 && detPage.indexOf(map[STRAT]) !== -1);
 ok('the detachment is a row in the Detachments level, with its owned count and no kids', (function () { const f = tree.files['tree/factions/imperium/adeptus-custodes/detachments.js']; const row = f.recs.find(r => r.i === AURIC); return !!(row && row.q > 0 && !('kids' in f)); })());
-ok('the datasheet page carries its merged unitrules twin as a collapsed section', pageOf(UNIT_REC).indexOf('Unit rules text (merged)') !== -1 && tree.mergedOn.has(UNIT_REC));
+ok('the datasheet page carries its merged unitrules twin as a collapsed section', pageOf(UNIT_REC).indexOf('Merged records (') !== -1 && tree.mergedOn.has(UNIT_REC));
+// Mandal's guard rail: the name is never the filter. The Seer Council detachment
+// still renders its Strands of Fate ability after the edition filters run.
+const seerPage = pageOf(SEER);
+ok('the Seer Council page still renders its Strands of Fate ability', seerPage.indexOf('Strands of Fate') !== -1);
+ok('and the page still owns its enhancements and stratagems', seerPage.indexOf('Enhancements (') !== -1 && seerPage.indexOf('Stratagems (') !== -1);
 // A rule page's sections and subsections collapse with native <details>.
 const musterPage = pageOf(MUSTER);
 ok('the rule page renders its sections as collapsible details', musterPage.indexOf('<details class="wsec"') !== -1 && musterPage.indexOf('Sections (') !== -1 && musterPage.indexOf('<summary>') !== -1);

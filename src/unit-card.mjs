@@ -359,7 +359,9 @@ export function recordCard(id, opts) {
   // The CSV card is keyed by the bare datasheet id; the corpus record carries a
   // source prefix. `datasheet#X` and `unitrules#X` are the two halves of one
   // datasheet and both open the same card.
-  const bare = String(rec.id).replace(/^(?:datasheet|unitrules)#/, '');
+  // A record the importer split into parts keeps the CSV number plus "~n";
+  // both halves and every part open the same card.
+  const bare = String(rec.id).replace(/^(?:datasheet|unitrules)#/, '').replace(/~\d+$/, '');
   const card = (kind === 'datasheet' || kind === 'unitrules')
     ? buildUnitCard(bare, { corpora: corpora })
     : null;

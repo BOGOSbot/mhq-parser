@@ -192,11 +192,9 @@
     {
       "q": "find the resurrection protocol",
       "lang": "en",
-      "kind": "paraphrase",
-      "expect": [
-        "enhancement#000009588002"
-      ],
-      "note": "the corpus spells it Resurrection Protocols (Necrons)"
+      "kind": "none",
+      "expect": [],
+      "note": "the corpus spells it Resurrection Protocols (Necrons), and it is a Boarding Actions (edition 10) enhancement: the export types its detachment 'Tomb Ship Complement' as Boarding Actions, so the importer removes it"
     },
     {
       "q": "find oath of moment",

@@ -685,6 +685,110 @@ export function trimAbilityTail(desc) {
   return m && m.index > 0 ? text.slice(0, m.index).trim() : text;
 }
 
+// --- editions ---------------------------------------------------------------
+// Every record carries the edition it came from. Datasheets resolve through
+// their own source_id; the rest of the export carries only a faction_id, so a
+// faction joins its own Source row by name. That join cannot see a Faction Pack
+// (Legends, Forge World): the export gives those no faction row. Pack content is
+// found through the datasheet link tables instead - a stratagem, enhancement or
+// ability that only edition-0 datasheets carry is edition 0. Boarding Actions is
+// the edition-10 expansion riding in the same tables, marked by Detachments.csv's
+// own type column. Nothing here is written by name.
+let EDITION_TABLES = null;
+export function editionTables() {
+  if (EDITION_TABLES) return EDITION_TABLES;
+  const read = f => { try { return csvRows(fs.readFileSync(path.join(CSV_DIR, f), 'utf8')); } catch { return []; } };
+  const sources = new Map(read('Source.csv').map(s => [s.id, s]));
+  const byName = new Map();
+  for (const s of sources.values()) if (!byName.has(s.name)) byName.set(s.name, s);
+  const factionEdition = new Map();
+  for (const f of read('Factions.csv')) {
+    const exact = byName.get(f.name);
+    const near = exact || [...sources.values()].find(s => s.name.indexOf(f.name + ' (') === 0);
+    factionEdition.set(f.id, near ? String(near.edition || '') : '');
+  }
+  const dsSource = new Map(read('Datasheets.csv').map(d => [d.id, d.source_id]));
+  const dsEdition = id => { const s = sources.get(dsSource.get(id)); return s ? String(s.edition || '') : ''; };
+  const packLinked = (file, key) => {
+    const seen = new Map();
+    for (const l of read(file)) {
+      const e = dsEdition(l.datasheet_id);
+      if (!e) continue;
+      const cur = seen.get(l[key]);
+      if (cur === undefined) seen.set(l[key], e);
+      else if (cur !== e) seen.set(l[key], 'mix');
+    }
+    const out = new Set();
+    for (const [id, e] of seen) if (e === '0') out.add(id);
+    return out;
+  };
+  const detachments = new Map(read('Detachments.csv').map(d => [d.id, d]));
+  EDITION_TABLES = {
+    factionEdition, dsEdition,
+    boarding: new Set([...detachments.values()].filter(isBoardingActionsDetachment).map(d => d.id)),
+    packStratagems: packLinked('Datasheets_stratagems.csv', 'stratagem_id'),
+    packEnhancements: packLinked('Datasheets_enhancements.csv', 'enhancement_id'),
+    packAbilities: packLinked('Datasheets_abilities.csv', 'ability_id'),
+    stratagem: new Map(read('Stratagems.csv').map(s => [s.id, s])),
+    enhancement: new Map(read('Enhancements.csv').map(e => [e.id, e])),
+    detachment: detachments,
+    ability: new Map(read('Abilities.csv').map(a => [a.id, a])),
+  };
+  return EDITION_TABLES;
+}
+
+// A detachment is Boarding Actions when the export's own type column says so.
+export function isBoardingActionsDetachment(row) {
+  return /boarding actions/i.test(String((row && row.type) || ''));
+}
+
+// The faction PAGES carry the expansion's rules with no type column, so a page
+// section is out of scope when its heading or anchor names the expansion.
+export function isBoardingActionsPageSection(section) {
+  return /boarding[-\s](actions|patrol|squads)/i.test(String((section && section.heading) || '') + ' ' + String((section && section.anchor) || ''));
+}
+
+// One lookup, by the record's own id, so it works for CSV sections and for the
+// ones the wiki planner assembles from the same tables.
+export function editionOf(section, fallback) {
+  const t = editionTables();
+  const kind = String((section && section.kind) || '').toLowerCase() || String((section && section.id) || '').split('#')[0];
+  const num = String((section && section.id) || '').split('#')[1] ? String(section.id).split('#')[1].split('~')[0] : '';
+  let ed = '';
+  if (kind === 'datasheet' || kind === 'unitrules') ed = t.dsEdition(num);
+  else if (kind === 'stratagem' && t.stratagem.has(num)) {
+    const s = t.stratagem.get(num);
+    if (isBoardingActionsDetachment({ type: s.type }) || t.boarding.has(s.detachment_id)) ed = '10';
+    else if (t.packStratagems.has(num)) ed = '0';
+    else ed = t.factionEdition.get(s.faction_id) || '';
+  } else if (kind === 'enhancement' && t.enhancement.has(num)) {
+    const e = t.enhancement.get(num);
+    if (t.boarding.has(e.detachment_id)) ed = '10';
+    else if (t.packEnhancements.has(num)) ed = '0';
+    else ed = t.factionEdition.get(e.faction_id) || '';
+  } else if (kind === 'detachment' && t.detachment.has(num)) {
+    const d = t.detachment.get(num);
+    ed = isBoardingActionsDetachment(d) ? '10' : (t.factionEdition.get(d.faction_id) || '');
+  } else if (kind === 'faction-rule' && t.ability.has(num)) {
+    const a = t.ability.get(num);
+    ed = t.packAbilities.has(num) ? '0' : (t.factionEdition.get(a.faction_id) || '');
+  }
+  if (ed !== '') return ed;
+  const fb = String(fallback == null ? '' : fallback);
+  return /^\d+$/.test(fb) ? fb : '';
+}
+
+export function assignEditions(sections, fallback) {
+  for (const s of sections) if (s) s.edition = editionOf(s, fallback);
+  return sections;
+}
+
+export function editionCounts(sections) {
+  const c = {};
+  for (const s of sections) { const e = String((s && s.edition) || '') || '(none)'; c[e] = (c[e] || 0) + 1; }
+  return c;
+}
+
 // One record per thing a reader could be shown. A datasheet is assembled from
 // six tables because that is how the export splits it; the reader wants the
 // datasheet, not the sixth of it that happens to live in one file.
@@ -695,6 +799,11 @@ export function buildFactionSections() {
   const factionName = new Map(factions.map(f => [f.id, f.name]));
   const factionLink = new Map(factions.map(f => [f.id, f.link]));
   const sources = new Map(read('Source.csv').map(s => [s.id, s]));
+  // Boarding Actions is the edition-10 expansion, and its material is filtered
+  // here rather than in the tree: the 59 detachments the export types, and the
+  // stratagems and enhancements that point at them. Counted, never silent.
+  const boardingIds = new Set(read('Detachments.csv').filter(isBoardingActionsDetachment).map(d => d.id));
+  const outOfScope = { detachments: 0, stratagems: 0, enhancements: 0 };
   const abilityById = new Map();
   for (const a of read('Abilities.csv')) if (!abilityById.has(a.id)) abilityById.set(a.id, a);
 
@@ -787,7 +896,7 @@ export function buildFactionSections() {
     // in this file with no faction id like the core ones. The corpus is 11th
     // edition matched play, so it is out of scope - the same reason the 10th
     // edition sources were dropped rather than mixed in.
-    if (/boarding actions/i.test(s.type || '')) continue;
+    if (isBoardingActionsDetachment({ type: s.type }) || boardingIds.has(s.detachment_id)) { outOfScope.stratagems++; continue; }
     const isCore = !s.faction_id;
     const faction = factionName.get(s.faction_id) || '';
     if (isCore) {
@@ -828,6 +937,7 @@ export function buildFactionSections() {
     detachmentAbilities.get(a.detachment_id).push(a);
   }
   for (const d of read('Detachments.csv')) {
+    if (boardingIds.has(d.id)) { outOfScope.detachments++; continue; }
     const faction = factionName.get(d.faction_id) || d.faction_id;
     const lines = [
       d.name + ' - ' + faction + ' detachment',
@@ -839,6 +949,7 @@ export function buildFactionSections() {
   }
 
   for (const e of read('Enhancements.csv')) {
+    if (boardingIds.has(e.detachment_id)) { outOfScope.enhancements++; continue; }
     const faction = factionName.get(e.faction_id) || e.faction_id;
     const lines = [
       e.name + ' - ' + faction + ' enhancement',
@@ -850,7 +961,7 @@ export function buildFactionSections() {
     push('enhancement#' + e.id, 'enhancements', e.name + ' (' + faction + ')', factionLink.get(e.faction_id) || '', lines);
   }
 
-  return { lastUpdate, sections: out };
+  return { lastUpdate, sections: out, boarding: outOfScope };
 }
 
 // The export lists some things more than once under different ids with the same
@@ -884,7 +995,9 @@ export function dedupeSections(sections) {
 export function buildFactionCorpus() {
   const raw = buildFactionSections();
   const deduped = dedupeSections(raw.sections);
-  const built = { lastUpdate: raw.lastUpdate, sections: deduped.sections, dropped: deduped.dropped };
+  // The one code path: every section gets its edition here, before it is written.
+  const sections = assignEditions(deduped.sections, '11');
+  const built = { lastUpdate: raw.lastUpdate, sections: sections, dropped: deduped.dropped };
   const ids = new Set(built.sections.map(s => s.id));
   if (ids.size !== built.sections.length) {
     throw new Error('duplicate ids: ' + built.sections.length + ' sections, ' + ids.size + ' ids');
@@ -913,7 +1026,7 @@ export function buildFactionCorpus() {
     writeCorpus(half.source.name, payload);
     if (half.set === 'factions') main = payload;
   }
-  return { count: built.sections.length, marker, factions: halves[0].sections.length, core: halves[1].sections.length, dropped: built.dropped, main };
+  return { count: built.sections.length, marker, factions: halves[0].sections.length, core: halves[1].sections.length, dropped: built.dropped, main, boarding: raw.boarding, editions: editionCounts(built.sections) };
 }
 
 // --- the corpus on disk -----------------------------------------------------
@@ -937,9 +1050,18 @@ export function readAllCorpus(setName) {
   for (const s of sourcesFor(setName)) {
     const c = readCorpus(s.name);
     if (c && Array.isArray(c.sections)) {
+      // The faction pages carry the Boarding Actions expansion's rules with no
+      // type column, so they are dropped here by the expansion's own wording.
+      const isPage = String(s.name).indexOf('faction-') === 0;
+      const kept = isPage ? c.sections.filter(sec => !isBoardingActionsPageSection(sec)) : c.sections;
+      // Every record carries an edition, whether it was built from the CSV,
+      // assembled by the wiki planner or scraped: the fallback is the file's own
+      // marker edition, and 11 for the 11th-edition rules pages.
+      const fallback = c.marker && /^\d+$/.test(String(c.marker.edition)) ? String(c.marker.edition) : '11';
+      assignEditions(kept, fallback);
       // The set travels with the section so a merged candidate list can still
       // say which half a finding came from - the reader is shown both.
-      for (const sec of c.sections) all.push(Object.assign({ set: s.set, source: s.name }, sec));
+      for (const sec of kept) all.push(Object.assign({ set: s.set, source: s.name }, sec));
     }
   }
   return all;
@@ -968,7 +1090,7 @@ export async function scrapeSource(source) {
   const r = await fetchPage(source.url);
   if (r.status !== 200) throw new Error(source.name + ' returned HTTP ' + r.status);
   const marker = parseMarker(r.body);
-  const sections = assignIds(source.name, extractSections(stripChrome(r.body), source));
+  const sections = assignIds(source.name, extractSections(stripChrome(r.body), source).filter(sec => !isBoardingActionsPageSection(sec)));
   const ids = new Set(sections.map(s => s.id));
   if (ids.size !== sections.length) {
     throw new Error(source.name + ': ' + sections.length + ' sections but only ' + ids.size + ' unique ids');
@@ -3011,6 +3133,8 @@ async function main() {
       console.log('  ' + 'faction records'.padEnd(24) + String(built.factions).padStart(5) + '  -> ' + corpusPath(FACTIONS_CSV.name));
       console.log('  ' + 'core stratagems'.padEnd(24) + String(built.core).padStart(5) + '  -> ' + corpusPath(CORE_STRATAGEMS.name));
       console.log('duplicate records collapsed: ' + built.dropped);
+      console.log('boarding actions removed: ' + built.boarding.detachments + ' detachments, ' + built.boarding.stratagems + ' stratagems, ' + built.boarding.enhancements + ' enhancements');
+      console.log('editions: ' + JSON.stringify(built.editions));
       console.log('export last update: ' + built.marker.lastUpdate);
       console.log('total ' + built.count + ' records from ' + CSV_FILES.length + ' CSV files');
       if (scrapeBuildsWiki(argv)) await buildWikiShape(CORPUS_DIR);
@@ -3099,6 +3223,8 @@ async function main() {
       const c = readCorpus(s.name);
       console.log('  ' + s.name.padEnd(17) + (c ? String(c.count).padStart(4) + ' sections on disk (' + c.anchored + ' anchored), scraped ' + c.scrapedAt.slice(0, 16) : 'not scraped'));
     }
+    const corpus = readAllCorpus();
+    console.log('editions: ' + JSON.stringify(editionCounts(corpus)) + '  (' + corpus.length + ' records; every record carries one)');
     return;
   }
   console.log('usage: node src/rules-corpus.mjs --scrape | --ingest | --stats | --prune [--source <name>] [--set rules|factions] [--dry-run]');

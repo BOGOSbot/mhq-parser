@@ -169,7 +169,8 @@ ok('a datasheet record opens the unit card', !!(dsCard && dsCard.card && dsCard.
 t('and the category says unit', dsCard.kind, 'datasheet');
 t('the record id keeps its corpus prefix', dsCard.id, dsRec.id);
 t('the CSV lookup gets the bare id, not the prefix', dsCard.card.name, buildUnitCard(dsRec.id.replace(/^datasheet#/, '')).name);
-const urRec = allRecords.find(r => r.kind === 'unitrules' && r.id === 'unitrules#' + dsRec.id.replace(/^datasheet#/, ''));
+const baseOf = id => String(String(id).split('#')[1] || '').split('~')[0];
+const urRec = allRecords.find(r => r.kind === 'unitrules' && baseOf(r.id) === baseOf(dsRec.id));
 ok('the keywords half of the same datasheet opens the same card', !!(urRec && recordCard(urRec.id, { corpora: bothHalves }).card) && recordCard(urRec.id, { corpora: bothHalves }).card.name === dsCard.card.name);
 const detRec = pickKind('detachment');
 const detCard = recordCard(detRec.id, { corpora: bothHalves });

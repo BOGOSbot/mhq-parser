@@ -11,13 +11,14 @@ import { fileURLToPath } from 'node:url';
 // shell around them is the caller's.
 //
 // The record named is datasheet#000000882 (Custodian Guard, Adeptus Custodes): a
-// datasheet with a card. Its duplicate-name sibling datasheet#000002532~1 is the
-// fallback half of the pair - 111 of the 3,052 card records have no CSV row and
-// must still come back as their text.
+// datasheet with a card. The second record is a detachment, a kind with no card
+// at all: it is the text half of the pair and must come back as its text.
+// (After the edition slice every card record in the corpus has a CSV row, so the
+// CSV-less fallback is exercised by cardFor in test-wiki-cards, not by a page.)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const REC = 'datasheet#000000882';
-const FALLBACK = 'datasheet#000002532~1';
+const FALLBACK = 'detachment#000000990';
 let pass = 0, fail = 0;
 function t(name, got, want) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
@@ -102,7 +103,7 @@ async function main() {
     const cardFrag = fragmentOf(fs.readFileSync(path.join(outDir, map[REC]), 'utf8'));
     ok('the datasheet renders as the card', cardFrag.indexOf('<section class="wcard"') === 0 && cardFrag.indexOf('<table') !== -1);
     const fallbackFrag = fragmentOf(fs.readFileSync(path.join(outDir, map[FALLBACK]), 'utf8'));
-    ok('and a duplicate-name id with no CSV row falls back to its text', fallbackFrag.slice(0, 18) === '<pre class="text">' && fallbackFrag.indexOf('<table') === -1);
+    ok('and a kind with no card renders as its text', fallbackFrag.slice(0, 18) === '<pre class="text">' && fallbackFrag.indexOf('<table') === -1);
     t('the route still answers JSON without the flag', (await request(port, '/rules/record?id=' + encodeURIComponent(REC))).headers['content-type'].indexOf('application/json'), 0);
     const json = JSON.parse((await request(port, '/rules/record?id=' + encodeURIComponent(REC))).body);
     ok('with the record shape it always had', json.ok === true && json.record && json.record.id === REC && typeof json.wiki === 'string');
@@ -152,7 +153,7 @@ async function main() {
     const indexJs = fs.readFileSync(path.join(outDir, 'shell-data.js'), 'utf8');
     const index = JSON.parse(indexJs.replace(/^window\.WIKI_TOC = /, '').replace(/;$/, ''));
     t('25 areas: Core Rules and the 24 factions', index.areas.length, 25);
-    t('and they partition the whole corpus', index.areas.reduce((n, a) => n + a.c, 0), 6705);
+    t('and they partition the whole corpus', index.areas.reduce((n, a) => n + a.c, 0), 7114);
     t('Core Rules first', index.areas[0].n, 'Core Rules');
     const areaFile = (name) => { const a = index.areas.find(x => x.n === name); return { a, data: JSON.parse(fs.readFileSync(path.join(outDir, a.f), 'utf8').replace(/^window\.WIKI_TOC_AREA = /, '').replace(/;$/, '')) }; };
     const cust = areaFile('Adeptus Custodes');

@@ -98,9 +98,10 @@ const records = all.map(r => ({
   text: String(r.text || ''), links: Array.isArray(r.links) ? r.links : [], parent: r.parent || '', children: Array.isArray(r.children) ? r.children : [],
   // url and faction are what the two-pane tree files a record by; anchor and
   // ruleId are what the Rules chapters are resolved by (the saved page outline),
-  // so the projection must carry them or the render's tree would drift from the
-  // tests'.
+  // and edition is what the faction filters consume, so the projection must
+  // carry them or the render's tree would drift from the tests'.
   url: r.url || '', faction: r.faction || '', anchor: r.anchor || '', ruleId: r.ruleId || '',
+  edition: r.edition == null ? '' : String(r.edition),
 }));
 
 // The tree data and the area of every record, computed once. Each record's area
@@ -317,8 +318,10 @@ for (const r of records) {
   }).join('') : '';
   // The datasheet and its unitrules twin are one page: the card already carries
   // the keywords and abilities, so the twin is a collapsed section, not a row.
-  const mergedId = tree.mergedOn.get(r.id);
-  const mergedHtml = (mergedId && byId.has(mergedId)) ? '<h2>Unit rules text (merged)</h2><details class="wsec"><summary>' + esc(leafOf(byId.get(mergedId))) + '</summary><div class="wsecbody">' + esc(String(byId.get(mergedId).text || '').slice(0, 4000)) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(mergedId)) + '">Open the merged record</a></p></details>' : '';
+  // One page per datasheet: the twin and any extra part of the same record are
+  // folded on as collapsed sections, not listed as units of their own.
+  const mergedList = (tree.mergedOn.get(r.id) || []).map(mid => byId.get(mid)).filter(Boolean);
+  const mergedHtml = mergedList.length ? '<h2>Merged records (' + mergedList.length + ')</h2>' + mergedList.map(x => '<details class="wsec"><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 4000)) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(x.id)) + '">Open the merged record</a></p></details>').join('') : '';
   const body = [
     topBar({}),
     '<main class="wrec">',

@@ -25,12 +25,13 @@ const bodyOf = (r, opts) => recordBody(r, Object.assign({ corpora, index, href }
 
 // --- the builder is the one builder -----------------------------------------
 const ds = byId.get('datasheet#000000882');   // Custodian Guard, the example page
-const ur = byId.get('unitrules#000000882');   // the same datasheet's keywords half
+const baseOf = id => String(String(id).split('#')[1] || '').split('~')[0];
+const ur = [...byId.values()].find(r => r.kind === 'unitrules' && baseOf(r.id) === baseOf('datasheet#000000882'));   // the same datasheet's keywords half
 const card = cardFor(ds, { corpora });
 t('the card builder resolves the datasheet', !!card, true);
 t('and it is the CSV card, not a second builder', [card.name, card.models.length > 0, card.ranged.length > 0, card.melee.length > 0], ['Custodian Guard', true, true, true]);
 t('a non-card kind has no card', cardFor(byId.get('stratagem#000000001') || { id: 'x', kind: 'stratagem' }, { corpora }), null);
-t('a card record with no CSV row falls back', cardFor(byId.get('datasheet#000002532~1'), { corpora }), null);
+t('a card record with no CSV row falls back', cardFor({ id: 'datasheet#999999999~1', kind: 'datasheet' }, { corpora }), null);
 t('the two card kinds are the two CSV halves', CARD_KINDS, ['datasheet', 'unitrules']);
 
 // --- the card ----------------------------------------------------------------

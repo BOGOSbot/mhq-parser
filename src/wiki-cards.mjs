@@ -99,7 +99,9 @@ export function cardFor(record, opts) {
   if (!record || CARD_KINDS.indexOf(record.kind) === -1) return null;
   const o = opts || {};
   if (typeof o.cardBuilder === 'function') return o.cardBuilder(record) || null;
-  const bare = String(record.id || '').replace(/^(?:datasheet|unitrules)#/, '');
+  // A record the importer split into parts keeps the CSV row's number plus a
+  // "~n" suffix; the card is the same card.
+  const bare = String(record.id || '').replace(/^(?:datasheet|unitrules)#/, '').replace(/~\d+$/, '');
   if (!bare) return null;
   try { return buildUnitCard(bare, { corpora: o.corpora || {} }) || null; } catch (e) { return null; }
 }
