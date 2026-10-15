@@ -888,8 +888,28 @@ function handleWiki(req, res, u) {
   if (abs !== root && !abs.startsWith(root + path.sep)) return fail(res, 404, 'not found');
   let body = null;
   try { body = fs.readFileSync(abs); } catch (e) { body = null; }
-  if (!body) return fail(res, 404, 'not in the wiki render: ' + rel);
+  if (!body) {
+    // The readable-URL rename: a page name we served in the wild (traces, docs,
+    // bookmarks) redirects to the record's new path rather than 404ing. Only
+    // delivered records are in the map, so a filtered record's old URL still
+    // 404s - the delivery rule is unchanged.
+    const to = legacyRedirect(rel);
+    if (to) { res.writeHead(301, { Location: '/wiki/' + to, 'Cache-Control': 'no-store' }); return res.end(); }
+    return fail(res, 404, 'not in the wiki render: ' + rel);
+  }
   return send(res, 200, body, WIKI_TYPES[path.extname(abs).toLowerCase()] || 'application/octet-stream');
+}
+
+// The redirect map the render writes (legacy.json), re-read when it changes so a
+// re-render is picked up without a restart. Small: one line per delivered page.
+let legacyCache = { at: 0, map: {} };
+function legacyRedirect(rel) {
+  try {
+    const file = path.join(WIKI_DIR, 'legacy.json');
+    const st = fs.statSync(file);
+    if (st.mtimeMs !== legacyCache.at) legacyCache = { at: st.mtimeMs, map: JSON.parse(fs.readFileSync(file, 'utf8')) || {} };
+    return legacyCache.map[rel] || '';
+  } catch (e) { return ''; }
 }
 
 // The wiki page for a record id, from the map the render writes beside its pages.

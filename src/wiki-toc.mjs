@@ -354,8 +354,25 @@ export const MISSION_PARTS = [
 // tree: the slug carries a hash only this function knows, so a second copy
 // would drift.
 function hash8(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+// pageSlug is the OLD name, kept only to build the redirect map: <kind>_<id>-<hash>
+// was served in the wild (traces, docs, bookmarks) and has to keep resolving.
 export function pageSlug(id) { return String(id).replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 60) + '-' + hash8(String(id)); }
-export function pageNamer(records) { const m = new Map(); for (const r of records) m.set(r.id, pageSlug(r.id) + '.html'); return m; }
+
+// The page a record gets now: readable first (its kind and its title), stable
+// last (the id hash keeps two records with the same title apart and keeps the URL
+// when a heading is edited). The old name led with the id, which says nothing.
+export function pageTitleSlug(record) {
+  const r = record || {};
+  // The heading's own leaf, not leafTitle's id fallback: an untitled record is
+  // named by its kind and the id hash, never by a positional id in the path.
+  const leaf = String(r.heading || '').split(' > ').filter(Boolean).pop() || '';
+  const slug = (String(r.kind || 'record') + '-' + cleanTitle(leaf))
+    .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/g, '');
+  return slug || 'record';
+}
+export function pageName(record) { return pageTitleSlug(record) + '-' + hash8(String((record && record.id) || '')) + '.html'; }
+export function pageNamer(records) { const m = new Map(); for (const r of records) m.set(r.id, pageName(r)); return m; }
 
 // The 24 factions, in the order the tree shows them, from the card tables. UA
 // (Unbound Adversaries) is not one of the 24 and is left out.
@@ -417,6 +434,11 @@ function detachmentName(r) {
 function leafTitle(r) {
   const path = String(r.heading || '').split(' > ').filter(Boolean);
   return path.length ? path[path.length - 1] : String(r.id);
+}
+// A record split into parts carries " (1/2)" in its title and a unitrules twin
+// carries " - keywords and abilities": both are markers, not names.
+export function cleanTitle(t) {
+  return String(t).replace(/\s*\(\d+\/\d+\)$/, '').replace(/\s*-\s*keywords and abilities(\s*\(\d+\/\d+\))?$/i, '');
 }
 
 // One rule for what an annotation is, in one place: a kind-rule record whose
@@ -528,9 +550,6 @@ export function tocTree(records, pageOf, opts) {
     }
     return out;
   };
-  // A record split into parts carries " (1/2)" in its title and a unitrules
-  // twin carries " - keywords and abilities": both are markers, not names.
-  const cleanTitle = t => String(t).replace(/\s*\(\d+\/\d+\)$/, '').replace(/\s*-\s*keywords and abilities(\s*\(\d+\/\d+\))?$/i, '');
   const ent = r => ({ i: r.id, t: cleanTitle(leafTitle(r)), f: pageOf.get(r.id) || '' });
 
   // --- Rules -> book -> chapter -> section ----------------------------------

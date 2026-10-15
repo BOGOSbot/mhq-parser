@@ -86,15 +86,19 @@ async function main() {
     t('/health still answers', health.status, 200);
     t('with its no-store policy', health.headers['cache-control'], 'no-store');
     ok('and its route counters still published', typeof JSON.parse(String(health.body)).route === 'object');
-    const wikiFile = path.join(ROOT, 'workspace', 'wiki-render', 'datasheet_000000882-rojyh.html');
-    if (fs.existsSync(wikiFile)) {
-      const wraw = await request(port, '/wiki/datasheet_000000882-rojyh.html', {});
-      const wbr = await request(port, '/wiki/datasheet_000000882-rojyh.html', { 'accept-encoding': 'gzip, br' });
+    // The readable URL the render now writes for this record, from its own map:
+    // the name is pinned by the render, not by this test.
+    let wikiName = '';
+    try { wikiName = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-render', 'map.json'), 'utf8'))['datasheet#000000882'] || ''; } catch (e) { wikiName = ''; }
+    if (wikiName) {
+      const wraw = await request(port, '/wiki/' + wikiName, {});
+      const wbr = await request(port, '/wiki/' + wikiName, { 'accept-encoding': 'gzip, br' });
       t('a wiki page compresses too', wbr.headers['content-encoding'], 'br');
       ok('and is smaller on the wire', wbr.body.length < wraw.body.length);
       t('with a validator', wraw.headers.etag === wbr.headers.etag, true);
       t('and a revalidating policy', wbr.headers['cache-control'], 'no-cache');
-      t('a wiki 304 works as well', (await request(port, '/wiki/datasheet_000000882-rojyh.html', { 'if-none-match': wbr.headers.etag })).status, 304);
+      t('a wiki 304 works as well', (await request(port, '/wiki/' + wikiName, { 'if-none-match': wbr.headers.etag })).status, 304);
+      t('and the readable name says what the page is', /^datasheet-[a-z0-9-]+-[a-z0-9]{4,8}\.html$/.test(wikiName), true);
     }
 
     // --- the stream is not touched --------------------------------------------

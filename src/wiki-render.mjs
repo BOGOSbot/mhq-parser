@@ -19,7 +19,7 @@ import { readAllCorpus } from './rules-corpus.mjs';
 import { renderLinks } from './wiki-plan.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
 import { SHELL_CSS, shellHead, topBar } from './wiki-shell.mjs';
-import { TOC_CSS, TOC_JS, tocData, tocIndex, tocTree, pageNamer, factionRoster, factionAssigner, allianceAssigner, isAnnotation } from './wiki-toc.mjs';
+import { TOC_CSS, TOC_JS, tocData, tocIndex, tocTree, pageNamer, pageSlug, factionRoster, factionAssigner, allianceAssigner, isAnnotation } from './wiki-toc.mjs';
 import { cardTables } from './unit-card.mjs';
 
 const OUT = process.env.WIKI_RENDER_DIR || path.join('workspace', 'wiki-render');
@@ -444,7 +444,7 @@ for (const id of writtenIds) noteKeep(pageOf.get(id));
 for (const p of tree.pages) noteKeep(p.f);
 for (const f of Object.keys(tree.files)) noteKeep(f);
 noteKeep('tree/index.js');
-for (const f of ['wiki.css', 'card.css', 'shell.css', 'shell.js', 'shell-data.js', 'index.html', 'search.html', 'anomalies.html', 'home.html', 'map.json', 'render.json']) noteKeep(f);
+for (const f of ['wiki.css', 'card.css', 'shell.css', 'shell.js', 'shell-data.js', 'index.html', 'search.html', 'anomalies.html', 'home.html', 'map.json', 'render.json', 'legacy.json']) noteKeep(f);
 for (const a of toc.areas) noteKeep(a.f);
 // hash8() is FNV-1a in base36, unpadded: 4 to 8 characters. Matching that is
 // what keeps a hand-authored "keep-me.html" (2) out of the sweep.
@@ -478,6 +478,12 @@ console.log('  emptiest              ' + (emptiest[0] ? emptiest[0].chars + 'c '
 // The pass writes its own numbers beside the pages, so the diagnostics surface
 // reads one file instead of scraping stdout: how many pages, and what the last
 // pass pruned. Written last, so it describes a finished pass.
+// The readable-URL rename leaves the old hashed names in the wild, so the pass
+// writes the one-way map the server redirects with. Delivered records only: a
+// filtered record's old URL has no new page and keeps its 404.
+const legacy = {};
+for (const id of writtenIds) legacy[pageSlug(id) + '.html'] = pageOf.get(id);
+fs.writeFileSync(path.join(OUT, 'legacy.json'), JSON.stringify(legacy) + '\n');
 fs.writeFileSync(path.join(OUT, 'render.json'), JSON.stringify({
   writtenAt: new Date().toISOString(),
   records: written,
