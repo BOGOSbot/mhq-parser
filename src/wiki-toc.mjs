@@ -309,7 +309,7 @@ export default { TOC_CSS, TOC_JS, tocData, tocIndex, tocTree, wikiTree, pageName
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readAllCorpus } from './rules-corpus.mjs';
+import { readAllCorpus, isDelivered } from './rules-corpus.mjs';
 import { cardTables } from './unit-card.mjs';
 
 // Alliances come from the cards' own faction keyword: IMPERIUM on the Imperium
@@ -791,10 +791,11 @@ export function tocTree(records, pageOf, opts) {
   //    contributes nothing the page does not already show; it is kept on the
   //    page as a collapsed section, not as a row. A unitrules with no datasheet
   //    stays a unit of its own.
-  //  - one faction rule is the 10th-edition Strands of Fate, dropped by id: the
-  //    corpus puts no edition marker on any of its 63 faction rules.
-  const LEGACY = r => String(r.edition == null ? '' : r.edition) === '0';
-  const TENTH_EDITION = new Set(['faction-rule#000008445']);
+  //  - the 10th-edition Strands of Fate is dropped by id inside that predicate
+  //    (the corpus puts no edition marker on any of its 63 faction rules).
+  // ONE predicate for "does this record exist in the product" (rules-corpus.mjs):
+  // the index build and the render read the same one, so neither re-derives it.
+  const LEGACY = r => !isDelivered(r);
   const byFaction = new Map();
   const excludedIds = [];
   for (const r of records) {
@@ -825,10 +826,7 @@ export function tocTree(records, pageOf, opts) {
       // Army rules: the faction-rule records and the "Detachment: Army Rules"
       // stratagems, collected on one synthetic page with no subsection beneath.
       const rules = [];
-      for (const r of inScope.filter(r => r.kind === 'faction-rule').sort(sorter)) {
-        if (TENTH_EDITION.has(r.id)) { filteredIds.push(r.id); continue; }
-        rules.push(r);
-      }
+      for (const r of inScope.filter(r => r.kind === 'faction-rule').sort(sorter)) rules.push(r);
       const detGroups = new Map();
       for (const d of inScope.filter(r => r.kind === 'detachment')) {
         const n = stripSuffix(d.heading);

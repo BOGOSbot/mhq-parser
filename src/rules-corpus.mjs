@@ -789,6 +789,41 @@ export function editionCounts(sections) {
   return c;
 }
 
+// --- one predicate for "does this record exist in the product" ----------------
+// Delivered means the render will give it a page and the index may return it.
+// Two things are filtered: edition 0 (the Legends / Forge World line, stamped by
+// the join above) and the one named tenth-edition faction rule. The tree, the
+// index build, the prune and the query path all read this one predicate; no side
+// re-derives it. Index stubs are counted navigation, not filtered content, so
+// they are delivered.
+export const TENTH_EDITION_RULE_IDS = new Set(['faction-rule#000008445']);
+export function isDelivered(record) {
+  if (!record) return false;
+  if (String(record.edition == null ? '' : record.edition) === '0') return false;
+  return !TENTH_EDITION_RULE_IDS.has(String(record.id || ''));
+}
+
+export function deliveredSections(sections) {
+  return (sections || []).filter(isDelivered);
+}
+
+// The delivered ids of the corpus on disk, cached: the query path asks once per
+// process, and a test that mutates the corpus uses isDelivered/deliveredSections.
+let DELIVERED_IDS = null;
+export function deliveredIds() {
+  if (!DELIVERED_IDS) DELIVERED_IDS = new Set(readAllCorpus().filter(isDelivered).map(r => String(r.id)));
+  return DELIVERED_IDS;
+}
+
+// The second line of defence: a hit whose id the product does not deliver is
+// dropped even if it is still in the index (a stale vector between an ingest and
+// a prune, or a hand-run upsert). The first line is the ingest skipping it.
+export function deliveredHits(hits) {
+  const ids = deliveredIds();
+  return (hits || []).filter(h => ids.has(String((h && h.id) || '')));
+}
+
+
 // One record per thing a reader could be shown. A datasheet is assembled from
 // six tables because that is how the export splits it; the reader wants the
 // datasheet, not the sixth of it that happens to live in one file.
@@ -1043,6 +1078,18 @@ export function writeCorpus(name, payload) {
 export function readCorpus(name) {
   try { return JSON.parse(fs.readFileSync(corpusPath(name), 'utf8')); }
   catch { return null; }
+}
+
+// The same payload with its editions stamped. They are computed at read time
+// (the wiki shape drops fields it does not know), so a planner that reads the
+// JSON raw sees edition '' and would treat every record as delivered. The index
+// build and the prune read through here; the render reads through readAllCorpus.
+export function readCorpusStamped(name) {
+  const c = readCorpus(name);
+  if (!c || !Array.isArray(c.sections)) return c;
+  const fallback = c.marker && /^\d+$/.test(String(c.marker.edition)) ? String(c.marker.edition) : '11';
+  assignEditions(c.sections, fallback);
+  return c;
 }
 
 export function readAllCorpus(setName) {
@@ -2842,7 +2889,10 @@ export async function indexInfo(cfg) {
 }
 
 export async function queryIndex(question, opts) {
-  if (VECTOR_BACKEND === 'local') return queryIndexLocal(question, opts);
+  // includeFiltered is a diagnostic escape hatch (a before/after on the index's own
+  // contents); the product path always returns through deliveredHits.
+  const rawHits = !!(opts && opts.includeFiltered);
+  if (VECTOR_BACKEND === 'local') { const h = await queryIndexLocal(question, opts); return rawHits ? h : deliveredHits(h); }
   const cfg = (opts && opts.cfg) || vectorConfig();
   const ns = (opts && opts.namespace) || '';
   // A hybrid index embeds the raw text with both halves and fuses them with RRF
@@ -2868,7 +2918,8 @@ export async function queryIndex(question, opts) {
   if (o.weightingStrategy) body.weightingStrategy = o.weightingStrategy;
   const r = await vectorRequest(cfg, '/query-data' + (ns ? '/' + ns : ''), body);
   if (r.status !== 200) throw new Error('query failed: HTTP ' + r.status + ' ' + r.text.slice(0, 200));
-  return r.obj.result || [];
+  const hits = r.obj.result || [];
+  return rawHits ? hits : deliveredHits(hits);
 }
 
 // Upsert in batches: the REST endpoint takes an array, and a 1500-section
@@ -2965,8 +3016,11 @@ export async function pruneIndex(opts) {
     const known = new Set();
     for (const s of sourcesFor(setName)) {
       if (namespaceFor(s.set) !== ns) continue;
-      const payload = readCorpus(s.name);
-      for (const sec of (payload && payload.sections) || []) known.add(sec.id);
+      const payload = readCorpusStamped(s.name);
+      // The prune's idea of what the corpus holds is the delivered set, not the
+      // corpus: a filtered record is a stray here, which is how the 1,040 that
+      // were embedded before this predicate existed get removed.
+      for (const sec of deliveredSections(payload && payload.sections)) known.add(sec.id);
     }
     const present = await rangeIds(ns, o.cfg, o);
     const strays = present.filter(id => !known.has(id));
@@ -3001,7 +3055,7 @@ export async function ingest(only, opts) {
   const list = only ? sourcesFor(setName).filter(s => s.name === only) : sourcesFor(setName);
   const report = { upserted: 0, unchanged: 0, deleted: 0, sources: [] };
   for (const source of list) {
-    const payload = readCorpus(source.name);
+    const payload = readCorpusStamped(source.name);
     if (!payload) { report.sources.push({ source: source.name, skipped: 'no corpus on disk' }); continue; }
     const stateFile = path.join(CORPUS_DIR, source.name + '.index.json');
     let state = {};
@@ -3015,18 +3069,24 @@ export async function ingest(only, opts) {
     // Only what moved. An upsert replaces the vectors of the ids it names and
     // touches nothing else, and a delete is issued only for ids that really
     // left the corpus - a rebuild never wipes the index to rebuild it.
-    const changed = payload.sections.filter(s => state[s.id] !== s.hash);
-    const currentIds = new Set(payload.sections.map(s => s.id));
+    // The index answers for the product: only delivered records are planned, and
+    // a filtered id already in the state becomes a vanish, so one ingest removes
+    // what an earlier one embedded. The render reads the same predicate.
+    const sections = deliveredSections(payload.sections);
+    const filtered = payload.sections.length - sections.length;
+    report.filtered = (report.filtered || 0) + filtered;
+    const changed = sections.filter(s => state[s.id] !== s.hash);
+    const currentIds = new Set(sections.map(s => s.id));
     const vanished = Object.keys(state).filter(id => !currentIds.has(id));
     const ns = namespaceFor(source.set);
-    const unchanged = payload.sections.length - changed.length;
+    const unchanged = sections.length - changed.length;
     const guard = massDeleteGuard(ns + ' (' + source.name + ')', vanished.length, Object.keys(state).length);
     if (guard) {
       if (dryRun) { report.guard = report.guard || []; report.guard.push(guard); }
       else if (!(opts && opts.allowMassDelete)) throw new Error(guard);
     }
     if (dryRun) {
-      report.sources.push({ source: source.name, sections: payload.sections.length, upserted: 0, deleted: 0, unchanged, planned: changed.length, vanishedPlanned: vanished.length, rebuild: ledger.length + 1, dryRun: true });
+      report.sources.push({ source: source.name, sections: sections.length, filtered, upserted: 0, deleted: 0, unchanged, planned: changed.length, vanishedPlanned: vanished.length, rebuild: ledger.length + 1, dryRun: true });
       report.upserted += 0;
       report.unchanged += unchanged;
       report.planned = (report.planned || 0) + changed.length;
@@ -3035,14 +3095,14 @@ export async function ingest(only, opts) {
     const upserted = await upsertSections(changed, { cfg, namespace: ns, onProgress: opts && opts.onProgress });
     const deleted = await deleteIds(vanished, cfg, ns);
     const next = {};
-    for (const s of payload.sections) next[s.id] = s.hash;
+    for (const s of sections) next[s.id] = s.hash;
     fs.writeFileSync(stateFile, JSON.stringify(next));
-    ledger.push({ rebuild: ledger.length + 1, at: new Date().toISOString(), backend: VECTOR_BACKEND, sections: payload.sections.length, upserted, deleted, unchanged });
+    ledger.push({ rebuild: ledger.length + 1, at: new Date().toISOString(), backend: VECTOR_BACKEND, sections: sections.length, filtered, upserted, deleted, unchanged });
     fs.writeFileSync(ledgerPath, JSON.stringify(ledger, null, 1));
     report.upserted += upserted;
     report.unchanged += unchanged;
     report.deleted += deleted;
-    report.sources.push({ source: source.name, sections: payload.sections.length, upserted, deleted, unchanged, rebuild: ledger.length });
+    report.sources.push({ source: source.name, sections: sections.length, filtered, upserted, deleted, unchanged, rebuild: ledger.length });
   }
   // The retention sweep rides the monthly ingest: the corpus is refreshed on a
   // cadence, so the raw traces past their retention go at the same time and the
@@ -3164,6 +3224,7 @@ async function main() {
     }
     for (const g of (r.guard || [])) console.log((dryRun ? 'GUARD ' : '') + g);
     console.log(dryRun ? 'would upsert ' + (r.planned || 0) : 'total upserted ' + r.upserted + ', deleted ' + r.deleted);
+    console.log('filtered (never indexed): ' + (r.filtered || 0));
     const tr = r.traces || {};
     console.log('traces     ' + String(tr.files || 0).padStart(5) + ' file(s), ' + String(tr.kept || 0).padStart(5) + ' kept, ' + String(tr.removed || 0).padStart(3) + ' past ' + (tr.months || TRACE_RETENTION_MONTHS) + ' months' + (dryRun ? '  (dry run - nothing deleted)' : (tr.deleted && tr.deleted.length ? '  files removed: ' + tr.deleted.join(', ') : '')));
     return;
@@ -3225,6 +3286,20 @@ async function main() {
       console.log('  ' + s.name.padEnd(17) + (c ? String(c.count).padStart(4) + ' sections on disk (' + c.anchored + ' anchored), scraped ' + c.scrapedAt.slice(0, 16) : 'not scraped'));
     }
     const corpus = readAllCorpus();
+    const delivered = corpus.filter(isDelivered);
+    const byNamespace = {};
+    for (const r of delivered) { const ns = namespaceFor(r.set); byNamespace[ns] = (byNamespace[ns] || 0) + 1; }
+    // The ids a query can return are the provable count; /info's vectorCount can
+    // lag a delete by a moment, so it is printed beside them, not instead of them.
+    let indexed = 0;
+    if (VECTOR_BACKEND === 'local') {
+      indexed = ['rules', 'factions'].reduce((n, ns) => n + localLoad(ns).meta.ids.length, 0);
+    } else {
+      for (const ns of ['rules', 'factions']) indexed += (await rangeIds(ns)).length;
+      if (indexed !== info.vectorCount) console.log('index ids read now: ' + indexed + ' (info says ' + info.vectorCount + ', it lags a delete)');
+    }
+    console.log('records: ' + corpus.length + ' corpus, ' + delivered.length + ' delivered ' + JSON.stringify(byNamespace) + ', ' + (corpus.length - delivered.length) + ' filtered (edition 0 or the named tenth-edition rule)');
+    console.log('index ids: ' + indexed + ' vs ' + delivered.length + ' delivered  ' + (indexed === delivered.length ? 'MATCH' : 'MISMATCH'));
     console.log('editions: ' + JSON.stringify(editionCounts(corpus)) + '  (' + corpus.length + ' records; every record carries one)');
     return;
   }
