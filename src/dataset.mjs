@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readAllCorpus } from './rules-corpus.mjs';
+import { readAllCorpus, writerEnabled } from './rules-corpus.mjs';
 
 // The heading's own leaf, the name a reader would recognise.
 function leafOf(heading) {
@@ -17,17 +17,26 @@ function leafOf(heading) {
 //   { id, q, answer, gold, how, edition, date, source, url, split, verifier }
 //
 // how is the labeller that made the gold, in precision order:
-//   vote  - the reader's own pick ('This one answers it'), already perfect;
-//   title - rule names the answerer writes, matched against the corpus with the
-//           leaf suffix stripped and sibling records collapsed into one group;
-//   judge - the passages the answer cites, high recall but CIRCULAR (it can only
-//           cite what the retriever showed it), so it is marked and never eval;
-//   manual - a human wrote it (the bank's curation).
-// Do NOT revive the two measured-and-rejected approaches: naive leaf-title
-// matching (20/68, false hits) and 6-gram shingle overlap (26/68 at 2-3%
-// coverage). They are recorded in workspace/dataset-probe*.tmp.mjs.
+//   vote      - the reader's own pick ('This one answers it'), already perfect;
+//   title     - rule names the answerer writes, matched against the corpus with
+//               the leaf suffix stripped and siblings collapsed into one group;
+//   judge     - the passages the answer cites, high recall but CIRCULAR (it can
+//               only cite what the retriever showed it), so it is marked and
+//               never used for eval;
+//   generated - the question was written FROM the record, so the gold is true by
+//               construction and non-circular; train-only, never eval;
+//   manual    - a human wrote it (the bank's curation).
+// Two approaches were measured and rejected and must not be revived: naive
+// leaf-title matching (fires on generic structural headings) and 6-gram shingle
+// overlap (coverage too thin to be a label). tests/dataset-probe.mjs is the
+// tracked script that reproduces both on the traces we hold; run it before
+// proposing either again.
 export const SCHEMA_KEYS = ['id', 'q', 'answer', 'gold', 'how', 'edition', 'date', 'source', 'url', 'split'];
-export const HOW = ['vote', 'title', 'judge', 'manual'];
+export const HOW = ['vote', 'title', 'judge', 'generated', 'manual'];
+// Tiers that are train-only: a judge label is circular, a generated label is true
+// by construction because the question was written from the record. Neither may
+// be used to score us.
+export const TRAIN_ONLY_HOW = ['judge', 'generated'];
 export const SPLITS = ['train', 'eval'];
 
 export function questionRecord(o) {
@@ -55,7 +64,7 @@ export function validateRecord(r) {
   if (HOW.indexOf(r.how) === -1) problems.push('bad how');
   if (SPLITS.indexOf(r.split) === -1) problems.push('bad split');
   for (const g of r.gold) if (!g.length) problems.push('empty gold group');
-  if (r.split === 'eval' && r.how === 'judge') problems.push('a judge label cannot be eval');
+  if (r.split === 'eval' && TRAIN_ONLY_HOW.indexOf(r.how) !== -1) problems.push('a ' + r.how + ' label cannot be eval');
   return problems;
 }
 
@@ -88,8 +97,10 @@ export function titleCandidates(corpus) {
     // A named rule, not a structural chapter: requiring a ruleId is what keeps
     // 'Movement Phase' and 'Engagement' - headings a reader would never write as
     // the name of the rule that answers them - out of the candidate set. The
-    // measured difference: naive leaf matching fires on 77 of 113 answers with a
-    // median of 5 groups; this fires on 50 with a median of 2.
+    // measured difference on the traces we hold (113 traces, 49 distinct
+    // questions): naive leaf matching labels 77 traces with a median of 5 groups;
+    // this labels 37 traces / 15 distinct questions. `node src/dataset.mjs` is
+    // the printed truth.
     if (!r.ruleId) continue;
     const t = strippedTitle(r.heading);
     if (!t) continue;
@@ -184,27 +195,96 @@ export function readTraces(dir) {
   return out;
 }
 
+// The same question asked six times is ONE question. A yield counted per trace
+// weights it six times and overstates the harvest - measured, 113 traces are 49
+// distinct questions, so '37 of 113' is really '15 of 49'. Every report carries
+// both: the trace-level yield (what the labellers did) and the distinct-level
+// yield (what we would actually harvest), with the ask count recorded.
+export function normalizeQuestion(q) {
+  return String(q || '').toLowerCase().replace(/[^a-z0-9\u00e0-\u00ff]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+export function labelOf(trace, candidates) {
+  const v = labelVote(trace);
+  const ti = v ? null : labelTitle(trace.answer, candidates);
+  const j = (v || ti) ? null : labelJudge(trace);
+  return v || ti || j;
+}
+
+const REFUSAL = /\*\*I do not know/i;
+
 export function yieldReport(traces, corpus) {
   const candidates = titleCandidates(corpus);
-  const tiers = { vote: 0, title: 0, judge: 0, none: 0 };
+  const tiers = { vote: 0, title: 0, judge: 0, generated: 0, none: 0 };
   const titleGroups = [];
-  const hows = {};
   for (const t of traces) {
-    const v = labelVote(t);
-    const ti = v ? null : labelTitle(t.answer, candidates);
-    const j = (v || ti) ? null : labelJudge(t);
-    const label = v || ti || j;
-    if (!label) tiers.none += 1;
-    else tiers[label.how] += 1;
-    if (ti) titleGroups.push(ti.gold.length);
-    hows[t.how || '?'] = (hows[t.how || '?'] || 0) + 1;
+    const label = labelOf(t, candidates);
+    tiers[label ? label.how : 'none'] += 1;
+    if (label && label.how === 'title') titleGroups.push(label.gold.length);
   }
-  return { total: traces.length, tiers, titleGroups, candidates: candidates.size, modes: hows };
+  // Distinct level: the best label any of a question's traces got, so a duplicate
+  // cannot inflate the count and a single good trace is not lost.
+  const groups = new Map();
+  for (const t of traces) {
+    const k = normalizeQuestion(t.question);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(t);
+  }
+  const RANK = ['vote', 'title', 'judge', 'generated'];   // precision order
+  const distinct = { vote: 0, title: 0, judge: 0, generated: 0, none: 0 };
+  const asks = [];
+  for (const list of groups.values()) {
+    let best = null;
+    for (const t of list) {
+      const l = labelOf(t, candidates);
+      if (l && (best === null || RANK.indexOf(l.how) < RANK.indexOf(best.how))) best = l;
+    }
+    distinct[best ? best.how : 'none'] += 1;
+    asks.push(list.length);
+  }
+  // Why the none bucket is big. It is not the labellers: the title tier reads the
+  // answer's prose and the judge tier reads its citations, and the writer is OFF by
+  // default, so most none traces carry no answer text at all (while still carrying
+  // findings a human could label).
+  const none = traces.filter(t => !labelOf(t, candidates));
+  const noneReasons = {
+    emptyAnswer: none.filter(t => !String(t.answer || '').trim()).length,
+    refusal: none.filter(t => REFUSAL.test(String(t.answer || ''))).length,
+    withFindings: none.filter(t => (t.findings || []).length > 0).length,
+  };
+  const noneQuestions = [...groups.keys()].filter(k => groups.get(k).every(t => !labelOf(t, candidates)));
+  const noAnswer = k => groups.get(k).every(t => !String(t.answer || '').trim());
+  const hasFindings = k => groups.get(k).some(t => (t.findings || []).length > 0);
+  const distinctNone = {
+    questions: noneQuestions.length,
+    noAnswerAnywhere: noneQuestions.filter(noAnswer).length,
+    noAnswerAnywhereWithFindings: noneQuestions.filter(k => noAnswer(k) && hasFindings(k)).length,
+    withFindings: noneQuestions.filter(hasFindings).length,
+  };
+  const dupes = [...groups.values()].map(l => l.length).filter(n => n > 1);
+  return {
+    total: traces.length, candidates: candidates.size, tiers, distinct, titleGroups, noneReasons, distinctNone,
+    asks: { questions: groups.size, max: asks.length ? Math.max(...asks) : 0, duplicated: dupes.length, extraTraces: dupes.reduce((n, x) => n + (x - 1), 0) },
+  };
 }
 
 if (process.argv[1] && path.basename(process.argv[1]) === 'dataset.mjs') {
   const corpus = readAllCorpus();
   const traces = readTraces();
   const r = yieldReport(traces, corpus);
-  console.log(JSON.stringify({ traces: r.total, titleCandidates: r.candidates, yield: r.tiers, titleLabelGroups: r.titleGroups.length, modes: r.modes }, null, 2));
+  console.log(JSON.stringify({
+    traces: r.total,
+    distinctQuestions: r.asks.questions,
+    titleCandidates: r.candidates,
+    yieldTraceLevel: r.tiers,
+    yieldDistinctLevel: r.distinct,
+    titleLabelGroups: r.titleGroups.length,
+    duplicateAsks: { duplicatedQuestions: r.asks.duplicated, extraTraces: r.asks.extraTraces, maxAskCount: r.asks.max },
+    noneBecause: r.noneReasons,
+    distinctNone: r.distinctNone,
+    // The cause behind the none bucket: with the writer off there is no prose for
+    // the title tier and no citations for the judge tier, so findings alone cannot
+    // be labelled. This is a one-line default, not a labeller limit.
+    writerEnabledByDefault: writerEnabled(undefined, undefined),
+  }, null, 2));
 }

@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readAllCorpus } from '../src/rules-corpus.mjs';
+import { readAllCorpus, writerEnabled } from '../src/rules-corpus.mjs';
 import {
   SCHEMA_KEYS, questionRecord, validateRecord, strippedTitle, titleCandidates,
-  labelVote, labelTitle, labelJudge, labelTrace, harvestRow, bankRow, readTraces, yieldReport,
+  HOW, normalizeQuestion, labelVote, labelTitle, labelJudge, labelTrace, harvestRow, bankRow, readTraces, yieldReport,
 } from '../src/dataset.mjs';
 
 // task-32: one schema for every harvested question, the answer as a field and
@@ -61,12 +61,35 @@ t('the bank is the eval split with its expect as gold', [evalRow.split, evalRow.
 t('a harvest is the train split', harvestRow({ id: 't1', question: 'q', answer: '', findings: [] }, sib).split, 'train');
 ok('the bank is curated, not model-labelled', bank.every((q, i) => bankRow(q, i).how === 'manual'));
 
-// --- the measured yield on the real traces we hold ----------------------------
+// --- generated is its own tier, and train-only --------------------------------
+ok('generated is a valid tier', HOW.indexOf('generated') !== -1);
+const gen = questionRecord({ id: 'g/1', q: 'q', answer: '', gold: [['x']], how: 'generated', split: 'train' });
+ok('a generated label validates on train', validateRecord(gen).length === 0);
+ok('a generated label cannot be eval', validateRecord(questionRecord({ id: 'g/2', q: 'q', gold: [['x']], how: 'generated', split: 'eval' })).some(p => /generated label cannot be eval/.test(p)));
+
+// --- the yield reports distinct questions, not repeated asks -------------------
+t('normalizing collapses case and punctuation', normalizeQuestion('Donne-moi le profil de Fuegan!'), normalizeQuestion('donne moi le profil de fuegan'));
 const traces = readTraces();
 const rep = yieldReport(traces, corpus);
-t('the ladder accounts for every trace', rep.tiers.vote + rep.tiers.title + rep.tiers.judge + rep.tiers.none, traces.length);
+t('the ladder accounts for every trace', rep.tiers.vote + rep.tiers.title + rep.tiers.judge + rep.tiers.generated + rep.tiers.none, traces.length);
+t('the ladder accounts for every distinct question', rep.distinct.vote + rep.distinct.title + rep.distinct.judge + rep.distinct.generated + rep.distinct.none, rep.asks.questions);
+ok('distinct questions are fewer than traces here (the duplicates are real)', rep.asks.questions < rep.total && rep.asks.duplicated > 0);
+t('every trace is inside a distinct question group', rep.asks.questions + rep.asks.extraTraces, rep.total);
 t('no harvested trace is labelled by the reader yet', rep.tiers.vote, 0);
 ok('the title tier is the one that scales offline', rep.tiers.title > rep.tiers.vote && rep.tiers.title > 0);
+ok('the distinct-level title count is not the trace-level one', rep.distinct.title !== rep.tiers.title);
+
+// --- the none bucket is explained, and it is the writer being off --------------=
+ok('the report says why none is large', rep.noneReasons.emptyAnswer > 0 && rep.noneReasons.refusal > 0 && rep.noneReasons.withFindings > 0);
+ok('and carries the distinct-level picture', rep.distinctNone.questions > 0 && rep.distinctNone.noAnswerAnywhere > 0 && rep.distinctNone.noAnswerAnywhereWithFindings > 0);
+t('the writer is off by default, which is the cause', writerEnabled(undefined, undefined), false);
+
+// --- no dead paths, no unreproducible ratios ----------------------------------
+const src = fs.readFileSync(path.join(ROOT, 'src', 'dataset.mjs'), 'utf8');
+ok('the comment cites the tracked probe, which exists', src.indexOf('tests/dataset-probe.mjs') !== -1 && fs.existsSync(path.join(ROOT, 'tests', 'dataset-probe.mjs')));
+ok('no dead workspace probe path is cited', src.indexOf('workspace/dataset-probe') === -1);
+ok('no unreproducible ratio is quoted', src.indexOf('20/68') === -1 && src.indexOf('26/68') === -1);
+ok('the stale 50 figure is gone', src.indexOf('fires on 50') === -1);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
