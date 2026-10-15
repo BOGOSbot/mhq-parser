@@ -28,7 +28,13 @@ ok('the index renders as a card row', js.indexOf('wccards') !== -1 && js.indexOf
 // task-61: the cards ARE the entries - the row holds the current level's nodes and
 // records, and the old .wcrow list is gone from the pane (the pane is the
 // expansion surface only).
-ok('the card row holds the entries, not only the path', js.indexOf('entryCards(col, current())') !== -1 && js.indexOf('function entryCards(') !== -1 && js.indexOf('function nodeCard(') !== -1 && js.indexOf('function recCard(') !== -1);
+// The split Mandal asked for: the top bar is the INDEX (path cards only), the
+// BODY carries the current level's choices. Task-61 had it the other way round and
+// left the body empty at every non-leaf, which is the regression this pins shut.
+ok('the top bar carries the path, not the entries', js.indexOf('entryCards(pane, current())') !== -1 && js.indexOf('entryCards(col, current())') === -1);
+ok('the body entries are built by the same builders', js.indexOf('function entryCards(') !== -1 && js.indexOf('function nodeCard(') !== -1 && js.indexOf('function recCard(') !== -1);
+ok('the body is never blank even when a node has nothing', js.indexOf('Nothing under this node') !== -1);
+ok('the body rows are styled apart from the path pills', TOC_CSS.indexOf('#wcpane .wccard{') !== -1);
 ok('the old row list is gone', js.indexOf('wcrow') === -1 && js.indexOf('level(current())') === -1);
 ok('a 0x chapter is a non-clickable label, not a card', js.indexOf('wclabel') !== -1 && js.indexOf('test(String(k.n))') !== -1 && js.indexOf('nodeCard(k)') !== -1);
 ok('the expansion walks the child files', js.indexOf('function collectRecords(') !== -1 && js.indexOf('collectRecords(files[i], acc, seen, fin)') !== -1);

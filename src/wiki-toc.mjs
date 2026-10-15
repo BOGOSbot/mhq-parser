@@ -52,6 +52,11 @@ export const TOC_CSS = [
   // task-53/54: the index is a card row in the bar, and a cutoff entry expands
   // its full text in the pane instead of navigating to a page.
   '.wccards{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;border-bottom:1px solid var(--w-line);background:var(--w-panel)}',
+  // The path row keeps the pills; the body entries are full-width ROWS (Mandal:
+  // choices belong in the body). One class, two contexts.
+  '#wcpane{display:flex;flex-direction:column;gap:4px;padding:8px 10px}',
+  '#wcpane .wccard{width:100%;justify-content:space-between;text-align:left;border-radius:10px;padding:8px 11px}',
+  '#wcpane .wclabel{margin-top:6px}',
   '.wccard{flex:0 0 auto;border:1px solid var(--w-line);background:var(--w-panel2);color:var(--w-dim);border-radius:999px;padding:6px 11px;font:12px system-ui;cursor:pointer;white-space:nowrap}',
   '.wccard.on{color:var(--w-txt);border-color:var(--w-acc);font-weight:700}',
   '.wccut{margin-left:6px;color:var(--w-acc)}',
@@ -183,13 +188,12 @@ export const TOC_JS = [
   '      cr.appendChild(el("span", "wcn", levels[i].n));',
   '      col.appendChild(cr);',
   '    }',
-  // The cards ARE the entries: the row lists what is under the current node, a 0x
-  // chapter shown as a non-clickable group label with its children in its place.
-  // The pane is the expansion surface only - the old row list is gone.
-  '    entryCards(col, current());',
-  '    pane.textContent = "";',
+  // The top bar is the INDEX: path cards only. The BODY carries the current
+  // level's choices, so no level is ever an empty pane (task-61's brief put the
+  // entries in the bar and left the body blank at every non-leaf).
+  '    pane.textContent = ""; entryCards(pane, current()); if (!pane.childNodes.length) pane.appendChild(el("div", "wcempty", "Nothing under this node."));',
   '    if (expandedF && path.length && path[path.length - 1].f === expandedF) renderExpanded(current());',
-  '    if (hereId) { var hr = col.querySelector(".wccard.here"); if (hr && hr.scrollIntoView) hr.scrollIntoView({ block: "center" }); }',
+  '    if (hereId) { var hr = pane.querySelector(".wccard.here") || col.querySelector(".wccard.here"); if (hr && hr.scrollIntoView) hr.scrollIntoView({ block: "center" }); }',
   '  }',
   '  function nodeCard(k) {',
   '    var r = el("button", "wccard" + (k.cut ? " cut" : ""));',
@@ -302,12 +306,12 @@ export const TOC_JS = [
   '  }',
   '  function renderExpanded(node) {',
   '    var pane = document.getElementById("wcpane"); if (!pane) return;',
-  '    pane.textContent = "";',
+  '',
   '    pane.appendChild(el("div", "wcexpand", "Loading this entry\u2026"));',
   '    var acc = [], seen = {}, file = (node && node.f) || expandedF;',
   '    if (file) seen[file] = 1;',
   '    collectRecords(file, acc, seen, function () {',
-  '      pane.textContent = "";',
+  '  ',
   '      pane.appendChild(el("div", "wcexpand", acc.length + " record(s) in this entry, opened here. The record pages are one click away."));',
   '      var shown = acc.slice(0, 12), i;',
   '      for (i = 0; i < shown.length; i++) {',
