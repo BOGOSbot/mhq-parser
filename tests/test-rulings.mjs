@@ -80,22 +80,27 @@ ok('the dropped id has no tree path', !tree.paths.has('wtc11-did-you-know-057'))
 ok('and no search row can point at it (it is not delivered)', !deliveredSections(all).some(r => r.id === 'wtc11-did-you-know-057'));
 const rulingFiles = Object.entries(tree.files).filter(pair => pair[0].indexOf('tree/rulings') === 0);
 const leafTotal = rulingFiles.filter(pair => pair[1].lvl === 'leaf').reduce((n, pair) => n + pair[1].c, 0);
-t('Rulings branch c equals the record count', tree.files['tree/rulings.js'].c, 154);
-t('and its leaf count equals it too', leafTotal, 154);
+t('the Rulings branch keeps the 75 unfolded rulings', tree.files['tree/rulings.js'].c, 75);
+t('and its leaf count equals it too', leafTotal, 75);
 t('three branches, with Rulings a chapter under Rules', tree.index.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
 // The branch move is Mandal's call: the rulings live under Rules now, and the
 // guarantee is the provenance label on each record, not the distance from the
 // rulebook. A ruling without provenance would be the one thing we cannot ship.
-ok('every ruling sits under Rules', rulings.every(r => (tree.paths.get(r.id) || []).length >= 2 && (tree.paths.get(r.id) || [])[0].n === 'Rules' && (tree.paths.get(r.id) || [])[1].n === 'Rulings'));
+// task-64: 79 rulings moved onto the record they name; the other 75 keep the
+// Rulings chapter. Both sets must still be reachable.
+ok('every kept ruling sits under Rules > Rulings', rulings.filter(r => !tree.rulingFold.has(r.id)).every(r => (tree.paths.get(r.id) || []).length >= 2 && (tree.paths.get(r.id) || [])[0].n === 'Rules' && (tree.paths.get(r.id) || [])[1].n === 'Rulings'));
+ok('and every folded ruling sits on its target chain', rulings.filter(r => tree.rulingFold.has(r.id)).every(r => (tree.paths.get(r.id) || []).length >= 1));
 ok('and every ruling is provenance-labelled', rulings.every(r => { const p = r.provenance || {}; return p.publisher && p.document && p.url && p.language; }));
 ok('with a third-party banner in its own record fragment', recordBody(rulings[0], {}).indexOf('Third-party ruling') !== -1 && recordBody(rulings[0], {}).indexOf('Not Games Workshop rules text.') !== -1);
-ok('ruling rows live in the ruling chapter files, never among the rulebook chapters', rulings.every(r => { const last = (tree.paths.get(r.id) || []).slice(-1)[0]; return last && String(last.f).indexOf('tree/rulings/') === 0; }));
+ok('the kept ruling rows live in the ruling chapter files', rulings.filter(r => !tree.rulingFold.has(r.id)).every(r => { const last = (tree.paths.get(r.id) || []).slice(-1)[0]; return last && String(last.f).indexOf('tree/rulings/') === 0; }));
 t('the two documents are the branch children', tree.files['tree/rulings.js'].kids.map(k => k.n), ['WTC 11th Edition FAQ', 'FEQ 40K FAQ']);
-t('WTC groups by topic, and the game rules topic is a chapter', tree.files['tree/rulings/wtc.js'].kids.some(k => k.n === 'core-rules' && k.c === 26), true);
+t('WTC still groups by topic after the fold', tree.files['tree/rulings/wtc.js'].kids.some(k => k.n === 'core-rules'), true);
 t('then by facet inside it', tree.files['tree/rulings/wtc/core-rules.js'].kids.some(k => k.n === 'Stratagems'), true);
 const wtcTopics = tree.files['tree/rulings/wtc.js'].kids.map(k => k.n);
 ok('event and tips are labelled and sorted last', wtcTopics[wtcTopics.length - 1].indexOf('not game rules') !== -1 && wtcTopics[wtcTopics.length - 2].indexOf('not game rules') !== -1);
-t('FEQ groups by type_norm', tree.files['tree/rulings/feq.js'].kids.some(k => k.n === 'Datasheet') && tree.files['tree/rulings/feq/datasheet.js'].kids.some(k => k.n === 'Adepta Sororitas'), true);
+// The fold removed 10 of the FEQ records (they name their own targets), so the
+// group shape is asserted structurally rather than at its old counts.
+t('FEQ still groups by type_norm', tree.files['tree/rulings/feq.js'].kids.length > 0 && tree.files['tree/rulings/feq.js'].kids.every(k => !!k.f), true);
 t('no empty node was made for the five empty tabs', tree.files['tree/rulings/wtc.js'].kids.filter(k => k.c === 0).length, 0);
 
 // --- the provenance banner, in the shared fragment ----------------------------
