@@ -54,10 +54,10 @@ t('Rules Appendix book count', kids('tree/rules.js')[1].c, 176);
 t('00 is its own chapter at the end of Rules', kids('tree/rules.js')[2].c, 1);
 const CORE_LABELS = ['01 Core Concepts', '02 Datasheets', '03 Moving', '04 Making Attacks', '05 Attack Sequence', '06 Other Concepts', '07 The Battle Round', '08 Command Phase', '09 Movement Phase', '10 Shooting Phase', '11 Charge Phase', '12 Fight Phase', '13 Terrain', '14 Objectives', '15 Stratagems', '16 Actions', '17 Monsters and Vehicles', '18 Transports', '19 Attached Units', '20 Strategic Reserves', '21 Flying and Surging', '22 Other Rules and Abilities', '23 Aircraft', '24 Core Abilities', '25 Muster Armies'];
 t('the Rules chapter list is 01..25 in order', kids(crBook).map(k => k.n), CORE_LABELS);
-t('with the measured counts', kids(crBook).map(k => k.c), [19, 8, 28, 18, 19, 10, 4, 5, 11, 8, 9, 13, 20, 11, 45, 6, 8, 12, 7, 8, 5, 6, 5, 69, 109]);
+t('with the measured counts', kids(crBook).map(k => k.c), [19, 8, 28, 18, 19, 10, 4, 5, 11, 8, 9, 13, 20, 11, 45, 6, 8, 12, 7, 8, 5, 6, 5, 69, 107]);
 const RA_LABELS = ['01 Core Concepts', '02 Datasheets', '03 Moving', '04 Making Attacks', '05 Attack Sequence', '06 Other Concepts', '07 The Battle Round', '08 Command Phase', '09 Movement Phase', '11 Charge Phase', '12 Fight Phase', '13 Terrain', '14 Objectives', '15 Stratagems', '17 Monsters and Vehicles', '18 Transports', '19 Attached Units', '20 Strategic Reserves', '22 Other Rules and Abilities', '24 Core Abilities', '[ONE SHOT]'];
 t('the appendix renumbers with the same numbers, [ONE SHOT] last', kids(raBook).map(k => k.n), RA_LABELS);
-t('and its measured counts', kids(raBook).map(k => k.c), [27, 15, 7, 14, 5, 2, 2, 2, 3, 1, 1, 4, 2, 3, 1, 2, 2, 2, 1, 5, 75]);
+t('and its measured counts', kids(raBook).map(k => k.c), [29, 15, 7, 14, 5, 2, 2, 2, 3, 1, 1, 4, 2, 3, 1, 2, 2, 2, 1, 5, 73]);
 ok('Books is not a chapter at any level', chapterNames().every(n => n !== 'Books'));
 ok('NAMED: Universal Rules Updates is the 00 chapter', files['tree/rules/universal-rules-updates.js'].n === '00 Universal Rules Updates' && files['tree/rules/universal-rules-updates.js'].recs.some(r => r.i === 'rules-appendix#Universal-Rules-Updates'));
 t('and its path is Rules -> 00', (tree.paths.get('rules-appendix#Universal-Rules-Updates') || []).map(p => p.n), ['Rules', '00 Universal Rules Updates']);
@@ -138,9 +138,12 @@ ok('the section row carries the folded count', (recs('tree/rules/core-rules/core
 t('Missions has its three parts', kids('tree/missions.js').map(k => k.n), ['Events', 'Primary', 'Secondary']);
 t('Events holds the machinery and the 9 Challenger records', kids('tree/missions.js')[0].c, 45);
 t('Primary is the primary deck', kids('tree/missions.js')[1].c, 13);
-t('Secondary is the secondary deck', kids('tree/missions.js')[2].c, 24);
+// 12 of its errata name rule 13.09 (Hidden): task-51 folds them into the rule
+// they update, so the deck loses those rows and Hidden carries them.
+t('Secondary is the secondary deck, minus the 12 universal errata', kids('tree/missions.js')[2].c, 12);
 ok('the Challenger chapter is under Events', kids('tree/missions/events.js').some(k => k.n === 'Challenger' && k.c === 9));
-ok('the deck row carries its 18 folded questions and errata', (recs('tree/missions/secondary/secondary-mission-deck.js').find(r => r.i === 'event-companion#Secondary-Mission-deck') || {}).q === 18);
+ok('the deck row carries its remaining 6 folded questions and errata', (recs('tree/missions/secondary/secondary-mission-deck.js').find(r => r.i === 'event-companion#Secondary-Mission-deck') || {}).q === 6);
+ok('and the 13.09 errata it used to carry fold onto the rule they update', (tree.attach.get('core-rules#Hidden') || []).filter(a => a.id.indexOf('13.09') !== -1).length === 14);
 ok('NAMED: a secondary mission sits under its deck', !!findRec('tree/missions/secondary/secondary-mission-deck.js', 'event-companion#Secondary-Mission-deck'));
 
 // --- the render writes these files, and leaves the two-pane popup alone -------

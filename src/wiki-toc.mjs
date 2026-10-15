@@ -459,6 +459,15 @@ export function isAnnotation(r) {
   return false;
 }
 
+// An update names the rule it updates by number ('12.08 - Consolidation Move…'):
+// that number is its join key, the way a Q&A's own heading is. Only the leaf's
+// leading number counts, and only the rule-number form (12.08, 01.02.06).
+export function updateRuleNumber(r) {
+  const leaf = String(headingSegments(r).slice(-1)[0] || '').trim();
+  const m = /^(\d{2}(?:\.\d{2}){1,2})\b/.exec(leaf);
+  return m ? m[1] : '';
+}
+
 function nodeSlug(s) {
   const base = String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
   return base || 'node';
@@ -599,6 +608,13 @@ export function tocTree(records, pageOf, opts) {
   // longest heading prefix that is a section; the nearest earlier section with
   // the same first heading segment (the entry an errata annotates sits above
   // it). No target means unattached, counted per book, never invented.
+  // The record an update names, by its number: a rule carrying that ruleId, else
+  // the numbered section whose own leaf leads with it. An update is not its own
+  // target (it is an annotation), so the map is built from sections and rules.
+  const targetByNumber = new Map();
+  const noteNumber = (r, n) => { if (n && !targetByNumber.has(n)) targetByNumber.set(n, r); };
+  for (const r of records) if (r.ruleId) noteNumber(r, String(r.ruleId));
+  for (const r of records) if (!isAnnotation(r)) noteNumber(r, updateRuleNumber(r));
   const attach = new Map();
   const attachTarget = new Map();
   const unattached = [];
@@ -610,24 +626,36 @@ export function tocTree(records, pageOf, opts) {
     const bySectionHeading = new Map();
     for (const r of sections) if (!bySectionHeading.has(r.heading)) bySectionHeading.set(r.heading, r);
     const pos = new Map(bookRecs.map((r, i) => [r.id, i]));
+    const keptVisible = [];
     for (const a of annotations) {
-      let target = null;
-      let cur = a.parent ? byIdAll.get(a.parent) : null, guard = 0;
-      while (cur && guard++ < 24) { if (!isAnnotation(cur)) { target = cur; break; } cur = cur.parent ? byIdAll.get(cur.parent) : null; }
-      if (!target) {
+      // An update's number is its join key and is tried first. When the number has
+      // no target the update does NOT fall back to a nearby section: it stays a
+      // row of its own, labelled by the number it names, never silently tucked
+      // into a rule it does not update.
+      const un = updateRuleNumber(a);
+      let target = un ? (targetByNumber.get(un) || null) : null;
+      if (!target && !un) {
+        let cur = a.parent ? byIdAll.get(a.parent) : null, guard = 0;
+        while (cur && guard++ < 24) { if (!isAnnotation(cur)) { target = cur; break; } cur = cur.parent ? byIdAll.get(cur.parent) : null; }
+      }
+      if (!target && !un) {
         const seg = headingSegments(a);
         for (let i = seg.length - 1; i >= 1; i--) { const pre = seg.slice(0, i).join(' > '); const hit = bySectionHeading.get(pre); if (hit) { target = hit; break; } }
       }
-      if (!target) {
+      if (!target && !un) {
         const first = headingSegments(a)[0], at = pos.get(a.id);
         for (let i = at - 1; i >= 0; i--) { const c = bookRecs[i]; if (isAnnotation(c)) continue; if (headingSegments(c)[0] === first) { target = c; break; } }
       }
-      if (!target) { unattached.push(a); continue; }
+      if (!target) {
+        if (un) { keptVisible.push(a); annotationTotal -= 1; }
+        else unattached.push(a);
+        continue;
+      }
       if (!attach.has(target.id)) attach.set(target.id, []);
       attach.get(target.id).push(a);
       attachTarget.set(a.id, target.id);
     }
-    return { sections: sections, annotations: annotations };
+    return { sections: sections.concat(keptVisible), annotations: annotations };
   };
 
   // Core-stratagem records that are not stratagems, by their OWN Type line: the
@@ -1010,6 +1038,16 @@ export function tocTree(records, pageOf, opts) {
   }
   const rulingsC = rulingRecs.length;
   files['tree/rulings.js'] = { n: 'Rulings', lvl: 'branch', c: rulingsC, kids: docNodes };
+
+  // A record folded across books - a mission errata into the core rule it names,
+  // for instance - attaches after its target's book has been walked, so give every
+  // attached record the target's chain here. Every placed record then has its
+  // pre-walked path, including the ones this pass moved.
+  for (const [target, list] of attach) {
+    const chain = paths.get(target);
+    if (!chain) continue;
+    for (const a of list) if (!paths.has(a.id)) paths.set(a.id, chain);
+  }
 
   const placed = rulesTotal + missionsC + facTotal + rulingsC;
   const index = {
