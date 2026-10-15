@@ -1700,6 +1700,72 @@ export function jevCalls() {
 export function jevCallsReset() {
   for (const k of ['rerank', 'gate']) { JEV_CALLS[k].attempted = 0; JEV_CALLS[k].answered = 0; JEV_CALLS[k].failed = 0; }
 }
+// task-72: the rerank ARM. RULES_RERANK=jev|cf|off, jev the default; anything
+// unknown is jev. 'off' is the no-call arm - the eval's --rerank off already
+// reaches the call site as jevSkip, so this is belt and braces.
+export function rerankArm(env) {
+  const v = String((env || process.env).RULES_RERANK || 'jev').trim().toLowerCase();
+  return v === 'cf' ? 'cf' : v === 'off' ? 'off' : 'jev';
+}
+
+// Cloudflare's bge-reranker-base is a cross-encoder: one score per candidate for
+// one query, inside a 512-token context cap. Records are capped at 2000 chars
+// (~500 tokens), so most fit; the rest are TRUNCATED and counted, never dropped.
+export const CF_MAX_CHARS = 2000;
+const CF_MODEL = '@cf/baai/bge-reranker-base';
+const cfUrl = id => 'https://api.cloudflare.com/client/v4/accounts/' + id + '/ai/run/' + CF_MODEL;
+const CF_STATS = { calls: 0, truncated: 0, returned: 0 };
+export function cfStats() { return { arm: rerankArm(), calls: CF_STATS.calls, truncated: CF_STATS.truncated, returned: CF_STATS.returned }; }
+export function cfStatsReset() { CF_STATS.calls = 0; CF_STATS.truncated = 0; CF_STATS.returned = 0; }
+
+// The token is read from the credential store by the caller and never printed;
+// tests/test-dev.mjs pins the same rule for the HTML. A missing token or account
+// is a FAILED attempt, counted like every other rerank call, so an arm that could
+// not run can never print as a good reading.
+export async function cfRank(question, candidates, key, opts) {
+  const o = opts || {};
+  const top = (candidates || []).slice(0, o.max || 50);
+  if (!top.length) return [];
+  const account = o.account || credential('CLOUDFLARE_ACCOUNT_ID');
+  JEV_CALLS.rerank.attempted++;
+  try {
+    if (!key) throw new Error('CLOUDFLARE_API_TOKEN is not in the credential store');
+    if (!account) throw new Error('CLOUDFLARE_ACCOUNT_ID is not in the credential store');
+    const contexts = top.map(c => {
+      const text = String((c && (c.text || c.excerpt || c.content)) || '');
+      if (text.length > CF_MAX_CHARS) { CF_STATS.truncated += 1; return { text: text.slice(0, CF_MAX_CHARS) }; }
+      return { text };
+    });
+    const res = await fetch(cfUrl(account), {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' },
+      body: JSON.stringify({ query: String(question || ''), contexts: contexts, top_k: top.length }),
+    });
+    if (!res || !res.ok) throw new Error('cloudflare rerank HTTP ' + ((res && res.status) || 'no response'));
+    const body = await res.json();
+    const scored = (body && body.result && body.result.response) || (body && body.response) || [];
+    if (!Array.isArray(scored) || !scored.length) throw new Error('cloudflare rerank: no scores');
+    // The response carries the context index as `id`; a response without it is
+    // mapped by position instead, so a record is never mis-assigned to a score.
+    // `id` is the context index when present; an id-less response is mapped by the
+    // position it came in at, before the score sort, so a record is never shifted
+    // onto a neighbour's score.
+    const mapped = scored.map((s, at) => ({ s: s, i: Number.isFinite(Number(s.id)) ? Number(s.id) : at }))
+      .filter(x => x.i >= 0 && x.i < top.length)
+      .sort((a, b) => Number(b.s.score) - Number(a.s.score));
+    const seen = new Set();
+    const out = [];
+    for (const x of mapped) { if (seen.has(x.i)) continue; seen.add(x.i); out.push(top[x.i]); }
+    if (!out.length) throw new Error('cloudflare rerank: no scorable records');
+    CF_STATS.calls += 1; CF_STATS.returned += out.length;
+    JEV_CALLS.rerank.answered++;
+    return out;
+  } catch (e) {
+    JEV_CALLS.rerank.failed++;
+    throw e;
+  }
+}
+
 
 // The page keeps its graceful fallback - a 429 must not take the question with
 // it - but a measurement arm must never degrade quietly. With RULES_JEV_STRICT
@@ -2795,9 +2861,14 @@ export async function retrieveWide(question, opts) {
   // skipped; o.jevSkip is how a caller that holds a key asks for the zero-call
   // arm, and it lands on the same list a no-key deployment gets.
   let ranked = null;
-  if (o.jevKey && !o.jevSkip) {
+  const rerankArmName = rerankArm();
+  if (!o.jevSkip && rerankArmName !== 'off') {
     try {
-      ranked = await jevRank(question, merged, o.jevKey, { max: o.jevMax || 80, endpoint: o.jevEndpoint });
+      if (rerankArmName === 'cf') {
+        ranked = await cfRank(question, merged, credential('CLOUDFLARE_API_TOKEN'), { max: o.jevMax || 80 });
+      } else if (o.jevKey) {
+        ranked = await jevRank(question, merged, o.jevKey, { max: o.jevMax || 80, endpoint: o.jevEndpoint });
+      }
     } catch (e) {
       // The ranker is a free-tier call one shared budget away from a 429, and it
       // must not take the question with it: grep and the vector index already

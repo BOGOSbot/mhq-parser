@@ -25,7 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expandQuery, gateHalf, gateHalfLexical, gateVocabularies, grepCorpus, grepTerms, grepWithTerms, jevCalls, jevRank, queryIndex, readAllCorpus, retrieveDual, retrieveWide } from '../src/rules-corpus.mjs';
+import { cfStats, expandQuery, gateHalf, gateHalfLexical, gateVocabularies, grepCorpus, grepTerms, grepWithTerms, jevCalls, jevRank, queryIndex, readAllCorpus, rerankArm, retrieveDual, retrieveWide } from '../src/rules-corpus.mjs';
 import { anchorFor, credential, fastCredential, jevKeyName } from '../src/rules.mjs';
 import { makeFeatures, rerankWith, train, trainingExamples, loadTraces, FEATURE_NAMES } from './learned-rerank.mjs';
 import { expectGroups, missingGroupLine, missingGroups, partialHeadline, satisfiedGroups } from './expectation-groups.mjs';
@@ -327,7 +327,7 @@ function at(k) { return graded.filter(r => r.rank !== null && r.rank <= k).lengt
 console.log('');
 console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (graded ' + graded.length + ', out-of-corpus ' + declined.length + ')  topK ' + TOPK + (RETRIEVER === 'vector' ? '  ns ' + (NAMESPACE || '(default)') + [FUSION, QUERY_MODE, WEIGHTING].filter(Boolean).map(v => ' ' + v).join('') : '  net ' + NET) + (SPLIT_HALVES ? '  per-side ' + PER_SIDE + '  w ' + VECTOR_WEIGHT + '  protect ' + PROTECT_VECTOR + (QUERY_MODE ? '  ' + QUERY_MODE : '') : '')
   + (RETRIEVER === 'gate' ? '  gate ' + GATE + (GATE === 'lexical' ? ' margin ' + GATE_MARGIN : '') : '')
-  + (RERANK_OFF ? '  rerank off' : '') + (NO_KEY ? '  no key' : '')
+  + (RERANK_OFF ? '  rerank off' : '  rerank ' + rerankArm()) + (NO_KEY ? '  no key' : '')
   + (RULES_NS !== 'rules' || FACTIONS_NS !== 'factions' ? '  ns ' + RULES_NS + '/' + FACTIONS_NS : ''));
 if (resolveNotes.length) {
   console.log('');
@@ -335,7 +335,7 @@ if (resolveNotes.length) {
   console.log(resolveNotes.join('\n'));
 }
 console.log('');
-console.log('jev calls   ' + fmtCalls(jc) + '  (rerank ' + fmtCalls(jc.rerank) + ', gate ' + fmtCalls(jc.gate) + ')  ' + (rows.length ? (jc.answered / rows.length).toFixed(1) : '0') + ' answered per question');
+console.log((rerankArm() + ' calls').padEnd(11) + ' ' + fmtCalls(jc) + '  (rerank ' + fmtCalls(jc.rerank) + ', gate ' + fmtCalls(jc.gate) + ')  ' + (rows.length ? (jc.answered / rows.length).toFixed(1) : '0') + ' answered per question' + (rerankArm() === 'cf' ? '  (cf truncated ' + cfStats().truncated + ')' : ''));
 console.log('fallbacks   ' + fallbacks + '/' + rows.length + ' questions' + (fallbacks ? '  DEGRADED' : '  clean'));
 const withhold = fallbacks > 0 && !ALLOW_DEGRADED;
 if (withhold) {

@@ -13,7 +13,8 @@ The reranker is the cheap, juicy win and it does not require moving anything: bg
 - AI Search instance **40k** in the default namespace of the account, built-in vector DB at **1,024 dims**, currently **0 indexed** (its last job saw "1 pages/batches, 0 files"). Account id is the one in the dashboard URL.
 - The eval instrument: `tests/eval-retrieval.mjs`, 39 questions, 78 rerank calls per run, noise floor 2-4 points.
 - The deployed reading to beat, rerank ON: exact hit@1 **54.5**, reachable **60.6**, MRR **0.633 / 0.696**.
-- The rerank-off control on the same index state: exact 30.3 / reachable 33.3, MRR 0.454 / 0.495.
+- The rerank-off control on the CURRENT commit: exact **39.4%** (13/33), reachable 39.4%, MRR **0.513 / 0.546** - measured twice on 2026-10-15, by the Lead and independently in the same harness (task-60). **The older 30.3 / 33.3 / MRR 0.454 row was the PRE-anchoring arm: do not compare against it.** The anchor change moved it by +4 questions, so using 30.3 would make any new arm look like a large win it did not earn.
+- The rerank must also be compared against **doing nothing on this candidate set**, which is that 39.4%; Jev's contribution is the ~15 points up to 54.5.
 
 ## Token
 
@@ -67,6 +68,24 @@ Only after Arm 1. Build it as an extra arm in the eval harness, never as the dep
 - Do not port `server.mjs` to Workers for this test: no fs, 10 ms CPU per request on free, and Cloudflare Containers are paid. The server stays on Upstash Box.
 - Do not change the deployed retriever or reranker until a reading beats the current one.
 - Do not publish the corpus or the index. It is copyrighted third-party material and stays account-private on Cloudflare exactly as it is on Upstash (`docs/corpus-storage.md`).
+
+## Arm 1 wiring status (task-72)
+
+The arm is built and unit-tested; only the token is missing. `RULES_RERANK=jev|cf|off`
+selects the reranker in `src/rules-corpus.mjs` (`jev` the default, anything unknown
+falls back to jev), and the eval prints the arm it ran and counts its calls through
+the same `JEV_CALLS.rerank` accounting, so a failed arm is DEGRADED and its numbers
+are withheld. `cfRank` posts to `@cf/baai/bge-reranker-base`, maps contexts back by
+`id` (or by position when the response carries none), truncates over-cap records and
+counts them, and reads `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` from the
+credential store - never printed, never inlined, no unauthenticated call.
+
+Run once the token lands:
+
+    RULES_RERANK=cf node tests/eval-retrieval.mjs --retriever dual --per-side 10 --net 60 --topk 20 --rerank on
+
+Compare exact 39.4% / MRR 0.513-0.546 (rerank off) and 54.5% / 0.633-0.696 (Jev).
+A tie is a win: it also removes the gateway, its cost and its 429 DEGRADED runs.
 
 ## Decision rule
 
