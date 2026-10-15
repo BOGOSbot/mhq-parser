@@ -22,6 +22,10 @@ t('the French verb is a lookup', lookupIntent('cherche rapid ingress').words, ['
 t('où est is a lookup', lookupIntent('où est le fall back').words, ['fall', 'back']);
 t('montre moi is a lookup', lookupIntent('montre moi la règle coherency').words, ['coherency']);
 t('a real question is not a lookup', lookupIntent('can a unit shoot after it Fell Back?').lookup, false);
+// The translation tables never see a question: the intent check runs first, so a
+// question that happens to name a unit is still a question.
+t('a question naming a unit is still not a lookup', lookupIntent('peux-tu me dire si le chevalier acastus astérius peut tirer ?').lookup, false);
+t('and a French question is not either', lookupIntent('est-ce que le protocole de résurrection fonctionne ?').lookup, false);
 t('a French question is not a lookup', lookupIntent('est-ce que Fuegan peut tirer après avoir battu en retraite ?').lookup, false);
 t('the verb with no name is not a lookup', lookupIntent('find the rules').lookup, false);
 t('a stop word is not a name', contentWords('les règles de mouvement'), ['mouvement']);
@@ -85,7 +89,10 @@ t('every lookup the corpus names lands', count('miss'), 0);
 t('a lookup that names nothing never answers', rows.filter(r => r.kind === 'none' && r.verdict !== 'fall').length, 0);
 t('an ambiguous name falls through', rows.filter(r => r.kind === 'ambiguous' && r.verdict !== 'fall').length, 0);
 t('a real question is never answered as a lookup', rows.filter(r => r.kind === 'not-a-lookup' && r.verdict !== 'fall').length, 0);
-ok('the set is the size the task asked for', fixture.lookups.length >= 20 && fixture.lookups.length <= 40);
+// The set grew when the route learned the French tables: six phrasings a person
+// would type ('trouve abaddon le fléau'), never titles copied out of the corpus.
+ok('the set is the size the task asked for', fixture.lookups.length >= 20 && fixture.lookups.length <= 60);
+ok('the set stays at least a third non-English', fixture.lookups.filter(l => l.lang === 'fr').length >= 12);
 ok('the set names nothing in the corpus several times', rows.filter(r => r.kind === 'none').length >= 5);
 t('the set is bilingual', new Set(fixture.lookups.map(l => l.lang)).size, 2);
 t('and a third of it is not English', rows.filter(r => r.lang === 'fr').length >= 5, true);

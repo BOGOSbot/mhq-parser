@@ -1,272 +1,319 @@
 {
-  "note": "Lookup phrasings, written before the route existed: how a reader asks for a rule BY NAME, in both languages. `expect` is the record (or records, when the corpus holds the same rule more than once) that answers the lookup; an empty list means the route MUST fall through to the normal pipeline. `kind` groups them for the reading: literal (the name as the corpus spells it), paraphrase (the name plus words), none (names nothing in the corpus), ambiguous (several different headings carry the words), not-a-lookup (a real question, not a lookup at all). The acceptance is on this set: how many land, how many fall through, and how many answer WRONGLY. A wrong answer is worse than a slow one.",
-  "lookups": [
-    {
-      "q": "find rapid ingress",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-stratagem#000008335008",
-        "core-stratagem#000010810007"
-      ]
-    },
-    {
-      "q": "show me deadly demise",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-rules#Abilities->-Duplicated-Abilities->-DEADLY-DEMISE",
-        "ability#000008339"
-      ]
-    },
-    {
-      "q": "find fire overwatch",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-stratagem#000008335009"
-      ]
-    },
-    {
-      "q": "where is heroic intervention",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-stratagem#000008335012"
-      ]
-    },
-    {
-      "q": "search for tank shock",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-stratagem#000008335007"
-      ]
-    },
-    {
-      "q": "find grenade",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-stratagem#000008335006"
-      ]
-    },
-    {
-      "q": "look up coherency",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-rules#Coherency"
-      ]
-    },
-    {
-      "q": "find embarking",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-rules#Embarking"
-      ]
-    },
-    {
-      "q": "show me disembarking",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-rules#Disembarking"
-      ]
-    },
-    {
-      "q": "find desperate escape",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-rules#Desperate-Escape"
-      ]
-    },
-    {
-      "q": "where is movement",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-rules#Movement"
-      ]
-    },
-    {
-      "q": "find shooting",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-rules#Shooting"
-      ]
-    },
-    {
-      "q": "find synapse",
-      "lang": "en",
-      "kind": "paraphrase",
-      "expect": [
-        "faction-rule#000000705"
-      ]
-    },
-    {
-      "q": "search for battle focus",
-      "lang": "en",
-      "kind": "paraphrase",
-      "expect": [
-        "faction-rule#000009894"
-      ]
-    },
-    {
-      "q": "find deep strike",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "core-rules#Abilities->-Duplicated-Abilities->-DEEP-STRIKE",
-        "ability#000008343"
-      ]
-    },
-    {
-      "q": "show me the fall back move",
-      "lang": "en",
-      "kind": "paraphrase",
-      "expect": [
-        "core-rules#3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
-      ]
-    },
-    {
-      "q": "find advance move",
-      "lang": "en",
-      "kind": "paraphrase",
-      "expect": [
-        "core-rules#3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-ADVANCE-MOVE"
-      ]
-    },
-    {
-      "q": "find fuegan",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "datasheet#000000574"
-      ]
-    },
-    {
-      "q": "find tyrannofex",
-      "lang": "en",
-      "kind": "literal",
-      "expect": [
-        "datasheet#000000496"
-      ]
-    },
-    {
-      "q": "cherche rapid ingress",
-      "lang": "fr",
-      "kind": "literal",
-      "expect": [
-        "core-stratagem#000008335008",
-        "core-stratagem#000010810007"
-      ]
-    },
-    {
-      "q": "où est le fall back",
-      "lang": "fr",
-      "kind": "paraphrase",
-      "expect": [
-        "core-rules#3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
-      ]
-    },
-    {
-      "q": "trouve grenade",
-      "lang": "fr",
-      "kind": "literal",
-      "expect": [
-        "core-stratagem#000008335006"
-      ]
-    },
-    {
-      "q": "montre moi la règle coherency",
-      "lang": "fr",
-      "kind": "paraphrase",
-      "expect": [
-        "core-rules#Coherency"
-      ]
-    },
-    {
-      "q": "find the resurrection protocol",
-      "lang": "en",
-      "kind": "none",
-      "expect": [],
-      "note": "the corpus spells it Resurrection Protocols (Necrons), and it is a Boarding Actions (edition 10) enhancement: the export types its detachment 'Tomb Ship Complement' as Boarding Actions, so the importer removes it"
-    },
-    {
-      "q": "find oath of moment",
-      "lang": "en",
-      "kind": "none",
-      "expect": []
-    },
-    {
-      "q": "find lethal hits",
-      "lang": "en",
-      "kind": "none",
-      "expect": []
-    },
-    {
-      "q": "find the rules for cheese",
-      "lang": "en",
-      "kind": "none",
-      "expect": []
-    },
-    {
-      "q": "find charge",
-      "lang": "en",
-      "kind": "ambiguous",
-      "expect": []
-    },
-    {
-      "q": "find precision",
-      "lang": "en",
-      "kind": "ambiguous",
-      "expect": []
-    },
-    {
-      "q": "find shadow in the warp",
-      "lang": "en",
-      "kind": "ambiguous",
-      "expect": []
-    },
-    {
-      "q": "cherche les règles de mouvement",
-      "lang": "fr",
-      "kind": "none",
-      "expect": []
-    },
-    {
-      "q": "can a unit shoot after it Fell Back?",
-      "lang": "en",
-      "kind": "not-a-lookup",
-      "expect": []
-    },
-    {
-      "q": "est-ce que Fuegan peut tirer après avoir battu en retraite ?",
-      "lang": "fr",
-      "kind": "not-a-lookup",
-      "expect": []
-    },
-    {
-      "q": "find the groxburger rule",
-      "lang": "en",
-      "kind": "none",
-      "expect": []
-    },
-    {
-      "q": "find the zeppelin squadron",
-      "lang": "en",
-      "kind": "none",
-      "expect": []
-    },
-    {
-      "q": "cherche la règle du fromage",
-      "lang": "fr",
-      "kind": "none",
-      "expect": []
-    }
-  ]
+ "note": "Lookup phrasings, written before the route existed: how a reader asks for a rule BY NAME, in both languages. `expect` is the record (or records, when the corpus holds the same rule more than once) that answers the lookup; an empty list means the route MUST fall through to the normal pipeline. `kind` groups them for the reading: literal (the name as the corpus spells it), paraphrase (the name plus words), none (names nothing in the corpus), ambiguous (several different headings carry the words), not-a-lookup (a real question, not a lookup at all). The acceptance is on this set: how many land, how many fall through, and how many answer WRONGLY. A wrong answer is worse than a slow one.",
+ "lookups": [
+  {
+   "q": "find rapid ingress",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-stratagem#000008335008",
+    "core-stratagem#000010810007"
+   ]
+  },
+  {
+   "q": "show me deadly demise",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-rules#Abilities->-Duplicated-Abilities->-DEADLY-DEMISE",
+    "ability#000008339"
+   ]
+  },
+  {
+   "q": "find fire overwatch",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-stratagem#000008335009"
+   ]
+  },
+  {
+   "q": "where is heroic intervention",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-stratagem#000008335012"
+   ]
+  },
+  {
+   "q": "search for tank shock",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-stratagem#000008335007"
+   ]
+  },
+  {
+   "q": "find grenade",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-stratagem#000008335006"
+   ]
+  },
+  {
+   "q": "look up coherency",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-rules#Coherency"
+   ]
+  },
+  {
+   "q": "find embarking",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-rules#Embarking"
+   ]
+  },
+  {
+   "q": "show me disembarking",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-rules#Disembarking"
+   ]
+  },
+  {
+   "q": "find desperate escape",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-rules#Desperate-Escape"
+   ]
+  },
+  {
+   "q": "where is movement",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-rules#Movement"
+   ]
+  },
+  {
+   "q": "find shooting",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-rules#Shooting"
+   ]
+  },
+  {
+   "q": "find synapse",
+   "lang": "en",
+   "kind": "paraphrase",
+   "expect": [
+    "faction-rule#000000705"
+   ]
+  },
+  {
+   "q": "search for battle focus",
+   "lang": "en",
+   "kind": "paraphrase",
+   "expect": [
+    "faction-rule#000009894"
+   ]
+  },
+  {
+   "q": "find deep strike",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "core-rules#Abilities->-Duplicated-Abilities->-DEEP-STRIKE",
+    "ability#000008343"
+   ]
+  },
+  {
+   "q": "show me the fall back move",
+   "lang": "en",
+   "kind": "paraphrase",
+   "expect": [
+    "core-rules#3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
+   ]
+  },
+  {
+   "q": "find advance move",
+   "lang": "en",
+   "kind": "paraphrase",
+   "expect": [
+    "core-rules#3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-ADVANCE-MOVE"
+   ]
+  },
+  {
+   "q": "find fuegan",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "datasheet#000000574"
+   ]
+  },
+  {
+   "q": "find tyrannofex",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "datasheet#000000496"
+   ]
+  },
+  {
+   "q": "cherche rapid ingress",
+   "lang": "fr",
+   "kind": "literal",
+   "expect": [
+    "core-stratagem#000008335008",
+    "core-stratagem#000010810007"
+   ]
+  },
+  {
+   "q": "où est le fall back",
+   "lang": "fr",
+   "kind": "paraphrase",
+   "expect": [
+    "core-rules#3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
+   ]
+  },
+  {
+   "q": "trouve grenade",
+   "lang": "fr",
+   "kind": "literal",
+   "expect": [
+    "core-stratagem#000008335006"
+   ]
+  },
+  {
+   "q": "montre moi la règle coherency",
+   "lang": "fr",
+   "kind": "paraphrase",
+   "expect": [
+    "core-rules#Coherency"
+   ]
+  },
+  {
+   "q": "find the resurrection protocol",
+   "lang": "en",
+   "kind": "none",
+   "expect": [],
+   "note": "the corpus spells it Resurrection Protocols (Necrons), and it is a Boarding Actions (edition 10) enhancement: the export types its detachment 'Tomb Ship Complement' as Boarding Actions, so the importer removes it"
+  },
+  {
+   "q": "find oath of moment",
+   "lang": "en",
+   "kind": "none",
+   "expect": []
+  },
+  {
+   "q": "find lethal hits",
+   "lang": "en",
+   "kind": "none",
+   "expect": []
+  },
+  {
+   "q": "find the rules for cheese",
+   "lang": "en",
+   "kind": "none",
+   "expect": []
+  },
+  {
+   "q": "find charge",
+   "lang": "en",
+   "kind": "ambiguous",
+   "expect": []
+  },
+  {
+   "q": "find precision",
+   "lang": "en",
+   "kind": "ambiguous",
+   "expect": []
+  },
+  {
+   "q": "find shadow in the warp",
+   "lang": "en",
+   "kind": "ambiguous",
+   "expect": []
+  },
+  {
+   "q": "cherche les règles de mouvement",
+   "lang": "fr",
+   "kind": "none",
+   "expect": []
+  },
+  {
+   "q": "can a unit shoot after it Fell Back?",
+   "lang": "en",
+   "kind": "not-a-lookup",
+   "expect": []
+  },
+  {
+   "q": "est-ce que Fuegan peut tirer après avoir battu en retraite ?",
+   "lang": "fr",
+   "kind": "not-a-lookup",
+   "expect": []
+  },
+  {
+   "q": "find the groxburger rule",
+   "lang": "en",
+   "kind": "none",
+   "expect": []
+  },
+  {
+   "q": "find the zeppelin squadron",
+   "lang": "en",
+   "kind": "none",
+   "expect": []
+  },
+  {
+   "q": "cherche la règle du fromage",
+   "lang": "fr",
+   "kind": "none",
+   "expect": []
+  },
+  {
+   "q": "trouve abaddon le fléau",
+   "lang": "fr",
+   "kind": "paraphrase",
+   "expect": [
+    "datasheet#000000924"
+   ]
+  },
+  {
+   "q": "cherche escouade de sœurs de bataille",
+   "lang": "fr",
+   "kind": "paraphrase",
+   "expect": [
+    "datasheet#000000903~1",
+    "datasheet#000000903~2"
+   ]
+  },
+  {
+   "q": "où est le chevalier acastus astérius",
+   "lang": "fr",
+   "kind": "paraphrase",
+   "expect": [
+    "datasheet#000001664"
+   ]
+  },
+  {
+   "q": "trouve le chevalier acastus porphyrion",
+   "lang": "fr",
+   "kind": "paraphrase",
+   "expect": [
+    "datasheet#000000860"
+   ]
+  },
+  {
+   "q": "cherche insensible",
+   "lang": "fr",
+   "kind": "literal",
+   "expect": [
+    "core-rules#Abilities->-Duplicated-Abilities->-FEEL-NO-PAIN"
+   ]
+  },
+  {
+   "q": "cherche la règle de cohésion",
+   "lang": "fr",
+   "kind": "none",
+   "expect": []
+  }
+ ]
 }

@@ -14,6 +14,14 @@
  * is regenerated from the corpus, and the fallback when it misses is the normal
  * pipeline, never a header-embed step.
  *
+ * French phrasings are rewritten through the two mechanical tables we already
+ * own (glossaryIndex().frToEn and KEYWORDS, both model-free) before the headings
+ * are grepped, so 'trouve abaddon le fléau' reaches ABADDON THE DESPOILER. Where
+ * neither table holds the word - the rulebook's own vocabulary, 'cohésion' - the
+ * lookup falls through to the normal pipeline: a stated English-only limit, never
+ * a half-answer. A question that merely mentions a unit is not a lookup, and the
+ * tables are never consulted for one.
+ *
  * The match is deliberately conservative, because a wrong answer is worse than a
  * slow one - the reader has no reason to doubt a lookup they typed themselves:
  *   - the question must LOOK like a lookup (a lookup verb in front, either
@@ -31,6 +39,7 @@
  * and answer wrongly.
  */
 import { readAllCorpus, termPresent } from './rules-corpus.mjs';
+import { KEYWORDS, glossaryIndex } from './translate-fr-en.mjs';
 
 // The verbs a lookup opens with. Both languages: the reader types 'cherche' or
 // 'find' and means the same thing.
@@ -56,13 +65,64 @@ export function contentWords(text) {
   return foldWords(text).filter(w => w.length >= 3 && !STOP.has(w));
 }
 
+// The French the reader types is not the English the headings carry, and two
+// tables already own that mapping, both mechanical and model-free: the glossary
+// (the Munitorum Field Manual's own pairs, 'ABADDON LE FLÉAU' -> 'ABADDON THE
+// DESPOILER') and KEYWORDS (the closed keyword/ability vocabulary, 'INSENSIBLE'
+// -> 'FEEL'). A lookup phrase is rewritten through them BEFORE the headings are
+// grepped.
+//
+// The limit is the tables', and it is a stated one: neither holds the rulebook's
+// own vocabulary ('cohésion', 'repli'), so a phrasing that names a rule in
+// French still falls through to the normal pipeline rather than answering by
+// accident. That is the English-only case, not a half-answer.
+const foldTerm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const KEY_FR_TO_EN = (() => {
+  const m = new Map();
+  for (const [en, fr] of Object.entries(KEYWORDS)) {
+    const k = foldTerm(fr);
+    if (k && !m.has(k)) m.set(k, foldTerm(en));
+  }
+  return m;
+})();
+const GLOSSARY_FR = (() => {
+  const list = [];
+  for (const [fr, e] of glossaryIndex().frToEn) {
+    const words = foldTerm(fr).split(/[^a-z0-9]+/).filter(Boolean);
+    if (words.length && e.en) list.push({ words: words, en: foldTerm(e.en) });
+  }
+  list.sort((a, b) => b.words.length - a.words.length);
+  return list;
+})();
+
+export function translateLookupWords(rawWords) {
+  const out = [];
+  for (let i = 0; i < rawWords.length; i++) {
+    // Longest glossary phrase first, so a name is rewritten whole rather than one
+    // word at a time ('abaddon le fleau' -> 'abaddon the despoiler').
+    let matched = false;
+    for (const g of GLOSSARY_FR) {
+      if (i + g.words.length <= rawWords.length && g.words.every((w, j) => rawWords[i + j] === w)) {
+        out.push.apply(out, g.en.split(/[^a-z0-9]+/).filter(Boolean));
+        i += g.words.length - 1;
+        matched = true;
+        break;
+      }
+    }
+    if (matched) continue;
+    const keyword = KEY_FR_TO_EN.get(rawWords[i]);
+    out.push(keyword || rawWords[i]);
+  }
+  return out;
+}
+
 // A lookup, or a real question. Anchored: 'can I find cover?' is a question, and
 // the pipeline must run it.
 export function lookupIntent(question) {
   const raw = String(question == null ? '' : question).trim();
   const m = LOOKUP_VERB.exec(raw);
   if (!m) return { lookup: false, words: [], phrase: '' };
-  const words = contentWords(m[1]);
+  const words = contentWords(translateLookupWords(foldWords(m[1])).join(' '));
   if (!words.length) return { lookup: false, words: [], phrase: '' };
   return { lookup: true, words, phrase: words.join(' ') };
 }
@@ -93,6 +153,14 @@ function hrefFor(rec) {
 // The projection: one entry per record, {id, heading, segments, last, kind,
 // href, canonical}. Canonical is false when any segment is a sentence, a
 // question or FAQ/Errata, which is what keeps a mention from answering a lookup.
+// A split part says '(1/2)' and a unitrules twin says '- keywords and abilities':
+// both are markers on the same record, not names, and leaving them in made a
+// lookup for a unit ambiguous with its own twin. The tree strips the same two.
+const cleanMarker = s => String(s)
+  .replace(/\s*\(\d+\/\d+\)$/, '')
+  .replace(/\s*-\s*keywords and abilities(\s*\(\d+\/\d+\))?$/i, '')
+  .trim();
+
 export function buildHeaderIndex(records) {
   return (records || []).map(rec => {
     const heading = String((rec && rec.heading) || '');
@@ -101,7 +169,7 @@ export function buildHeaderIndex(records) {
       id: rec.id,
       heading,
       segments,
-      last: normalizePhrase(segments.length ? segments[segments.length - 1] : ''),
+      last: normalizePhrase(cleanMarker(segments.length ? segments[segments.length - 1] : '')),
       kind: (rec && rec.kind) || '',
       href: hrefFor(rec),
       canonical: segments.every(isTitleLike),
