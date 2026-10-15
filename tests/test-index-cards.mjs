@@ -24,8 +24,41 @@ const js = TOC_JS;
 
 // --- the cards -----------------------------------------------------------------
 ok('the index renders as a card row', js.indexOf('wccards') !== -1 && js.indexOf('el("button", "wccard') !== -1);
-ok('the left pane is gone', js.indexOf('wccolrow') === -1);
-ok('the CSS carries the card row', TOC_CSS.indexOf('.wccards{') !== -1 && TOC_CSS.indexOf('.wccard{') !== -1);
+// task-61: the cards ARE the entries - the row holds the current level's nodes and
+// records, and the old .wcrow list is gone from the pane (the pane is the
+// expansion surface only).
+ok('the card row holds the entries, not only the path', js.indexOf('entryCards(col, current())') !== -1 && js.indexOf('function entryCards(') !== -1 && js.indexOf('function nodeCard(') !== -1 && js.indexOf('function recCard(') !== -1);
+ok('the old row list is gone', js.indexOf('wcrow') === -1 && js.indexOf('level(current())') === -1);
+ok('a 0x chapter is a non-clickable label, not a card', js.indexOf('wclabel') !== -1 && js.indexOf('test(String(k.n))') !== -1 && js.indexOf('nodeCard(k)') !== -1);
+ok('the expansion walks the child files', js.indexOf('function collectRecords(') !== -1 && js.indexOf('collectRecords(files[i], acc, seen, fin)') !== -1);
+// The exact case that printed '0 record(s)': tree/rulings/wtc.js holds no records
+// of its own (its 120 live in per-faction child files). Walk the real rendered
+// tree files the way collectRecords does and assert the count the reader sees.
+ok('the walk finds the records a node keeps in child files', (function () {
+  const DIR = path.join(ROOT, 'workspace', 'wiki-render');
+  const load = f => {
+    const src = fs.readFileSync(path.join(DIR, f), 'utf8');
+    const win = {};
+    new Function('window', src)(win);
+    return win.WIKI_TREE_NODE;
+  };
+  const walk = (f, acc, seen) => {
+    const n = load(f);
+    for (const r of (n.recs || [])) acc.push(r);
+    for (const k of (n.kids || [])) if (k.f && !seen[k.f]) { seen[k.f] = 1; walk(k.f, acc, seen); }
+    return acc;
+  };
+  const wtc = walk('tree/rulings/wtc.js', [], {}).length;
+  const feq = walk('tree/rulings/feq.js', [], {}).length;
+  return wtc === 120 && feq === 34;
+})());
+ok('and the node itself really holds none (the bug was reading only node.recs)', (function () {
+  const src = fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-render', 'tree', 'rulings', 'wtc.js'), 'utf8');
+  const win = {};
+  new Function('window', src)(win);
+  return (win.WIKI_TREE_NODE.recs || []).length === 0 && (win.WIKI_TREE_NODE.kids || []).length > 0;
+})());
+ok('the CSS carries the card row at full width', TOC_CSS.indexOf('.wccards{') !== -1 && TOC_CSS.indexOf('.wccard{') !== -1 && !/\.wccards\{[^}]*max-width:220px/.test(TOC_CSS));
 
 // --- the cutoff expands in place ----------------------------------------------
 ok('a cutoff entry is marked', js.indexOf('data-wc-cut') !== -1 && js.indexOf('if (k.cut) r.setAttribute') !== -1);
@@ -53,8 +86,10 @@ if (fs.existsSync(shell)) {
   ok('the rendered shell carries the card row', sh.indexOf('wccards') !== -1 && sh.indexOf('expandInline') !== -1);
   const css = fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-render', 'shell.css'), 'utf8');
   ok('the rendered stylesheet carries the cards', css.indexOf('.wccards{') !== -1);
-  const node = fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-render', 'tree', 'rules', 'core-rules', 'core-concepts.js'), 'utf8');
-  ok('the rendered tree data carries the cutoff flags', node.indexOf('"cut":true') !== -1 || node.indexOf('\\"cut\\":true') !== -1);
+  const doc = fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-render', 'tree', 'rulings', 'wtc.js'), 'utf8');
+  const chapter = fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-render', 'tree', 'rules', 'core-rules', 'core-concepts.js'), 'utf8');
+  ok('the rendered tree marks the real cutoffs (a document is one)', doc.indexOf('"cut":true') !== -1);
+  ok('and a 0x chapter is not one', chapter.indexOf('"cut":true') === -1);
 } else {
   console.log('no rendered shell: skipping the artifact assertions');
 }

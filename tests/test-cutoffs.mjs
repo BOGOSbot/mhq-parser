@@ -27,15 +27,21 @@ const files = tree.files;
 const kids = k => (files[k].kids || []);
 const cutKids = k => kids(k).filter(x => x.cut);
 
-t('the measured cutoff inventory: 109 chapters, 2 documents, 3 parts, 48 groups', (function () {
+t('the measured cutoff inventory: 63 unnumbered chapters, 2 documents, 3 parts, 48 groups', (function () {
   const by = {};
   for (const n of Object.values(files)) if (n.cut) by[n.lvl] = (by[n.lvl] || 0) + 1;
   return by;
-})(), { chapter: 109, part: 3, group: 48, doc: 2 });
-t('and stats.cuts agrees', tree.stats.cuts, 162);
+})(), { chapter: 63, part: 3, group: 48, doc: 2 });
+t('and stats.cuts agrees', tree.stats.cuts, 116);
 
-// Rules: every chapter cuts, the books do not, and the Rulings chapter does not.
-ok('Rules cuts at its numbered chapters', cutKids('tree/rules/core-rules.js').length === kids('tree/rules/core-rules.js').length);
+// Rules: a 0x header is a LABEL, not an entry. It is not cut and its children are
+// listed in its place (task-61); the books still do not cut, and the Rulings
+// chapter is still a waypoint.
+ok('a 0x chapter is not a cut entry', kids('tree/rules/core-rules.js').filter(x => /^\d{2}\s/.test(x.n)).every(x => !x.cut));
+ok('and its children are the entries: 186 for Core Rules, 105 for the Appendix', (function () {
+  const flat = b => (files[b].kids || []).reduce((n, k) => { const f = files[k.f]; return n + (f ? (f.kids || []).length + (f.recs || []).length : 1); }, 0);
+  return flat('tree/rules/core-rules.js') === 186 && flat('tree/rules/rules-appendix.js') === 105;
+})());
 ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut && !files['tree/rules/rules-appendix.js'].cut);
 ok('the Rulings chapter is a waypoint, its documents are the cutoffs', !files['tree/rulings.js'].cut && files['tree/rulings/wtc.js'].cut && files['tree/rulings/feq.js'].cut);
 ok('the Rulings kid under Rules cuts at the document, not at itself', (function () {
