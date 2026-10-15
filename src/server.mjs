@@ -892,10 +892,15 @@ function handleWiki(req, res, u) {
 // Absent map (an older render, or no render at all) is no link: a dead one is
 // worse than none, the same rule the link resolution follows.
 let wikiMapCache = null;
+// True once map.json was read: the render's map is the manifest of delivered
+// records, so /rules/record can refuse an id the tree filtered with the same 404
+// the static pages answer (their file was never written, or the sweep removed
+// it). No map at all is no manifest: the route keeps its old behaviour.
+let wikiMapOk = false;
 function wikiPageFor(id) {
   if (wikiMapCache === null) {
-    try { wikiMapCache = JSON.parse(fs.readFileSync(path.join(WIKI_DIR, 'map.json'), 'utf8')) || {}; }
-    catch (e) { wikiMapCache = {}; }
+    try { wikiMapCache = JSON.parse(fs.readFileSync(path.join(WIKI_DIR, 'map.json'), 'utf8')) || {}; wikiMapOk = true; }
+    catch (e) { wikiMapCache = {}; wikiMapOk = false; }
   }
   const page = wikiMapCache[String(id || '')];
   return page ? '/wiki/' + page : '';
@@ -974,6 +979,10 @@ async function handleRulesLabels(req, res) {
 async function handleRulesRecord(req, res, u) {
   const id = String((u && u.searchParams.get('id')) || '');
   if (!id) return fail(res, 400, 'need ?id=<record id>');
+  // One notion of exists: the wiki's own map is the manifest. A record the tree
+  // filtered is not delivered, so its fragment is refused here too.
+  wikiPageFor(id);
+  if (wikiMapOk && !Object.prototype.hasOwnProperty.call(wikiMapCache, id)) return fail(res, 404, 'no such record: ' + id);
   let record = null;
   try { record = recordCard(id, { corpora: corpora(), index: corpusById() }); } catch (e) { record = null; }
   if (!record) return fail(res, 404, 'no such record: ' + id);

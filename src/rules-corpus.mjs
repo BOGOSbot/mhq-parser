@@ -3135,6 +3135,7 @@ async function main() {
       console.log('duplicate records collapsed: ' + built.dropped);
       console.log('boarding actions removed: ' + built.boarding.detachments + ' detachments, ' + built.boarding.stratagems + ' stratagems, ' + built.boarding.enhancements + ' enhancements');
       console.log('editions: ' + JSON.stringify(built.editions));
+      console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 missing / 0 stray - a rebuild without an ingest leaves the index serving a dead layout.');
       console.log('export last update: ' + built.marker.lastUpdate);
       console.log('total ' + built.count + ' records from ' + CSV_FILES.length + ' CSV files');
       if (scrapeBuildsWiki(argv)) await buildWikiShape(CORPUS_DIR);

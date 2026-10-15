@@ -113,6 +113,13 @@ for (const [id, url] of cardTables().factionLink) {
   const m = /factions\/([a-z0-9-]+)$/i.exec(String(url || ''));
   if (m) slugNames.set(m[1].toLowerCase(), cardTables().factionName.get(id) || id);
 }
+// WIKI_RENDER_ONLY=<id>[,<id>] renders just those: it is what the two-paths
+// test uses to compare this render's fragment with the one the server serves on
+// demand, without paying for 6,705 pages to prove one. A partial render's map is
+// the manifest of what it wrote, so its links never claim an unwritten page.
+const ONLY = String(process.env.WIKI_RENDER_ONLY || '').split(',').map(s => s.trim()).filter(Boolean);
+const onlySet = ONLY.length ? new Set(ONLY) : null;
+
 const toc = tocData(records, pageOf, cardTables().factionName, slugNames);
 const areaOf = new Map();
 for (const a of toc.areas) for (const g of a.g) for (const p of g.p) areaOf.set(p.i, a.n);
@@ -155,7 +162,7 @@ for (const r of records) for (const l of r.links) { if (!reverse.has(l.to)) reve
 function linkChips(links, missingOk) {
   if (!links.length) return '<p class="num">No links.</p>';
   const items = links.map(l => {
-    const has = byId.has(l.to);
+    const has = live.has(l.to);
     const label = '<span class="kind">' + esc(l.kind || 'link') + '</span> ' + esc(l.title || l.to);
     if (has) return '<li><a href="' + esc(pageOf.get(l.to)) + '">' + label + '</a></li>';
     return '<li><span class="missing" title="' + esc(l.to) + '">' + label + ' (missing)</span></li>';
@@ -202,30 +209,49 @@ for (const rel of Object.keys(tree.files)) {
 fs.mkdirSync(path.join(OUT, 'tree'), { recursive: true });
 fs.writeFileSync(path.join(OUT, 'tree', 'index.js'), 'window.WIKI_TREE_INDEX = ' + JSON.stringify(tree.index) + ';');
 
+// --- one notion of "exists" ----------------------------------------------------
+// A record is delivered iff the tree keeps it. The tree's filtered set (the
+// edition-0 Legends / Forge World line and the named tenth-edition rule) gets no
+// page, no search row, no link and no fragment: search.html used to inline the
+// whole corpus, so a filtered rule stayed two keystrokes away and the exclusion
+// held in navigation and nowhere else. `live` is the single list every surface
+// below reads; the filesystem is its manifest, and the sweep at the end deletes
+// any page an earlier pass wrote for a record that no longer exists.
+const filteredSet = new Set(tree.filtered || []);
+const live = new Set([...pageOf.keys()].filter(id => !filteredSet.has(id)));
+// What this pass actually wrote: under WIKI_RENDER_ONLY the live set is wider
+// than the pages, and a link must never name a file that is not there.
+const writtenIds = new Set([...live].filter(id => !onlySet || onlySet.has(id)));
+const delivered = records.filter(r => live.has(r.id));
+const hrefOf = id => (writtenIds.has(id) ? pageOf.get(id) : '');
+
 const counts = {};
-for (const r of records) counts[r.kind || '(none)'] = (counts[r.kind || '(none)'] || 0) + 1;
+for (const r of delivered) counts[r.kind || '(none)'] = (counts[r.kind || '(none)'] || 0) + 1;
 const sources = {};
-for (const r of records) sources[r.source || '(none)'] = (sources[r.source || '(none)'] || 0) + 1;
+for (const r of delivered) sources[r.source || '(none)'] = (sources[r.source || '(none)'] || 0) + 1;
 const idxRows = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).map(k => '<tr><td><a href="search.html?kind=' + esc(k) + '">' + esc(k) + '</a></td><td class="num">' + counts[k] + '</td></tr>').join('');
 const srcRows = Object.keys(sources).sort((a, b) => sources[b] - sources[a]).map(k => '<tr><td>' + esc(k) + '</td><td class="num">' + sources[k] + '</td></tr>').join('');
 fs.writeFileSync(path.join(OUT, 'index.html'), page('Rules corpus - index', NAV, [
   '<h1>Rules corpus</h1>',
-  '<p class="num">' + records.length + ' records, rendered from workspace/rules-corpus. A render, not a source: nothing here is read back into the corpus, and nothing here is committed.</p>',
+  '<p class="num">' + delivered.length + ' records, rendered from workspace/rules-corpus. A render, not a source: nothing here is read back into the corpus, and nothing here is committed.</p>',
   '<h2>Read task 30</h2>',
   '<ul class="plain">',
   '<li><a href="anomalies.html">Reading aids</a> - records that still carry another rule\'s text, links that point nowhere, bodies that are mostly someone else\'s rule, biggest and emptiest.</li>',
-  '<li><a href="' + esc(pageOf.get('unitrules#000002541')) + '">unitrules#000002541</a> - the Starweaver record the restructure merged (Rapid Embarkation).</li>',
+  '<li>' + (hrefOf('unitrules#000002541') ? '<a href="' + esc(hrefOf('unitrules#000002541')) + '">unitrules#000002541</a>' : 'unitrules#000002541') + ' - the Starweaver record the restructure merged (Rapid Embarkation).</li>',
   '</ul>',
   '<h2>By kind</h2><table>' + idxRows + '</table>',
   '<h2>By source</h2><table>' + srcRows + '</table>',
 ].join('\n')));
 
 // search over headings, filtering a list rendered at build time
-const searchRows = records.slice().sort((a, b) => a.heading.localeCompare(b.heading)).map(r =>
-  '<li data-h="' + esc((r.heading + ' ' + r.id).toLowerCase()) + '" data-k="' + esc(r.kind) + '"><a href="' + esc(pageOf.get(r.id)) + '">' + esc(r.heading || r.id) + '</a> <span class="num">' + esc(r.kind) + '</span></li>').join('');
+const searchRows = delivered.slice().sort((a, b) => a.heading.localeCompare(b.heading)).map(r => {
+  const h = hrefOf(r.id);
+  const title = h ? '<a href="' + esc(h) + '">' + esc(r.heading || r.id) + '</a>' : esc(r.heading || r.id);
+  return '<li data-h="' + esc((r.heading + ' ' + r.id).toLowerCase()) + '" data-k="' + esc(r.kind) + '">' + title + ' <span class="num">' + esc(r.kind) + '</span></li>';
+}).join('');
 fs.writeFileSync(path.join(OUT, 'search.html'), page('Search headings', NAV, [
   '<h1>Search</h1>',
-  '<p><input type="search" id="q" placeholder="Filter ' + records.length + ' headings\u2026" autocomplete="off"></p>',
+  '<p><input type="search" id="q" placeholder="Filter ' + delivered.length + ' headings\u2026" autocomplete="off"></p>',
   '<p class="num" id="n"></p>',
   '<ul class="plain" id="list">' + searchRows + '</ul>',
   '<script>',
@@ -236,8 +262,10 @@ fs.writeFileSync(path.join(OUT, 'search.html'), page('Search headings', NAV, [
   '</script>',
 ].join('\n')));
 
-const listOf = (rows, render) => '<ul class="plain">' + rows.map(render).join('') + '</ul>';
-const recLink = r => '<a href="' + esc(pageOf.get(r.id)) + '">' + esc(r.heading || r.id) + '</a>';
+// The reading aids are computed on the whole corpus but may only link what is
+// delivered; a filtered record's title is shown plain, never as a dead link.
+const listOf = (rows, render) => '<ul class="plain">' + rows.filter(r => live.has(r.id)).map(render).join('') + '</ul>';
+const recLink = r => { const h = hrefOf(r.id); return h ? '<a href="' + esc(h) + '">' + esc(r.heading || r.id) + '</a>' : esc(r.heading || r.id); };
 fs.writeFileSync(path.join(OUT, 'anomalies.html'), page('Reading aids', NAV, [
   '<h1>Reading aids</h1>',
   '<p class="num">What the numbers say, and where to look at it. Everything here is computed from the rendered corpus.</p>',
@@ -284,21 +312,20 @@ const sectionsHtml = (rec, depth) => {
   if (depth <= 0) return '';
   const kids = sectionKids(rec);
   if (!kids.length) return '';
-  return '<h2>Sections (' + kids.length + ')</h2>' + kids.map(c => '<details class="wsec" open><summary>' + esc(leafOf(c)) + '</summary><div class="wsecbody">' + sectionText(c) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(c.id)) + '">Open section</a></p>' + sectionsHtml(c, depth - 1) + '</details>').join('');
+  return '<h2>Sections (' + kids.length + ')</h2>' + kids.map(c => '<details class="wsec" open><summary>' + esc(leafOf(c)) + '</summary><div class="wsecbody">' + sectionText(c) + '</div><p class="wseclink"><a href="' + esc(hrefOf(c.id)) + '">Open section</a></p>' + sectionsHtml(c, depth - 1) + '</details>').join('');
 };
 // one page per record. WIKI_RENDER_ONLY=<id>[,<id>] renders just those: it is what
 // the two-paths test uses to compare this render's fragment with the one the
 // server serves on demand, without paying for 6,705 pages to prove one.
-const ONLY = String(process.env.WIKI_RENDER_ONLY || '').split(',').map(s => s.trim()).filter(Boolean);
-const onlySet = ONLY.length ? new Set(ONLY) : null;
 let written = 0;
-for (const r of records) {
+for (const r of delivered) {
   if (onlySet && !onlySet.has(r.id)) continue;
   const crumbs = String(r.heading || '').split(' > ').filter(Boolean);
   const crumbHtml = crumbs.map((c, i) => {
     const prefix = crumbs.slice(0, i + 1).join(' > ');
     const target = records.find(x => x.heading === prefix);
-    return target && target.id !== r.id ? '<a href="' + esc(pageOf.get(target.id)) + '">' + esc(c) + '</a>' : esc(c);
+    const th = target && target.id !== r.id ? hrefOf(target.id) : '';
+    return th ? '<a href="' + esc(th) + '">' + esc(c) + '</a>' : esc(c);
   }).join(' &rsaquo; ');
   const back = (reverse.get(r.id) || []).slice(0, 40);
   // The product shell: the top bar the ask page has, over the record itself. The
@@ -314,14 +341,14 @@ for (const r of records) {
   const detOwned = tree.owned.get(r.id);
   const ownedHtml = detOwned ? [['Enhancements', detOwned.enh], ['Stratagems', detOwned.strat]].filter(pair => pair[1].length).map(pair => {
     const list = pair[1].map(id => byId.get(id)).filter(Boolean).sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
-    return '<h2>' + pair[0] + ' (' + list.length + ')</h2>' + list.map(x => '<details class="wsec" open><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 1200)) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(x.id)) + '">Open record</a></p></details>').join('');
+    return '<h2>' + pair[0] + ' (' + list.length + ')</h2>' + list.map(x => '<details class="wsec" open><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 1200)) + '</div><p class="wseclink"><a href="' + esc(hrefOf(x.id)) + '">Open record</a></p></details>').join('');
   }).join('') : '';
   // The datasheet and its unitrules twin are one page: the card already carries
   // the keywords and abilities, so the twin is a collapsed section, not a row.
   // One page per datasheet: the twin and any extra part of the same record are
   // folded on as collapsed sections, not listed as units of their own.
   const mergedList = (tree.mergedOn.get(r.id) || []).map(mid => byId.get(mid)).filter(Boolean);
-  const mergedHtml = mergedList.length ? '<h2>Merged records (' + mergedList.length + ')</h2>' + mergedList.map(x => '<details class="wsec"><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 4000)) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(x.id)) + '">Open the merged record</a></p></details>').join('') : '';
+  const mergedHtml = mergedList.length ? '<h2>Merged records (' + mergedList.length + ')</h2>' + mergedList.map(x => '<details class="wsec"><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 4000)) + '</div><p class="wseclink"><a href="' + esc(hrefOf(x.id)) + '">Open the merged record</a></p></details>').join('') : '';
   const body = [
     topBar({}),
     '<main class="wrec">',
@@ -331,20 +358,20 @@ for (const r of records) {
     // The record body: the structured card for a datasheet or unitrules record,
     // the flat text for everything else (and for the 111 card records whose CSV
     // row is missing, which fall back to the same text).
-    recordBody(r, { corpora, index: cardIdx, href: id => pageOf.get(id) || '' }),
+    recordBody(r, { corpora, index: cardIdx, href: id => hrefOf(id) }),
     // The rule's own sections and subsections, each a collapsible <details>.
     sections,
     ownedHtml,
     mergedHtml,
     // A folded annotation still has its own page, and points back to its section.
-    (foldsInto && byId.has(foldsInto)) ? '<p class="qa-back">Folded into <a href="' + esc(pageOf.get(foldsInto)) + '">' + esc(byId.get(foldsInto).heading) + '</a></p>' : '',
+    (foldsInto && live.has(foldsInto)) ? '<p class="qa-back">Folded into <a href="' + esc(hrefOf(foldsInto)) + '">' + esc(byId.get(foldsInto).heading) + '</a></p>' : '',
     // The annotation's section carries the folded questions and errata, so they
     // stay reachable from the tree even though they are not tree rows.
-    folded.length ? '<h2>Questions and errata (' + folded.length + ')</h2>' + folded.map(a => '<details class="wqa"><summary>' + esc(annoTitle(a)) + '</summary><div class="wsecbody">' + esc(String(a.text || '').slice(0, 1200)) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(a.id)) + '">Open question</a></p></details>').join('') : '',
+    folded.length ? '<h2>Questions and errata (' + folded.length + ')</h2>' + folded.map(a => '<details class="wqa"><summary>' + esc(annoTitle(a)) + '</summary><div class="wsecbody">' + esc(String(a.text || '').slice(0, 1200)) + '</div><p class="wseclink"><a href="' + esc(hrefOf(a.id)) + '">Open question</a></p></details>').join('') : '',
     '<h2>Links (' + r.links.length + ')</h2>',
     linkChips(r.links, true),
-    r.parent && byId.has(r.parent) ? '<p class="num">Parent: <a href="' + esc(pageOf.get(r.parent)) + '">' + esc(byId.get(r.parent).heading) + '</a></p>' : '',
-    back.length ? '<h2>Linked from (' + back.length + ')</h2><ul class="chips">' + back.map(id => '<li><a href="' + esc(pageOf.get(id)) + '">' + esc(byId.get(id).heading || id) + '</a></li>').join('') + '</ul>' : '',
+    (r.parent && live.has(r.parent)) ? '<p class="num">Parent: <a href="' + esc(hrefOf(r.parent)) + '">' + esc(byId.get(r.parent).heading) + '</a></p>' : '',
+    back.filter(id => live.has(id)).length ? '<h2>Linked from (' + back.filter(id => live.has(id)).length + ')</h2><ul class="chips">' + back.filter(id => live.has(id)).map(id => '<li><a href="' + esc(hrefOf(id)) + '">' + esc(byId.get(id).heading || id) + '</a></li>').join('') + '</ul>' : '',
     (r.onlyText.length || r.onlyArray.length) ? '<p class="num missing">This page\'s text and its link array disagree.</p>' : '',
     r.links.length ? '<h2>The corpus\'s own link block</h2><pre class="block">' + esc(r.arrayBlock) + '</pre>' : '',
     '<p class="wfoot">' + esc(r.id) + ' &middot; ' + esc(r.kind) + ' &middot; ' + esc(r.source) + '</p>',
@@ -365,7 +392,7 @@ for (const p of tree.pages) {
     '<p class="wcrumb">' + p.path.map(s => esc(s.n)).join(' &rsaquo; ') + '</p>',
     '<h1 class="wtitle">' + esc(p.n) + '</h1>',
     '<p class="wmeta">' + esc(p.area) + ' &middot; ' + members.length + (p.lvl === 'army-rules' ? ' army rules' : ' records') + '</p>',
-    members.map(x => '<details class="wsec" open><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 4000)) + '</div><p class="wseclink"><a href="' + esc(pageOf.get(x.id)) + '">Open record</a></p></details>').join(''),
+    members.map(x => '<details class="wsec" open><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 4000)) + '</div><p class="wseclink"><a href="' + esc(hrefOf(x.id)) + '">Open record</a></p></details>').join(''),
     '<p class="wfoot">' + (p.lvl === 'army-rules' ? 'One page holding every army rule of this faction.' : 'One page holding everything this detachment owns.') + ' Nothing nests beneath it.</p>',
     '</main>',
   ].join('\n');
@@ -393,12 +420,49 @@ const homeBody = [
 // The cold /wiki/: no record context, so the cascade rests at the root and its
 // bar shows the three branches one tap away.
 fs.writeFileSync(path.join(OUT, 'home.html'), productPage('40k rules', homeBody, null, null));
-fs.writeFileSync(path.join(OUT, 'map.json'), JSON.stringify(Object.fromEntries(pageOf)));
+// The map is the manifest of what this pass wrote: live records, and under
+// WIKI_RENDER_ONLY only the ones it rendered, so a partial render never claims a
+// page it did not write.
+fs.writeFileSync(path.join(OUT, 'map.json'), JSON.stringify(Object.fromEntries([...pageOf].filter(([id]) => writtenIds.has(id)))));
+// --- the output directory holds this pass, and nothing older ------------------
+// Pages are named <base>-<contenthash>.html, so a rebuild renames instead of
+// replacing: the directory used to become a union of every state ever rendered
+// (after the edition rebuild, 1,218 pages for ids no longer in the corpus -
+// deleted Legends and Boarding Actions content still served at its old URL, and
+// a stale synthetic page still listing it). Track what this pass wrote and sweep
+// the rest. The scope is deliberately narrow: only files matching the page
+// pattern, and only files under tree/ (the node files and the synthetic pages
+// this script owns). A hand-authored asset - shell.css, card.css, search.html,
+// anything without a content hash - is left alone even if it looks unused.
+const keep = new Set();
+const noteKeep = f => keep.add(String(f).split(path.sep).join('/'));
+for (const id of writtenIds) noteKeep(pageOf.get(id));
+for (const p of tree.pages) noteKeep(p.f);
+for (const f of Object.keys(tree.files)) noteKeep(f);
+noteKeep('tree/index.js');
+for (const f of ['wiki.css', 'card.css', 'shell.css', 'shell.js', 'shell-data.js', 'index.html', 'search.html', 'anomalies.html', 'home.html', 'map.json']) noteKeep(f);
+for (const a of toc.areas) noteKeep(a.f);
+// hash8() is FNV-1a in base36, unpadded: 4 to 8 characters. Matching that is
+// what keeps a hand-authored "keep-me.html" (2) out of the sweep.
+const PAGE_FILE = /-[a-z0-9]{4,8}\.html$/;
+let pruned = 0;
+const sweep = dir => {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    const rel = path.relative(OUT, full).split(path.sep).join('/');
+    if (entry.isDirectory()) { sweep(full); if (!fs.readdirSync(full).length) fs.rmdirSync(full); continue; }
+    if (keep.has(rel)) continue;
+    const owned = PAGE_FILE.test(rel) || rel.indexOf('tree/') === 0;
+    if (owned) { fs.rmSync(full); pruned += 1; }
+  }
+};
+sweep(OUT);
 console.log('wiki-render -> ' + OUT);
 console.log('  records rendered      ' + written);
 console.log('  tree branches         ' + tree.index.branches.map(b => b.n + ' ' + b.c).join(', ') + '  (placed ' + tree.stats.placed + ' of ' + tree.stats.total + ', excluded ' + tree.stats.excluded + ' index stubs)');
 console.log('  tree node files       ' + (Object.keys(tree.files).length + 1));
 console.log('  synthetic pages       ' + synthetic + ' (one per army-rules set, one per page for a detachment)');
+console.log('  stale pages pruned    ' + pruned + ' (pages and tree files this pass did not write)');
 console.log('  filtered records      ' + tree.stats.filtered + ' (edition 0 / Warhammer Legends) / merged unitrules ' + tree.stats.merged);
 console.log('  kept segments         ' + kept.length + ' records');
 console.log('  debris                ' + debris.length);

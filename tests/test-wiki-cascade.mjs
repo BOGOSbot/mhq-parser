@@ -133,6 +133,18 @@ const promoted = mutate(copy => { copy.find(r => r.id === SECONDARY).heading = '
 t('MUTATION: moving a secondary record to the primary deck changes its part and chapter', (promoted.paths.get(SECONDARY) || []).map(p => p.n), ['Missions', 'Primary', 'Primary Mission deck']);
 const reparented = mutate(copy => { const r = copy.find(x => x.id === RULES_REC); r.heading = 'Floating Question'; r.parent = 'core-rules#1.-Hit-Roll'; });
 t('MUTATION: reparenting a record moves it to the parent\u2019s chapter', (reparented.paths.get(RULES_REC) || []).map(p => p.n), ['Rules', 'Core Rules', '05 Attack Sequence']);
+// The filtered set is the single source of truth for every surface a reader can
+// reach: no search row, no tree node, no delivered page, no fragment.
+const EXCLUDED = 'faction-rule#000008445';
+const walkFiles = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walkFiles(path.join(d, e.name)) : [path.join(d, e.name)]);
+const searchHtml = fs.readFileSync(path.join(outDir, 'search.html'), 'utf8');
+ok('search.html does not index the filtered rule', searchHtml.indexOf('Strands of Fate') === -1);
+ok('and does not name its id', searchHtml.indexOf(EXCLUDED) === -1);
+ok('map.json delivers no page for it', !Object.prototype.hasOwnProperty.call(map, EXCLUDED));
+ok('no rendered page names it', walkFiles(outDir).filter(f => f.endsWith('.html')).every(f => fs.readFileSync(f, 'utf8').indexOf(EXCLUDED) === -1));
+ok('no tree node file names it', walkFiles(path.join(outDir, 'tree')).every(f => fs.readFileSync(f, 'utf8').indexOf(EXCLUDED) === -1));
+ok('and no rendered page links it', walkFiles(outDir).filter(f => f.endsWith('.html')).every(f => fs.readFileSync(f, 'utf8').indexOf('faction-rule_000008445') === -1));
+
 fs.rmSync(outDir, { recursive: true, force: true });
 
 console.log(pass + ' passed, ' + fail + ' failed');

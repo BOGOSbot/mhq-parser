@@ -181,6 +181,10 @@ async function main() {
     ok('with the top bar', home.body.indexOf('class="wtop"') !== -1);
     ok('and no record context: the cascade rests at the root', home.body.indexOf('WIKI_HERE') === -1 && home.body.indexOf('tree/index.js') !== -1);
     ok('while the developer index stays reachable', home.body.indexOf('index.html') !== -1);
+    // One notion of exists: the render's map is the manifest, so a record the tree
+    // filtered has no fragment here either.
+    const filteredOut = await request(port, '/rules/record?id=' + encodeURIComponent('faction-rule#000008445') + '&format=html');
+    t('a tree-filtered record has no fragment and no page', [filteredOut.status, (await request(port, '/wiki/faction-rule_000008445-1wal5mo.html')).status], [404, 404]);
     const missing = await request(port, '/rules/record?id=nope&format=html');
     t('an unknown id is still a 404', missing.status, 404);
   } finally {
