@@ -27,12 +27,12 @@ const files = tree.files;
 const kids = k => (files[k].kids || []);
 const cutKids = k => kids(k).filter(x => x.cut);
 
-t('the measured cutoff inventory: 47 unnumbered chapters, 2 documents, 3 parts, 48 groups', (function () {
+t('the measured cutoff inventory: 63 unnumbered chapters, 2 documents, 3 parts, 48 groups', (function () {
   const by = {};
   for (const n of Object.values(files)) if (n.cut) by[n.lvl] = (by[n.lvl] || 0) + 1;
   return by;
-})(), { chapter: 47, part: 3, group: 48, doc: 2 });
-t('and stats.cuts agrees', tree.stats.cuts, 100);
+})(), { chapter: 63, part: 3, group: 48, doc: 2 });
+t('and stats.cuts agrees', tree.stats.cuts, 116);
 
 // Rules: a 0x header is a LABEL, not an entry. It is not cut and its children are
 // listed in its place (task-61); the books still do not cut, and the Rulings

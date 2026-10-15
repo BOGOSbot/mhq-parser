@@ -337,9 +337,7 @@ for (const r of delivered) {
   // links at the foot, so nothing is lost and nothing is in the reader's way.
   const leaf = crumbs.length ? crumbs[crumbs.length - 1] : (r.heading || r.id);
   const annoTitle = a => { const p = String(a.heading || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : a.id; };
-  // Two folds reach a page: task-51's annotations (attach) and task-64's rulings
-  // (rulingFoldedOn). Both are listed the same way on the target's page.
-  const folded = (tree.attach.get(r.id) || []).concat((tree.rulingFoldedOn && tree.rulingFoldedOn.get(r.id)) || []);
+  const folded = tree.attach.get(r.id) || [];
   const foldsInto = tree.attachTarget.get(r.id) || '';
   const sections = (r.kind === 'rule' && !isAnnotation(r)) ? sectionsHtml(r, 2) : '';
   // A detachment's own enhancements and stratagems live on its page: one page

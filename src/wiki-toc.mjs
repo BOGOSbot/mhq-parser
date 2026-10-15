@@ -706,53 +706,6 @@ export function tocTree(records, pageOf, opts) {
   const attach = new Map();
   const attachTarget = new Map();
   const unattached = [];
-  // task-64: the rulings fold, in a map of its OWN. Never attach/attachTarget:
-  // those carry task-51's annotation accounting (270 annotations, 261 annotated,
-  // 9 unattached) and mixing the two corrupted the chapter counts last time.
-  // rulingFold is ruling id -> target id; rulingFoldedOn is the reverse for the
-  // render. The tier is case-insensitive unique-name matching: the corpus stores
-  // a heading in ALL CAPS while the prose writes it mixed, so case is spelling,
-  // not confidence - and both tiers require a distinctive name AND a unique
-  // target, so an ambiguous name is never auto-attached.
-  const rulingFold = new Map();
-  const rulingFoldedOn = new Map();
-  function resolveRulingTargets() {
-    const strip = s => String(s).replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*\[[^\]]*\]\s*$/, '').replace(/\s*:\s.*$/, '').trim();
-    const leaf = h => String(h || '').split(' > ').pop().replace(/^\[[^\]]*\]\s*/, '').trim();
-    const GENERIC = new Set(['stratagem', 'stratagems', 'ability', 'abilities', 'unit', 'units', 'charge', 'phase', 'phases', 'attack', 'attacks', 'weapon', 'weapons', 'model', 'models', 'objective', 'objectives', 'mission', 'missions', 'rule', 'rules', 'turn', 'round', 'battle', 'army', 'armies', 'player', 'players', 'damage', 'wound', 'wounds', 'wounded', 'move', 'moves', 'movement', 'shooting', 'shoot', 'fight', 'fights', 'combat', 'psychic', 'keyword', 'keywords', 'enhancement', 'enhancements', 'detachment', 'detachments', 'leader', 'core', 'action', 'actions', 'target', 'targets', 'saves', 'save', 'saved', 'hit', 'hits', 'roll', 'rolls', 'tests', 'test', 'points', 'strength', 'toughness', 'leadership', 'marker', 'markers', 'point', 'game', 'warhammer', '40k', 'destroyed', 'normal', 'advance', 'consolidation', 'pile', 'engaged', 'engagement', 'reserves', 'reserve', 'deployment', 'deploy', 'fall', 'back', 'falling', 'fallback', 'vertical', 'range', 'ranged', 'melee', 'crushing', 'deadly', 'demise', 'hazardous', 'sustained', 'lethal', 'devastating', 'precision', 'anti', 'blast', 'torrent', 'melta', 'rapid', 'fire', 'overwatch', 'assault', 'heavy', 'pistol', 'lance', 'twin', 'linked', 'mortal', 'invulnerable', 'benefit', 'cover', 'obscured', 'hidden', 'visibility', 'terrain', 'area', 'seeking', 'indirect', 'ignore', 'ignores', 'withdraw', 'advances']);
-    const distinctive = n => { const w = n.split(/\s+/); if (w.length < 2) return n.length >= 8 && !GENERIC.has(n.toLowerCase()); return w.some(x => !GENERIC.has(x.toLowerCase().replace(/[^a-z0-9-]/gi, ''))); };
-    const byName = new Map();
-    for (const r of records) {
-      const n = strip(leaf(r.heading));
-      if (!n || n.length < 5 || !distinctive(n)) continue;
-      if (!byName.has(n)) byName.set(n, []);
-      byName.get(n).push(r);
-    }
-    const names = [...byName.keys()].sort((a, b) => b.length - a.length);
-    const out = new Map();
-    for (const r of records) {
-      if (r.set !== 'rulings' || String(r.edition) === '0') continue;
-      const text = String(r.text || '');
-      let name = '';
-      for (const n of names) if (text.indexOf(n) !== -1) { name = n; break; }
-      if (!name) {
-        const low = text.toLowerCase();
-        for (const n of names) if (low.indexOf(n.toLowerCase()) !== -1) { name = n; break; }
-      }
-      if (!name) continue;
-      const targets = byName.get(name);
-      if (targets.length !== 1 || targets[0].id === r.id) continue;
-      out.set(r.id, targets[0].id);
-    }
-    return out;
-  }
-  for (const [rid, tid] of resolveRulingTargets()) {
-    const rec = records.find(x => x.id === rid);
-    if (!rec) continue;
-    rulingFold.set(rid, tid);
-    if (!rulingFoldedOn.has(tid)) rulingFoldedOn.set(tid, []);
-    rulingFoldedOn.get(tid).push(rec);
-  }
   let annotationTotal = 0;
   const fold = bookRecs => {
     const annotations = bookRecs.filter(isAnnotation);
@@ -1127,7 +1080,7 @@ export function tocTree(records, pageOf, opts) {
   // Scope still separates the answer sets: 'game' is the default listing, and
   // 'event' (conduct, modelling) and 'tip' (Did you know) are labelled and
   // sorted after it.
-  const rulingRecs = records.filter(r => r.set === 'rulings' && !LEGACY(r) && !rulingFold.has(r.id));
+  const rulingRecs = records.filter(r => r.set === 'rulings' && !LEGACY(r));
   const rulingsRef = { n: 'Rulings', lvl: 'chapter', f: 'tree/rulings.js' };
   const scopeLabel = (topic, scope) => scope === 'event' ? topic + ' \u2014 event conduct (not game rules)'
     : scope === 'tip' ? topic + ' \u2014 tips (not game rules)' : topic;
@@ -1222,33 +1175,14 @@ export function tocTree(records, pageOf, opts) {
     for (const a of list) if (!paths.has(a.id)) paths.set(a.id, chain);
   }
 
-  // task-64 accounting: a folded ruling MOVES into the branch its target lives in
-  // and is counted there; the annotation maps are never touched. The split is
-  // derived from the target's own chain, not assumed.
-  let foldedRules = 0, foldedFactions = 0, foldedMissions = 0;
-  for (const [rid, tid] of rulingFold) {
-    const chain = paths.get(tid);
-    if (!chain || !chain.length) continue;
-    if (!paths.has(rid)) paths.set(rid, chain);
-    if (chain[0].n === 'Rules') foldedRules += 1;
-    else if (chain[0].n === 'Factions') foldedFactions += 1;
-    else if (chain[0].n === 'Missions') foldedMissions += 1;
-  }
-  const placed = rulesTotal + missionsC + facTotal + rulingsC + foldedRules + foldedFactions + foldedMissions;
-  const rulesBranchC = rulesTotal + rulingsC + foldedRules;
-  const missionsBranchC = missionsC + foldedMissions;
-  const facBranchC = facTotal + foldedFactions;
-  // The branch nodes carry the same numbers the index reports, so drilling into a
-  // branch and reading its total agree - and the three of them sum to placed.
-  files['tree/rules.js'].c = rulesBranchC;
-  files['tree/missions.js'].c = missionsBranchC;
-  files['tree/factions.js'].c = facBranchC;
+  const placed = rulesTotal + missionsC + facTotal + rulingsC;
+  const rulesBranchC = rulesTotal + rulingsC;
   const index = {
     v: 1, n: 'Wiki', total: records.length, placed: placed,
     branches: [
       { n: 'Rules', lvl: 'branch', c: rulesBranchC, f: 'tree/rules.js' },
-      { n: 'Missions', lvl: 'branch', c: missionsBranchC, f: 'tree/missions.js' },
-      { n: 'Factions', lvl: 'branch', c: facBranchC, f: 'tree/factions.js' },
+      { n: 'Missions', lvl: 'branch', c: missionsC, f: 'tree/missions.js' },
+      { n: 'Factions', lvl: 'branch', c: facTotal, f: 'tree/factions.js' },
     ],
     excluded: excludedIds.length ? [{ k: 'index', c: excludedIds.length, why: 'navigation stubs, not corpus content' }] : [],
   };
@@ -1259,12 +1193,10 @@ export function tocTree(records, pageOf, opts) {
     // id (so the cascade opens on the section), unattached is the ones with no
     // section, counted per book and never given an invented home.
     attach: attach, attachTarget: attachTarget, unattached: unattached.map(r => r.id), childrenOf: childrenOf,
-    // task-64's fold, kept apart from the annotation maps on purpose.
-    rulingFold: rulingFold, rulingFoldedOn: rulingFoldedOn,
     // One page per detachment and one page per army-rules set: the tree carves
     // the collections, the render writes their pages.
     owned: owned, mergedOn: mergedOn, pages: pages,
-    stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesBranchC, missions: missionsBranchC, factions: facBranchC, rulings: rulingsC, cuts: cuts,
+    stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesBranchC, missions: missionsC, factions: facTotal, rulings: rulingsC, cuts: cuts,
       annotations: annotationTotal, annotated: annotationTotal - unattached.length, unattached: unattached.length, unattachedByBook: unattachedBooks,
       dropped: dropped.length, filtered: filteredIds.length, merged: mergedIds.length },
     dropped: dropped.map(r => r.id), filtered: filteredIds, merged: mergedIds,

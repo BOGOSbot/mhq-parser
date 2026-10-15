@@ -35,10 +35,10 @@ const idWithHeading = h => (all.find(r => r.heading === h && tree.paths.has(r.id
 
 // --- the three branches, and what is not in the tree --------------------------
 t('three branches: Rules, Missions, Factions', idx.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
-ok('Rulings is a chapter under Rules, provenance-labelled', files['tree/rules.js'].kids.some(k => k.n === 'Rulings' && k.c === 75) && idx.branches[0].c === 740);
-t('Rules holds the 740 placed records (463 core-rules + 176 appendix + 00 + 75 rulings + 25 folded in)', idx.branches[0].c, 740);
-t('Missions holds the 107 placed records (98 event-companion + 9 Challenger)', idx.branches[1].c, 107);
-t('Factions holds 5,239 placed records', idx.branches[2].c, 5239);
+ok('Rulings is a chapter under Rules, provenance-labelled', files['tree/rules.js'].kids.some(k => k.n === 'Rulings' && k.c === 154) && idx.branches[0].c === 794);
+t('Rules holds the 794 placed records (463 core-rules + 176 appendix + 00 + 154 rulings)', idx.branches[0].c, 794);
+t('Missions holds the 106 placed records (97 event-companion + 9 Challenger)', idx.branches[1].c, 106);
+t('Factions holds 5,186 placed records', idx.branches[2].c, 5186);
 t('of which placed', idx.placed, 6086);
 t('the 174 index stubs are still counted', idx.excluded, [{ k: 'index', c: 174, why: 'navigation stubs, not corpus content' }]);
 t('the annotation total and the attached/unattached split', [tree.stats.annotations, tree.stats.annotated, tree.stats.unattached], [270, 261, 9]);
@@ -189,7 +189,7 @@ ok('MUTATION: a subsection that loses its prefix becomes a root', !(flattened.ch
 const unfolded = mutate(copy => { const r = copy.find(x => x.heading === 'Abilities > [TORRENT] > DAMAGED'); r.heading = 'Abilities > DAMAGED'; });
 t('MUTATION: a [TORRENT] expansion that loses its marker becomes a row', unfolded.stats.annotations, 269);
 const dropped = mutate(copy => { const i = copy.findIndex(r => r.id === 'stratagem#000008931007'); copy.splice(i, 1); });
-t('MUTATION: dropping a record drops the Factions count by exactly one', dropped.index.branches[2].c, 5238);
+t('MUTATION: dropping a record drops the Factions count by exactly one', dropped.index.branches[2].c, 5185);
 t('MUTATION: and the placed total with it', dropped.index.placed, 6085);
 
 const baseOf = id => String(String(id).split('#')[1] || '').split('~')[0];
