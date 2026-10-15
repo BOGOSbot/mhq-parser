@@ -41,8 +41,12 @@ import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceS
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
 import { lookupRecord } from './header-index.mjs';
+import { devHtml, devState } from './dev-report.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// The process's own birth time, published by /dev: a src/ file newer than this is
+// code the running process has never loaded.
+const SERVER_BOOTED = Date.now();
 const INDEX_PATH = path.join(__dirname, 'index.html');
 // Read per request rather than at startup, so editing index.html does not
 // require a server restart. It is a single small file and the response is no-store.
@@ -1588,6 +1592,15 @@ const server = http.createServer(async (req, res) => {
       // wrong namespace becomes visible is here.
       vectors: await vectorState(),
     });
+  }
+  // The diagnostics surface: read-only, for us, not linked from the reader's nav.
+  // It renders what /health publishes plus the render and rebuild facts a stale
+  // deployment hides, against the DELIVERED set.
+  if (req.method === 'GET' && u.pathname === '/dev') {
+    try {
+      const state = await devState({ bootedAt: SERVER_BOOTED, wikiDir: WIKI_DIR });
+      return send(res, 200, devHtml(state), 'text/html; charset=utf-8', { cache: 'no-store' });
+    } catch (e) { return fail(res, 500, 'dev report failed: ' + String((e && e.message) || e)); }
   }
   if (req.method === 'GET' && u.pathname === '/events') return handleEvents(req, res, u);
   if (req.method === 'GET' && u.pathname === '/my-events') return handleMyEvents(req, res);

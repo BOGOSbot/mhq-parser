@@ -444,7 +444,7 @@ for (const id of writtenIds) noteKeep(pageOf.get(id));
 for (const p of tree.pages) noteKeep(p.f);
 for (const f of Object.keys(tree.files)) noteKeep(f);
 noteKeep('tree/index.js');
-for (const f of ['wiki.css', 'card.css', 'shell.css', 'shell.js', 'shell-data.js', 'index.html', 'search.html', 'anomalies.html', 'home.html', 'map.json']) noteKeep(f);
+for (const f of ['wiki.css', 'card.css', 'shell.css', 'shell.js', 'shell-data.js', 'index.html', 'search.html', 'anomalies.html', 'home.html', 'map.json', 'render.json']) noteKeep(f);
 for (const a of toc.areas) noteKeep(a.f);
 // hash8() is FNV-1a in base36, unpadded: 4 to 8 characters. Matching that is
 // what keeps a hand-authored "keep-me.html" (2) out of the sweep.
@@ -475,3 +475,17 @@ console.log('  text/array disagree   ' + disagree.length + '  (text-only ' + tex
 console.log('  mostly borrowed (top) ' + (borrowed[0] ? Math.round(borrowed[0].borrowed * 100) + '% ' + borrowed[0].id : '-'));
 console.log('  biggest               ' + (biggest[0] ? biggest[0].chars + 'c ' + biggest[0].id : '-'));
 console.log('  emptiest              ' + (emptiest[0] ? emptiest[0].chars + 'c ' + emptiest[0].id : '-'));
+// The pass writes its own numbers beside the pages, so the diagnostics surface
+// reads one file instead of scraping stdout: how many pages, and what the last
+// pass pruned. Written last, so it describes a finished pass.
+fs.writeFileSync(path.join(OUT, 'render.json'), JSON.stringify({
+  writtenAt: new Date().toISOString(),
+  records: written,
+  pages: writtenIds.size,
+  pruned: pruned,
+  treeFiles: Object.keys(tree.files).length + 1,
+  branches: tree.index.branches.map(b => ({ n: b.n, c: b.c })),
+  total: tree.stats.total,
+  filtered: tree.stats.filtered,
+  excluded: tree.stats.excluded,
+}, null, 1) + '\n');
