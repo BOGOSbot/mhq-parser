@@ -82,9 +82,14 @@ const rulingFiles = Object.entries(tree.files).filter(pair => pair[0].indexOf('t
 const leafTotal = rulingFiles.filter(pair => pair[1].lvl === 'leaf').reduce((n, pair) => n + pair[1].c, 0);
 t('Rulings branch c equals the record count', tree.files['tree/rulings.js'].c, 154);
 t('and its leaf count equals it too', leafTotal, 154);
-t('four branches, Rulings last', tree.index.branches.map(b => b.n), ['Rules', 'Missions', 'Factions', 'Rulings']);
-ok('no ruling id has a path under the Rules branch', rulings.every(r => !(tree.paths.get(r.id) || []).some(p => String(p.f).indexOf('tree/rules') === 0)));
-ok('and no Rules node lists a ruling row', Object.entries(tree.files).filter(pair => pair[0].indexOf('tree/rules') === 0).every(pair => !(pair[1].recs || []).some(x => /^(?:wtc11|feq11)-/.test(String(x.i)))));
+t('three branches, with Rulings a chapter under Rules', tree.index.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
+// The branch move is Mandal's call: the rulings live under Rules now, and the
+// guarantee is the provenance label on each record, not the distance from the
+// rulebook. A ruling without provenance would be the one thing we cannot ship.
+ok('every ruling sits under Rules', rulings.every(r => (tree.paths.get(r.id) || []).length >= 2 && (tree.paths.get(r.id) || [])[0].n === 'Rules' && (tree.paths.get(r.id) || [])[1].n === 'Rulings'));
+ok('and every ruling is provenance-labelled', rulings.every(r => { const p = r.provenance || {}; return p.publisher && p.document && p.url && p.language; }));
+ok('with a third-party banner in its own record fragment', recordBody(rulings[0], {}).indexOf('Third-party ruling') !== -1 && recordBody(rulings[0], {}).indexOf('Not Games Workshop rules text.') !== -1);
+ok('ruling rows live in the ruling chapter files, never among the rulebook chapters', rulings.every(r => { const last = (tree.paths.get(r.id) || []).slice(-1)[0]; return last && String(last.f).indexOf('tree/rulings/') === 0; }));
 t('the two documents are the branch children', tree.files['tree/rulings.js'].kids.map(k => k.n), ['WTC 11th Edition FAQ', 'FEQ 40K FAQ']);
 t('WTC groups by topic, and the game rules topic is a chapter', tree.files['tree/rulings/wtc.js'].kids.some(k => k.n === 'core-rules' && k.c === 26), true);
 t('then by facet inside it', tree.files['tree/rulings/wtc/core-rules.js'].kids.some(k => k.n === 'Stratagems'), true);

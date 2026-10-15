@@ -983,13 +983,17 @@ export function tocTree(records, pageOf, opts) {
   // --- Rulings -> document -> topic/type -> facet/faction ---------------------
   // Third-party tournament interpretations, not Games Workshop text. The product
   // exists so a player can show a card to an opponent, and misattribution is the
-  // one failure mode we cannot ship: so Rulings is a branch SIBLING of Rules,
-  // never merged into it and never reachable from it, and every record carries
-  // its provenance verbatim. Scope separates the answer sets - 'game' is the
-  // default listing, 'event' (conduct, modelling) and 'tip' (Did you know) are
-  // labelled as what they are and sorted after it.
+  // one failure mode we cannot ship: so every record carries its provenance
+  // verbatim and the card says, in the banner, whose words these are.
+  //
+  // Mandal overruled the fourth branch: the two documents sit directly under
+  // Rules, as a chapter of the branch. The guarantee is not distance from the
+  // rulebook - it is the provenance label, which the branch move does not touch.
+  // Scope still separates the answer sets: 'game' is the default listing, and
+  // 'event' (conduct, modelling) and 'tip' (Did you know) are labelled and
+  // sorted after it.
   const rulingRecs = records.filter(r => r.set === 'rulings' && !LEGACY(r));
-  const rulingsRef = { n: 'Rulings', lvl: 'branch', f: 'tree/rulings.js' };
+  const rulingsRef = { n: 'Rulings', lvl: 'chapter', f: 'tree/rulings.js' };
   const scopeLabel = (topic, scope) => scope === 'event' ? topic + ' \u2014 event conduct (not game rules)'
     : scope === 'tip' ? topic + ' \u2014 tips (not game rules)' : topic;
   const fileSafe = s => nodeSlug(String(s || 'Other')) || 'other';
@@ -1028,7 +1032,7 @@ export function tocTree(records, pageOf, opts) {
         const bRef = { n: b, lvl: 'leaf', f: bFile };
         subKids.push({ n: b, lvl: 'leaf', c: rows.length, f: bFile });
         aC += rows.length;
-        for (const r of rows) paths.set(r.id, [rulingsRef, docRef, aRef, bRef]);
+        for (const r of rows) paths.set(r.id, [rulesRef, rulingsRef, docRef, aRef, bRef]);
       }
       files[aFile] = { n: aLabel, lvl: 'chapter', c: aC, kids: subKids };
       kids.push({ n: aLabel, lvl: 'chapter', c: aC, f: aFile });
@@ -1037,7 +1041,10 @@ export function tocTree(records, pageOf, opts) {
     docNodes.push({ n: doc.n, lvl: 'doc', c: docRecs.length, f: doc.file });
   }
   const rulingsC = rulingRecs.length;
-  files['tree/rulings.js'] = { n: 'Rulings', lvl: 'branch', c: rulingsC, kids: docNodes };
+  files['tree/rulings.js'] = { n: 'Rulings', lvl: 'chapter', c: rulingsC, kids: docNodes };
+  // Directly under Rules, after the rulebooks: the branch's own count carries them.
+  files['tree/rules.js'].kids.push({ n: 'Rulings', lvl: 'chapter', c: rulingsC, f: 'tree/rulings.js' });
+  files['tree/rules.js'].c += rulingsC;
 
   // A record folded across books - a mission errata into the core rule it names,
   // for instance - attaches after its target's book has been walked, so give every
@@ -1050,13 +1057,13 @@ export function tocTree(records, pageOf, opts) {
   }
 
   const placed = rulesTotal + missionsC + facTotal + rulingsC;
+  const rulesBranchC = rulesTotal + rulingsC;
   const index = {
     v: 1, n: 'Wiki', total: records.length, placed: placed,
     branches: [
-      { n: 'Rules', lvl: 'branch', c: rulesTotal, f: 'tree/rules.js' },
+      { n: 'Rules', lvl: 'branch', c: rulesBranchC, f: 'tree/rules.js' },
       { n: 'Missions', lvl: 'branch', c: missionsC, f: 'tree/missions.js' },
       { n: 'Factions', lvl: 'branch', c: facTotal, f: 'tree/factions.js' },
-      { n: 'Rulings', lvl: 'branch', c: rulingsC, f: 'tree/rulings.js' },
     ],
     excluded: excludedIds.length ? [{ k: 'index', c: excludedIds.length, why: 'navigation stubs, not corpus content' }] : [],
   };
@@ -1070,7 +1077,7 @@ export function tocTree(records, pageOf, opts) {
     // One page per detachment and one page per army-rules set: the tree carves
     // the collections, the render writes their pages.
     owned: owned, mergedOn: mergedOn, pages: pages,
-    stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: missionsC, factions: facTotal, rulings: rulingsC,
+    stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesBranchC, missions: missionsC, factions: facTotal, rulings: rulingsC,
       annotations: annotationTotal, annotated: annotationTotal - unattached.length, unattached: unattached.length, unattachedByBook: unattachedBooks,
       dropped: dropped.length, filtered: filteredIds.length, merged: mergedIds.length },
     dropped: dropped.map(r => r.id), filtered: filteredIds, merged: mergedIds,

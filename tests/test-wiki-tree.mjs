@@ -33,10 +33,10 @@ const rootIds = () => { const s = new Set(); for (const f of Object.values(files
 const chapterNames = () => Object.values(files).filter(f => f.lvl === 'chapter').map(f => f.n);
 const idWithHeading = h => (all.find(r => r.heading === h && tree.paths.has(r.id)) || {}).id;
 
-// --- the four branches, and what is not in the tree ---------------------------
-t('four branches: Rules, Missions, Factions, Rulings', idx.branches.map(b => b.n), ['Rules', 'Missions', 'Factions', 'Rulings']);
-t('Rulings is a sibling of Rules, never merged into it', [idx.branches[3].n, idx.branches[3].c], ['Rulings', 154]);
-t('Rules holds the 640 placed records (463 core-rules + 176 appendix + 00)', idx.branches[0].c, 640);
+// --- the three branches, and what is not in the tree --------------------------
+t('three branches: Rules, Missions, Factions', idx.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
+ok('Rulings is a chapter under Rules, provenance-labelled', files['tree/rules.js'].kids.some(k => k.n === 'Rulings' && k.c === 154) && idx.branches[0].c === 794);
+t('Rules holds the 794 placed records (463 core-rules + 176 appendix + 00 + 154 rulings)', idx.branches[0].c, 794);
 t('Missions holds the 82 placed records (73 event-companion + 9 Challenger)', idx.branches[1].c, 82);
 t('Factions holds 5,186 placed records', idx.branches[2].c, 5186);
 t('of which placed', idx.placed, 6062);
@@ -48,7 +48,7 @@ t('placed + excluded + unattached + dropped + filtered is the whole corpus', idx
 
 // --- Rules -> book -> numbered chapter -> section -----------------------------
 const crBook = 'tree/rules/core-rules.js', raBook = 'tree/rules/rules-appendix.js';
-t('Rules has the two books and the 00 chapter', kids('tree/rules.js').map(k => k.n), ['Core Rules', 'Rules Appendix', '00 Universal Rules Updates']);
+t('Rules has the two books, the 00 chapter and the Rulings chapter', kids('tree/rules.js').map(k => k.n), ['Core Rules', 'Rules Appendix', '00 Universal Rules Updates', 'Rulings']);
 t('Core Rules book count', kids('tree/rules.js')[0].c, 463);
 t('Rules Appendix book count', kids('tree/rules.js')[1].c, 176);
 t('00 is its own chapter at the end of Rules', kids('tree/rules.js')[2].c, 1);
@@ -159,7 +159,7 @@ const rendered = await new Promise(resolve => {
 t('the render runs', rendered.code, 0);
 ok('the render writes the tree index', fs.existsSync(path.join(outDir, 'tree', 'index.js')));
 const written = JSON.parse(fs.readFileSync(path.join(outDir, 'tree', 'index.js'), 'utf8').replace(/^window\.WIKI_TREE_INDEX = /, '').replace(/;$/, ''));
-t('and it is the same four branches', written.branches.map(b => b.n), ['Rules', 'Missions', 'Factions', 'Rulings']);
+t('and it is the same three branches', written.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
 const writtenCr = JSON.parse(fs.readFileSync(path.join(outDir, 'tree', 'rules', 'core-rules.js'), 'utf8').replace(/^window\.WIKI_TREE_NODE = /, '').replace(/;$/, ''));
 t('the rendered tree resolves the same chapters as the builder (no projection drift)', writtenCr.kids.map(k => k.n + ':' + k.c), kids(crBook).map(k => k.n + ':' + k.c));
 // The faction half is where the edition projection would drift first.
@@ -178,7 +178,7 @@ const roster = factionRoster(cardTables().factionName, cardTables().factionLink)
 const wire = { roster: roster, factionOf: factionAssigner(roster), allianceOf: allianceAssigner(roster, cardTables().datasheets, cardTables().keywords) };
 const mutate = (fn, opts) => { const copy = all.map(r => Object.assign({}, r)); fn(copy); return tocTree(copy, pageNamer(copy), Object.assign({}, wire, opts || {})); };
 const noUru = mutate(copy => { const i = copy.findIndex(r => r.id === 'rules-appendix#Universal-Rules-Updates'); copy.splice(i, 1); });
-t('MUTATION: dropping Universal Rules Updates drops the 00 chapter', noUru.files['tree/rules.js'].kids.map(k => k.n), ['Core Rules', 'Rules Appendix']);
+t('MUTATION: dropping Universal Rules Updates drops the 00 chapter', noUru.files['tree/rules.js'].kids.map(k => k.n), ['Core Rules', 'Rules Appendix', 'Rulings']);
 const backToCore = mutate(copy => { const r = copy.find(x => x.id === 'core-stratagem#000010851002'); r.text = r.text.replace('Type: Movement Ability', 'Type: Core Stratagem'); });
 t('MUTATION: a Movement Ability typed as a core stratagem returns to Stratagems', (backToCore.paths.get('core-stratagem#000010851002') || []).map(p => p.n).join(' > '), 'Rules > Core Rules > 15 Stratagems');
 const challCore = mutate(copy => { const r = copy.find(x => x.id === 'core-stratagem#000010254002'); r.text = r.text.replace(/Type:\s*[^\n]*/, 'Type: Core Stratagem'); });
