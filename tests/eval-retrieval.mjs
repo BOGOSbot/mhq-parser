@@ -27,6 +27,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expandQuery, gateHalf, gateHalfLexical, gateVocabularies, grepCorpus, grepTerms, grepWithTerms, jevCalls, jevRank, queryIndex, readAllCorpus, retrieveDual, retrieveWide } from '../src/rules-corpus.mjs';
 import { anchorFor, credential, fastCredential, jevKeyName } from '../src/rules.mjs';
+import { makeFeatures, rerankWith, train, trainingExamples, loadTraces, FEATURE_NAMES } from './learned-rerank.mjs';
 import { expectGroups, missingGroupLine, missingGroups, partialHeadline, satisfiedGroups } from './expectation-groups.mjs';
 import { resolveExpectation as resolveOne } from './expectations.mjs';
 
@@ -73,7 +74,13 @@ const GATE_MARGIN = parseFloat(value('--gate-margin') || '0');
 // control and the ranked arm are the same pipeline. The recorded OFF sweeps were
 // taken by accident, while the free gateway was 429ing - that is the fallback
 // pipeline, not passing no key, and the two measure differently.
-const RERANK_OFF = (value('--rerank') || 'on') === 'off';
+const RERANK_VALUE = value('--rerank') || 'on';
+const RERANK_OFF = RERANK_VALUE === 'off' || RERANK_VALUE === 'learned';
+// task-60: --rerank learned re-orders the candidates the same arm already holds
+// with a logistic regression trained on the traces. It makes no Jev call (the
+// pipeline runs exactly as --rerank off does) and no extra embedding call: the
+// features are lexical and rank-based, computed locally.
+const LEARNED = RERANK_VALUE === 'learned';
 // --no-key is the no-key deployment: the dual/wide arms get no Jev key at all.
 // It must land on the same list as --rerank off (the same pipeline, no call),
 // which is what makes the zero-call control representative.
@@ -97,6 +104,20 @@ const FACTIONS_CORPUS = SPLIT_HALVES ? readAllCorpus('factions') : null;
 const JEV_KEY = credential(jevKeyName());
 const SENSE_KEY = fastCredential();
 const asHits = list => list.map(s => ({ id: s.id, metadata: s, score: s.jev !== undefined ? s.jev : s.score }));
+
+// The learned arm, trained once: features over the whole corpus (both halves), the
+// labels from every trace's own verdict and the reader's marks.
+let LEARNED_W = null, featurize = null, LEARNED_STATS = '';
+if (LEARNED) {
+  const all = (RULES_CORPUS || []).concat(FACTIONS_CORPUS || []);
+  const byId = new Map(all.map(r => [r.id, r]));
+  featurize = makeFeatures(all);
+  const traces = loadTraces();
+  const t = trainingExamples(traces, featurize, byId);
+  LEARNED_W = value('--learned-weights') === 'rank' ? [0, 0, 0, 0, 0, 1, 0, 0, 0] : train(t.examples);
+  LEARNED_STATS = 'learned from ' + traces.length + ' traces, ' + t.examples.length + ' examples, ' + t.positives + ' positive';
+  console.log('learned rerank: ' + LEARNED_STATS + '\n  weights ' + FEATURE_NAMES.map((n, i) => n + '=' + LEARNED_W[i].toFixed(3)).join('  '));
+}
 
 // An expectation is an id, and an id is only stable while the chunker that built
 // it is. Two things break when the chunker changes:
@@ -250,7 +271,9 @@ const rows = [];
 let fallbacks = 0;
 for (const item of questions) {
   const callsBefore = jevCalls();
-  const hits = await retrieve(item.q, item);
+  let hits = await retrieve(item.q, item);
+  // The learned arm re-orders what the arm retrieved; it adds no call.
+  if (LEARNED_W) hits = rerankWith(LEARNED_W, featurize(item.q, hits));
   const callsAfter = jevCalls();
   const fellBack = (callsAfter.rerank.failed - callsBefore.rerank.failed) +
     (callsAfter.gate.failed - callsBefore.gate.failed);
