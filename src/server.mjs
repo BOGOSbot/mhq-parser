@@ -35,6 +35,7 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
+import { buildWikiArchive } from './wiki-archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
@@ -386,7 +387,7 @@ function etagOf(buf) {
 // the bytes, so a hit cannot be for different content. The rules page takes ~0.6 s
 // to brotli at quality 11 (35,545 bytes against gzip's 41,521), which is worth
 // paying ONCE per content change - a repeat visit is a memo hit or a 304. Bounded
-// because the wiki render is 6,705 pages and every one of them has its own body.
+// because the wiki render is 6,271 pages and every one of them has its own body.
 const COMPRESSED = new Map();
 const COMPRESS_CACHE_MAX = 64;
 function compressedBody(buf, enc, tag) {
@@ -878,6 +879,34 @@ const WIKI_TYPES = {
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8',
 };
+// --- the one-shot offline download -----------------------------------------
+// The whole wiki, delivered pages only, as one ZIP a phone saves once and opens
+// at a table. The manifest is the render's own map.json - the same file /wiki
+// routing and the prune sweep treat as the truth - so a record the tree filtered
+// has no page and no entry here. Built once and kept; a re-render is picked up
+// from map.json's mtime. Same origin, same access control: no new gate, no key.
+let archiveCache = { at: 0, zip: null, files: 0, pages: 0, bytes: 0 };
+function wikiArchive() {
+  const at = fs.statSync(path.join(WIKI_DIR, 'map.json')).mtimeMs;
+  if (!archiveCache.zip || archiveCache.at !== at) {
+    const built = buildWikiArchive(WIKI_DIR);
+    archiveCache = { at, zip: built.zip, files: built.files.length, pages: built.pagesCount, bytes: built.bytes };
+  }
+  return archiveCache;
+}
+function handleWikiArchive(req, res) {
+  let a;
+  try { a = wikiArchive(); } catch (e) { return fail(res, 500, 'archive failed: ' + String((e && e.message) || e)); }
+  res.writeHead(200, {
+    'Content-Type': 'application/zip',
+    'Content-Length': a.zip.length,
+    'Content-Disposition': 'attachment; filename="mhq-rules-wiki.zip"',
+    'Cache-Control': 'no-cache',
+    'ETag': '"' + a.at + '-' + a.zip.length + '"',
+  });
+  return res.end(a.zip);
+}
+
 function handleWiki(req, res, u) {
   let rel = '';
   try { rel = decodeURIComponent(u.pathname.slice('/wiki'.length)).replace(/^\/+/, ''); }
@@ -1635,6 +1664,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/rules/labels') return handleRulesLabels(req, res);
   if (req.method === 'GET' && u.pathname === '/rules/record') return handleRulesRecord(req, res, u);
   if (req.method === 'GET' && u.pathname === '/rules/lookup') return handleRulesLookup(req, res, u);
+  if (req.method === 'GET' && u.pathname === '/wiki/all.zip') return handleWikiArchive(req, res);
   if (req.method === 'GET' && (u.pathname === '/wiki' || u.pathname.indexOf('/wiki/') === 0)) return handleWiki(req, res, u);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
