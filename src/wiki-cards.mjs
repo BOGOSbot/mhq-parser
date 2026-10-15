@@ -35,6 +35,11 @@ const norm = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 // never has to guess what a div was for.
 export const CARD_CSS = [
   '.wcard { margin:0 0 1.2rem; }',
+  // The rulings' provenance banner: it rides in the fragment (recordBody), so
+  // the page and the ask dialog share it. Loud enough to not be mistaken for GW
+  // text, quiet enough not to shout on every card.
+  '.wprov { margin:.2rem 0 .9rem; padding:.5rem .6rem; border-left:3px solid var(--line); background:var(--chip); font-size:.8rem; color:var(--dim); }',
+  '.wprov strong { color:var(--ink); }',
   '.wcard-line { margin:.2rem 0 .6rem; font-size:.9rem; color:var(--dim); }',
   '.wcard-dot { padding:0 .3rem; }',
   '.wcard-role { color:var(--ink); font-weight:600; }',
@@ -227,11 +232,30 @@ function cardHtml(card, o) {
 // the Wargear lines, Option, Ability, Keywords, Points, Damaged, Source), so
 // printing both would show every field twice. The record's LINKS are untouched -
 // the page renders those from the record's own array, below this fragment.
+// A ruling is a third party's words: the banner says whose, and says plainly
+// that it is not Games Workshop rules text. It is part of the FRAGMENT, so the
+// record page and the ask dialog show the same attribution.
+function provenanceBanner(p) {
+  if (!p) return '';
+  const bits = [
+    p.publisher || p.document || '',
+    p.publisher && p.document ? p.document : '',
+    p.version ? 'version ' + p.version : '',
+    p.retrieved_at ? 'retrieved ' + String(p.retrieved_at).slice(0, 10) : '',
+    p.modified ? 'modified ' + p.modified : '',
+    p.language ? String(p.language).toUpperCase() : '',
+    p.scope ? 'scope: ' + p.scope : '',
+  ].filter(Boolean);
+  return '<aside class="wprov" data-source="' + esc(p.source_id || '') + '"><strong>Third-party ruling</strong> \u2014 '
+    + esc(bits.join(' \u00b7 ')) + '. <em>Not Games Workshop rules text.</em></aside>';
+}
+
 export function recordBody(record, opts) {
   const o = opts || {};
+  const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
   const card = cardFor(record, o);
-  if (card) return cardHtml(card, o);
-  return '<pre class="text">' + esc(record && record.text) + '</pre>';
+  if (card) return banner + cardHtml(card, o);
+  return banner + '<pre class="text">' + esc(record && record.text) + '</pre>';
 }
 
 export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, recordBody };

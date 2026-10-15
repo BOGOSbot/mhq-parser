@@ -33,17 +33,18 @@ const rootIds = () => { const s = new Set(); for (const f of Object.values(files
 const chapterNames = () => Object.values(files).filter(f => f.lvl === 'chapter').map(f => f.n);
 const idWithHeading = h => (all.find(r => r.heading === h && tree.paths.has(r.id)) || {}).id;
 
-// --- the three branches, and what is not in the tree --------------------------
-t('three branches: Rules, Missions, Factions', idx.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
+// --- the four branches, and what is not in the tree ---------------------------
+t('four branches: Rules, Missions, Factions, Rulings', idx.branches.map(b => b.n), ['Rules', 'Missions', 'Factions', 'Rulings']);
+t('Rulings is a sibling of Rules, never merged into it', [idx.branches[3].n, idx.branches[3].c], ['Rulings', 155]);
 t('Rules holds the 621 placed records (444 core-rules + 176 appendix + 00)', idx.branches[0].c, 621);
 t('Missions holds the 82 placed records (73 event-companion + 9 Challenger)', idx.branches[1].c, 82);
 t('Factions holds 5,186 placed records', idx.branches[2].c, 5186);
-t('of which placed', idx.placed, 5889);
+t('of which placed', idx.placed, 6044);
 t('the 174 index stubs are still counted', idx.excluded, [{ k: 'index', c: 174, why: 'navigation stubs, not corpus content' }]);
 t('the annotation total and the attached/unattached split', [tree.stats.annotations, tree.stats.annotated, tree.stats.unattached], [270, 261, 9]);
 t('unattached per book', tree.stats.unattachedByBook, { 'core-rules': 0, 'rules-appendix': 1, 'event-companion': 8 });
 t('Books is dropped as front matter', [tree.stats.dropped, tree.dropped.slice().sort()], [2, ['core-rules#Introduction', 'core-rules#Introduction#2']]);
-t('placed + excluded + unattached + dropped + filtered is the whole corpus', idx.placed + idx.excluded[0].c + tree.stats.unattached + tree.stats.dropped + tree.stats.filtered, 7114);
+t('placed + excluded + unattached + dropped + filtered is the whole corpus', idx.placed + idx.excluded[0].c + tree.stats.unattached + tree.stats.dropped + tree.stats.filtered, 7269);
 
 // --- Rules -> book -> numbered chapter -> section -----------------------------
 const crBook = 'tree/rules/core-rules.js', raBook = 'tree/rules/rules-appendix.js';
@@ -126,7 +127,8 @@ const annIds = new Set([...tree.attachTarget.keys(), ...tree.unattached]);
 let annRows = 0;
 for (const f of Object.values(files)) for (const r of (f.recs || [])) if (annIds.has(r.i)) annRows++;
 t('no question, FAQ or errata is a row at any level', annRows, 0);
-ok('no chapter is a FAQ, an Errata or a question', chapterNames().every(n => !/^(FAQ|Errata)$/i.test(n) && n.indexOf('?') === -1));
+ok('no Rules chapter is a FAQ, an Errata or a question', Object.entries(files).filter(pair => pair[1].lvl === 'chapter' && pair[0].indexOf('tree/rules') === 0).every(pair => !/^(FAQ|Errata)$/i.test(pair[1].n) && pair[1].n.indexOf('?') === -1));
+ok('the FEQ FAQ type is a Rulings chapter, a source label and not an annotation chapter', Object.entries(files).some(pair => pair[0].indexOf('tree/rulings/feq/') === 0 && pair[1].n === 'FAQ'));
 const PLAIN_Q = 'core-rules#Battle-shock-Rolls->-If-a-unit-becomes-battle-shocked-after-starting-an-action-does-it-stop-performing-that-action-?';
 t('NAMED: a question without the Q: prefix attaches to its section', tree.attachTarget.get(PLAIN_Q), 'core-rules#Battle-shock-Rolls');
 ok('and the section carries its seven', (tree.attach.get('core-rules#Battle-shock-Rolls') || []).length === 7);
@@ -154,7 +156,7 @@ const rendered = await new Promise(resolve => {
 t('the render runs', rendered.code, 0);
 ok('the render writes the tree index', fs.existsSync(path.join(outDir, 'tree', 'index.js')));
 const written = JSON.parse(fs.readFileSync(path.join(outDir, 'tree', 'index.js'), 'utf8').replace(/^window\.WIKI_TREE_INDEX = /, '').replace(/;$/, ''));
-t('and it is the same three branches', written.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
+t('and it is the same four branches', written.branches.map(b => b.n), ['Rules', 'Missions', 'Factions', 'Rulings']);
 const writtenCr = JSON.parse(fs.readFileSync(path.join(outDir, 'tree', 'rules', 'core-rules.js'), 'utf8').replace(/^window\.WIKI_TREE_NODE = /, '').replace(/;$/, ''));
 t('the rendered tree resolves the same chapters as the builder (no projection drift)', writtenCr.kids.map(k => k.n + ':' + k.c), kids(crBook).map(k => k.n + ':' + k.c));
 // The faction half is where the edition projection would drift first.
@@ -165,7 +167,7 @@ t('and the rendered unit rows too', writtenUnits.recs.length + ':' + writtenUnit
 ok('the rendered 00 chapter exists', fs.existsSync(path.join(outDir, 'tree', 'rules', 'universal-rules-updates.js')));
 const oldIndex = JSON.parse(fs.readFileSync(path.join(outDir, 'shell-data.js'), 'utf8').replace(/^window\.WIKI_TOC = /, '').replace(/;$/, ''));
 t('the popup index still has its 25 areas', oldIndex.areas.length, 25);
-t('and still partitions the corpus', oldIndex.areas.reduce((n, a) => n + a.c, 0), 7114);
+t('and still partitions the corpus', oldIndex.areas.reduce((n, a) => n + a.c, 0), 7269);
 fs.rmSync(outDir, { recursive: true, force: true });
 
 // --- the mutation check: the assertions above are not vacuous -----------------
@@ -184,7 +186,7 @@ const unfolded = mutate(copy => { const r = copy.find(x => x.heading === 'Abilit
 t('MUTATION: a [TORRENT] expansion that loses its marker becomes a row', unfolded.stats.annotations, 269);
 const dropped = mutate(copy => { const i = copy.findIndex(r => r.id === 'stratagem#000008931007'); copy.splice(i, 1); });
 t('MUTATION: dropping a record drops the Factions count by exactly one', dropped.index.branches[2].c, 5185);
-t('MUTATION: and the placed total with it', dropped.index.placed, 5888);
+t('MUTATION: and the placed total with it', dropped.index.placed, 6043);
 
 const baseOf = id => String(String(id).split('#')[1] || '').split('~')[0];
 const legacyDs = tree.filtered.find(id => id.indexOf('datasheet#') === 0 && all.some(x => x.kind === 'unitrules' && baseOf(x.id) === baseOf(id)));

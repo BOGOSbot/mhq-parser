@@ -94,12 +94,12 @@ ok('and needs no script for them', musterPage.indexOf('onclick') === -1 && muste
 ok('the folded Q&A are collapsible too', secPage.indexOf('<details class="wqa"') !== -1 && secPage.indexOf('<summary>') !== -1);
 // The payload before the cascade is opened: the root only, never a node file.
 const rootJs = fs.readFileSync(path.join(outDir, 'tree', 'index.js'), 'utf8');
-ok('the root the record page loads is the 3-branch index and nothing else', rootJs.indexOf('"branches"') !== -1 && rootJs.indexOf('"lvl":"chapter"') === -1 && rootJs.length < 1024);
+ok('the root the record page loads is the 4-branch index and nothing else', rootJs.indexOf('"branches"') !== -1 && rootJs.indexOf('"lvl":"chapter"') === -1 && rootJs.length < 1024);
 const root = JSON.parse(rootJs.replace(/^window\.WIKI_TREE_INDEX = /, '').replace(/;$/, ''));
-t('and it names the three branches', root.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
+t('and it names the four branches, Rulings a sibling of Rules', root.branches.map(b => b.n), ['Rules', 'Missions', 'Factions', 'Rulings']);
 // One level costs one node file: the unit page's own level is its Units file.
 const unitsFile = tree.paths.get(UNIT_REC).slice(-1)[0].f;
-ok('one level is one file, fetched by name', root.branches.length === 3 && unitsFile.indexOf('tree/factions/imperium/adeptus-custodes/units.js') === 0);
+ok('one level is one file, fetched by name', root.branches.length === 4 && unitsFile.indexOf('tree/factions/imperium/adeptus-custodes/units.js') === 0);
 // The cold /wiki/: no record, so the cascade rests at the root.
 const home = fs.readFileSync(path.join(outDir, 'home.html'), 'utf8');
 ok('the cold /wiki/ carries no WIKI_HERE', home.indexOf('WIKI_HERE') === -1);

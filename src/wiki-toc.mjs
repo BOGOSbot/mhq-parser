@@ -928,13 +928,73 @@ export function tocTree(records, pageOf, opts) {
   const facTotal = allianceNodes.reduce((n, k) => n + k.c, 0);
   files['tree/factions.js'] = { n: 'Factions', lvl: 'branch', c: facTotal, kids: allianceNodes };
 
-  const placed = rulesTotal + missionsC + facTotal;
+  // --- Rulings -> document -> topic/type -> facet/faction ---------------------
+  // Third-party tournament interpretations, not Games Workshop text. The product
+  // exists so a player can show a card to an opponent, and misattribution is the
+  // one failure mode we cannot ship: so Rulings is a branch SIBLING of Rules,
+  // never merged into it and never reachable from it, and every record carries
+  // its provenance verbatim. Scope separates the answer sets - 'game' is the
+  // default listing, 'event' (conduct, modelling) and 'tip' (Did you know) are
+  // labelled as what they are and sorted after it.
+  const rulingRecs = records.filter(r => r.set === 'rulings' && !LEGACY(r));
+  const rulingsRef = { n: 'Rulings', lvl: 'branch', f: 'tree/rulings.js' };
+  const scopeLabel = (topic, scope) => scope === 'event' ? topic + ' \u2014 event conduct (not game rules)'
+    : scope === 'tip' ? topic + ' \u2014 tips (not game rules)' : topic;
+  const fileSafe = s => nodeSlug(String(s || 'Other')) || 'other';
+  const docNodes = [];
+  for (const doc of [
+    { key: 'wtc', n: 'WTC 11th Edition FAQ', file: 'tree/rulings/wtc.js' },
+    { key: 'feq', n: 'FEQ 40K FAQ', file: 'tree/rulings/feq.js' },
+  ]) {
+    const docRecs = rulingRecs.filter(r => String(r.id).indexOf(doc.key + '11-') === 0);
+    const docRef = { n: doc.n, lvl: 'doc', f: doc.file };
+    const firstOf = r => doc.key === 'wtc' ? (r.provenance.topic || 'Other') : (r.provenance.type_norm || 'Other');
+    const secondOf = r => doc.key === 'wtc' ? (r.provenance.facet || 'Other') : (r.provenance.faction || 'General');
+    const groups = new Map();
+    for (const r of docRecs) {
+      const a = firstOf(r);
+      if (!groups.has(a)) groups.set(a, new Map());
+      const b = secondOf(r);
+      if (!groups.get(a).has(b)) groups.get(a).set(b, []);
+      groups.get(a).get(b).push(r);
+    }
+    const rank = a => Math.max(...[...groups.get(a).values()].flat().map(r => (r.provenance.scope === 'game' ? 0 : 1)));
+    const usedFirst = new Set(), kids = [];
+    for (const a of [...groups.keys()].sort((x, y) => rank(x) - rank(y) || x.localeCompare(y))) {
+      const aRecs = [...groups.get(a).values()].flat();
+      const scope = aRecs.some(r => r.provenance.scope === 'game') ? 'game' : (aRecs[0].provenance.scope || '');
+      const aLabel = doc.key === 'wtc' ? scopeLabel(a, scope) : a;
+      const aSlug = uniqueSlug(fileSafe(a), usedFirst);
+      const aFile = 'tree/rulings/' + doc.key + '/' + aSlug + '.js';
+      const aRef = { n: aLabel, lvl: 'chapter', f: aFile };
+      const subKids = [];
+      let aC = 0;
+      for (const b of [...groups.get(a).keys()].sort((x, y) => x.localeCompare(y))) {
+        const rows = groups.get(a).get(b).sort((x, y) => String(x.heading).localeCompare(String(y.heading)) || String(x.id).localeCompare(String(y.id)));
+        const bFile = 'tree/rulings/' + doc.key + '/' + aSlug + '/' + uniqueSlug(fileSafe(b), new Set()) + '.js';
+        files[bFile] = { n: b, lvl: 'leaf', c: rows.length, recs: rows.map(ent) };
+        const bRef = { n: b, lvl: 'leaf', f: bFile };
+        subKids.push({ n: b, lvl: 'leaf', c: rows.length, f: bFile });
+        aC += rows.length;
+        for (const r of rows) paths.set(r.id, [rulingsRef, docRef, aRef, bRef]);
+      }
+      files[aFile] = { n: aLabel, lvl: 'chapter', c: aC, kids: subKids };
+      kids.push({ n: aLabel, lvl: 'chapter', c: aC, f: aFile });
+    }
+    files[doc.file] = { n: doc.n, lvl: 'doc', c: docRecs.length, kids: kids };
+    docNodes.push({ n: doc.n, lvl: 'doc', c: docRecs.length, f: doc.file });
+  }
+  const rulingsC = rulingRecs.length;
+  files['tree/rulings.js'] = { n: 'Rulings', lvl: 'branch', c: rulingsC, kids: docNodes };
+
+  const placed = rulesTotal + missionsC + facTotal + rulingsC;
   const index = {
     v: 1, n: 'Wiki', total: records.length, placed: placed,
     branches: [
       { n: 'Rules', lvl: 'branch', c: rulesTotal, f: 'tree/rules.js' },
       { n: 'Missions', lvl: 'branch', c: missionsC, f: 'tree/missions.js' },
       { n: 'Factions', lvl: 'branch', c: facTotal, f: 'tree/factions.js' },
+      { n: 'Rulings', lvl: 'branch', c: rulingsC, f: 'tree/rulings.js' },
     ],
     excluded: excludedIds.length ? [{ k: 'index', c: excludedIds.length, why: 'navigation stubs, not corpus content' }] : [],
   };
@@ -948,7 +1008,7 @@ export function tocTree(records, pageOf, opts) {
     // One page per detachment and one page per army-rules set: the tree carves
     // the collections, the render writes their pages.
     owned: owned, mergedOn: mergedOn, pages: pages,
-    stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: missionsC, factions: facTotal,
+    stats: { total: records.length, placed: placed, excluded: excludedIds.length, rules: rulesTotal, missions: missionsC, factions: facTotal, rulings: rulingsC,
       annotations: annotationTotal, annotated: annotationTotal - unattached.length, unattached: unattached.length, unattachedByBook: unattachedBooks,
       dropped: dropped.length, filtered: filteredIds.length, merged: mergedIds.length },
     dropped: dropped.map(r => r.id), filtered: filteredIds, merged: mergedIds,

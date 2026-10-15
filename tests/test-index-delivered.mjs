@@ -19,8 +19,8 @@ t('an edition-0 datasheet is not delivered', isDelivered({ id: 'datasheet#000000
 t('an edition-11 datasheet is', isDelivered({ id: 'datasheet#000000882', edition: '11' }), true);
 t('an index stub is delivered (counted navigation, not filtered content)', isDelivered({ id: 'faction-index#faction-ae', edition: '11' }), true);
 t('an empty record is not delivered', isDelivered(null), false);
-t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7114, 7114]);
-t('delivered is 6,074 and filtered is 1,040', [delivered.length, filtered.length], [6074, 1040]);
+t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7269, 7269]);
+t('delivered is 6,229 (with the 155 rulings) and filtered is 1,040', [delivered.length, filtered.length], [6229, 1040]);
 
 // --- the query path cannot return what the product does not deliver -----------
 const ids = deliveredIds();

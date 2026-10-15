@@ -109,6 +109,10 @@ export const CSV_FILES = [
 
 export const CSV_DIR = path.join(CORPUS_DIR, 'csv');
 
+// The staged rulings inputs. Read-only to this module: the text is stored
+// verbatim, never re-normalised and never re-fetched.
+export const RULINGS_DIR = path.join(CORPUS_DIR, 'rulings');
+
 // One source for the whole export: it is downloaded and built as a unit, and a
 // per-faction split would only fragment the refresh.
 export const FACTIONS_CSV = {
@@ -130,7 +134,12 @@ export const CORE_STRATAGEMS = {
   built: true,
 };
 
-export const ALL_SOURCES = SOURCES.concat([FACTIONS_CSV, CORE_STRATAGEMS]);
+// The third-party rulings half: two tournament FAQ documents staged as
+// normalised CSVs beside the export. Built here, never scraped; see
+// buildRulingsCorpus.
+export const RULINGS = { name: 'rulings', set: 'rulings', url: '', built: true };
+
+export const ALL_SOURCES = SOURCES.concat([FACTIONS_CSV, CORE_STRATAGEMS, RULINGS]);
 
 export function sourcesFor(setName) {
   if (!setName || setName === 'all') return ALL_SOURCES;
@@ -138,7 +147,9 @@ export function sourcesFor(setName) {
 }
 
 export function namespaceFor(setName) {
-  return setName === 'factions' ? 'factions' : 'rules';
+  if (setName === 'factions') return 'factions';
+  if (setName === 'rulings') return 'rulings';
+  return 'rules';
 }
 
 // bge-m3 takes 8192 tokens, but a long passage dilutes its own embedding: the
@@ -607,6 +618,31 @@ export function textHash(text) {
 // Joining the pieces keeps the newline inside the cell it belongs to, so the
 // cell count still works out: line A contributes n cells, line B contributes m,
 // and the join yields n + m - 1.
+
+// The staged rulings CSVs are quoted commas, not the export's pipes: an RFC-4180
+// reader, because a ruling's text holds commas, quotes and newlines. Kept
+// separate from csvRows so neither format can silently eat the other's rows.
+export function csvQuotedRows(text) {
+  const src = String(text).replace(/^\uFEFF/, '');
+  const rows = [];
+  let row = [], cell = '', quoted = false;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (quoted) {
+      if (c === '"') { if (src[i + 1] === '"') { cell += '"'; i++; } else quoted = false; }
+      else cell += c;
+    } else if (c === '"') quoted = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (c !== '\r') cell += c;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  const head = (rows.shift() || []).map(s => s.trim());
+  return rows
+    .filter(r => r.some(v => String(v).trim() !== ''))
+    .map(r => Object.fromEntries(head.map((k, i) => [k, r[i] === undefined ? '' : r[i]])));
+}
+
 export function csvRows(text) {
   const lines = String(text).replace(/^\uFEFF/, '').split(/\r?\n/);
   if (!lines.length) return [];
@@ -1062,6 +1098,60 @@ export function buildFactionCorpus() {
     if (half.set === 'factions') main = payload;
   }
   return { count: built.sections.length, marker, factions: halves[0].sections.length, core: halves[1].sections.length, dropped: built.dropped, main, boarding: raw.boarding, editions: editionCounts(built.sections) };
+}
+
+
+// --- the rulings half ---------------------------------------------------------
+// Two third-party tournament FAQ documents, staged beside the export as
+// normalised CSVs (workspace/rules-corpus/rulings/). This reads those two files
+// and nothing else: never the raw sheet copies, never a re-fetch, never a
+// re-normalise. The text is stored VERBATIM - the source's own typos included -
+// because the product's use is a player showing a card to an opponent, and a
+// paraphrase or a tidy-up would put our words in a third party's mouth. Every
+// record carries its provenance so the card can say whose words they are.
+export function buildRulingsCorpus() {
+  const manifest = JSON.parse(fs.readFileSync(path.join(RULINGS_DIR, 'sources.json'), 'utf8'));
+  const bySource = new Map((manifest.sources || []).map(s => [s.source_id, s]));
+  const read = f => csvQuotedRows(fs.readFileSync(path.join(RULINGS_DIR, f), 'utf8'));
+  const sections = [];
+  const add = (row, doc) => {
+    const text = String(row.text == null ? '' : row.text);
+    if (!text.trim()) return false;
+    const src = bySource.get(row.source_id) || {};
+    const heading = doc === 'wtc'
+      ? 'WTC ' + (row.faction || row.topic || '') + ' \u2014 ' + (row.facet || '') + (row.entry_no ? ' #' + row.entry_no : '')
+      : 'FEQ ' + (row.type_norm || row.topic || 'FAQ') + (row.faction ? ' \u2014 ' + row.faction : '');
+    sections.push({
+      id: String(row.id), source: RULINGS.name, set: 'rulings', kind: 'ruling',
+      heading: heading.trim(), ruleId: '', anchor: '', hasAnchor: false, url: src.url || '',
+      text: text, chars: text.length, hash: textHash(text),
+      // Verbatim provenance, per record: which document, which version, when it
+      // was retrieved, and the source's own raw labels beside the normalised ones.
+      provenance: {
+        source_id: row.source_id || '', publisher: src.publisher || '', document: src.name || '',
+        url: src.url || '', version: src.version || '', edition: String(row.edition || src.edition || '11'),
+        language: row.language || src.language || '', retrieved_at: manifest.retrieved_at || '',
+        scope: row.scope || '', topic: row.topic || '', facet: row.facet || '',
+        type_raw: row.type_raw || '', type_norm: row.type_norm || '',
+        faction: row.faction || '', faction_raw: row.faction_raw || '',
+        entry_no: row.entry_no || '', modified: row.modified || '',
+      },
+      parent: '', children: [], links: [], edition: String(row.edition || '11'),
+    });
+    return true;
+  };
+  let wtc = 0, feq = 0;
+  for (const row of read('wtc-11-faq-1.0.normalised.csv')) if (add(row, 'wtc')) wtc++;
+  for (const row of read('feq-11-faq.normalised.csv')) if (add(row, 'feq')) feq++;
+  const ids = new Set(sections.map(s => s.id));
+  if (ids.size !== sections.length) throw new Error('duplicate ruling ids: ' + sections.length + ' rows, ' + ids.size + ' ids');
+  const payload = {
+    source: RULINGS.name, set: 'rulings', url: '', edition: '11',
+    marker: { kind: 'Rulings normalised CSV', edition: '11', version: '', lastUpdate: '', retrieved_at: manifest.retrieved_at || '' },
+    scrapedAt: new Date().toISOString(), count: sections.length, anchored: 0, sections,
+  };
+  writeCorpus(RULINGS.name, payload);
+  return { count: sections.length, wtc, feq, main: payload };
 }
 
 // --- the corpus on disk -----------------------------------------------------
@@ -3202,6 +3292,14 @@ async function main() {
       else console.log('--flat: the corpus is NOT the shape the live index was built from.');
       return;
     }
+    if (set === 'rulings') {
+      // Not a scrape: the two documents are already staged as normalised CSVs.
+      const built = buildRulingsCorpus();
+      console.log('  ' + 'rulings records'.padEnd(24) + String(built.count).padStart(5) + '  (WTC ' + built.wtc + ' en + FEQ ' + built.feq + ' fr) -> ' + corpusPath(RULINGS.name));
+      console.log('stored verbatim from the staged normalised CSVs; nothing re-fetched, nothing re-normalised');
+      console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 / 0');
+      return;
+    }
     const done = await scrapeAll(only, set);
     for (const p of done) console.log(p.source.padEnd(17) + ' ' + String(p.count).padStart(4) + ' sections (' + p.anchored + ' anchored)  ' + Math.round(p.bytes / 1024) + ' KB');
     console.log('written to ' + CORPUS_DIR);
@@ -3274,7 +3372,7 @@ async function main() {
   if (flag('--stats')) {
     const info = VECTOR_BACKEND === 'local' ? null : await indexInfo();
     if (VECTOR_BACKEND === 'local') {
-      for (const ns of ['rules', 'factions']) {
+      for (const ns of ['rules', 'factions', 'rulings']) {
         const st = localLoad(ns);
         console.log('local ' + ns.padEnd(9) + String(st.meta.ids.length).padStart(5) + ' vectors, ' + (st.meta.dim || 0) + ' dims  -> ' + localStorePath(ns, '.bin'));
       }
@@ -3293,9 +3391,9 @@ async function main() {
     // lag a delete by a moment, so it is printed beside them, not instead of them.
     let indexed = 0;
     if (VECTOR_BACKEND === 'local') {
-      indexed = ['rules', 'factions'].reduce((n, ns) => n + localLoad(ns).meta.ids.length, 0);
+      indexed = ['rules', 'factions', 'rulings'].reduce((n, ns) => n + localLoad(ns).meta.ids.length, 0);
     } else {
-      for (const ns of ['rules', 'factions']) indexed += (await rangeIds(ns)).length;
+      for (const ns of ['rules', 'factions', 'rulings']) indexed += (await rangeIds(ns)).length;
       if (indexed !== info.vectorCount) console.log('index ids read now: ' + indexed + ' (info says ' + info.vectorCount + ', it lags a delete)');
     }
     console.log('records: ' + corpus.length + ' corpus, ' + delivered.length + ' delivered ' + JSON.stringify(byNamespace) + ', ' + (corpus.length - delivered.length) + ' filtered (edition 0 or the named tenth-edition rule)');
