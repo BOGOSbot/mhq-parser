@@ -71,6 +71,10 @@ export function validateRecord(r) {
   if (SPLITS.indexOf(r.split) === -1) problems.push('bad split');
   for (const g of r.gold) if (!g.length) problems.push('empty gold group');
   if (!(r.asks >= 1)) problems.push('asks must be at least 1');
+  // A zero-positive row (a rejection) is a good train example and a nonsense eval
+  // one: the bank's expect-of-groups cannot score 'nothing answers this', it would
+  // pass trivially or never. Only a labelled gold can be eval.
+  if (!r.gold.length && r.split === 'eval') problems.push('an empty-gold row cannot be eval');
   if (r.split === 'eval' && TRAIN_ONLY_HOW.indexOf(r.how) !== -1) problems.push('a ' + r.how + ' label cannot be eval');
   return problems;
 }

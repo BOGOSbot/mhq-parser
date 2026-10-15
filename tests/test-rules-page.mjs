@@ -279,6 +279,11 @@ ok('the record carries the same three controls', /ctl\.appendChild\(findingContr
 ok('and the dev toggle opens the same provenance line', /body\.appendChild\(findingMeta\(f\)\)/.test(code));
 ok('a swipe moves through the findings', /addEventListener\('touchstart'/.test(code) && /addEventListener\('touchend'/.test(code) && /Math\.abs\(dx\) > 46 && Math\.abs\(dx\) > Math\.abs\(dy\)/.test(code) && /recordStep\(RECORD_STATE, dx < 0 \? 1 : -1\)/.test(code));
 ok('the arrow keys move too', /e\.key === 'ArrowLeft' \|\| e\.key === 'ArrowRight'/.test(code));
+// task-41's up/down swipe: vertical pages only at the scroll edge, so a long
+// passage stays scrollable; horizontal is unchanged.
+ok('an up/down swipe pages at the scroll edge', /recordAtEdge\(body, dy < 0\)/.test(code) && /recordStep\(RECORD_STATE, dy < 0 \? 1 : -1\)/.test(code));
+ok('the edge test reads the body scroll, not the window', /function recordAtEdge\(box, forward\)/.test(code) && /box\.scrollTop \+ box\.clientHeight >= box\.scrollHeight - 2/.test(code) && /box\.scrollTop <= 2/.test(code));
+ok('and the horizontal swipe still comes first', /if \(Math\.abs\(dx\) > 46 && Math\.abs\(dx\) > Math\.abs\(dy\)\) \{ recordStep\(RECORD_STATE, dx < 0 \? 1 : -1\); return; \}/.test(code));
 ok('a swipe walks the order the list draws', /var order = heroOrder\(state\.findings, state\.cited, state\);/.test(code));
 ok('the ends hold rather than wrap', /if \(next < 0 \|\| next >= order\.length\) return;/.test(code));
 ok('the x is the top-right way back', /el\('button', 'recclose'/.test(code) && /\.recclose\{[^}]*width:44px/.test(PAGE));

@@ -1627,7 +1627,12 @@ function recordKindLabel(kind) {
 
 // The overlay is built once and reused: the swipe listener lives on it, so it
 // must not be re-attached on every render. A horizontal swipe moves through the
-// findings, a vertical one scrolls the record.
+// findings; a vertical one scrolls the record, and pages to the next or previous
+// finding when the scroll is already at its edge.
+function recordAtEdge(box, forward) {
+  if (!box) return false;
+  return forward ? (box.scrollTop + box.clientHeight >= box.scrollHeight - 2) : box.scrollTop <= 2;
+}
 function recordNode() {
   var node = document.getElementById('record');
   if (node) return node;
@@ -1646,7 +1651,15 @@ function recordNode() {
     var touch = e.changedTouches && e.changedTouches[0];
     if (!touch) return;
     var dx = touch.clientX - sx, dy = touch.clientY - sy;
-    if (Math.abs(dx) > 46 && Math.abs(dx) > Math.abs(dy)) recordStep(RECORD_STATE, dx < 0 ? 1 : -1);
+    // A horizontal swipe pages through the findings, as it always has.
+    if (Math.abs(dx) > 46 && Math.abs(dx) > Math.abs(dy)) { recordStep(RECORD_STATE, dx < 0 ? 1 : -1); return; }
+    // An UP/DOWN swipe pages too, but only at the end of the scroll - the way a
+    // photo viewer behaves. Vertical is otherwise the body's scroll, and taking
+    // that away would make a long passage unreadable at arm's length.
+    if (Math.abs(dy) > 46 && Math.abs(dy) > Math.abs(dx)) {
+      var body = node.querySelector('.recbody');
+      if (body && recordAtEdge(body, dy < 0)) recordStep(RECORD_STATE, dy < 0 ? 1 : -1);
+    }
   }, { passive: true });
   document.body.appendChild(node);
   return node;

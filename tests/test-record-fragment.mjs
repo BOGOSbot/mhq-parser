@@ -3,6 +3,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { readAllCorpus, isDelivered } from '../src/rules-corpus.mjs';
 
 // ONE renderer, two paths, and this is the proof: the fragment the static wiki
 // render writes into a page must be byte-for-byte the fragment the server serves
@@ -84,7 +85,13 @@ async function main() {
   const port = 18100 + Math.floor(Math.random() * 40000);
   const outDir = path.join(ROOT, 'workspace', 'wiki-fragment-test');
   fs.rmSync(outDir, { recursive: true, force: true });
-  const rendered = await run(process.execPath, [path.join(ROOT, 'src', 'wiki-render.mjs')], { WIKI_RENDER_DIR: outDir, WIKI_RENDER_ONLY: REC + ',' + FALLBACK });
+  // task-41's four categories, chosen from the live manifest and rendered into the
+  // test's own dir so the booted server's map holds them too.
+  const liveIds = new Set(Object.keys(JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-render', 'map.json'), 'utf8'))));
+  const live = readAllCorpus().filter(r => isDelivered(r) && liveIds.has(r.id));
+  const CATEGORY = ['datasheet', 'faction-rule', 'detachment', 'rule'].map(kind => (live.find(r => r.kind === kind && r.id.indexOf('core-rules#Introduction') !== 0) || {}).id || '');
+  t('the corpus holds one page-backed record of each category kind', CATEGORY.filter(Boolean).length, 4);
+  const rendered = await run(process.execPath, [path.join(ROOT, 'src', 'wiki-render.mjs')], { WIKI_RENDER_DIR: outDir, WIKI_RENDER_ONLY: [REC, FALLBACK].concat(CATEGORY).join(',') });
   t('the static render runs for the named records', rendered.code, 0);
   const map = JSON.parse(fs.readFileSync(path.join(outDir, 'map.json'), 'utf8'));
 
@@ -187,6 +194,16 @@ async function main() {
     t('a tree-filtered record has no fragment and no page', [filteredOut.status, (await request(port, '/wiki/faction-rule_000008445-1wal5mo.html')).status], [404, 404]);
     const missing = await request(port, '/rules/record?id=nope&format=html');
     t('an unknown id is still a 404', missing.status, 404);
+    // task-41: a card tap opens the right record for each of the four category
+    // kinds the findings carry - a unit, a faction, a detachment and a rules
+    // section - through the one route the dialog uses.
+    // task-41: a card tap opens the right record for each of the four category
+    // kinds the findings carry - a unit, a faction, a detachment and a rules
+    // section - through the one route the dialog uses.
+    for (const kind of CATEGORY) {
+      const res = await request(port, '/rules/record?id=' + encodeURIComponent(kind) + '&format=html');
+      t('a category record opens its fragment: ' + kind, [res.status, res.body.length > 80], [200, true]);
+    }
   } finally {
     child.kill();
     fs.rmSync(outDir, { recursive: true, force: true });

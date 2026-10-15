@@ -46,6 +46,11 @@ const rej = harvestFromTraces([trace({ labels: { positive: [], negative: ['a'] }
 t('a reader rejection is recorded, not dropped', [rej.length, rej[0].gold, rej[0].negatives], [1, [], ['a']]);
 t('an empty question is skipped', harvestFromTraces([trace({ question: '   ', labels: { positive: ['a'] } })]).length, 0);
 ok('asks must be at least 1', validateRecord({ id: 'x', q: 'q', answer: '', gold: [['a']], negatives: [], how: 'vote', edition: '', date: '', source: '', url: '', split: 'train', asks: 0 }).some(p => /asks/.test(p)));
+// A zero-positive row is a good train example and a nonsense eval one: the bank's
+// expect-of-groups cannot score 'nothing answers this'.
+const rejection = harvestFromTraces([trace({ labels: { positive: [], negative: ['a'] } })])[0];
+ok('the real rejection row validates as train', validateRecord(rejection).length === 0 && rejection.split === 'train');
+ok('and the same row is refused as eval', validateRecord(Object.assign({}, rejection, { split: 'eval' })).some(p => /empty-gold row cannot be eval/.test(p)));
 
 // --- the CLI writes the same thing ------------------------------------------
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harvest-'));
