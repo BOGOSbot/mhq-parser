@@ -21,10 +21,6 @@
  */
 
 import { buildUnitCard, resolveRecordLinks } from './unit-card.mjs';
-// task-66: the general wikilink rule. The record's own text is linkified with the
-// page href the caller already passes in (the render and the server both do), so a
-// name that matches a rule, detachment, unit or faction links to its page.
-import { linkify } from './wikilinks.mjs';
 
 // The two kinds whose text is a flat transcription of the CSV card. Every other
 // kind (stratagem, enhancement, detachment, rule, ability, index) has no card
@@ -273,14 +269,12 @@ function provenanceBanner(p) {
 // reader has said they want English - a French ruling is never defaulted to
 // English. A missing translation falls back to the French, with the fact said
 // out loud rather than an empty body.
-export function rulingBody(record, lang, opts) {
-  const o = opts || {};
-  const link = t => linkify(t, { selfId: record && record.id, href: o.href });
-  const fr = '<pre class="text" lang="fr">' + link(record && record.text) + '</pre>';
+export function rulingBody(record, lang) {
+  const fr = '<pre class="text" lang="fr">' + esc(record && record.text) + '</pre>';
   const hasEn = !!(record && record.text_en && String(record.text_en).trim());
   const en = hasEn
-    ? '<pre class="text" lang="en">' + link(record.text_en) + '</pre>'
-    : '<pre class="text" lang="fr">' + link(record && record.text) + '</pre>';
+    ? '<pre class="text" lang="en">' + esc(record.text_en) + '</pre>'
+    : '<pre class="text" lang="fr">' + esc(record && record.text) + '</pre>';
   const note = hasEn
     ? '<p class="wlang-note">Machine translation, unreviewed \u2014 the French is the source of record.</p>'
     : '<p class="wlang-note">No English translation yet \u2014 showing the French source.</p>';
@@ -293,10 +287,10 @@ export function rulingBody(record, lang, opts) {
 export function recordBody(record, opts) {
   const o = opts || {};
   const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
-  if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang, o);
+  if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang);
   const card = cardFor(record, o);
   if (card) return banner + cardHtml(card, o);
-  return banner + '<pre class="text">' + linkify(record && record.text, { selfId: record && record.id, href: o.href }) + '</pre>';
+  return banner + '<pre class="text">' + esc(record && record.text) + '</pre>';
 }
 
 export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, recordBody, rulingBody };
