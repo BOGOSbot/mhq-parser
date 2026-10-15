@@ -33,3 +33,8 @@ workspace/
 
 # a hand-extraction scratch the tool replaced
 .verify-inventory.json
+
+# the brand asset is durable, unlike the screenshots above: the product icon and
+# the sizes generated beside it are part of the app, not per-machine scratch.
+!img/
+!img/**

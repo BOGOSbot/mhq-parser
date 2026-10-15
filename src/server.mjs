@@ -357,8 +357,14 @@ const MAX_FILE_BODY = 32 * 1024 * 1024;
 const REQ_OF = new WeakMap();
 const COMPRESS_MIN = 512;      // below this the framing costs more than it saves
 const COMPRESSIBLE = /^(?:text\/|application\/(?:json|xml|javascript)|image\/svg\+xml)/;
-// 16x16, an ICO holding a PNG. Every fresh tab asks for this and used to get a 404.
+// The fallback icon: 119 bytes, an ICO holding a 16x16 PNG, kept so a clone
+// without img/ still answers rather than 404ing.
 const ICON = Buffer.from('AAABAAEAEBAAAAEAIABhAAAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAAQAAAAEAgGAAAAH/P/YQAAAChJREFUeNpjyFvx7z8lmAFE8AuKkYUHqQEiUmp48agBI8OAIZqUKcEAWaOsmOgvCt0AAAAASUVORK5CYII=', 'base64');
+// The brand icon, read once at boot: the 32x32 PNG Mandal supplied and the
+// 180x180 touch icon generated beside it. Missing files fall back, above.
+const readIcon = f => { try { return fs.readFileSync(path.join(__dirname, '..', 'img', f)); } catch { return null; } };
+const ICON_32 = readIcon('favicon-32.png');
+const ICON_180 = readIcon('apple-touch-icon.png');
 
 // Brotli first: on this server's own text it beats gzip by about 15% (139,870
 // bytes of /rules to 35,545 against gzip's 41,521), and a browser that offers
@@ -1516,10 +1522,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && u.pathname === '/card.css') {
     return send(res, 200, CARD_CSS, 'text/css; charset=utf-8');
   }
-  // The icon a fresh tab asks for. It used to 404 on every page load; now it is
-  // 119 bytes and cached for a week, so it stops being a request at all.
+  // The brand icon: the 32x32 PNG the tab asks for (as /favicon.png and as the
+  // /favicon.ico a browser requests on its own) and the 180x180 home-screen icon.
+  // Both are read at boot; both fall back to the inline ICO; both cache a week.
   if (req.method === 'GET' && (u.pathname === '/favicon.ico' || u.pathname === '/favicon.png')) {
-    return send(res, 200, ICON, 'image/x-icon', { maxAge: 'public, max-age=604800' });
+    return send(res, 200, ICON_32 || ICON, 'image/png', { maxAge: 'public, max-age=604800' });
+  }
+  if (req.method === 'GET' && u.pathname === '/apple-touch-icon.png') {
+    return send(res, 200, ICON_180 || ICON_32 || ICON, 'image/png', { maxAge: 'public, max-age=604800' });
   }
   if (req.method === 'GET' && u.pathname === '/rules') {
     try { return send(res, 200, readRules(), 'text/html; charset=utf-8'); }

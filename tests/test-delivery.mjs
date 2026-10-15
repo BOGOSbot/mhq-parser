@@ -77,7 +77,7 @@ async function main() {
     // --- the icon -------------------------------------------------------------
     const ico = await request(port, '/favicon.ico', {});
     t('the favicon is no longer a 404', ico.status, 200);
-    t('and it is an image', ico.headers['content-type'], 'image/x-icon');
+    t('and it is the 32x32 PNG', ico.headers['content-type'], 'image/png');
     ok('cached for a week, because it never changes', /max-age=604800/.test(String(ico.headers['cache-control'])));
     ok('and it is a real image, not an empty 200', ico.body.length > 60);
 
