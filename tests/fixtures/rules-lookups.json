@@ -205,8 +205,10 @@
   {
    "q": "find lethal hits",
    "lang": "en",
-   "kind": "none",
-   "expect": []
+   "kind": "literal",
+   "expect": [
+    "ability-def#lethal-hits"
+   ]
   },
   {
    "q": "find the rules for cheese",
@@ -223,8 +225,10 @@
   {
    "q": "find precision",
    "lang": "en",
-   "kind": "ambiguous",
-   "expect": []
+   "kind": "literal",
+   "expect": [
+    "ability-def#precision"
+   ]
   },
   {
    "q": "find shadow in the warp",
@@ -314,6 +318,30 @@
    "lang": "fr",
    "kind": "none",
    "expect": []
+  },
+  {
+   "q": "find devastating wounds",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "ability-def#devastating-wounds"
+   ]
+  },
+  {
+   "q": "find sustained hits",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "ability-def#sustained-hits"
+   ]
+  },
+  {
+   "q": "find ignores cover",
+   "lang": "en",
+   "kind": "literal",
+   "expect": [
+    "ability-def#ignores-cover"
+   ]
   }
  ]
 }

@@ -139,7 +139,11 @@ export const CORE_STRATAGEMS = {
 // buildRulingsCorpus.
 export const RULINGS = { name: 'rulings', set: 'rulings', url: '', built: true };
 
-export const ALL_SOURCES = SOURCES.concat([FACTIONS_CSV, CORE_STRATAGEMS, RULINGS]);
+// The universal ability definitions, re-read from the core-rules page already on
+// disk (never fetched again, never written by hand): see buildAbilityDefsCorpus.
+export const ABILITY_DEFS = { name: 'ability-defs', set: 'rules', url: '', built: true };
+
+export const ALL_SOURCES = SOURCES.concat([FACTIONS_CSV, CORE_STRATAGEMS, RULINGS, ABILITY_DEFS]);
 
 export function sourcesFor(setName) {
   if (!setName || setName === 'all') return ALL_SOURCES;
@@ -1185,6 +1189,94 @@ export function buildRulingsCorpus() {
   };
   writeCorpus(RULINGS.name, payload);
   return { count: sections.length, wtc, feq, translated: translated.size, main: payload };
+}
+
+
+// --- the universal ability definitions ----------------------------------------
+// The core rules page states each universal ability verbatim in an
+// <div class="abName"> block ('[LETHAL HITS] 24.23 ...'), but the scraper folds
+// the whole list into one parent record, so twenty of them ended up with no
+// heading of their own - a player cannot look up Lethal Hits by name, and the
+// router correctly refuses to guess. This source re-reads the page ON DISK (the
+// same fetched copy the scraper wrote; nothing is fetched again, and no rules
+// text is authored here - every word comes from the page) and emits one record
+// per ability that the corpus actually uses as [NAME] and that has no heading of
+// its own. An ability the page does not define is left out and named in the
+// build output, never invented.
+function abilityBlock(page, at) {
+  const start = page.lastIndexOf('<div class="abWrap', at);
+  if (start === -1) return '';
+  const tag = /<\/?div\b[^>]*>/g;
+  tag.lastIndex = start;
+  let depth = 0, m;
+  while ((m = tag.exec(page))) {
+    if (m[0].indexOf('</div') === 0) { depth -= 1; if (depth === 0) return page.slice(start, m.index + m[0].length); }
+    else depth += 1;
+  }
+  return '';
+}
+
+export function abilityDefsOnPage(page) {
+  const re = /<div class="abName">\s*\[?([^<\]]+)\]?\s*<span class="h_number">([0-9.]+)<\/span>/g;
+  const first = new Map();
+  let m;
+  while ((m = re.exec(page))) {
+    const name = m[1].trim().toUpperCase();
+    if (!first.has(name)) first.set(name, { name: name, num: m[2], at: m.index });
+  }
+  return first;
+}
+
+export function buildAbilityDefsCorpus() {
+  const page = fs.readFileSync(path.join(CORPUS_DIR, 'core-rules.html'), 'utf8');
+  const blocks = abilityDefsOnPage(page);
+  // Exclude this source's own previous output by ID, not by its section label: the
+  // sections carry source 'core-rules' (their real page), the FACTION_SOURCES
+  // pattern, so a rebuild does not mistake its own records for existing headings.
+  const ownIds = new Set(((readCorpusStamped(ABILITY_DEFS.name) || {}).sections || []).map(s => s.id));
+  const others = readAllCorpus().filter(r => !ownIds.has(r.id));
+  const used = new Set();
+  for (const r of others) {
+    for (const m of String(r.text || '').matchAll(/\[([^\]]{2,40})\]/g)) {
+      const base = m[1].split(':')[0].replace(/\s+[0-9X]+$/, '').trim().toUpperCase();
+      if (base) used.add(base);
+    }
+  }
+  const hasHeading = name => others.some(r => String(r.heading || '').split(' > ').some(s => s.replace(/^\[|\]$/g, '').trim().toUpperCase() === name));
+  const coreUrl = String((readCorpus('core-rules') || {}).url || 'https://wahapedia.ru/wh40k11ed/the-rules/core-rules/').split('#')[0] + '#Abilities';
+  const sections = [];
+  const skipped = [];
+  for (const [name, b] of blocks) {
+    if (!used.has(name) || hasHeading(name)) continue;
+    const text = htmlToText(abilityBlock(page, b.at)).replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    sections.push({
+      id: 'ability-def#' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+      // Their real page is the core rules: the tree files records by the section's
+      // own source label, exactly as a faction section says 'faction-ae' while the
+      // file is factions-csv.json.
+      source: 'core-rules', set: 'rules', kind: 'ability',
+      heading: '[' + name + ']', ruleId: b.num, anchor: '', hasAnchor: false, url: coreUrl,
+      text: text, chars: text.length, hash: textHash(text),
+      parent: 'core-rules#Abilities', children: [], links: [], edition: '11',
+    });
+  }
+  // An ability the corpus uses but the page does not define stays a fall-through;
+  // the build names it so the omission is a decision, not an accident.
+  const defined = [...blocks.keys()];
+  for (const name of used) {
+    if (blocks.has(name) || hasHeading(name)) continue;
+    if (/^\d+BTP$/.test(name)) continue;                       // [2BTP]: a timing marker
+    if (defined.some(d => name.indexOf(d) === 0)) continue;     // ANTI-VEHICLE 4+ is [ANTI]
+    skipped.push(name);
+  }
+  const payload = {
+    source: ABILITY_DEFS.name, set: 'rules', url: coreUrl, edition: '11',
+    marker: { kind: 'Core rules ability blocks', edition: '11', version: '', lastUpdate: '' },
+    scrapedAt: new Date().toISOString(), count: sections.length, anchored: 0, sections,
+  };
+  writeCorpus(ABILITY_DEFS.name, payload);
+  return { count: sections.length, names: sections.map(s => s.heading), skipped: skipped };
 }
 
 // --- the corpus on disk -----------------------------------------------------
@@ -3329,6 +3421,16 @@ async function main() {
       console.log('total ' + built.count + ' records from ' + CSV_FILES.length + ' CSV files');
       if (scrapeBuildsWiki(argv)) await buildWikiShape(CORPUS_DIR);
       else console.log('--flat: the corpus is NOT the shape the live index was built from.');
+      return;
+    }
+    if (set === 'ability-defs') {
+      // Not a scrape either: the page is already on disk, and the definitions are
+      // taken from it verbatim.
+      const built = buildAbilityDefsCorpus();
+      console.log('  ' + 'ability definitions'.padEnd(24) + String(built.count).padStart(5) + '  -> ' + corpusPath(ABILITY_DEFS.name));
+      for (const n of built.names) console.log('      ' + n);
+      if (built.skipped.length) console.log('  left out (the page defines no such ability): ' + built.skipped.join(', '));
+      console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 / 0');
       return;
     }
     if (set === 'rulings') {

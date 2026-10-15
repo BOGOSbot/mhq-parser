@@ -84,10 +84,11 @@ for (const r of cores) console.log((r.dedicated ? '  dedicated  ' : '  HIDDEN   
 // The facts as measured. If the corpus gains headings for these, the numbers move
 // and this test is the place that says so.
 t('23 weapon/universal abilities are named in the corpus text', weapons.length, 23);
-t('20 of them have no heading of their own', hiddenWeapons.length, 20);
-t('EXTRA ATTACKS, ONE SHOT and TORRENT are the only three with one', weapons.filter(r => r.dedicated).map(r => r.name).sort(), ['EXTRA ATTACKS', 'ONE SHOT', 'TORRENT']);
-t('Lethal Hits is one of the hidden', hiddenWeapons.some(r => r.name === 'LETHAL HITS'), true);
-t('and the corpus uses it 346 times', (weapons.find(r => r.name === 'LETHAL HITS') || {}).uses, 346);
+t('after task-50 only the corpus typo SUPA-HAZARDOUS has no heading', hiddenWeapons.map(r => r.name), ['SUPA-HAZARDOUS']);
+t('every real ability now has a heading of its own', weapons.filter(r => r.dedicated).length, 22);
+ok('and the 19 recovered by task-50 are among them', ['ANTI', 'DEVASTATING WOUNDS', 'LETHAL HITS', 'SUSTAINED HITS', 'TWIN-LINKED'].every(n => weapons.some(r => r.name === n && r.dedicated)));
+t('Lethal Hits has a heading of its own now', (weapons.find(r => r.name === 'LETHAL HITS') || {}).dedicated, true);
+t('and the corpus uses it 348 times (the definition counts itself)', (weapons.find(r => r.name === 'LETHAL HITS') || {}).uses, 348);
 t('no core ability is hidden: the export names them and the corpus carries them', hiddenCores, []);
 ok('the hidden set is a bounded list, not a chunking crisis', hiddenWeapons.length < 25);
 

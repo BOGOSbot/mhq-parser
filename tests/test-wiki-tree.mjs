@@ -36,25 +36,25 @@ const idWithHeading = h => (all.find(r => r.heading === h && tree.paths.has(r.id
 // --- the four branches, and what is not in the tree ---------------------------
 t('four branches: Rules, Missions, Factions, Rulings', idx.branches.map(b => b.n), ['Rules', 'Missions', 'Factions', 'Rulings']);
 t('Rulings is a sibling of Rules, never merged into it', [idx.branches[3].n, idx.branches[3].c], ['Rulings', 154]);
-t('Rules holds the 621 placed records (444 core-rules + 176 appendix + 00)', idx.branches[0].c, 621);
+t('Rules holds the 640 placed records (463 core-rules + 176 appendix + 00)', idx.branches[0].c, 640);
 t('Missions holds the 82 placed records (73 event-companion + 9 Challenger)', idx.branches[1].c, 82);
 t('Factions holds 5,186 placed records', idx.branches[2].c, 5186);
-t('of which placed', idx.placed, 6043);
+t('of which placed', idx.placed, 6062);
 t('the 174 index stubs are still counted', idx.excluded, [{ k: 'index', c: 174, why: 'navigation stubs, not corpus content' }]);
 t('the annotation total and the attached/unattached split', [tree.stats.annotations, tree.stats.annotated, tree.stats.unattached], [270, 261, 9]);
 t('unattached per book', tree.stats.unattachedByBook, { 'core-rules': 0, 'rules-appendix': 1, 'event-companion': 8 });
 t('Books is dropped as front matter', [tree.stats.dropped, tree.dropped.slice().sort()], [2, ['core-rules#Introduction', 'core-rules#Introduction#2']]);
-t('placed + excluded + unattached + dropped + filtered is the whole corpus', idx.placed + idx.excluded[0].c + tree.stats.unattached + tree.stats.dropped + tree.stats.filtered, 7268);
+t('placed + excluded + unattached + dropped + filtered is the whole corpus', idx.placed + idx.excluded[0].c + tree.stats.unattached + tree.stats.dropped + tree.stats.filtered, 7287);
 
 // --- Rules -> book -> numbered chapter -> section -----------------------------
 const crBook = 'tree/rules/core-rules.js', raBook = 'tree/rules/rules-appendix.js';
 t('Rules has the two books and the 00 chapter', kids('tree/rules.js').map(k => k.n), ['Core Rules', 'Rules Appendix', '00 Universal Rules Updates']);
-t('Core Rules book count', kids('tree/rules.js')[0].c, 444);
+t('Core Rules book count', kids('tree/rules.js')[0].c, 463);
 t('Rules Appendix book count', kids('tree/rules.js')[1].c, 176);
 t('00 is its own chapter at the end of Rules', kids('tree/rules.js')[2].c, 1);
 const CORE_LABELS = ['01 Core Concepts', '02 Datasheets', '03 Moving', '04 Making Attacks', '05 Attack Sequence', '06 Other Concepts', '07 The Battle Round', '08 Command Phase', '09 Movement Phase', '10 Shooting Phase', '11 Charge Phase', '12 Fight Phase', '13 Terrain', '14 Objectives', '15 Stratagems', '16 Actions', '17 Monsters and Vehicles', '18 Transports', '19 Attached Units', '20 Strategic Reserves', '21 Flying and Surging', '22 Other Rules and Abilities', '23 Aircraft', '24 Core Abilities', '25 Muster Armies'];
 t('the Rules chapter list is 01..25 in order', kids(crBook).map(k => k.n), CORE_LABELS);
-t('with the measured counts', kids(crBook).map(k => k.c), [19, 8, 28, 18, 19, 10, 4, 5, 11, 8, 9, 13, 20, 11, 45, 6, 8, 12, 7, 8, 5, 6, 5, 50, 109]);
+t('with the measured counts', kids(crBook).map(k => k.c), [19, 8, 28, 18, 19, 10, 4, 5, 11, 8, 9, 13, 20, 11, 45, 6, 8, 12, 7, 8, 5, 6, 5, 69, 109]);
 const RA_LABELS = ['01 Core Concepts', '02 Datasheets', '03 Moving', '04 Making Attacks', '05 Attack Sequence', '06 Other Concepts', '07 The Battle Round', '08 Command Phase', '09 Movement Phase', '11 Charge Phase', '12 Fight Phase', '13 Terrain', '14 Objectives', '15 Stratagems', '17 Monsters and Vehicles', '18 Transports', '19 Attached Units', '20 Strategic Reserves', '22 Other Rules and Abilities', '24 Core Abilities', '[ONE SHOT]'];
 t('the appendix renumbers with the same numbers, [ONE SHOT] last', kids(raBook).map(k => k.n), RA_LABELS);
 t('and its measured counts', kids(raBook).map(k => k.c), [27, 15, 7, 14, 5, 2, 2, 2, 3, 1, 1, 4, 2, 3, 1, 2, 2, 2, 1, 5, 75]);
@@ -120,7 +120,7 @@ const caId = 'core-rules#Abilities';
 const caRow = recs('tree/rules/core-rules/core-abilities.js').find(r => r.i === caId);
 ok('the Duplicated Abilities and [TORRENT] expansions fold into Abilities', caRow && caRow.q === 17);
 ok('and none of them is a row', !recs('tree/rules/core-rules/core-abilities.js').some(r => /Duplicated Abilities|\\[TORRENT\\]/.test(String((byId.get(r.i) || {}).heading || ''))));
-t('the displayed Core Abilities list is 19 rows for 50 counted records', [recs('tree/rules/core-rules/core-abilities.js').length, files['tree/rules/core-rules/core-abilities.js'].c], [19, 50]);
+t('the displayed Core Abilities list is 38 rows for 69 counted records', [recs('tree/rules/core-rules/core-abilities.js').length, files['tree/rules/core-rules/core-abilities.js'].c], [38, 69]);
 
 // --- annotations are folded into their section, never rows --------------------
 const annIds = new Set([...tree.attachTarget.keys(), ...tree.unattached]);
@@ -167,7 +167,7 @@ t('and the rendered unit rows too', writtenUnits.recs.length + ':' + writtenUnit
 ok('the rendered 00 chapter exists', fs.existsSync(path.join(outDir, 'tree', 'rules', 'universal-rules-updates.js')));
 const oldIndex = JSON.parse(fs.readFileSync(path.join(outDir, 'shell-data.js'), 'utf8').replace(/^window\.WIKI_TOC = /, '').replace(/;$/, ''));
 t('the popup index still has its 25 areas', oldIndex.areas.length, 25);
-t('and still partitions the corpus', oldIndex.areas.reduce((n, a) => n + a.c, 0), 7268);
+t('and still partitions the corpus', oldIndex.areas.reduce((n, a) => n + a.c, 0), 7287);
 fs.rmSync(outDir, { recursive: true, force: true });
 
 // --- the mutation check: the assertions above are not vacuous -----------------
@@ -186,7 +186,7 @@ const unfolded = mutate(copy => { const r = copy.find(x => x.heading === 'Abilit
 t('MUTATION: a [TORRENT] expansion that loses its marker becomes a row', unfolded.stats.annotations, 269);
 const dropped = mutate(copy => { const i = copy.findIndex(r => r.id === 'stratagem#000008931007'); copy.splice(i, 1); });
 t('MUTATION: dropping a record drops the Factions count by exactly one', dropped.index.branches[2].c, 5185);
-t('MUTATION: and the placed total with it', dropped.index.placed, 6042);
+t('MUTATION: and the placed total with it', dropped.index.placed, 6061);
 
 const baseOf = id => String(String(id).split('#')[1] || '').split('~')[0];
 const legacyDs = tree.filtered.find(id => id.indexOf('datasheet#') === 0 && all.some(x => x.kind === 'unitrules' && baseOf(x.id) === baseOf(id)));
