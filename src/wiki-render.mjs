@@ -27,8 +27,12 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const norm = s => String(s || '').replace(/\s+/g, ' ').trim();
 
 const CSS = [
-  ':root { --ink:#1a1a1a; --dim:#666; --line:#e2e2e2; --bg:#fdfdfc; --chip:#f2f4f7; --warn:#b3261e; --ok:#1b5e20; }'
-  , '@media (prefers-color-scheme: dark) { :root { --ink:#e8e8e6; --dim:#9a9a96; --line:#333; --bg:#16161a; --chip:#24242a; --warn:#ff8a80; --ok:#8bd18b; } }'
+  ':root { --ink:#1a1a1a; --dim:#666; --line:#e2e2e2; --bg:#fdfdfc; --chip:#f2f4f7; --warn:#b3261e; --ok:#1b5e20; --link:#1d4ed8; }'
+  , '@media (prefers-color-scheme: dark) { :root { --ink:#e8e8e6; --dim:#9a9a96; --line:#333; --bg:#16161a; --chip:#24242a; --warn:#ff8a80; --ok:#8bd18b; --link:#8ab4ff; } }'
+  // Mandal: anchors were falling back to the UA default (#0000EE), near-invisible
+  // on --bg:#16161a. One variable, both palettes; the chips, crumbs and nav keep
+  // their own colours because their rules are more specific.
+  , 'a { color:var(--link); }'
   , '* { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }'
   , 'main { max-width:46rem; margin:0 auto; padding:0 1rem 4rem; }'
   , 'header { position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line); padding:.6rem 1rem; z-index:2; }'

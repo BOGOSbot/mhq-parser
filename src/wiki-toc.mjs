@@ -1120,18 +1120,20 @@ export function tocTree(records, pageOf, opts) {
         const bRef = { n: b, lvl: 'leaf', f: bFile };
         subKids.push({ n: b, lvl: 'leaf', c: rows.length, f: bFile });
         aC += rows.length;
-        for (const r of rows) paths.set(r.id, [rulesRef, rulingsRef, docRef, aRef, bRef]);
+        for (const r of rows) paths.set(r.id, [rulesRef, docRef, aRef, bRef]);
       }
       files[aFile] = { n: aLabel, lvl: 'chapter', c: aC, kids: subKids };
       kids.push({ n: aLabel, lvl: 'chapter', c: aC, f: aFile });
     }
-    files[doc.file] = { n: doc.n, lvl: 'doc', c: docRecs.length, kids: kids };
-    docNodes.push({ n: doc.n, lvl: 'doc', c: docRecs.length, f: doc.file });
+    // A BOOK, not a document in a chapter: WTC and FEQ sit alongside Core Rules
+    // and the Appendix under Rules, so either can be omitted later by deleting one
+    // line (Mandal, task-65).
+    files[doc.file] = { n: doc.n, lvl: 'book', c: docRecs.length, kids: kids };
+    docNodes.push({ n: doc.n, lvl: 'book', c: docRecs.length, f: doc.file });
   }
   const rulingsC = rulingRecs.length;
-  files['tree/rulings.js'] = { n: 'Rulings', lvl: 'chapter', c: rulingsC, kids: docNodes };
-  // Directly under Rules, after the rulebooks: the branch's own count carries them.
-  files['tree/rules.js'].kids.push({ n: 'Rulings', lvl: 'chapter', c: rulingsC, f: 'tree/rulings.js' });
+  // The two books are siblings of the rulebooks under Rules - no Rulings chapter.
+  for (const d of docNodes) files['tree/rules.js'].kids.push({ n: d.n, lvl: 'book', c: d.c, f: d.f });
   files['tree/rules.js'].c += rulingsC;
 
   // The cutoff (task-55): the level where the index stops and the entry expands
@@ -1148,7 +1150,7 @@ export function tocTree(records, pageOf, opts) {
     // A 0x header is NOT an entry: on screen it is a collapsed group label and its
     // children are listed in its place, so it must not be a cut card either.
     if (n.lvl === 'chapter' && /^\d{2}\s/.test(n.n)) continue;
-    if (n.lvl === 'chapter' && n.n === 'Rulings') continue;
+    if (n.lvl === 'doc') continue;
     n.cut = true;
     cuts += 1;
   }

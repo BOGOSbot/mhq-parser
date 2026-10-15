@@ -35,7 +35,7 @@ const idWithHeading = h => (all.find(r => r.heading === h && tree.paths.has(r.id
 
 // --- the three branches, and what is not in the tree --------------------------
 t('three branches: Rules, Missions, Factions', idx.branches.map(b => b.n), ['Rules', 'Missions', 'Factions']);
-ok('Rulings is a chapter under Rules, provenance-labelled', files['tree/rules.js'].kids.some(k => k.n === 'Rulings' && k.c === 154) && idx.branches[0].c === 794);
+ok('the two ruling books are siblings under Rules, provenance-labelled', files['tree/rules.js'].kids.some(k => k.n === 'WTC 11th Edition FAQ' && k.lvl === 'book' && k.c === 120) && files['tree/rules.js'].kids.some(k => k.n === 'FEQ 40K FAQ' && k.c === 34) && idx.branches[0].c === 794);
 t('Rules holds the 794 placed records (463 core-rules + 176 appendix + 00 + 154 rulings)', idx.branches[0].c, 794);
 t('Missions holds the 106 placed records (97 event-companion + 9 Challenger)', idx.branches[1].c, 106);
 t('Factions holds 5,186 placed records', idx.branches[2].c, 5186);
@@ -48,7 +48,7 @@ t('placed + excluded + unattached + dropped + filtered is the whole corpus', idx
 
 // --- Rules -> book -> numbered chapter -> section -----------------------------
 const crBook = 'tree/rules/core-rules.js', raBook = 'tree/rules/rules-appendix.js';
-t('Rules has the two books, the 00 chapter and the Rulings chapter', kids('tree/rules.js').map(k => k.n), ['Core Rules', 'Rules Appendix', '00 Universal Rules Updates', 'Rulings']);
+t('Rules holds the two rulebooks, the 00 chapter and the two ruling books', kids('tree/rules.js').map(k => k.n), ['Core Rules', 'Rules Appendix', '00 Universal Rules Updates', 'WTC 11th Edition FAQ', 'FEQ 40K FAQ']);
 t('Core Rules book count', kids('tree/rules.js')[0].c, 463);
 t('Rules Appendix book count', kids('tree/rules.js')[1].c, 176);
 t('00 is its own chapter at the end of Rules', kids('tree/rules.js')[2].c, 1);
@@ -179,7 +179,7 @@ const roster = factionRoster(cardTables().factionName, cardTables().factionLink)
 const wire = { roster: roster, factionOf: factionAssigner(roster), allianceOf: allianceAssigner(roster, cardTables().datasheets, cardTables().keywords) };
 const mutate = (fn, opts) => { const copy = all.map(r => Object.assign({}, r)); fn(copy); return tocTree(copy, pageNamer(copy), Object.assign({}, wire, opts || {})); };
 const noUru = mutate(copy => { const i = copy.findIndex(r => r.id === 'rules-appendix#Universal-Rules-Updates'); copy.splice(i, 1); });
-t('MUTATION: dropping Universal Rules Updates drops the 00 chapter', noUru.files['tree/rules.js'].kids.map(k => k.n), ['Core Rules', 'Rules Appendix', 'Rulings']);
+t('MUTATION: dropping Universal Rules Updates drops the 00 chapter', noUru.files['tree/rules.js'].kids.map(k => k.n), ['Core Rules', 'Rules Appendix', 'WTC 11th Edition FAQ', 'FEQ 40K FAQ']);
 const backToCore = mutate(copy => { const r = copy.find(x => x.id === 'core-stratagem#000010851002'); r.text = r.text.replace('Type: Movement Ability', 'Type: Core Stratagem'); });
 t('MUTATION: a Movement Ability typed as a core stratagem returns to Stratagems', (backToCore.paths.get('core-stratagem#000010851002') || []).map(p => p.n).join(' > '), 'Rules > Core Rules > 15 Stratagems');
 const challCore = mutate(copy => { const r = copy.find(x => x.id === 'core-stratagem#000010254002'); r.text = r.text.replace(/Type:\s*[^\n]*/, 'Type: Core Stratagem'); });
