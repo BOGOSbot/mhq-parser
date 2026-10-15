@@ -355,6 +355,12 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 .picknone{min-height:44px;padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--fg);font:600 13.5px var(--sans);cursor:pointer}
 .pickbtn.on,.picknone.on{border-color:var(--accent);color:var(--accent)}
 .pickrow .picknote{flex:1 1 100%;color:var(--dim);font:400 12.5px var(--sans);min-height:15px}
+/* The judge dial: two pills and a line that says what they move. */
+.modegrp{display:flex;align-items:center;gap:4px}
+.modelead{color:var(--dim);font:400 12px var(--sans);margin-right:2px}
+.modebtn{border:1px solid var(--line);background:var(--panel2);color:var(--dim);border-radius:999px;padding:4px 10px;font:12px var(--sans);cursor:pointer}
+.modebtn.on{border-color:var(--acc);color:var(--acc);font-weight:700}
+.modenote{color:var(--dim);font:400 12px var(--sans);margin:6px 0 0}
 </style>
 </head>
 <body>
@@ -373,6 +379,14 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
       <option value="fr">FR</option>
       <option value="en">EN</option>
     </select>
+    <!-- The judge dial, back by Mandal's decision (task-22). It moves the JUDGE's
+         reasoning, and nothing else about the answer: the exact knobs it moves
+         are stated in the note under the form, from MODE_MAP below. -->
+    <span class="modegrp" role="group" aria-label="Judge reasoning">
+      <span class="modelead" id="modelead">Judge</span>
+      <button type="button" class="modebtn on" id="modeFast" data-mode="fast" aria-pressed="true">fast</button>
+      <button type="button" class="modebtn" id="modeDeep" data-mode="deep" aria-pressed="false">deep</button>
+    </span>
   </div>
   <form id="f">
     <textarea id="q" rows="1" spellcheck="false" autocomplete="off"
@@ -382,6 +396,7 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
          the tooltip, not on the page. -->
     <button type="button" id="mic" class="mic" title="Ask by voice" aria-label="Ask by voice"></button>
   </form>
+  <div id="modenote" class="modenote"></div>
   <div id="trslot" class="hidden"></div>
   <div id="status" class="status"></div>
     <div id="progress" class="progress hidden"><div class="psegs" id="psegs"></div><span id="pelapsed" class="pelapsed"></span></div>
@@ -943,18 +958,63 @@ function applyLang() {
     sel.addEventListener('change', function () {
       LANG = sel.value === 'fr' ? 'fr' : 'en';
       applyLang();
+      setMode(MODE);
     });
   }
   applyLang();
 })();
 
-// --- the settings -----------------------------------------------------------
-// The reader no longer chooses between fast and deep: the page does the careful
-// one, because that is the answer we are prepared to stand behind. ASK_MODES in
-// src/rules-corpus.mjs stays the single place the settings live, and the server
-// still accepts 'mode' so a harness can ask for the other one - flipping this
-// constant is all that would take.
+// --- the judge dial ---------------------------------------------------------
+// task-22. The toggle selects the judge's reasoning, and it is stated rather than
+// assumed what else moves with it: ASK_MODES binds the judge, the second judge
+// AND the retrieval scope to the mode, so this is the mapping, from the same
+// table the server reads (src/rules-corpus.mjs, ASK_MODES):
+//
+//   fast (default): judge reasoning off  (measured 61.8% on the bank)
+//                   second judge 'medium'
+//                   retrieval: first 5, passes 2, grepNet 50, jevMax 60
+//   deep          : judge reasoning 'medium' (measured 79.4%)
+//                   second judge off
+//                   retrieval: first 10, passes 3, grepNet 60, jevMax 80
+//
+// The retrieval scope is therefore MODE-BOUND, not fixed, and the note under the
+// form says so. What the toggle does NOT touch is the answer/writer call: it is
+// off by default (RULES_WRITER) and, when it is on, it writes without reasoning
+// first - the mode never reaches it.
+var MODE_MAP = {
+  fast: { judge: 'none', second: 'medium', first: 5, passes: 2, grepNet: 50, jevMax: 60, acc: '61.8%' },
+  deep: { judge: 'medium', second: 'none', first: 10, passes: 3, grepNet: 60, jevMax: 80, acc: '79.4%' }
+};
 var MODE = 'fast';
+function modeOn(m) { return m.judge !== 'none'; }
+function modeNote(m) {
+  var fr = LANG === 'fr';
+  var on = modeOn(m) ? (fr ? 'activ\u00e9' : 'on') : (fr ? 'd\u00e9sactiv\u00e9' : 'off');
+  if (fr) return 'Juge : raisonnement ' + on + ' \u2014 ' + m.acc + ' mesur\u00e9 sur la banque de 33 questions. ' +
+    'Second juge : ' + (m.second === 'none' ? 'sans raisonnement' : 'raisonnement ' + m.second) + '. ' +
+    'La recherche suit le mode (' + m.first + ' constats, ' + m.passes + ' passes) \u2014 la r\u00e9ponse (\u00e9crivain) n\u2019est pas concern\u00e9e.';
+  return 'Judge: reasoning ' + on + ' \u2014 ' + m.acc + ' measured on the 33-question bank. ' +
+    'Second judge: ' + (m.second === 'none' ? 'without reasoning' : m.second + ' reasoning') + '. ' +
+    'Retrieval moves with the mode (' + m.first + ' findings, ' + m.passes + ' passes) \u2014 the answer (writer) is not affected.';
+}
+function setMode(name) {
+  MODE = MODE_MAP[name] ? name : 'fast';
+  var bf = $('#modeFast'), bd = $('#modeDeep'), note = $('#modenote');
+  if (bf) { bf.className = 'modebtn' + (MODE === 'fast' ? ' on' : ''); bf.setAttribute('aria-pressed', MODE === 'fast' ? 'true' : 'false'); }
+  if (bd) { bd.className = 'modebtn' + (MODE === 'deep' ? ' on' : ''); bd.setAttribute('aria-pressed', MODE === 'deep' ? 'true' : 'false'); }
+  if (note) note.textContent = modeNote(MODE_MAP[MODE]);
+  try { localStorage.setItem('rulesMode', MODE); } catch (e) { /* private mode */ }
+}
+(function initMode() {
+  var saved = null;
+  try { saved = localStorage.getItem('rulesMode'); } catch (e) { }
+  setMode(saved === 'deep' ? 'deep' : 'fast');
+  var wrap = $('#modeFast') ? $('#modeFast').parentNode : null;
+  if (wrap) wrap.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest('[data-mode]') : null;
+    if (b) setMode(b.getAttribute('data-mode'));
+  });
+})();
 
 function setStatus(msg, cls) {
   var s = $('#status');

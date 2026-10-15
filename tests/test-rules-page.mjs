@@ -420,7 +420,10 @@ ok('the question microphone types into the question box in the page language',
 ok('the language switch sits in the top bar, not under the question',
   headerHtml.indexOf('id="lang"') !== -1 && headerHtml.indexOf('id="lang"') < headerHtml.indexOf('<form id="f">'));
 ok('the wiki box reaches the ask pipeline', /function askFromQuery\(\)/.test(code) && /\[\?&\]q=\(\[\^&\]\*\)/.test(code) && /box\.value = text;\s*\n\s*growQuestion\(\);\s*\n\s*ask\(\);/.test(code));
-ok('the Fast/Deep control is gone', PAGE.indexOf('id="modes"') === -1 && PAGE.indexOf('button.mode') === -1 && code.indexOf('setMode(') === -1);
+// task-22 brought the control back, for the judge's reasoning only: it must
+// exist, default to fast, and state what it moves (test-ask-toggle.mjs pins the
+// mapping against ASK_MODES).
+ok('the judge fast/deep control is back and defaults to fast', /id="modeFast"[^>]*aria-pressed="true"/.test(PAGE) && /id="modeDeep"/.test(PAGE) && /var MODE = 'fast'/.test(PAGE));
 ok('the page asks for the fast settings, the default', /var MODE = 'fast'/.test(code) && /mode: MODE/.test(code));
 // The writer is off by default, so the page draws no answer: no card to wait in,
 // no handler for an event that will not arrive, and no stage it could belong to.
