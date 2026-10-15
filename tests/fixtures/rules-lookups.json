@@ -342,6 +342,54 @@
    "expect": [
     "ability-def#ignores-cover"
    ]
+  },
+  {
+   "q": "fuegan",
+   "lang": "en",
+   "kind": "bare",
+   "expect": [
+    "datasheet#000000574"
+   ]
+  },
+  {
+   "q": "seer council",
+   "lang": "en",
+   "kind": "bare",
+   "expect": [
+    "detachment#000001023"
+   ]
+  },
+  {
+   "q": "Asurmen",
+   "lang": "en",
+   "kind": "bare",
+   "expect": [
+    "datasheet#000000571"
+   ]
+  },
+  {
+   "q": "how does devastating wounds work",
+   "lang": "en",
+   "kind": "bare",
+   "expect": []
+  },
+  {
+   "q": "which units can charge after advancing?",
+   "lang": "en",
+   "kind": "bare",
+   "expect": []
+  },
+  {
+   "q": "charge",
+   "lang": "en",
+   "kind": "bare",
+   "expect": []
+  },
+  {
+   "q": "wound",
+   "lang": "en",
+   "kind": "bare",
+   "expect": []
   }
  ]
 }

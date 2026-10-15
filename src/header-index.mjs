@@ -121,10 +121,19 @@ export function translateLookupWords(rawWords) {
 export function lookupIntent(question) {
   const raw = String(question == null ? '' : question).trim();
   const m = LOOKUP_VERB.exec(raw);
-  if (!m) return { lookup: false, words: [], phrase: '' };
-  const words = contentWords(translateLookupWords(foldWords(m[1])).join(' '));
-  if (!words.length) return { lookup: false, words: [], phrase: '' };
-  return { lookup: true, words, phrase: words.join(' ') };
+  if (m) {
+    const words = contentWords(translateLookupWords(foldWords(m[1])).join(' '));
+    if (!words.length) return { lookup: false, words: [], phrase: '' };
+    return { lookup: true, words, phrase: words.join(' ') };
+  }
+  // A BARE NAME is a lookup too: Mandal types 'fuegan' or 'seer council', not
+  // 'find fuegan'. No verb, no question mark, 1-4 content words. The shape is only
+  // the gate to try; the answer is gated by the resolution below, which holds a
+  // bare name to the conservative tiers and still refuses an ambiguous one.
+  if (raw.indexOf('?') !== -1) return { lookup: false, words: [], phrase: '' };
+  const bare = contentWords(translateLookupWords(foldWords(raw)).join(' '));
+  if (!bare.length || bare.length > 4) return { lookup: false, words: [], phrase: '' };
+  return { lookup: true, words: bare, phrase: bare.join(' '), bare: true };
 }
 
 // A heading segment that names a rule: short, no question mark, not FAQ/Errata,
@@ -216,6 +225,11 @@ export function lookupRecord(question, opts) {
   const tiers = new Map(clean.map(e => [e, tierOf(e)]));
   const best = Math.min(...clean.map(e => tiers.get(e)));
   const at = clean.filter(e => tiers.get(e) === best);
+  // A bare name is held to the conservative tiers: the words must NAME the last
+  // segment (tier 1 or 2), never merely appear somewhere in the heading (tier 3,
+  // which is for a verb-led phrase). A wrong instant answer is worse than the
+  // slow pipeline, because the reader typed the name themselves and believes it.
+  if (intent.bare && best > 2) return { found: false, reason: 'no-heading', candidates: hits.length };
   // Several different headings carrying the words is not one answer: 'find
   // charge' names the Charge phase, a charge move and a charge roll, and picking
   // one of them for the reader would be a confident guess. Fall through.

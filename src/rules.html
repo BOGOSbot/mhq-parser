@@ -2707,6 +2707,26 @@ async function lookupAnswer(question) {
   return true;
 }
 
+// task-67: the instant fetch. Fire the same lookup as the reader types - a bare
+// name draws its card before they press Ask - with a 250 ms debounce so the last
+// keystroke wins and the route is not hammered. A miss is invisible: the normal
+// ask is untouched, and nothing happens while the pipeline is busy.
+var lookupTimer = null, lastLookup = '';
+(function () {
+  var q = $('#q');
+  if (!q) return;
+  q.addEventListener('input', function () {
+    if (busy) return;
+    clearTimeout(lookupTimer);
+    var v = String(q.value || '').trim();
+    if (v.length < 3 || v === lastLookup) return;
+    lookupTimer = setTimeout(function () {
+      lastLookup = v;
+      lookupAnswer(v).catch(function () {});
+    }, 250);
+  });
+})();
+
 async function ask(over) {
   if (busy) return;
   var o = over || {};
