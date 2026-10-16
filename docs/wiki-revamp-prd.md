@@ -37,8 +37,8 @@ GET /rules/content/<book>     -> { book, records: { id: { id, slug, heading, kin
                                                         children, at } } }
 ```
 
-- **`index`** is the tree: branches with counts, then one payload per branch, fetched when the branch is opened. It is today's 308 node files (357 KB) folded into a handful.
-- **`content/<book>`** is the records. `book` is `rules`, `missions`, `faction-aeldari`, ... The mass is the factions, and a faction is 0.11-0.28 MB - so the boundary follows how people read: you are in the core rules or you are in your army.
+- **`index`** is the tree: branches with counts, then one payload per branch, fetched when the branch is opened. It is today's 284 node files (258 KB) folded into three.
+- **`content/<book>`** is the records. `book` is `rules`, `missions`, `faction-aeldari`, ... The mass is the factions: measured at the source, a faction is 0.01-0.61 MB (faction-tl to faction-sm), before the tree hands each one its 1,213 stratagems, 818 enhancements and 270 detachments. So the boundary follows how people read - you are in the core rules or you are in your army - and slice 1 measures what the payloads actually weigh.
 - **No manifest.** A record's slug carries its book: `<book>--<readable>-<hash>`, e.g. `rules--random-characteristics-dfgrnr`. A cold `#<slug>` splits on `--`, fetches that book, and finds the record. This is what deletes `map.json` (481 KB) and `legacy.json` (536 KB) outright - they existed to answer a question the slug now answers itself.
 
 **The interface is the test surface.** A test builds payloads from a fixture corpus and asserts the three shapes; nothing needs a browser.
