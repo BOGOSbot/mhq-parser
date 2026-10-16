@@ -57,7 +57,7 @@ export function lastRebuilds(dir) {
   return out;
 }
 
-// opts: { bootedAt, corpusDir, srcDir, wikiDir }
+// opts: { bootedAt, corpusDir, srcDir }
 export async function devState(opts) {
   const o = opts || {};
   const all = readAllCorpus();
@@ -71,9 +71,6 @@ export async function devState(opts) {
     const want = byNamespace[ns] || 0;
     namespaces.push({ ns: ns, index: ids, delivered: want, delta: ids - want, error: error });
   }
-  const wikiDir = o.wikiDir || path.join(__dirname, '..', 'workspace', 'wiki-render');
-  const render = readJson(path.join(wikiDir, 'render.json'));
-  const map = readJson(path.join(wikiDir, 'map.json'));
   const code = newestFile(o.srcDir || path.join(__dirname, '..', 'src'));
   const bootedAt = o.bootedAt || Date.now();
   return {
@@ -81,7 +78,6 @@ export async function devState(opts) {
     namespaces: namespaces,
     rebuilds: lastRebuilds(o.corpusDir || CORPUS_DIR),
     route: routeStats(),
-    render: render ? Object.assign({ mapPages: map ? Object.keys(map).length : null }, render) : { mapPages: map ? Object.keys(map).length : null },
     code: code,
     bootedAt: bootedAt,
   };
@@ -98,10 +94,6 @@ export function devProblems(state) {
   }
   if ((state.code || {}).at > (state.bootedAt || 0)) {
     out.push('STALE PROCESS: src/' + (state.code.name || '') + ' changed at ' + new Date(state.code.at).toISOString() + ', after this process booted at ' + new Date(state.bootedAt).toISOString());
-  }
-  const r = state.render || {};
-  if (r.writtenAt && r.mapPages != null && r.records != null && r.mapPages !== r.records) {
-    out.push('render map.json holds ' + r.mapPages + ' pages but the last pass wrote ' + r.records + ' records');
   }
   return out;
 }
@@ -140,23 +132,12 @@ export function devHtml(state) {
     + '<h2>Model route since boot</h2><table><tr><th>calls</th><th class="n">empty</th><th class="n">empty rate</th><th class="n">retries</th><th class="n">recovered</th><th class="n">truncated</th></tr>'
     + '<tr><td>' + route.calls + '</td><td>' + route.empty + '</td><td>' + route.empty_rate + '%</td><td>' + route.retries + '</td><td>' + route.recovered + '</td><td>' + route.truncated + '</td></tr></table>'
     + (byRoute ? '<table><tr><th>route</th><th class="n">calls</th><th class="n">empty</th><th class="n">retries</th><th class="n">recovered</th></tr>' + byRoute + '</table>' : '')
-    + '<h2>Render</h2><table>'
-    + '<tr><th>last pass</th><td>' + esc(render.writtenAt || 'never (no render.json)') + '</td></tr>'
-    + '<tr><th>records written</th><td class="n">' + (render.records == null ? '' : render.records) + '</td></tr>'
-    + '<tr><th>pages in map.json</th><td class="n">' + (render.mapPages == null ? '' : render.mapPages) + '</td></tr>'
-    + '<tr><th>stale pages pruned</th><td class="n">' + (render.pruned == null ? '' : render.pruned) + '</td></tr>'
-    + '<tr><th>tree files</th><td class="n">' + (render.treeFiles == null ? '' : render.treeFiles) + '</td></tr>'
-    + '<tr><th>branches</th><td>' + esc((render.branches || []).map(b => b.n + ' ' + b.c).join(', ')) + '</td></tr>'
-    + '</table>'
     + '<h2>Code / process</h2><table>'
     + '<tr><th>process booted</th><td>' + esc(new Date(state.bootedAt).toISOString()) + '</td></tr>'
     + '<tr><th>newest src file</th><td>' + esc(code.name || '') + ' at ' + esc(code.at ? new Date(code.at).toISOString() : '') + '</td></tr>'
     + '<tr><th>verdict</th><td class="' + (code.at > state.bootedAt ? 'bad' : 'good') + '">' + (code.at > state.bootedAt ? 'STALE: restart to pick up the code' : 'current') + '</td></tr>'
     + '</table>'
     + '<h2>Views</h2><ul>'
-    + '<li><a href="/wiki/anomalies.html">anomalies</a></li>'
-    + '<li><a href="/wiki/search.html">search</a></li>'
-    + '<li><a href="/wiki/index.html">index</a></li>'
     + '<li><a href="/health">/health (JSON)</a></li>'
     + '</ul>'
     + '</body></html>\n';

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readAllCorpus } from '../src/rules-corpus.mjs';
+import { isDelivered, readAllCorpus } from '../src/rules-corpus.mjs';
 import { buildPayloads } from '../src/wiki-payload.mjs';
 
 // task-73 slice 1: the bake. The interface is the test surface - these read the
@@ -48,9 +48,10 @@ for (const book of books) {
 }
 t('(b) every delivered record appears exactly once', seen.size, stats.delivered);
 t('(b) the delivered count is the render rule: pageNamer minus tree.filtered', stats.delivered, 6271);
-const mapFile = path.join(ROOT, 'workspace', 'wiki-render', 'map.json');
-const mapEntries = fs.existsSync(mapFile) ? Object.keys(JSON.parse(fs.readFileSync(mapFile, 'utf8'))).length : null;
-t('(b) HARD EQUALITY: content payloads == map.json entries', seen.size, mapEntries);
+// task-77: map.json is deleted. The witness is the corpus's own delivery rule
+// (rules-corpus isDelivered), computed here without the payload builder.
+const modelDelivered = readAllCorpus().filter(isDelivered).length;
+t('(b) HARD EQUALITY: content payloads == the corpus delivery rule', seen.size, modelDelivered);
 t('(b) every payload record is a corpus record', [...seen.keys()].filter(id => !corpus.some(r => r.id === id)).length, 0);
 // (d) the slug's book prefix IS the payload it lives in, for every record.
 t('(d) every slug carries its payload book', [...seen.keys()].filter(id => slugBook.get(id) !== seen.get(id)).length, 0);

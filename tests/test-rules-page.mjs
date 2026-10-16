@@ -88,7 +88,7 @@ ok('the findings slot is rebuilt on every findings event', /state\.findingSlot\.
 ok('the dialog fetches the shared fragment',
   /'\/rules\/record\?id=' \+ encodeURIComponent\(id\) \+ '&format=html'/.test(code) && /frag\.innerHTML = fragHtml/.test(code));
 ok('and builds no card of its own anymore', code.indexOf('body.appendChild(unitCardView(data.card))') === -1);
-ok('the fragment links are rebased into the wiki', /function wikiHrefs\(root\)/.test(code) && /setAttribute\('href', '\/wiki\/' \+ h\)/.test(code) && /frag\.innerHTML = fragHtml;\s*wikiHrefs\(frag\)/.test(code));
+ok('the fragment links are NOT rebased: the address is the slug', code.indexOf('wikiHrefs') === -1 && fs.readFileSync(path.join(__dirname, '..', 'src', 'server.mjs'), 'utf8').indexOf("return slug ? '#' + slug : '';") !== -1);
 ok('while the dialog keeps its shell: marks, chips, wiki link, swipe',
   ['findingControls(state, f, isFirsted(state, f), isIgnored(state, f))', "el('a', 'recwiki', t('recordWiki'))", "el('h3', null, t('recordLinks'))", "el('p', 'recswipe', t('recordSwipe'))"].every(function (s) { return code.indexOf(s) !== -1; }));
 ok('a widening flashes the rebuilt list', /if \(ev\.attempt > 0\) flash\(state\.findingSlot\)/.test(code));
@@ -294,16 +294,16 @@ ok('a failed record fetch leaves the passage readable', /the payload passage sta
 ok('the record re-renders with the list on every mark', /function refresh\(state\)/.test(code) && /if \(!state \|\| !state\.recordId\) return;/.test(code));
 // The wiki, on this origin: the page links to it, the server serves the render
 // directory, and the route refuses a path that climbs out of it.
-ok('the header links to the wiki', /id="wikinav" href="\/wiki\/"/.test(PAGE) && /wk\.textContent = t\('wikiNav'\)/.test(code));
+ok('the header carries the Wiki control that opens the drawer', /id="wikinav"/.test(PAGE) && /wk\.textContent = t\('wikiNav'\)/.test(code));
 // task-77: the record's deep link is the finding's slug (the surface answers #<slug>),
 // and only a record with no slug falls back to the old wiki address.
 ok('the record deep-links to the slug when it has one', /deepSlug \? '#' \+ deepSlug/.test(code) && /wiki\.href = deepSlug/.test(code));
-ok('the server serves the wiki render', server.indexOf("u.pathname.indexOf('/wiki/') === 0") !== -1 && server.indexOf('function handleWiki(') !== -1);
-ok('and refuses a path outside it', /!abs\.startsWith\(root \+ path\.sep\)/.test(server));
+ok('the server no longer serves /wiki', server.indexOf("u.pathname.indexOf('/wiki/')") === -1 && server.indexOf('handleWiki(') === -1);
+ok('and refuses a path outside it', server.indexOf('no such payload') !== -1 && server.indexOf('index\\/[a-z0-9-]') !== -1);
 ok('the record route exists', server.indexOf("'/rules/record'") !== -1 && server.indexOf('handleRulesRecord') !== -1 && /recordCard\(id, \{ corpora: corpora\(\), index: corpusById\(\) \}\)/.test(server));
 ok('the route refuses an id the corpus does not hold', /if \(!record\) return fail\(res, 404/.test(server));
-ok('the wiki page comes from the render map, never a second slug', /path\.join\(WIKI_DIR, 'map\.json'\)/.test(server));
-ok('the render writes that map', fs.readFileSync(path.join(__dirname, '..', 'src', 'wiki-render.mjs'), 'utf8').indexOf("path.join(OUT, 'map.json')") !== -1);
+ok('the record address is the payload slug, never a second map', /slug: surfaceSlugMap\(\).get\(id\)/.test(server) && server.indexOf('map.json') === -1);
+
 
 
 // The layout of the question: the box grows with its text, the translation has

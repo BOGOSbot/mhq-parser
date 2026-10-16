@@ -27,7 +27,6 @@ const clean = {
   ],
   rebuilds: [{ source: 'factions-csv', rebuild: 5, at: '2026-10-15T00:55:09.081Z', sections: 5360, upserted: 0, deleted: 1040, unchanged: 5360 }],
   route: { calls: 12, empty: 3, empty_rate: 25, retries: 2, recovered: 1, truncated: 0, byRoute: { writer: { calls: 12, empty: 3, retries: 2, recovered: 1 } } },
-  render: { writtenAt: '2026-10-15T10:12:00.000Z', records: 6228, pages: 6228, mapPages: 6228, pruned: 1, treeFiles: 285, branches: [{ n: 'Rules', c: 621 }, { n: 'Factions', c: 5186 }, { n: 'Rulings', c: 154 }] },
   code: { at: 1000, name: 'server.mjs' },
   bootedAt: 2000,
 };
@@ -53,11 +52,10 @@ stale.bootedAt = 2000;
 ok('a process older than the code is a named problem', devProblems(stale)[0].indexOf('STALE PROCESS') !== -1);
 ok('and the page shows it', devHtml(stale).indexOf('STALE: restart to pick up the code') !== -1);
 
-// A render whose map disagrees with its own pass is a problem: the record route
-// gates on map.json, so a mismatch is served 404s for pages that exist.
-const mismatch = JSON.parse(JSON.stringify(clean));
-mismatch.render.mapPages = 6200;
-ok('a render map that disagrees with its pass is named', devProblems(mismatch).some(p => p.indexOf('map.json holds 6200') !== -1));
+
+
+
+
 
 // newestFile: the stale-process check needs the newest mtime, not the first.
 const tmp = path.join(ROOT, 'workspace', 'dev-report-test');
@@ -71,7 +69,7 @@ t('the newest file wins', newestFile(tmp).name, 'newer.mjs');
 fs.rmSync(tmp, { recursive: true, force: true });
 
 const html = devHtml(clean);
-for (const need of ['Index vs delivered', 'Last rebuild per source', 'Model route since boot', 'Render', 'Code / process', 'anomalies', 'search', 'index']) {
+for (const need of ['Index vs delivered', 'Last rebuild per source', 'Model route since boot', 'Code / process']) {
   ok('the page carries ' + need, html.indexOf(need) !== -1);
 }
 ok('the page is read-only and never linked from the nav', html.indexOf('<a href="/rules"') === -1 && html.indexOf('nav') === -1);
@@ -110,10 +108,9 @@ try {
   const dev = await request(port, '/dev');
   t('GET /dev answers html', [dev.status, /^text\/html/.test(dev.headers['content-type'] || '')], [200, true]);
   t('and is never cached', dev.headers['cache-control'], 'no-store');
-  for (const need of ['/dev diagnostics', 'Corpus', 'Index vs delivered', 'Last rebuild per source', 'Model route since boot', 'Render', 'Code / process']) {
+  for (const need of ['/dev diagnostics', 'Corpus', 'Index vs delivered', 'Last rebuild per source', 'Model route since boot', 'Code / process']) {
     ok('live /dev carries ' + need, dev.body.indexOf(need) !== -1);
   }
-  ok('live /dev links the three views', ['/wiki/anomalies.html', '/wiki/search.html', '/wiki/index.html'].every(h => dev.body.indexOf(h) !== -1));
   ok('live /dev names the three namespaces it checks', ['rules', 'factions', 'rulings'].every(n => dev.body.indexOf('>' + n + '<') !== -1));
   const bad = await request(port, '/nope-dev');
   t('an unknown dev path is still a 404', bad.status, 404);

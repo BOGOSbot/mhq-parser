@@ -86,21 +86,16 @@ async function main() {
     t('/health still answers', health.status, 200);
     t('with its no-store policy', health.headers['cache-control'], 'no-store');
     ok('and its route counters still published', typeof JSON.parse(String(health.body)).route === 'object');
-    // The readable URL the render now writes for this record, from its own map:
-    // the name is pinned by the render, not by this test.
-    let wikiName = '';
-    try { wikiName = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-render', 'map.json'), 'utf8'))['datasheet#000000882'] || ''; } catch (e) { wikiName = ''; }
-    if (wikiName) {
-      const wraw = await request(port, '/wiki/' + wikiName, {});
-      const wbr = await request(port, '/wiki/' + wikiName, { 'accept-encoding': 'gzip, br' });
-      t('a wiki page compresses too', wbr.headers['content-encoding'], 'br');
-      ok('and is smaller on the wire', wbr.body.length < wraw.body.length);
-      t('with a validator', wraw.headers.etag === wbr.headers.etag, true);
-      t('and a revalidating policy', wbr.headers['cache-control'], 'no-cache');
-      t('a wiki 304 works as well', (await request(port, '/wiki/' + wikiName, { 'if-none-match': wbr.headers.etag })).status, 304);
-      t('and the readable name says what the page is', /^datasheet-[a-z0-9-]+-[a-z0-9]{4,8}\.html$/.test(wikiName), true);
-    }
-
+    // The payload the surface reads, on its own URL: the same compression,
+    // validator and 304 the render's pages used to carry (task-77).
+    const dataUrl = '/rules/data/content/rules.json';
+    const draw = await request(port, dataUrl, {});
+    const dbr = await request(port, dataUrl, { 'accept-encoding': 'gzip, br' });
+    t('a payload compresses too', dbr.headers['content-encoding'], 'br');
+    ok('and is smaller on the wire', dbr.body.length < draw.body.length);
+    t('with a validator', draw.headers.etag === dbr.headers.etag, true);
+    t('a payload 304 works as well', (await request(port, dataUrl, { 'if-none-match': dbr.headers.etag })).status, 304);
+    t('and the address names its book', /^\/rules\/data\/content\/[a-z0-9-]+\.json$/.test(dataUrl), true);
     // --- the stream is not touched --------------------------------------------
     const src = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
     const streamAt = src.indexOf('application/x-ndjson');

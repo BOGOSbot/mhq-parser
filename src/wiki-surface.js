@@ -119,6 +119,9 @@
     if (!d) return;
     d.classList.toggle('sv-open', !!want);
     d.setAttribute('aria-hidden', want ? 'false' : 'true');
+    // The drawer is the page while it is open: the page's own header hides, so
+    // nothing of the drawer sits behind it (at any width).
+    document.body.classList.toggle('sv-drawer-open', !!want);
     if (t) t.setAttribute('aria-expanded', want ? 'true' : 'false');
     try { localStorage.setItem(DRAWER_KEY, want ? '1' : '0'); } catch (e) {}
     if (want) openIndex();

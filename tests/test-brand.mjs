@@ -3,7 +3,6 @@ import http from 'node:http';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { shellHead } from '../src/wiki-shell.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -44,7 +43,7 @@ async function boot(port) {
 
 // --- both heads carry the two links ------------------------------------------
 const rulesHtml = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
-for (const pair of [['rules.html', rulesHtml], ['shellHead()', shellHead({})]]) {
+for (const pair of [['rules.html', rulesHtml]]) {
   const label = pair[0], html = pair[1];
   ok(label + ' links the 32x32 PNG as the icon', html.indexOf('<link rel="icon" href="/favicon.png" type="image/png">') !== -1);
   ok(label + ' links the 180x180 touch icon', html.indexOf('<link rel="apple-touch-icon" href="/apple-touch-icon.png">') !== -1);

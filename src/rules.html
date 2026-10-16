@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <!-- The tree: one implementation, written by the wiki render and served from
      there. tree/index.js is the cascade's root (three branches); shell.js fetches
-     one node at a time, under /wiki/, when the Wiki control opens a level. -->
+     the drawer the surface mounts, opened by the Wiki control. -->
 <!-- The wiki is the surface's drawer now (task-77). It mounts itself on #wikinav
      and reads the baked payloads; the page keeps its own ask, findings and
      passages untouched. -->
@@ -370,10 +370,8 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
     <h1 id="h1">40k <span>rules</span></h1>
     <a class="nav" id="navparse" href="/">Army-list parser</a>
     <a class="nav" id="wahalink" href="https://wahapedia.ru/" target="_blank" rel="noopener">Wahapedia</a>
-    <a class="nav" id="wikinav" href="/wiki/" data-toc-open>Wiki</a>
-    <!-- task-47: the one-shot offline artifact, served from the same origin. -->
-    <a class="nav" id="offlinenav" href="/wiki/all.zip" download title="Save the whole wiki for offline use">Offline</a>
-    <span class="spacer"></span>
+    <button type="button" class="nav" id="wikinav">Wiki</button>
+        <span class="spacer"></span>
     <!-- One switch, three jobs: the text on this page, the language the
          microphone listens for, and the language of the answer. The language of
          the question itself is still detected server-side. It sits in the top bar
@@ -1730,16 +1728,6 @@ function loadRecord(state) {
   }
 }
 
-// The fragment's internal links are wiki FILE names, because the static render
-// also opens from a folder, offline. In this document they have to be /wiki/<file>.
-function wikiHrefs(root) {
-  var as = root && root.querySelectorAll ? root.querySelectorAll('a[href]') : [];
-  for (var i = 0; i < as.length; i++) {
-    var h = as[i].getAttribute('href') || '';
-    if (h && h.indexOf('://') === -1 && h.charAt(0) !== '/' && h.charAt(0) !== '#') as[i].setAttribute('href', '/wiki/' + h);
-  }
-}
-
 function renderRecord(state) {
   var node = recordNode();
   var id = state && state.recordId;
@@ -1773,7 +1761,7 @@ function renderRecord(state) {
   // The deep link is the record's slug, not a wiki page address: the surface
   // answers #<slug> on a cold load, and the hash is the whole address.
   var deepSlug = (f && f.slug) || (data && data.slug) || '';
-  wiki.href = deepSlug ? '#' + deepSlug : (state.recordWiki || '/wiki/');
+  wiki.href = deepSlug ? '#' + deepSlug : '#';
   wiki.target = '_blank';
   wiki.rel = 'noopener';
   ctl.appendChild(wiki);
@@ -1792,7 +1780,6 @@ function renderRecord(state) {
   var fragHtml = state.recordFrag ? state.recordFrag[id] : undefined;
   if (typeof fragHtml === 'string' && fragHtml) {
     frag.innerHTML = fragHtml;
-    wikiHrefs(frag);
   } else {
     var text = el('div', 'rectext');
     text.appendChild(passageBody({ passage: (data && data.text) || f.passage, excerpt: f.excerpt, leg: f.leg, matchedTerms: f.matchedTerms }));

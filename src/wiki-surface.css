@@ -13,7 +13,10 @@ body{background:var(--sv-bg);color:var(--sv-ink);font:16px/1.5 system-ui,-apple-
 .sv-ask{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--sv-panel);border-top:1px solid var(--sv-line);z-index:4}
 .sv-ask textarea{flex:1;resize:none;border:1px solid var(--sv-line);background:var(--sv-bg);color:var(--sv-ink);border-radius:10px;padding:10px 12px;font:inherit;max-height:8rem}
 .sv-send{min-width:64px}
-.sv-drawer{position:fixed;left:0;right:0;bottom:0;top:56px;background:var(--sv-panel);border-top:1px solid var(--sv-line);transform:translateY(100%);transition:transform .18s ease;z-index:5;display:flex;flex-direction:column}
+/* The drawer covers the page, like .sv-overlay: a hard-coded top was the dev
+   header's height and hid the drawer's own head, Close and filter behind the
+   product page's taller chrome (task-77 defect). */
+.sv-drawer{position:fixed;inset:0;background:var(--sv-panel);transform:translateY(100%);transition:transform .18s ease;z-index:30;display:flex;flex-direction:column}
 .sv-drawer.sv-open{transform:translateY(0)}
 .sv-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--sv-line)}
 .sv-filter{margin:10px 12px;padding:10px 12px;border:1px solid var(--sv-line);background:var(--sv-bg);color:var(--sv-ink);border-radius:10px;font:inherit}
@@ -56,3 +59,6 @@ a{color:var(--sv-acc)}
 .sv-overlay{position:fixed;inset:0;background:var(--sv-bg);z-index:30;overflow-y:auto;padding:12px 12px 96px;display:none}
 .sv-overlay.sv-open{display:block}
 .sv-overlay .sv-page-body{max-width:52rem;margin:0 auto}
+/* While the drawer is open it is the page: the page's own chrome steps aside so
+   its head, Close and filter are the controls on screen, at any width. */
+body.sv-drawer-open header, body.sv-drawer-open .sv-top{display:none}

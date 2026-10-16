@@ -76,7 +76,7 @@ const rulesHtml = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
 ok('(H) rules.html does not reference the surface', rulesHtml.indexOf('wiki-surface') === -1 && rulesHtml.indexOf('/rules/dev') === -1);
 const server = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
 ok('(A) the server has the dev route and the payload route', server.indexOf("u.pathname === '/rules/dev'") !== -1 && server.indexOf('handleSurfaceData') !== -1 && server.indexOf("'/rules/data/'") !== -1);
-ok('(H) the old /wiki route is untouched', server.indexOf("u.pathname.indexOf('/wiki/') === 0") !== -1);
+ok('(H) the /wiki route is deleted from the server', fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8').indexOf("u.pathname.indexOf('/wiki/')") === -1);
 // --- task-76 polish: honest feedback, distinguishable tail, one meta shape ---
 ok('(1) the icon reports what the server answered, and no id means no claim', js.body.indexOf('r.saved === true') !== -1 && js.body.indexOf("'Not kept (traces off)'") !== -1 && js.body.indexOf("'Recorded'") !== -1 && js.body.indexOf('if (!id) { none.textContent') !== -1);
 ok('(1) the foot button has both endings, not an unconditional one', js.body.indexOf("none.textContent = (r && r.saved === true) ? 'Recorded: none of these'") !== -1);

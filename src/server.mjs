@@ -35,7 +35,6 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
-import { buildWikiArchive } from './wiki-archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
@@ -852,114 +851,12 @@ function cardIdx() {
   return cardIdxCache;
 }
 
-// The wiki page FILE for a record (not the URL): the static render links to its
-// neighbours by file name because it also opens from a folder, offline. The
-// dialog rewrites these to /wiki/<file> once it has inserted the fragment.
-let wikiFileCache = null;
+// A record's address is its slug now (task-77): the surface answers #<slug> on a
+// cold load, so the links inside a record body point at the hash directly. No
+// page file, no map: the payload's own slug is the link.
 function wikiFileFor(id) {
-  if (wikiFileCache === null) {
-    try { wikiFileCache = JSON.parse(fs.readFileSync(path.join(WIKI_DIR, 'map.json'), 'utf8')) || {}; }
-    catch (e) { wikiFileCache = {}; }
-  }
-  return wikiFileCache[String(id || '')] || '';
-}
-
-// --- the static wiki, on this origin ----------------------------------------
-// src/wiki-render.mjs writes a directory of pages under workspace/wiki-render;
-// it is a render of the corpus, never committed, and the record view opens it as
-// the navigation surface. The route resolves inside that directory and refuses
-// anything that climbs out of it.
-const WIKI_DIR = process.env.WIKI_RENDER_DIR || path.join(__dirname, '..', 'workspace', 'wiki-render');
-const WIKI_TYPES = {
-  '.html': 'text/html; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.ico': 'image/x-icon',
-  '.txt': 'text/plain; charset=utf-8',
-};
-// --- the one-shot offline download -----------------------------------------
-// The whole wiki, delivered pages only, as one ZIP a phone saves once and opens
-// at a table. The manifest is the render's own map.json - the same file /wiki
-// routing and the prune sweep treat as the truth - so a record the tree filtered
-// has no page and no entry here. Built once and kept; a re-render is picked up
-// from map.json's mtime. Same origin, same access control: no new gate, no key.
-let archiveCache = { at: 0, zip: null, files: 0, pages: 0, bytes: 0 };
-function wikiArchive() {
-  const at = fs.statSync(path.join(WIKI_DIR, 'map.json')).mtimeMs;
-  if (!archiveCache.zip || archiveCache.at !== at) {
-    const built = buildWikiArchive(WIKI_DIR);
-    archiveCache = { at, zip: built.zip, files: built.files.length, pages: built.pagesCount, bytes: built.bytes };
-  }
-  return archiveCache;
-}
-function handleWikiArchive(req, res) {
-  let a;
-  try { a = wikiArchive(); } catch (e) { return fail(res, 500, 'archive failed: ' + String((e && e.message) || e)); }
-  res.writeHead(200, {
-    'Content-Type': 'application/zip',
-    'Content-Length': a.zip.length,
-    'Content-Disposition': 'attachment; filename="mhq-rules-wiki.zip"',
-    'Cache-Control': 'no-cache',
-    'ETag': '"' + a.at + '-' + a.zip.length + '"',
-  });
-  return res.end(a.zip);
-}
-
-function handleWiki(req, res, u) {
-  let rel = '';
-  try { rel = decodeURIComponent(u.pathname.slice('/wiki'.length)).replace(/^\/+/, ''); }
-  catch (e) { return fail(res, 400, 'bad wiki path'); }
-  if (!rel) rel = fs.existsSync(path.join(path.resolve(WIKI_DIR), 'home.html')) ? 'home.html' : 'index.html';
-  const root = path.resolve(WIKI_DIR);
-  const abs = path.resolve(root, rel);
-  if (abs !== root && !abs.startsWith(root + path.sep)) return fail(res, 404, 'not found');
-  let body = null;
-  try { body = fs.readFileSync(abs); } catch (e) { body = null; }
-  if (!body) {
-    // The readable-URL rename: a page name we served in the wild (traces, docs,
-    // bookmarks) redirects to the record's new path rather than 404ing. Only
-    // delivered records are in the map, so a filtered record's old URL still
-    // 404s - the delivery rule is unchanged.
-    const to = legacyRedirect(rel);
-    if (to) { res.writeHead(301, { Location: '/wiki/' + to, 'Cache-Control': 'no-store' }); return res.end(); }
-    return fail(res, 404, 'not in the wiki render: ' + rel);
-  }
-  return send(res, 200, body, WIKI_TYPES[path.extname(abs).toLowerCase()] || 'application/octet-stream');
-}
-
-// The redirect map the render writes (legacy.json), re-read when it changes so a
-// re-render is picked up without a restart. Small: one line per delivered page.
-let legacyCache = { at: 0, map: {} };
-function legacyRedirect(rel) {
-  try {
-    const file = path.join(WIKI_DIR, 'legacy.json');
-    const st = fs.statSync(file);
-    if (st.mtimeMs !== legacyCache.at) legacyCache = { at: st.mtimeMs, map: JSON.parse(fs.readFileSync(file, 'utf8')) || {} };
-    return legacyCache.map[rel] || '';
-  } catch (e) { return ''; }
-}
-
-// The wiki page for a record id, from the map the render writes beside its pages.
-// Absent map (an older render, or no render at all) is no link: a dead one is
-// worse than none, the same rule the link resolution follows.
-let wikiMapCache = null;
-// True once map.json was read: the render's map is the manifest of delivered
-// records, so /rules/record can refuse an id the tree filtered with the same 404
-// the static pages answer (their file was never written, or the sweep removed
-// it). No map at all is no manifest: the route keeps its old behaviour.
-let wikiMapOk = false;
-function wikiPageFor(id) {
-  if (wikiMapCache === null) {
-    try { wikiMapCache = JSON.parse(fs.readFileSync(path.join(WIKI_DIR, 'map.json'), 'utf8')) || {}; wikiMapOk = true; }
-    catch (e) { wikiMapCache = {}; wikiMapOk = false; }
-  }
-  const page = wikiMapCache[String(id || '')];
-  return page ? '/wiki/' + page : '';
+  const slug = surfaceSlugMap().get(String(id || ''));
+  return slug ? '#' + slug : '';
 }
 
 // A cheap guess, only used when the client does not say. The page sends its
@@ -1047,10 +944,6 @@ function handleSurfaceData(req, res, u) {
 async function handleRulesRecord(req, res, u) {
   const id = String((u && u.searchParams.get('id')) || '');
   if (!id) return fail(res, 400, 'need ?id=<record id>');
-  // One notion of exists: the wiki's own map is the manifest. A record the tree
-  // filtered is not delivered, so its fragment is refused here too.
-  wikiPageFor(id);
-  if (wikiMapOk && !Object.prototype.hasOwnProperty.call(wikiMapCache, id)) return fail(res, 404, 'no such record: ' + id);
   let record = null;
   try { record = recordCard(id, { corpora: corpora(), index: corpusById() }); } catch (e) { record = null; }
   if (!record) return fail(res, 404, 'no such record: ' + id);
@@ -1063,7 +956,7 @@ async function handleRulesRecord(req, res, u) {
     if (!raw) return fail(res, 404, 'no such record: ' + id);
     return send(res, 200, recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor }), 'text/html; charset=utf-8');
   }
-  return json(res, 200, { ok: true, record, wiki: wikiPageFor(id), slug: surfaceSlugMap().get(id) || '' });
+  return json(res, 200, { ok: true, record, slug: surfaceSlugMap().get(id) || '' });
 }
 
 // A lookup by name, answered from the header index before anything else runs:
@@ -1095,7 +988,6 @@ async function handleRulesLookup(req, res, u) {
       rank: 0, leg: '', matchedTerms: [], kind: rec.kind || '',
       links: resolveRecordLinks(rec.links, corpusById()),
     },
-    wiki: wikiPageFor(hit.id),
   });
 }
 
@@ -1692,7 +1584,7 @@ const server = http.createServer(async (req, res) => {
   // deployment hides, against the DELIVERED set.
   if (req.method === 'GET' && u.pathname === '/dev') {
     try {
-      const state = await devState({ bootedAt: SERVER_BOOTED, wikiDir: WIKI_DIR });
+      const state = await devState({ bootedAt: SERVER_BOOTED });
       return send(res, 200, devHtml(state), 'text/html; charset=utf-8', { cache: 'no-store' });
     } catch (e) { return fail(res, 500, 'dev report failed: ' + String((e && e.message) || e)); }
   }
@@ -1709,8 +1601,6 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/rules/labels') return handleRulesLabels(req, res);
   if (req.method === 'GET' && u.pathname === '/rules/record') return handleRulesRecord(req, res, u);
   if (req.method === 'GET' && u.pathname === '/rules/lookup') return handleRulesLookup(req, res, u);
-  if (req.method === 'GET' && u.pathname === '/wiki/all.zip') return handleWikiArchive(req, res);
-  if (req.method === 'GET' && (u.pathname === '/wiki' || u.pathname.indexOf('/wiki/') === 0)) return handleWiki(req, res, u);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 
