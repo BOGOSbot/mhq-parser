@@ -64,3 +64,6 @@ a{color:var(--sv-acc)}
 body.sv-drawer-open header, body.sv-drawer-open .sv-top{display:none}
 .sv-ownlist{margin-top:8px;border-top:1px dashed var(--sv-line);padding-top:6px}
 .sv-owntitle{color:var(--sv-dim);font-size:.8em;margin-bottom:2px}
+
+/* task-78: the mission card face above the record's own text. */
+.sv-recface{display:block;width:100%;max-width:420px;margin:0 auto 12px;border-radius:8px;border:1px solid rgba(255,255,255,.14)}

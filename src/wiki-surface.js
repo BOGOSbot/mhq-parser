@@ -316,11 +316,35 @@
       box.appendChild(ownBox);
     }
     wrap.appendChild(box);
-    if (state.rows[r.id]) { body.innerHTML = state.rows[r.id]; return; }
+    if (state.rows[r.id]) { body.innerHTML = faceHtml(r.id) + state.rows[r.id]; return; }
     fetch(REC + '?id=' + encodeURIComponent(r.id) + '&format=html', { credentials: 'same-origin' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
-      .then(function (html) { state.rows[r.id] = html; body.innerHTML = html; })
+      .then(function (html) { state.rows[r.id] = html; loadFaces().then(function () { body.innerHTML = faceHtml(r.id) + html; }); })
       .catch(function () { body.textContent = 'The record could not be loaded.'; });
+  }
+
+  // task-78: the mission card faces. The corpus owns the bytes; the manifest maps a
+  // record id to the face file. The attacker's face is the default because our
+  // mission records are the attacker's deck; the defender's is the alternate.
+  var ASSET = CFG.asset || '/rules/asset';
+  var FACES = null, FACES_LOAD = null;
+  function loadFaces() {
+    if (FACES_LOAD) return FACES_LOAD;
+    FACES_LOAD = getJson(ASSET + '?path=' + encodeURIComponent('missions/sources.json')).then(function (m) {
+      var map = {};
+      ((m && m.assets) || []).forEach(function (a) {
+        if (!a || !a.record_id || !a.file) return;
+        if (!map[a.record_id] || a.role === 'attacker') map[a.record_id] = a;
+      });
+      FACES = map;
+      return map;
+    }).catch(function () { FACES = {}; return FACES; });
+    return FACES_LOAD;
+  }
+  function faceHtml(id) {
+    var a = FACES && FACES[id];
+    if (!a) return '';
+    return '<img class="sv-recface" loading="lazy" alt="" src="' + ASSET + '?path=' + encodeURIComponent(a.file) + '">';
   }
 
   // --- the viewscreen: page mode and the cold deep link ---------------------
@@ -344,10 +368,10 @@
     var body = el('div', 'sv-page-body');
     body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
     v.appendChild(body);
-    if (state.rows[record.id]) { body.innerHTML = state.rows[record.id]; return; }
+    if (state.rows[record.id]) { body.innerHTML = faceHtml(record.id) + state.rows[record.id]; return; }
     fetch(REC + '?id=' + encodeURIComponent(record.id) + '&format=html', { credentials: 'same-origin' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
-      .then(function (html) { state.rows[record.id] = html; body.innerHTML = html; })
+      .then(function (html) { state.rows[record.id] = html; loadFaces().then(function () { body.innerHTML = faceHtml(record.id) + html; }); })
       .catch(function () { body.textContent = 'The record could not be loaded.'; });
   }
   function closePage() {

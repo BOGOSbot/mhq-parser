@@ -38,6 +38,9 @@ import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, row
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
+// task-78: the asset route reads the corpus's asset tree; the import is its own line so
+// the long corpus import above stays untouched.
+import { corpusDir } from './rules-corpus.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
 import { lookupRecord } from './header-index.mjs';
@@ -959,6 +962,20 @@ async function handleRulesRecord(req, res, u) {
   return json(res, 200, { ok: true, record, slug: surfaceSlugMap().get(id) || '' });
 }
 
+// task-78: the mission card faces. The corpus owns the bytes (private, off-git,
+// refetchable by URL); this route is the only door to them. Anchored: one relative
+// path, no '..', faces at missions/<kind>/<deck|role>/<slug>.png plus the manifest
+// the render reads. The bytes behind a URL never change, so they cache forever;
+// the manifest does not.
+const ASSET_PATH = /^(?:missions\/(?:primary|secondary)\/(?:[a-z0-9-]+\/)?[a-z0-9-]+\.png|missions\/sources\.json)$/;
+function handleRulesAsset(req, res, u) {
+  const rel = String((u && u.searchParams.get('path')) || '');
+  if (!ASSET_PATH.test(rel)) return fail(res, 404, 'no such asset: ' + rel);
+  let body = null;
+  try { body = fs.readFileSync(path.join(corpusDir(), 'assets', rel)); } catch (e) { return fail(res, 404, 'no such asset: ' + rel); }
+  if (rel.slice(-5) === '.json') return send(res, 200, body, 'application/json; charset=utf-8', { cache: 'no-store' });
+  return send(res, 200, body, 'image/png', { maxAge: 'public, max-age=31536000, immutable' });
+}
 // A lookup by name, answered from the header index before anything else runs:
 // mechanical - a grep over the corpus's own headings - with no embedding, no
 // index write and no model call. A miss (a phrase the corpus does not name, a
@@ -1600,6 +1617,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/rules/answered') return handleRulesAnswered(req, res);
   if (req.method === 'POST' && u.pathname === '/rules/labels') return handleRulesLabels(req, res);
   if (req.method === 'GET' && u.pathname === '/rules/record') return handleRulesRecord(req, res, u);
+  if (req.method === 'GET' && u.pathname === '/rules/asset') return handleRulesAsset(req, res, u);
   if (req.method === 'GET' && u.pathname === '/rules/lookup') return handleRulesLookup(req, res, u);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
