@@ -30,6 +30,30 @@ export function surfaceAsset(name) {
 
 export function dataDir() { return DATA_DIR; }
 
+// Every delivered record's slug, from the index payloads (four files, half a
+// megabyte) rather than the content payloads (nine megabytes). The findings and
+// the tail carry no slug of their own, and a record opened from the answer must
+// have one to become an address - this is the one map that answers it.
+let SLUGS = null;
+export function surfaceSlugMap() {
+  if (SLUGS) return SLUGS;
+  const map = new Map();
+  let index = null;
+  try { index = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'index.json'), 'utf8')); } catch (e) { index = null; }
+  for (const b of ((index && index.branches) || [])) {
+    let payload = null;
+    try { payload = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'index', b.b + '.json'), 'utf8')); } catch (e) { payload = null; }
+    if (!payload) continue;
+    const walk = n => {
+      for (const r of (n.recs || [])) if (r && r.id && r.slug) map.set(r.id, r.slug);
+      for (const k of (n.kids || [])) walk(k);
+    };
+    walk(payload);
+  }
+  SLUGS = map;
+  return map;
+}
+
 // The page. One ask box and one viewscreen; the drawer is markup here and behaviour
 // in the client, closed by default and never opened by the page itself.
 export function surfacePage(opts) {

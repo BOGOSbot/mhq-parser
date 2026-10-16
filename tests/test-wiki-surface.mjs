@@ -55,6 +55,21 @@ ok('(C) the client has a row for that node rather than a blank pane', js.body.in
 ok('(G) the filter re-renders from memory (no fetch in the filter handler)', /sv-filter[\s\S]{0,400}addEventListener\('input'/.test(js.body) && js.body.indexOf('getJson') !== js.body.lastIndexOf('getJson'));
 ok('(E) a record body comes from the server route that calls recordBody', fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8').indexOf("recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor })") !== -1);
 
+// (3) the ask, the tail, the icon and the copy - the slice-3 targets.
+const srv = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
+ok('(3) the client asks the same endpoint the old page uses', js.body.indexOf("CFG.ask || '/rules/ask'") !== -1);
+ok('(3) the icon writes BOTH channels through the existing endpoints', js.body.indexOf("CFG.vote || '/rules/vote'") !== -1 && js.body.indexOf("CFG.answered || '/rules/answered'") !== -1 && js.body.indexOf("postJson(VOTE, { id: id, vote: 'up' })") !== -1 && js.body.indexOf("postJson(ANSWERED, { id: id, by: f.id })") !== -1 && js.body.indexOf("postJson(VOTE, { id: id, vote: 'down' })") !== -1 && js.body.indexOf("postJson(ANSWERED, { id: id, none: true })") !== -1);
+ok('(3) the tail renders under a heading that says it is unjudged', js.body.indexOf("Also matched, not judged") !== -1);
+ok('(3) the refusal copy names the ten, not the corpus', js.body.indexOf('None of the top ten states the rule.') !== -1);
+ok('(3) none of these is at the foot, not on a finding', js.body.indexOf("el('div', 'sv-foot')") !== -1 && js.body.indexOf("sv-none") !== -1);
+ok('(3) the server returns the tail and the trace id, and slugs the findings', srv.indexOf('tail: withSlug(tail)') !== -1 && srv.indexOf('traceId, judge, answer') !== -1 && srv.indexOf('surfaceSlugMap') !== -1);
+// (a) the reader never sees a raw record id or a bare source string in the meta.
+ok('(a) the row meta is the book, not the record id', js.body.indexOf("[r.source, r.id].join") === -1 && js.body.indexOf('bookLabel(r.slug)') !== -1);
+ok('(a) page mode meta is kind + book', js.body.indexOf("[kindLabel(record.kind), bookLabel(record.slug)]") !== -1 && js.body.indexOf('[record.kind, record.source, record.set]') === -1);
+ok('(b) the dead empty-expression snippet line is gone', js.body.indexOf("r.snippet ? '' : ''") === -1);
+ok('(c) a cold page says Open the wiki, a warm one says Back', js.body.indexOf("cold ? 'Open the wiki'") !== -1 && js.body.indexOf("'sv-back'") !== -1);
+ok('(d) the row cap has head-room and a visible overrun line', js.body.indexOf('var ROW_CAP = 500;') !== -1 && js.body.indexOf('more not shown.') !== -1);
+
 // (H) the old surface is untouched by this slice.
 const rulesHtml = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
 ok('(H) rules.html does not reference the surface', rulesHtml.indexOf('wiki-surface') === -1 && rulesHtml.indexOf('/rules/dev') === -1);

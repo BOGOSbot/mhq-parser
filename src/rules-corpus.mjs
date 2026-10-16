@@ -3035,7 +3035,16 @@ export async function retrieveWide(question, opts) {
   }
   // Anchored and clarifying records may sit past the cut once everything is merged.
   const out = guarded.slice(0, topK + (o.anchorCap || 2) + (o.childCap || 3));
-  return decorate(out);
+  // task-75, additive: the candidates the cut did NOT take, in the ranker's own
+  // order. This is the same pre-cut net of 50-80 passages the findings were drawn
+  // from - exposing it costs nothing, because the retrieval already paid for it -
+  // and it is deliberately UNJUDGED: it is the tail, not a second findings list.
+  // Nothing about the findings themselves changes here.
+  const shownIds = new Set(out.map(s => s.id));
+  const rest = (ranked || merged).filter(s => s.id && !shownIds.has(s.id)).slice(0, 30);
+  const result = decorate(out);
+  result.rest = decorate(rest);
+  return result;
 }
 
 // --- the two halves ---------------------------------------------------------
@@ -3080,7 +3089,16 @@ export async function retrieveDual(question, opts) {
       queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
     }),
   ]);
-  return { rules, factions, all: rules.concat(factions), plan: { rules: rulesK, factions: factionsK } };
+  // The pre-cut pool, both halves, deduped, in the order the ranker put it. The
+  // findings keep the cut; this is what the tail reads.
+  const restSeen = new Set();
+  const tail = [];
+  for (const s of (rules.rest || []).concat(factions.rest || [])) {
+    if (!s || !s.id || restSeen.has(s.id)) continue;
+    restSeen.add(s.id);
+    tail.push(s);
+  }
+  return { rules, factions, all: rules.concat(factions), tail, plan: { rules: rulesK, factions: factionsK } };
 }
 
 // --- compiling, with the findings still cited -------------------------------

@@ -45,7 +45,7 @@ import { lookupRecord } from './header-index.mjs';
 import { devHtml, devState } from './dev-report.mjs';
 // Slice 2, additive: the dev route and the surface's static files. The flip in
 // slice 4 wires the surface into rules.html; nothing here touches it.
-import { dataDir as surfaceDataDir, surfaceAsset, surfacePage } from './wiki-surface.mjs';
+import { dataDir as surfaceDataDir, surfaceAsset, surfacePage, surfaceSlugMap } from './wiki-surface.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // The process's own birth time, published by /dev: a src/ file newer than this is
@@ -1352,6 +1352,19 @@ async function handleRulesAsk(req, res) {
 
     const judge = outcome.judge;
     const payload = toPayload(outcome.findings);
+    // task-75: the TAIL - the candidates the cut did not take, in the order the
+    // same retrieval ranked them and deliberately UNJUDGED. No extra retrieval:
+    // outcome.dual.all is the pre-cut list the judged findings came from. Both
+    // lists carry the record's slug, so a record opened from the answer has an
+    // address (the slug is the only thing findingFor cannot know).
+    const slugOf = surfaceSlugMap();
+    const withSlug = list => list.map(f => Object.assign({}, f, { slug: slugOf.get(f.id) || '' }));
+    const tail = (() => {
+      const shown = new Set(payload.map(f => f.id));
+      const preCut = (outcome.dual && Array.isArray(outcome.dual.tail)) ? outcome.dual.tail : [];
+      const rest = preCut.filter(s => s && s.id && !shown.has(s.id)).slice(0, 20);
+      return toPayload(rest.map((s, i) => findingFor(s, payload.length + i + 1)));
+    })();
 
     // The SECOND judge: the reasoning setting the reader did not pick, fired
     // beside the writer so the prose never waits for it. In fast mode that is the
@@ -1457,7 +1470,7 @@ async function handleRulesAsk(req, res) {
         emit({ type: 'done', elapsedMs, steps, notes });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: [], judge, answer: '', steps, elapsedMs, notes });
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: [], tail: withSlug(tail), traceId, judge, answer: '', steps, elapsedMs, notes });
     }
 
     // The second judge starts here, beside the writer, and is only awaited after
@@ -1484,7 +1497,7 @@ async function handleRulesAsk(req, res) {
         emit({ type: 'done', elapsedMs, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, answer: '', writer: false, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, answer: '', writer: false, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
     }
 
     // The judge has already run; the answer waits on it rather than racing it,
@@ -1525,7 +1538,7 @@ async function handleRulesAsk(req, res) {
         emit({ type: 'done', elapsedMs, steps, failed: true, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
     }
 
     emit({ type: 'answer', answer, unresolved: outcome.unresolved, elapsedMs: Date.now() - started });
@@ -1549,7 +1562,7 @@ async function handleRulesAsk(req, res) {
       return res.end();
     }
     return json(res, 200, {
-      question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: payload, judge, answer,
+      question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, answer,
       judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom,
       counts, steps, elapsedMs: Date.now() - started, mode: modeName, writer: writerOn,
       unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,
