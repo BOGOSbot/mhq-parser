@@ -521,7 +521,7 @@ export const MISSION_PARTS = [
 // The page name of a record, one implementation for the render and for this
 // tree: the slug carries a hash only this function knows, so a second copy
 // would drift.
-function hash8(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+export function hash8(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
 // pageSlug is the OLD name, kept only to build the redirect map: <kind>_<id>-<hash>
 // was served in the wild (traces, docs, bookmarks) and has to keep resolving.
 export function pageSlug(id) { return String(id).replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 60) + '-' + hash8(String(id)); }

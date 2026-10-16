@@ -1,0 +1,187 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * wiki-payload: the bake. The one place the corpus becomes something a reader can
+ * fetch, so the interface is deliberately small and everything under it is the
+ * index model the render already uses - tocTree is called here, exactly as
+ * wiki-render.mjs calls it, so there is one implementation of the branches.
+ *
+ * Three shapes, written into outDir (workspace/wiki-data by default):
+ *   index.json            { branches: [{ n, c, b }] }
+ *   index/<b>.json        { n, lvl, c, kids: [...], recs: [...], pages: [...] }
+ *   content/<book>.json   { book, records: { id: { ...record } } }
+ *
+ * A record's slug carries its book ('<book>--<readable>-<hash>'), so a cold
+ * address resolves with no manifest: split on '--', fetch that one content file,
+ * find the record. The record's fields are the seam's; the text is the STORED
+ * text and no HTML is baked - no card rendering, no CARD_CSS.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readAllCorpus } from './rules-corpus.mjs';
+import { allianceAssigner, factionAssigner, factionRoster, hash8, pageNamer, pageTitleSlug, tocTree } from './wiki-toc.mjs';
+import { cardTables } from './unit-card.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO = path.join(__dirname, '..');
+const DEFAULT_OUT = path.join(REPO, 'workspace', 'wiki-data');
+
+// The record projection the tree reads, the same fields wiki-render.mjs carries:
+// url and faction are what the tree files a record by, anchor and ruleId resolve
+// the Rules chapters, edition feeds the faction filters, provenance and text_en
+// are what a ruling needs. Without these the tree would drift from the tests'.
+function project(r) {
+  return {
+    id: r.id, heading: r.heading || '', kind: r.kind || '', source: r.source || '', set: r.set || '',
+    text: String(r.text || ''), links: Array.isArray(r.links) ? r.links : [], parent: r.parent || '', children: Array.isArray(r.children) ? r.children : [],
+    url: r.url || '', faction: r.faction || '', anchor: r.anchor || '', ruleId: r.ruleId || '',
+    edition: r.edition == null ? '' : String(r.edition),
+    provenance: r.provenance || null,
+    text_en: r.text_en || '',
+  };
+}
+
+const textOf = rec => String((rec && rec.text) || '');
+// The drawer's one-line row: id, slug, title, source and a plain-text snippet of
+// at most 100 characters, so a branch renders its lines without fetching content.
+function row(rec, slugOf, byId) {
+  const raw = byId.get(rec.i) || {};
+  const plain = textOf(raw).replace(/\s+/g, ' ').trim();
+  return { id: rec.i, slug: slugOf(rec.i), title: rec.t || '', source: raw.source || '', snippet: plain.slice(0, 100) };
+}
+
+// One node of a branch, inlined: the file references ('f') become nested objects
+// and the record rows lose their page file for the slug. A single-page node keeps
+// a marker and is listed in the branch's pages.
+function inlineNode(key, tree, slugOf, byId, seen) {
+  const node = tree.files[key] || {};
+  const out = { n: node.n, lvl: node.lvl, c: node.c };
+  if (node.cut) out.cut = true;
+  if (node.pg) out.page = true;
+  if (node.kids && node.kids.length) out.kids = node.kids.map(k => (k.f && tree.files[k.f] && !seen.has(k.f)) ? inlineNode(k.f, tree, slugOf, byId, new Set([...seen, k.f])) : { n: k.n, lvl: k.lvl, c: k.c, ...(k.cut ? { cut: true } : {}), ...(k.pg ? { page: true } : {}) });
+  if (node.recs && node.recs.length) out.recs = node.recs.map(r => row(r, slugOf, byId));
+  return out;
+}
+
+export function buildPayloads(corpus, outDir) {
+  const out = outDir || DEFAULT_OUT;
+  const all = corpus || readAllCorpus();
+  const byId = new Map(all.map(r => [r.id, r]));
+  const records = all.map(project);
+  const pageOf = pageNamer(all);
+  const tables = cardTables();
+  const roster = factionRoster(tables.factionName, tables.factionLink);
+  const factionOf = factionAssigner(roster);
+  const allianceOf = allianceAssigner(roster, tables.datasheets, tables.keywords);
+  const tree = tocTree(records, pageOf, { roster: roster, factionOf: factionOf, allianceOf: allianceOf });
+
+  // Delivery: a record is delivered iff the tree keeps it - pageNamer minus the
+  // tree's filtered set. This is wiki-render.mjs's own rule, so the bake keeps the
+  // same 6,271 the render pages, not an approximation.
+  const filtered = new Set(tree.filtered || []);
+  const live = [...pageOf.keys()].filter(id => !filtered.has(id));
+
+  // The book is the tree's own placement, never set or source: stratagems,
+  // enhancements and detachments carry source 'stratagems' and an empty faction,
+  // and 923 unitrules carry no faction url - the tree assigns them. A record with
+  // a path takes the branch it sits in; one without a path (index stubs, dropped
+  // front matter, unattached annotations) is placed by the same roster+assigner
+  // signal the tree used, and falls back to the Rules book.
+  const slugByName = new Map(roster.map(f => [f.name, f.slug]));
+  // The BRANCH comes from the tree's path; the FACTION comes from the same roster
+  // + factionAssigner that built the tree's own byFaction buckets (wiki-toc.mjs
+  // line 1027), not from the path's faction element. The path is overwritten for
+  // every merged twin: mergedHere is declared outside the faction loop and line
+  // 1125 re-sets each accumulated id to the CURRENT faction's Units node, so the
+  // last faction wins and 1,713 unitrules twins carried a Tyranids chain. Reading
+  // the assigner instead gives the twin the book of the record it belongs to
+  // without touching the index model (slice 1 may not). Reported, not fixed here.
+  const bookOf = id => {
+    const raw = byId.get(id) || {};
+    const chain = tree.paths.get(id) || [];
+    const branch = chain.length ? chain[0].n : '';
+    const fac = factionOf(raw);
+    if (branch === 'Factions' || (!branch && fac && slugByName.has(fac))) {
+      return fac && slugByName.has(fac) ? 'faction-' + slugByName.get(fac) : 'rules';
+    }
+    if (branch === 'Missions') return 'missions';
+    return 'rules';
+  };
+
+  const books = new Map();
+  for (const id of live) { const b = bookOf(id); if (!books.has(b)) books.set(b, []); books.get(b).push(id); }
+  const slugOf = id => {
+    const raw = byId.get(id) || {};
+    return bookOf(id) + '--' + pageTitleSlug(raw) + '-' + hash8(String(id));
+  };
+
+  // --- write ----------------------------------------------------------------
+  fs.mkdirSync(path.join(out, 'index'), { recursive: true });
+  fs.mkdirSync(path.join(out, 'content'), { recursive: true });
+  const files = [];
+  const write = (rel, value) => {
+    const file = path.join(out, rel);
+    const body = JSON.stringify(value);
+    fs.writeFileSync(file, body);
+    files.push({ name: rel, bytes: Buffer.byteLength(body) });
+  };
+
+  // index.json: the branches with the key each one's payload lives under.
+  const branches = tree.index.branches.map(b => ({ n: b.n, c: b.c, b: path.basename(String(b.f || ''), '.js') }));
+  write('index.json', { branches: branches });
+
+  for (const b of branches) {
+    const ref = tree.index.branches.find(x => path.basename(String(x.f || ''), '.js') === b.b) || {};
+    const node = { n: b.n, lvl: 'branch', c: b.c, kids: [], recs: [], pages: [] };
+    const root = tree.files[ref.f] || {};
+    if (root.kids) node.kids = root.kids.map(k => (k.f && tree.files[k.f]) ? inlineNode(k.f, tree, slugOf, byId, new Set([k.f])) : { n: k.n, lvl: k.lvl, c: k.c, ...(k.cut ? { cut: true } : {}), ...(k.pg ? { page: true } : {}) });
+    if (root.recs) node.recs = root.recs.map(r => row(r, slugOf, byId));
+    node.pages = (tree.pages || []).filter(p => p.path && p.path[0] && p.path[0].f === ref.f).map(p => ({ n: p.n, lvl: p.lvl, area: p.area || '', recs: p.recs || [] }));
+    write('index/' + b.b + '.json', node);
+  }
+
+  for (const [book, ids] of books) {
+    const recordsOut = {};
+    for (const id of ids) {
+      const raw = byId.get(id) || {};
+      recordsOut[id] = {
+        id: id, slug: slugOf(id), heading: raw.heading || '', kind: raw.kind || '', source: raw.source || '',
+        ruleId: raw.ruleId || '', set: raw.set || '', text: textOf(raw),
+        links: Array.isArray(raw.links) ? raw.links : [], parent: raw.parent || '',
+        children: Array.isArray(raw.children) ? raw.children : [],
+        at: raw.at == null ? '' : String(raw.at),
+      };
+    }
+    write('content/' + book + '.json', { book: book, records: recordsOut });
+  }
+
+  const bytes = files.reduce((n, f) => n + f.bytes, 0);
+  const biggest = files.slice().sort((a, b) => b.bytes - a.bytes)[0] || { name: '', bytes: 0 };
+  const byBook = {};
+  for (const [book, ids] of books) byBook[book] = ids.length;
+  const stats = {
+    outDir: out, records: all.length, delivered: live.length, filtered: filtered.size,
+    branches: branches, books: [...books.keys()].sort(), bookRecords: byBook,
+    files: files.map(f => f.name).sort(), fileCount: files.length, bytes: bytes,
+    biggest: biggest,
+  };
+  return stats;
+}
+
+const fmtMB = n => Math.round(n / 1024 / 10.24) / 100;
+function main() {
+  const i = process.argv.indexOf('--out');
+  const out = i !== -1 && process.argv[i + 1] ? path.resolve(process.argv[i + 1]) : DEFAULT_OUT;
+  const t0 = Date.now();
+  const stats = buildPayloads(readAllCorpus(), out);
+  const seconds = (Date.now() - t0) / 1000;
+  console.log('wiki-payload -> ' + path.relative(REPO, out));
+  console.log('  delivered           ' + stats.delivered + ' of ' + stats.records + ' (' + stats.filtered + ' filtered)');
+  console.log('  books               ' + stats.books.length + ': ' + stats.books.join(', '));
+  console.log('  files               ' + stats.fileCount + ' (' + fmtMB(stats.bytes) + ' MB)');
+  console.log('  biggest             ' + stats.biggest.name + ' ' + fmtMB(stats.biggest.bytes) + ' MB');
+  console.log('  seconds             ' + seconds.toFixed(2));
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) main();
