@@ -365,7 +365,16 @@ export function proseHtml(text, opts) {
   // page has already printed it as the title, and printing it twice reads as a duplicate.
   const first = all.length ? all[0].trim() : '';
   const crumbs = String(o.selfHeading || '').split(' > ').filter(Boolean);
-  if (first && (first === o.selfHeading || first === o.selfId || (crumbs.length && first === crumbs[crumbs.length - 1]))) all.shift();
+  const names = [o.selfHeading, o.selfId, crumbs.length ? crumbs[crumbs.length - 1] : ''].filter(Boolean);
+  // task-81 (D): the exact match above missed the shape that actually repeats the
+  // name in the body - '<NAME> - <subtitle>', e.g. 'ADVANCE MOVE - core movement
+  // ability' - which is what every core ability and every mislabelled stratagem
+  // opens with. Drop the first line when it opens with the name and a separator and
+  // stays short (<= 90 chars), so a real sentence that happens to start with the
+  // name is never eaten. Render-only: the stored text is untouched.
+  const quoted = n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const shortEcho = names.some(n => first.length <= 90 && new RegExp('^' + quoted(n) + '\\s*[-\u2013\u2014:]\\s').test(first));
+  if (first && (names.indexOf(first) !== -1 || shortEcho)) all.shift();
   const blocks = [];
   let cur = [];
   for (const line of all) {

@@ -155,6 +155,11 @@ export function buildPayloads(corpus, outDir) {
       for (const k of (n.kids || [])) annotate(k);
     };
     annotate(node);
+    // The rows ride in their OWN file, fetched the first time a reader opens a
+    // page or a detachment: the branch payload is on the critical path of every
+    // Factions open, and 2,082 rows there cost 736 KB for a feature most opens
+    // never touch (task-81 step 3b). `own` (ids) stays in the branch, which is
+    // cheap; the rows are one fetch, cached by the client.
     if (branchIds.size) {
       const rowMap = {};
       for (const id of branchIds) {
@@ -162,7 +167,7 @@ export function buildPayloads(corpus, outDir) {
         if (!raw) continue;
         rowMap[id] = row({ i: id, t: raw.heading || '' }, slugOf, byId);
       }
-      node.rows = rowMap;
+      write('index/' + b.b + '-rows.json', { rows: rowMap });
     }
     write('index/' + b.b + '.json', node);
   }

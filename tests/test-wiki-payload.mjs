@@ -90,7 +90,7 @@ ok('(e) the biggest payload is named', !!stats.biggest.name);
 const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => d.isDirectory() ? walk(path.join(dir, d.name)) : [path.join(dir, d.name)]);
 const written = walk(OUT).map(f => path.relative(OUT, f).replace(/\\/g, '/'));
 t('(f) no .html, no map.json, no legacy.json', written.filter(f => /\.html$/.test(f) || /(^|\/)map\.json$/.test(f) || /(^|\/)legacy\.json$/.test(f)), []);
-t('(g) the file count is index + one per branch + one per book', written.length, 1 + index.branches.length + books.length);
+t('(g) the file count is index + one per branch + one per book + the rows file', written.length, 1 + index.branches.length + books.length + 1);
 t('(g) and it is the count the stats report', written.length, stats.fileCount);
 
 // (h) the branch row carries a drawer line -------------------------------------
@@ -110,15 +110,19 @@ ok('(b) some content records carry an annotation target in at', annotated.length
 
 // --- task-81: the rows only reachable through a page or a detachment ----------
 const facPayload = read('index/factions.json');
-const rowMapIds = Object.keys(facPayload.rows || {});
-t('(81-3) the branch row map carries the page and owned ids', rowMapIds.length, 2082);
+// step 3b: the rows live in their own on-demand file, not in the branch payload.
+ok('(81-3b) the branch payload carries no rows map', facPayload.rows === undefined);
+const rowsFile = read('index/factions-rows.json');
+const rowMapIds = Object.keys(rowsFile.rows || {});
+t('(81-3) the rows file carries the page and owned ids', rowMapIds.length, 2082);
+ok('(81-3b) and the branch file is small again', fs.statSync(path.join(ROOT, 'workspace', 'wiki-data', 'index', 'factions.json')).size < 420000);
 let ownRows = 0, ownIds = new Set(), biggestOwn = 0;
 const walkOwn = n => { for (const r of (n.recs || [])) { if (r.own && r.own.length) { ownRows++; biggestOwn = Math.max(biggestOwn, r.own.length); for (const id of r.own) ownIds.add(id); } } for (const k of (n.kids || [])) walkOwn(k); };
 walkOwn(facPayload);
 t('(81-3) detachments carrying their owned ids', ownRows, 252);
 t('(81-3) the biggest owned list is Lords of Dread (12)', biggestOwn, 12);
-t('(81-3) every owned id has a row in the branch map', [...ownIds].filter(id => !(facPayload.rows || {})[id]).length, 0);
-t('(81-3) and a page id does too', (facPayload.pages || []).every(pg => (pg.recs || []).every(id => (facPayload.rows || {})[id])), true);
-ok('(81-3) a row in the map has the drawer shape', ['id', 'slug', 'title', 'source', 'snippet'].every(k => k in ((facPayload.rows || {})[rowMapIds[0]] || {})));
+t('(81-3) every owned id has a row in the rows file', [...ownIds].filter(id => !(rowsFile.rows || {})[id]).length, 0);
+t('(81-3) and a page id does too', (facPayload.pages || []).every(pg => (pg.recs || []).every(id => (rowsFile.rows || {})[id])), true);
+ok('(81-3) a row in the map has the drawer shape', ['id', 'slug', 'title', 'source', 'snippet'].every(k => k in ((rowsFile.rows || {})[rowMapIds[0]] || {})));
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

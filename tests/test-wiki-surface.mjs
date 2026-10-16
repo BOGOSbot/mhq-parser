@@ -89,7 +89,8 @@ ok('(6) a new answer scrolls under the header, not behind it', js.body.indexOf('
 // --- task-81: the five defects -------------------------------------------------
 ok('(81-1) a page is matched by the faction in the node key, not by its name', /function pageFor\(n, key\)/.test(js.body) && /p\.area === area/.test(js.body) && /pageFor\(n, key\)/.test(js.body));
 ok('(81-2) a snippet drops a leading prefix equal to the row title', /function snippetFor\(r\)/.test(js.body) && /s\.indexOf\(t\) === 0/.test(js.body) && /var snip = snippetFor\(r\)/.test(js.body));
-ok('(81-3) a page or owned id renders through the branch row map', js.body.indexOf('function rowFromBranch(id)') !== -1 && /branch\.rows/.test(js.body) && js.body.indexOf('renderRec(rowFromBranch(id))') !== -1);
+ok('(81-3) a page or owned id renders through the on-demand rows file', js.body.indexOf('function rowFromBranch(id)') !== -1 && js.body.indexOf("'-rows.json'") !== -1 && js.body.indexOf('renderRec(rowFromBranch(id))') !== -1);
+ok('(81-3b) the rows file is fetched once per branch and cached', js.body.indexOf('state.rowsLoading[b]') !== -1 && js.body.indexOf('state.rowsCache[b] =') !== -1);
 ok('(81-3) a detachment row lists what it owns', js.body.indexOf("'Its enhancements and stratagems ('") !== -1 && js.body.indexOf('sv-ownlist') !== -1);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

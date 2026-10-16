@@ -97,5 +97,20 @@ ok('(5) ADVANCE MOVE breaks at its labels', bodyOf(adv).indexOf('<br>ELIGIBLE IF
 ok('(5) rendering does not mutate the stored text', String(fb.text) === fbText && /MAXIMUM DISTANCE: .* ELIGIBLE IF:/.test(fbText));
 const weaponLine = [...byId.values()].find(r => String(r.text || '').indexOf('AP 0 D 1') !== -1 && /LETHAL HITS/.test(String(r.text)));
 ok('(5) a weapon profile is not shredded: LETHAL HITS keeps its stat line', !weaponLine || bodyOf(weaponLine).indexOf('<br>LETHAL HITS') === -1);
+
+// --- task-81 (D): the body must not repeat the title it already printed ---------
+const corpusAll = readAllCorpus();
+const byIdAll = new Map(corpusAll.map(r => [r.id, r]));
+const advance = byIdAll.get('core-stratagem#000010851002');
+if (advance) {
+  const body = recordBody(advance, { record: advance }).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  ok('(81-D) the body drops the echoed name-and-subtitle first line', body.indexOf('ADVANCE MOVE - core movement ability') === -1);
+  ok('(81-D) the stored text still carries it (render-only)', String(advance.text).indexOf('ADVANCE MOVE - core movement ability') === 0);
+}
+const actions = byIdAll.get('core-rules#Actions');
+if (actions) {
+  const body2 = recordBody(actions, { record: actions }).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  ok('(81-D) a real sentence that opens with the name is kept', body2.indexOf('Actions represent vital battlefield tasks') === 0);
+}
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

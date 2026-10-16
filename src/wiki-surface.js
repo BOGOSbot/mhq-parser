@@ -15,7 +15,7 @@
   var DRAWER_KEY = 'wikiDrawer';
   var ROW_CAP = 500;
   var state = {
-    branches: null, branch: null, cache: {}, open: {}, rows: {}, filter: '',
+    branches: null, branch: null, cache: {}, open: {}, rows: {}, rowsCache: {}, rowsLoading: {}, filter: '',
     mode: 'none', record: null, from: '', answer: null, icons: {},
   };
   
@@ -188,9 +188,23 @@
   // task-81: a page id or an owned id resolves through the branch's own row map
   // (built for exactly those ids), so it renders with its real title/snippet
   // instead of an id leaf.
+  // task-81 step 3b: the rows live in index/<branch>-rows.json now, fetched the
+  // first time a page or a detachment is opened and cached per branch, so a plain
+  // Factions open never pays for them.
+  function loadRows() {
+    var b = state.branch;
+    if (!b) return Promise.resolve({});
+    if (state.rowsCache[b]) return Promise.resolve(state.rowsCache[b]);
+    if (state.rowsLoading[b]) return state.rowsLoading[b];
+    state.rowsLoading[b] = getJson(DATA + '/index/' + b + '-rows.json').then(function (j) {
+      state.rowsCache[b] = (j && j.rows) || {};
+      return state.rowsCache[b];
+    }).catch(function () { state.rowsCache[b] = {}; return {}; });
+    return state.rowsLoading[b];
+  }
   function rowFromBranch(id) {
-    var branch = state.branch ? state.cache[state.branch] : null;
-    var m = (branch && branch.rows) || {};
+    var b = state.branch;
+    var m = (b && state.rowsCache[b]) || {};
     var r = m[id];
     return r ? { id: r.id, slug: r.slug, title: r.title, source: r.source, snippet: r.snippet } : { id: id, title: leafOfId(id), slug: '', snippet: '' };
   }
@@ -217,7 +231,14 @@
     if (shown.length > ROW_CAP) body.appendChild(el('div', 'sv-empty', (shown.length - ROW_CAP) + ' more not shown.'));
     if (page) {
       var p = pageFor(n, key);
-      if (p) p.recs.forEach(function (id) { body.appendChild(renderRec(rowFromBranch(id))); });
+      if (p) {
+        if (!state.rowsCache[state.branch]) {
+          body.appendChild(el('div', 'sv-loading', 'Loading the records...'));
+          loadRows().then(function () { renderTree(); });
+        } else {
+          p.recs.forEach(function (id) { body.appendChild(renderRec(rowFromBranch(id))); });
+        }
+      }
     }
     if (!body.childNodes.length) body.appendChild(el('div', 'sv-empty', state.filter ? 'No matching rows.' : 'No records under this node.'));
     wrap.appendChild(body);
@@ -274,7 +295,15 @@
     if (r.own && r.own.length) {
       var ownBox = el('div', 'sv-ownlist');
       ownBox.appendChild(el('div', 'sv-owntitle', 'Its enhancements and stratagems (' + r.own.length + ')'));
-      r.own.forEach(function (id) { ownBox.appendChild(renderRec(rowFromBranch(id))); });
+      var fillOwn = function () { r.own.forEach(function (id) { ownBox.appendChild(renderRec(rowFromBranch(id))); }); };
+      if (state.rowsCache[state.branch]) { fillOwn(); }
+      else {
+        ownBox.appendChild(el('div', 'sv-loading', 'Loading...'));
+        loadRows().then(function () {
+          var wait = ownBox.querySelector('.sv-loading'); if (wait) wait.remove();
+          fillOwn();
+        });
+      }
       box.appendChild(ownBox);
     }
     wrap.appendChild(box);
