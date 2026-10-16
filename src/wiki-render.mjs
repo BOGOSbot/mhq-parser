@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readAllCorpus } from './rules-corpus.mjs';
 import { renderLinks, stripBuiltBlock } from './wiki-plan.mjs';
-import { CARD_CSS, cardFor, cardIndex, recordBody } from './wiki-cards.mjs';
+import { CARD_CSS, cardFor, cardIndex, proseHtml, recordBody } from './wiki-cards.mjs';
 import { SHELL_CSS, shellHead, topBar } from './wiki-shell.mjs';
 import { TOC_CSS, TOC_JS, tocData, tocIndex, tocTree, pageNamer, pageSlug, factionRoster, factionAssigner, allianceAssigner, isAnnotation } from './wiki-toc.mjs';
 import { cardTables } from './unit-card.mjs';
@@ -325,7 +325,12 @@ const humanTitle = rec => {
 };
 // The tree's own nesting: a subsection is never a sibling of its parent.
 const sectionKids = rec => (tree.childrenOf.get(rec.id) || []).map(id => byId.get(id)).filter(Boolean);
-const sectionText = rec => { const t = stripBuiltBlock(rec); return '<pre class="text">' + esc(t.length > 1600 ? t.slice(0, 1600) + '\n…' : t) + '</pre>'; };
+// A section is read, not parsed: the same prose renderer the record body uses, so a
+// section and its record do not look like two different products (task-74).
+const sectionText = rec => {
+  const t = stripBuiltBlock(rec);
+  return proseHtml(t.length > 1600 ? t.slice(0, 1600) + '\n…' : t, { selfId: rec && rec.id, href: id => hrefOf(id), selfHeading: rec && rec.heading });
+};
 const sectionsHtml = (rec, depth) => {
   if (depth <= 0) return '';
   const kids = sectionKids(rec);

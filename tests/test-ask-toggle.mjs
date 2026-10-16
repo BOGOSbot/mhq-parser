@@ -43,17 +43,22 @@ t('the page states deep exactly as ASK_MODES does',
   ['medium', 'none', '10', '3', '60', '80']);
 // task-72: the measured score is test-bank knowledge, not reader-facing page copy.
 ok('the page states the mapping and no measured accuracy', !/acc:/.test(page) && !/61\.8|79\.4/.test(page));
-ok('the note says retrieval is mode-bound, not fixed', /Retrieval moves with the mode/.test(html) && /MODE-BOUND/i.test(html));
+// task-74: the sentence under the form is off the page - Mandal asked for the line itself,
+// not just the accuracy I cut from it. The dial states itself through its two buttons, and
+// what the mode moves is still pinned above against ASK_MODES.
+ok('the page no longer explains the dial in prose', html.indexOf('id="modenote"') === -1 && html.indexOf('Retrieval moves with the mode') === -1);
 // task-69: the writer is off, and the copy must say so rather than implying prose
 // that never arrives. The behaviour assertions below are unchanged.
-ok('the note says the writer is off and the page is the findings', /The model-written answer is off/.test(html) && /the findings, the judge verdict and the citations are the page/.test(html));
+// The writer-off statement does not leave with the note: it is in the intro, which is the
+// one place the reader is told what they are looking at.
+ok('the intro says the writer is off and the page is the product', /The model-written answer is off/.test(html) && /the findings, the verdict and the citations/.test(html));
 
 // --- the toggle is real and defaults to fast ----------------------------------
 ok('two toggle buttons with a default fast', /id="modeFast"[^>]*aria-pressed="true"/.test(html) && /id="modeDeep"[^>]*aria-pressed="false"/.test(html));
 ok('the choice survives a reload, defaulting to fast', /localStorage\.setItem\('rulesMode'/.test(html) && /saved === 'deep' \? 'deep' : 'fast'/.test(html));
 ok('the ask body sends the selected mode', /mode:\s*MODE/.test(html));
 ok('the server acknowledges the mode it ran', /type: 'mode', mode: modeName/.test(server));
-ok('and the reader can see which side of the dial they are on', /Second judge: '/.test(html));
+ok('and the reader can see which side of the dial they are on', /data-mode="fast"[^>]*>fast</.test(html) && /data-mode="deep"[^>]*>deep</.test(html));
 
 // --- the answer call is not touched by the toggle -----------------------------
 t('the writer is OFF by default', writerEnabled(undefined, undefined), false);

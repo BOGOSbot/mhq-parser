@@ -49,6 +49,15 @@ export const CARD_CSS = [
   '.wcard-legend { margin:.7rem 0 0; color:var(--dim, #98a2b3); font-size:.85rem; font-style:italic; }',
   '.wcard-more summary { cursor:pointer; color:var(--w-dim, #98a2b3); }',
   '.wcard { margin:0 0 1.2rem; }',
+  // The rule body as prose (mhq task-74). The stored text is a flat transcription, so
+  // the reading has to be put back: paragraphs, bullets, and monospace only where the
+  // text is really a table. Colours are literal rgba rather than a variable: card.css is
+  // loaded by both surfaces and they do not name their palette the same way.
+  '.wprose { margin:.2rem 0 0; }',
+  '.wprose p { margin:0 0 .85rem; }',
+  '.wprose .wlist { margin:0 0 .85rem; padding-left:1.15rem; }',
+  '.wprose .wlist li { margin:0 0 .3rem; }',
+  '.wprose .wtable { margin:0 0 .85rem; padding:.55rem .6rem; overflow-x:auto; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.10); border-radius:8px; font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre; }',
   // The rulings' provenance banner: it rides in the fragment (recordBody), so
   // the page and the ask dialog share it. Loud enough to not be mistaken for GW
   // text, quiet enough not to shout on every card.
@@ -293,11 +302,14 @@ function provenanceBanner(p) {
 export function rulingBody(record, lang, opts) {
   const o = opts || {};
   const link = t => linkify(t, { selfId: record && record.id, href: o.href });
-  const fr = '<pre class="text" lang="fr">' + link(record && record.text) + '</pre>';
+  // A third party's ruling is read, not parsed either: the same prose renderer, with the
+  // language carried so the French is not read as English.
+  const proseOpts = { selfId: record && record.id, href: o.href, selfHeading: record && record.heading };
+  const fr = proseHtml(record && record.text, Object.assign({ lang: 'fr' }, proseOpts));
   const hasEn = !!(record && record.text_en && String(record.text_en).trim());
   const en = hasEn
-    ? '<pre class="text" lang="en">' + link(record.text_en) + '</pre>'
-    : '<pre class="text" lang="fr">' + link(record && record.text) + '</pre>';
+    ? proseHtml(record.text_en, Object.assign({ lang: 'en' }, proseOpts))
+    : fr;
   const note = hasEn
     ? '<p class="wlang-note">Machine translation, unreviewed \u2014 the French is the source of record.</p>'
     : '<p class="wlang-note">No English translation yet \u2014 showing the French source.</p>';
@@ -305,6 +317,51 @@ export function rulingBody(record, lang, opts) {
   if (lang === 'fr') return fr;
   return '<div class="wlang"><div class="wlang-body wlang-fr" lang="fr">' + fr + '</div>'
     + '<div class="wlang-body wlang-en" lang="en">' + en + note + '</div></div>';
+}
+
+// The rule body as prose. The stored text is a flat transcription: paragraphs separated
+// by blank lines, '- ' bullets, tables pasted as runs of spaces, and the record's own
+// breadcrumb as its first line. Printing it inside one <pre> kept every line break and
+// lost the reading - on a phone it was a wall of monospace (Mandal, task-74). Prose
+// becomes paragraphs, bullets become a list, and only a block that is really tabular
+// keeps its monospace shape, in its own scrolling box.
+export function proseHtml(text, opts) {
+  const o = opts || {};
+  const link = t => linkify(t, { selfId: o.selfId, href: o.href, cap: o.cap });
+  // A ruling keeps its language: it is the source of record and a screen reader should
+  // not read French as English.
+  const langAttr = o.lang ? ' lang="' + esc(o.lang) + '"' : '';
+  const all = String(text == null ? '' : text).replace(/\r/g, '').split('\n');
+  // A first line that is the record's own name, id or breadcrumb is not a sentence: the
+  // page has already printed it as the title, and printing it twice reads as a duplicate.
+  const first = all.length ? all[0].trim() : '';
+  const crumbs = String(o.selfHeading || '').split(' > ').filter(Boolean);
+  if (first && (first === o.selfHeading || first === o.selfId || (crumbs.length && first === crumbs[crumbs.length - 1]))) all.shift();
+  const blocks = [];
+  let cur = [];
+  for (const line of all) {
+    if (line.trim()) cur.push(line);
+    else if (cur.length) { blocks.push(cur); cur = []; }
+  }
+  if (cur.length) blocks.push(cur);
+  // Two aligned columns, or a run of short lines: that is a table, not prose.
+  const isTable = b => {
+    if (b.length < 2) return false;
+    if (b.filter(l => /\S {2,}\S/.test(l)).length >= 2) return true;
+    return b.length >= 3 && b.every(l => l.length <= 44);
+  };
+  const parts = [];
+  for (const b of blocks) {
+    if (b.every(l => /^\s*[-*]\s+/.test(l))) {
+      parts.push('<ul class="wlist">' + b.map(l => '<li>' + link(l.replace(/^\s*[-*]\s+/, '')) + '</li>').join('') + '</ul>');
+      continue;
+    }
+    if (isTable(b)) { parts.push('<pre class="wtable">' + link(b.join('\n')) + '</pre>'); continue; }
+    // Linked line by line, never after joining: linkify escapes what it is given, so a
+    // <br> spliced in first would come out as text.
+    parts.push('<p>' + b.map(l => link(l.trim())).join('<br>') + '</p>');
+  }
+  return '<div class="wprose"' + langAttr + '>' + parts.join('') + '</div>';
 }
 
 export function recordBody(record, opts) {
@@ -319,8 +376,8 @@ export function recordBody(record, opts) {
   // An index page carpeted in links is worse than an index with none: kind
   // 'index' keeps its text plain (cap 0).
   const cap = record && record.kind === 'index' ? 0 : 40;
-  return banner + '<pre class="text">' + linkify(stripBuiltBlock(record), { selfId: record && record.id, href: o.href, cap: cap }) + '</pre>';
+  return banner + proseHtml(stripBuiltBlock(record), { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading });
 }
 
-export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, recordBody, rulingBody };
+export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, proseHtml, recordBody, rulingBody };
 

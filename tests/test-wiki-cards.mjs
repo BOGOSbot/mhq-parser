@@ -62,9 +62,10 @@ ok('a damaged bracket is rendered when the datasheet has one', bodyOf(dmg).index
 // --- the text fallback -------------------------------------------------------
 const st = byId.get('stratagem#000000001') || all.find(r => r.kind === 'stratagem');
 const stBody = bodyOf(st);
-t('a record with no card keeps the text block', stBody.slice(0, '<pre class="text">'.length), '<pre class="text">');
+// task-74: it keeps its text, rendered as prose rather than as one monospace block.
+t('a record with no card keeps its text, as prose', stBody.indexOf('<div class="wprose">'), 0);
 const fake = { id: 'datasheet#000000882', kind: 'datasheet', text: '<b>a & b</b>' };
-t('and that text is escaped', bodyOf(fake, { corpora: {}, index: cardIndex(new Map()), cardBuilder: () => null }), '<pre class="text">&lt;b&gt;a &amp; b&lt;/b&gt;</pre>');
+t('and that text is escaped', bodyOf(fake, { corpora: {}, index: cardIndex(new Map()), cardBuilder: () => null }), '<div class="wprose"><p>&lt;b&gt;a &amp; b&lt;/b&gt;</p></div>');
 ok('the unitrules half renders as a card too', bodyOf(ur).indexOf('<section class="wcard"') === 0 && bodyOf(ur).indexOf('<pre') === -1);
 
 // --- the ability links go through the one resolver --------------------------

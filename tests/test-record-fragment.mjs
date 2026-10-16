@@ -72,13 +72,16 @@ async function boot(port, wikiDir) {
 // record with no card falls back to. Everything the shell adds is outside it.
 function fragmentOf(page) {
   const card = page.indexOf('<section class="wcard"');
-  const text = page.indexOf('<pre class="text">');
+  // task-74: the text fallback is prose now, not a <pre>. The rendered block holds no
+  // nested div, so the first </div> closes it.
+  const text = page.indexOf('<div class="wprose">');
   const starts = [card, text].filter(i => i !== -1);
   if (!starts.length) return '';
   const at = Math.min.apply(null, starts);
-  const end = page.indexOf(at === card ? '</section>' : '</pre>', at);
+  const tail = at === card ? '</section>' : '</div>';
+  const end = page.indexOf(tail, at);
   if (end === -1) return '';
-  return page.slice(at, end + (at === card ? '</section>'.length : '</pre>'.length));
+  return page.slice(at, end + tail.length);
 }
 
 async function main() {
@@ -110,7 +113,7 @@ async function main() {
     const cardFrag = fragmentOf(fs.readFileSync(path.join(outDir, map[REC]), 'utf8'));
     ok('the datasheet renders as the card', cardFrag.indexOf('<section class="wcard"') === 0 && cardFrag.indexOf('<table') !== -1);
     const fallbackFrag = fragmentOf(fs.readFileSync(path.join(outDir, map[FALLBACK]), 'utf8'));
-    ok('and a kind with no card renders as its text', fallbackFrag.slice(0, 18) === '<pre class="text">' && fallbackFrag.indexOf('<table') === -1);
+    ok('and a kind with no card renders as its text', fallbackFrag.indexOf('<div class="wprose">') === 0 && fallbackFrag.indexOf('<table') === -1);
     t('the route still answers JSON without the flag', (await request(port, '/rules/record?id=' + encodeURIComponent(REC))).headers['content-type'].indexOf('application/json'), 0);
     const json = JSON.parse((await request(port, '/rules/record?id=' + encodeURIComponent(REC))).body);
     ok('with the record shape it always had', json.ok === true && json.record && json.record.id === REC && typeof json.wiki === 'string');

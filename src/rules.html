@@ -360,7 +360,6 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
 .modelead{color:var(--dim);font:400 12px var(--sans);margin-right:2px}
 .modebtn{border:1px solid var(--line);background:var(--panel2);color:var(--dim);border-radius:999px;padding:4px 10px;font:12px var(--sans);cursor:pointer}
 .modebtn.on{border-color:var(--acc);color:var(--acc);font-weight:700}
-.modenote{color:var(--dim);font:400 12px var(--sans);margin:6px 0 0}
 </style>
 </head>
 <body>
@@ -399,7 +398,6 @@ details.moref summary{color:var(--dim);font:11.5px var(--mono);cursor:pointer}
          the tooltip, not on the page. -->
     <button type="button" id="mic" class="mic" title="Ask by voice" aria-label="Ask by voice"></button>
   </form>
-  <div id="modenote" class="modenote"></div>
   <div id="trslot" class="hidden"></div>
   <div id="status" class="status"></div>
     <div id="progress" class="progress hidden"><div class="psegs" id="psegs"></div><span id="pelapsed" class="pelapsed"></span></div>
@@ -990,22 +988,11 @@ var MODE_MAP = {
 };
 var MODE = 'fast';
 function modeOn(m) { return m.judge !== 'none'; }
-function modeNote(m) {
-  var fr = LANG === 'fr';
-  var on = modeOn(m) ? (fr ? 'activ\u00e9' : 'on') : (fr ? 'd\u00e9sactiv\u00e9' : 'off');
-  if (fr) return 'Juge : raisonnement ' + on + '. Second juge : ' + (m.second === 'none' ? 'sans raisonnement' : 'raisonnement ' + m.second) + '. ' +
-    'La recherche suit le mode (' + m.first + ' constats, ' + m.passes + ' passes). ' +
-    'L\u2019appel de r\u00e9daction est d\u00e9sactiv\u00e9 : les constats, le verdict du juge et les citations sont la page.';
-  return 'Judge: reasoning ' + on + '. Second judge: ' + (m.second === 'none' ? 'without reasoning' : m.second + ' reasoning') + '. ' +
-    'Retrieval moves with the mode (' + m.first + ' findings, ' + m.passes + ' passes). ' +
-    'The model-written answer is off: the findings, the judge verdict and the citations are the page.';
-}
 function setMode(name) {
   MODE = MODE_MAP[name] ? name : 'fast';
-  var bf = $('#modeFast'), bd = $('#modeDeep'), note = $('#modenote');
+  var bf = $('#modeFast'), bd = $('#modeDeep');
   if (bf) { bf.className = 'modebtn' + (MODE === 'fast' ? ' on' : ''); bf.setAttribute('aria-pressed', MODE === 'fast' ? 'true' : 'false'); }
   if (bd) { bd.className = 'modebtn' + (MODE === 'deep' ? ' on' : ''); bd.setAttribute('aria-pressed', MODE === 'deep' ? 'true' : 'false'); }
-  if (note) note.textContent = modeNote(MODE_MAP[MODE]);
   try { localStorage.setItem('rulesMode', MODE); } catch (e) { /* private mode */ }
 }
 (function initMode() {

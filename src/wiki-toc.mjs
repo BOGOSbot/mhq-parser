@@ -37,7 +37,9 @@ export const TOC_CSS = [
   // <pre> only to keep the line breaks the corpus has, never to scroll sideways.
   '.wrec pre.text{white-space:pre-wrap;overflow-wrap:anywhere;margin:.6rem 0}',
   '.wcrecback{display:block;margin:10px 12px 2px;min-height:44px;padding:10px 12px;border:1px solid var(--w-line);border-radius:10px;background:var(--w-panel2);color:var(--w-txt);font:13.5px system-ui;text-align:left;cursor:pointer}',
-  '.wcaschead{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--w-line);background:var(--w-panel)}',
+  // The bar it replaces is hidden while the index is open, so the close control has to
+  // follow the scroll: sticky under the banner, where the bar used to be.
+  '.wcaschead{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--w-line);background:var(--w-panel);position:sticky;top:var(--wcasc-top,0px);z-index:2}',
   '.wcaschead .wcbpath{font-size:12px}',
   '.wcclose{width:36px;height:36px;flex:0 0 auto;border:1px solid var(--w-line);border-radius:8px;background:var(--w-panel2);color:var(--w-txt);font-size:16px;cursor:pointer}',
   '.wcpans{flex:1;display:flex;min-height:0}',
@@ -190,11 +192,9 @@ export const TOC_JS = [
   '  }',
   '  function render() {',
   '    var b = document.getElementById("wcbar"), o = document.getElementById("wcasc"), i;',
-  '    if (b) { b.textContent = ""; b.appendChild(crumbs()); b.setAttribute("aria-expanded", open ? "true" : "false"); }',
+  '    if (b) { b.textContent = ""; b.appendChild(crumbs()); b.setAttribute("aria-expanded", open ? "true" : "false"); b.style.display = open ? "none" : ""; }',
   '    if (!o) return;',
   '    if (open) o.classList.remove("hidden"); else o.classList.add("hidden");',
-  '    var hp = document.getElementById("wcascpath");',
-  '    if (hp) { hp.textContent = ""; hp.appendChild(crumbs()); }',
   '    if (!open) return;',
   '    var col = document.getElementById("wccol"), pane = document.getElementById("wcpane");',
   '    if (!col || !pane) return;',
@@ -407,8 +407,6 @@ export const TOC_JS = [
   '    var head = el("div", "wcaschead");',
   '    var x = el("button", "wcclose", "\u00d7"); x.type = "button"; x.setAttribute("data-wc-close", "1"); x.setAttribute("aria-label", "Close");',
   '    head.appendChild(x);',
-  '    var t = el("span", "wcbpath"); t.id = "wcascpath";',
-  '    head.appendChild(t);',
   '    o.appendChild(head);',
   // The index is a card row in the bar, not a pane on the left: the reader reads
   // across the levels and the pane below is the content.
