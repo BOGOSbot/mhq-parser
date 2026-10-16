@@ -49,7 +49,10 @@ ok('the ranged weapons table is headed Range/A/BS/S/AP/D', /Ranged weapons<\/h2>
 ok('and holds the datasheet\'s own weapon with its stats', dsHtml.indexOf('Guardian spear') !== -1 && dsHtml.indexOf('<td>24</td><td>2</td><td>2</td><td>5</td><td>-1</td><td>2</td>') !== -1);
 ok('the melee table is headed with WS, where the export puts the skill', /Melee weapons<\/h2><div class="wcard-scroll"><table class="wcard-table wcard-weapons"><thead><tr>(<th scope="col">(Range|A|WS|S|AP|D)<\/th>){6}<\/tr>/.test(dsHtml) && dsHtml.indexOf('Misericordia') !== -1);
 t('every name row is followed by its stats row', (dsHtml.match(/<tr class="wcard-name"/g) || []).length, (dsHtml.match(/<tr class="wcard-stats"/g) || []).length);
-ok('the rule abilities are a table, in the two-row shape', dsHtml.indexOf('Core abilities and army rules') !== -1 && /<table class="wcard-table wcard-abilities"><thead><tr><th scope="col">Type<\/th><th scope="col">Name<\/th><th scope="col">Description<\/th>/.test(dsHtml));
+ok('(81-4) the rule abilities are one link per distinct ability, not a table', dsHtml.indexOf('Core abilities and army rules') !== -1 && dsHtml.indexOf('<ul class="wcard-abilities wcard-abilitylist">') !== -1 && dsHtml.indexOf('wcard-table wcard-abilities') === -1);
+ok('(81-4) the heading keeps the linked name in the rules', dsHtml.indexOf('in the rules</a>') !== -1);
+ok('(81-4) a differing wording stays reachable collapsed', /<details class="wcard-more"><summary>the text<\/summary>/.test(dsHtml));
+ok('(81-4) the render is pure: the stored text and the payload text are unchanged', (function () { const before = String(ds.text); bodyOf(ds); return String(ds.text) === before && String(ds.text).indexOf('\n') !== -1; })());
 ok('the named abilities are bold-name paragraphs', dsHtml.indexOf('<b class="wcard-ability-name">Stand Vigil</b>') !== -1);
 ok('keywords are printed, the faction ones marked', dsHtml.indexOf('wcard-kw-faction') !== -1 && dsHtml.indexOf('Custodian Guard') !== -1 && dsHtml.indexOf('Infantry') !== -1);
 ok('points are printed with their cost', /<span class="wcard-pts-cost">[0-9]/.test(dsHtml));

@@ -247,20 +247,29 @@
   // task-81: a row's snippet starts with the record's own heading chain, so the
   // drawer printed the title, the meta, then the title again. Drop a leading
   // prefix equal to the title (or a ' > ' chain ending in it) before rendering.
+  // task-81 (F): the title and the snippet spell the same record differently - the
+  // row says 'Mirror of Fates (Chaos Knights)' where the snippet says 'Mirror of
+  // Fates - Chaos Knights enhancement ...'. Compare against the title's NAME part
+  // (before ' (' and before ' > ') and drop the matching prefix, including a
+  // ' - <faction>' suffix that follows it.
   function snippetFor(r) {
     var s = String(r.snippet || '');
     var t = String(r.title || '').trim();
     if (!s || !t) return s;
-    if (s.indexOf(t) === 0) {
-      var rest = s.slice(t.length).replace(/^[\s\u2013\u2014-]+/, '');
-      if (rest) return rest;
-      return s;
-    }
     var chain = t.split(' > ').filter(Boolean);
     var leaf = chain.length ? chain[chain.length - 1] : '';
-    if (leaf && s.indexOf(leaf) === 0) {
-      var rest2 = s.slice(leaf.length).replace(/^[\s\u2013\u2014-]+/, '');
-      if (rest2) return rest2;
+    var nameOf = function (x) { var i = x.indexOf(' ('); return (i === -1 ? x : x.slice(0, i)).trim(); };
+    var suffixOf = function (x) { var i = x.indexOf(' ('); return i === -1 ? '' : x.slice(i + 2, x.lastIndexOf(')')).trim(); };
+    var esc = function (x) { return x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
+    var cands = [t, leaf, nameOf(t), nameOf(leaf)];
+    for (var i = 0; i < cands.length; i++) {
+      var p = cands[i];
+      if (!p || s.indexOf(p) !== 0) continue;
+      var rest = s.slice(p.length);
+      var suf = suffixOf(p === t || p === leaf ? p : t);
+      if (suf && new RegExp('^\\s*[-\u2013\u2014]\\s*' + esc(suf) + '\\b').test(rest)) rest = rest.replace(/^\s*[-\u2013\u2014]\s*/, '').slice(suf.length);
+      rest = rest.replace(/^[\s\u2013\u2014-]+/, '');
+      if (rest) return rest;
     }
     return s;
   }

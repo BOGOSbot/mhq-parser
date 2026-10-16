@@ -82,7 +82,10 @@ export const CARD_CSS = [
   '.wcard-table td:first-child, .wcard-table th[scope=row], .wcard-table th[scope=rowgroup] { text-align:left; }',
   '.wcard-table th[scope=rowgroup] { font-weight:600; color:var(--ink); }',
   '.wcard-note { font-weight:400; color:var(--dim); }',
-  '.wcard-abilities td:last-child { text-align:left; }',
+  '.wcard-abilitylist { list-style:none; padding-left:0; margin:.35rem 0; }',
+'.wcard-abilityline { margin:.35rem 0; line-height:1.35; }',
+'.wcard-abtype { color:var(--w-dim, #98a2b3); font-size:.85em; }',
+'.wcard-abilities td:last-child { text-align:left; }',
   '.wcard-abilities th[scope=row] { text-align:left; }',
   '.wcard-ability { margin:0 0 .7rem; }',
   '.wcard-ability-name { font-weight:600; }',
@@ -167,6 +170,9 @@ function abilityRow(a, o) {
       + (a.truncated ? ' <span class="wcard-note">(cut short)</span>' : '') + '</span>' : '',
     link: href ? '<a class="wcard-ability-link" href="' + esc(href) + '">'
       + esc(target.title || a.name || 'the rule') + ' in the rules</a>' : '',
+    // task-81 step 4: the resolved record id, so the card can name each DISTINCT
+    // ability once however many rows point at it.
+    to: (target && target.to) || '',
   };
 }
 
@@ -209,17 +215,28 @@ function cardHtml(card, o) {
   const rules = abilities.filter(a => /core|army|faction/i.test(a.type));
   const named = abilities.filter(a => !/core|army|faction/i.test(a.type));
   if (rules.length) {
-    // A rule the corpus holds in full is a POINTER here, never a second copy: the
-    // description is collapsed, one tap away, so the card is not a wall of another
-    // page's text (Mandal: 'Leader and Battle Focus still having full description').
-    const rows = rules.map(a => {
-      const cell = a.link
-        ? a.link + (a.text ? ' <details class="wcard-more"><summary>the text</summary>' + a.text + '</details>' : '')
-        : a.text;
-      return '<tr><td>' + esc(a.type) + '</td><th scope="row">' + esc(a.name) + '</th><td>' + cell + '</td></tr>';
+    // task-81 step 4 (Mandal): the heading and one link per DISTINCT ability -
+    // '[Leader] [Battle Focus]' - instead of a three-column table whose Description
+    // repeated the record the link already opens. A wording that differs from the
+    // linked record stays reachable, collapsed, under its link; the stored text,
+    // the payload and the vector are untouched (this is a rendering).
+    const items = [];
+    const byKey = new Map();
+    for (const a of rules) {
+      const key = a.to || ('name:' + String(a.name || '').toLowerCase());
+      let it = byKey.get(key);
+      if (!it) { it = { head: a, texts: [] }; byKey.set(key, it); items.push(it); }
+      else if (a.text && a.text !== it.head.text && it.texts.indexOf(a.text) === -1) it.texts.push(a.text);
+    }
+    const lines = items.map(it => {
+      const a = it.head;
+      const texts = (a.text ? [a.text] : []).concat(it.texts);
+      const more = texts.map(t => '<details class="wcard-more"><summary>the text</summary>' + t + '</details>').join('');
+      return '<li class="wcard-abilityline">' + (a.link || '<b>' + esc(a.name) + '</b>')
+        + (a.type ? ' <span class="wcard-abtype">' + esc(a.type) + '</span>' : '') + more + '</li>';
     }).join('');
     parts.push('<h2 class="wcard-h">Core abilities and army rules</h2>'
-      + '<div class="wcard-scroll"><table class="wcard-table wcard-abilities"><thead><tr><th scope="col">Type</th><th scope="col">Name</th><th scope="col">Description</th></tr></thead><tbody>' + rows + '</tbody></table></div>');
+      + '<ul class="wcard-abilities wcard-abilitylist">' + lines + '</ul>');
   }
   if (named.length) {
     parts.push('<h2 class="wcard-h">Abilities</h2>' + named.map(a =>
