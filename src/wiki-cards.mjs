@@ -455,7 +455,11 @@ function shapeGrab(text, label, inline) {
   const nxt = /\b([A-Z][A-Za-z ]{2,20})\s*:\s/.exec(m[1]);
   return (nxt ? m[1].slice(0, nxt.index) : m[1]).trim();
 }
-export function recordShape(text) {
+function phaseLabel(heading) {
+  const m = /\b(Movement|Shooting|Charge|Fight)\b/i.exec(String(heading || ''));
+  return m ? m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() : '';
+}
+export function recordShape(text, heading) {
   const t = String(text == null ? '' : text);
   const type = shapeGrab(t, 'Type');
   const cp = shapeGrab(t, 'CP');
@@ -469,15 +473,17 @@ export function recordShape(text) {
   if (/^(movement|shooting) ability$/i.test(type) && cp === '') return { family: 'ability', type: type, cp: '', rows: rows };
   // An empty Type with an empty CP is only an ability when the content rows are there -
   // that is how the 6 Aeldari records join the family without guessing from a blank.
-  if (type === '' && cp === '' && strictRows) return { family: 'ability', type: 'Ability', cp: '', rows: rows };
+  // The label must be one the record actually carries: its own Type, or the phase its
+  // heading chains to. A record with no Type is not given an invented 'Ability'.
+  if (type === '' && cp === '' && strictRows) return { family: 'ability', type: phaseLabel(heading), cp: '', rows: rows };
   return null;
 }
 function shapeHtml(text, opts) {
-  const shape = recordShape(text);
+  const shape = recordShape(text, opts && opts.selfHeading);
   if (!shape) return proseHtml(text, opts);
   const head = shape.family === 'stratagem'
     ? '<div class="svl-head svl-strat"><span class="svl-cp">' + esc(shape.cp) + '</span><span class="svl-type">' + esc(shape.type) + '</span></div>'
-    : '<div class="svl-head svl-ability"><span class="svl-type">' + esc(shape.type) + '</span></div>';
+    : '<div class="svl-head svl-ability">' + (shape.type ? '<span class="svl-type">' + esc(shape.type) + '</span>' : '') + '</div>';
   const body = shape.rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('');
   const table = body ? '<table class="svl-rows">' + body + '</table>' : '';
   const rest = String(text == null ? '' : text).split(/\r?\n/).filter(function (l) { return !SHAPE_ROW_LINE.test(l); }).join('\n');
@@ -494,7 +500,7 @@ export function recordBody(record, opts) {
   // 'stratagem' and had a stratagem card; its Type line says Movement Ability, and
   // Mandal's point is that it is not a stratagem, so the layout wins over the card.
   // Only records the classifier claims are affected; every other card is untouched.
-  if (recordShape(stripBuiltBlock(record))) {
+  if (recordShape(stripBuiltBlock(record), record && record.heading)) {
     return banner + shapeHtml(stripBuiltBlock(record), { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading });
   }
   const card = cardFor(record, o);
