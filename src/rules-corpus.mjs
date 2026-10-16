@@ -2345,6 +2345,63 @@ export async function frenchTerms(question, key, opts) {
 export const JUDGE_PASSAGE_CHARS = 2400;
 export const JUDGE_TOTAL_CHARS = 60000;
 
+// --- one hop: the judge may open a link --------------------------------------
+// A datasheet's ability rarely states the rule; it names it and points at it
+// ('Leader ... in the rules', 'Battle Focus - faction rule in the rules'). The judge
+// was asked whether the passages state the rule while the rule sat one link away,
+// and answered honestly and wrongly. One hop is aimed at exactly that case: the
+// judge may name ONE link from the manifest below, that record's text is appended
+// as a further passage, and the verdict is taken again on the longer list. There is
+// no second hop - the retry is handed an empty manifest - so a chain cannot walk
+// the corpus, and the cost of the feature is bounded at one extra judge call.
+export const JUDGE_FOLLOW_PER_PASSAGE = 4;
+export const JUDGE_FOLLOW_TOTAL = 24;
+
+// Which links a judge may open, for the passages it was given. Only links whose
+// target is really in the corpus, never a target already on screen, and capped both
+// per passage and in total: the manifest is prompt, so it is spent on the first few
+// links of the first passages rather than on all of them.
+export function followManifest(passages, resolve, opts) {
+  const o = opts || {};
+  const per = o.perPassage || JUDGE_FOLLOW_PER_PASSAGE;
+  const total = o.total || JUDGE_FOLLOW_TOTAL;
+  const shown = new Set((passages || []).map(p => p && p.id).filter(Boolean));
+  const out = [];
+  let n = 0;
+  for (let i = 0; i < (passages || []).length && n < total; i++) {
+    const p = passages[i];
+    const rec = p && p.id ? resolve(p.id) : null;
+    const items = [];
+    const seen = new Set();
+    for (const l of ((rec && rec.links) || [])) {
+      const id = String((l && l.to) || '');
+      if (!id || seen.has(id) || shown.has(id)) continue;
+      const target = resolve(id);
+      if (!target) continue;
+      seen.add(id);
+      items.push({ k: String((l && l.kind) || ''), t: String(target.heading || (l && l.title) || id), id });
+      if (items.length >= per) break;
+    }
+    if (!items.length) continue;
+    out.push({ p: i + 1, passage: String(p.heading || p.id || ''), items });
+    n += items.length;
+  }
+  return out;
+}
+
+// The manifest rendered for the prompt, and the one line that says the hop is closed.
+function manifestLines(manifest) {
+  if (!manifest || !manifest.length) return [];
+  const lines = ['', 'Links you may open (numbered [passage.link]):'];
+  for (const m of manifest) for (let j = 0; j < m.items.length; j++) {
+    const it = m.items[j];
+    lines.push('[' + m.p + '.' + (j + 1) + '] ' + it.t + (it.k ? ' (' + it.k + ')' : ''));
+  }
+  lines.push('', 'One hop is allowed. If a rule you need is named by a passage but not stated by it, name ONE link to open and its text is added to the passages before you rule. Name null when nothing needs opening.');
+  lines.push('- follow: {"passage": 1, "link": 2} to open that link, or null. At most one.');
+  return lines;
+}
+
 export function passageForJudge(p, i, cap) {
   const full = String(p.text || '');
   const cut = full.length > cap;
@@ -2358,6 +2415,9 @@ export function judgePrompt(question, passages, opts) {
   const o = opts || {};
   const per = o.perPassage || JUDGE_PASSAGE_CHARS;
   const total = o.totalChars || JUDGE_TOTAL_CHARS;
+  // Empty unless the caller enabled the hop, so the prompt the page already sends
+  // is byte-identical when the feature is off.
+  const manifest = o.manifest || [];
   // A long list must not starve each passage, and a long passage must not starve
   // the rest of the list.
   const cap = Math.max(400, Math.min(per, Math.floor(total / Math.max(1, passages.length))));
@@ -2378,6 +2438,9 @@ export function judgePrompt(question, passages, opts) {
   const schema = french
     ? '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "why": "la raison, en deux ou trois phrases"}'
     : '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "why": "the reason, in two or three sentences"}';
+  // The follow member is declared only when a hop is on offer: a judge asked for a
+  // field it cannot use invents a value for it.
+  const schemaOut = manifest.length ? schema.replace('"passages": [1,2],', '"passages": [1,2], "follow": {"passage": 1, "link": 2},') : schema;
   return [
     'You are grading a retrieval system for Warhammer 40,000 11th edition rules.',
     '',
@@ -2385,11 +2448,12 @@ export function judgePrompt(question, passages, opts) {
     '',
     'Retrieved passages:',
     passages.map((p, i) => passageForJudge(p, i, cap)).join('\n\n'),
+    manifestLines(manifest).join('\n'),
     '',
     'Judge only what is written above, not what you know about the game.',
     'A passage marked TRUNCATED has more text that is not shown; if the rule could be in the unseen part, say so in "why" instead of concluding it is absent.',
     'Reply with JSON only:',
-    schema,
+    schemaOut,
     whyMust,
     '- rules_question: is this a question about 40k rules at all? Some are about tournaments, paint or the subreddit.',
     '- answered: do the passages state the rule needed to answer it? Partial coverage is not answered.',
@@ -2457,16 +2521,23 @@ export function normalizeWiden(value) {
   return 'both';
 }
 
-export async function judgeCoverage(question, passages, key, opts) {
-  const o = opts || {};
+// One judge call: the prompt, the parse, and the one extra ask the verdict is worth.
+// Split out of judgeCoverage so the hop can run it twice on two lists.
+async function judgeAsk(question, passages, key, o, manifest) {
   const callOpts = o.reasoning === undefined ? { json: true } : { json: true, reasoning: o.reasoning };
-  const prompt = judgePrompt(question, passages, o);
+  const prompt = judgePrompt(question, passages, Object.assign({}, o, { manifest: manifest || [] }));
   let obj = parseJsonObject(await fastText(prompt, key, 4000, callOpts));
   // A small model sometimes answers the judgement in prose instead of the object
   // it was asked for. The verdict is binding - an unparseable one is read as
   // "I do not know" - so it is asked once more, for the object alone, rather
   // than the reader being told the rule is absent because a brace was missing.
-  if (!obj) obj = parseJsonObject(await fastText(prompt + '\n\nReply with the JSON object only, in one line, and nothing else.', key, 1200, callOpts));
+  // Asking once more was not enough on a long list: measured, the fast model drifts into
+  // a prose preamble on roughly a fifth of calls at a 30 KB prompt, and a single retry
+  // left the reader with 'the judge returned nothing'. It is asked up to three times in
+  // all, and only when the object is missing - a verdict that parsed is never re-asked.
+  for (let ask = 1; !obj && ask < (o.maxAsks || 3); ask++) {
+    obj = parseJsonObject(await fastText(prompt + '\n\nReply with the JSON object only, in one line, and nothing else.', key, 1200, callOpts));
+  }
   if (!obj) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'judge returned nothing parseable', raw: true };
   const answered = obj.answered === true;
   // The model is asked to always give one; when it does not, the verdict itself
@@ -2485,7 +2556,48 @@ export async function judgeCoverage(question, passages, key, opts) {
     // sentence explaining it. What the judge says is the page's headline; it is
     // published whole, and the prompt asks for the sentences it takes.
     why: String(obj.why || ''),
+    // What the judge asked to open, named but not yet resolved: the caller owns the
+    // corpus, so it is the caller that turns a name into a record.
+    follow: obj.follow && typeof obj.follow === 'object'
+      ? { passage: parseInt(obj.follow.passage, 10), link: parseInt(obj.follow.link, 10) }
+      : null,
   };
+}
+
+// A named link -> the record it points at, or null. Everything is re-checked against
+// the manifest the judge was actually shown: a model that answers [3.7] when it was
+// offered two links is not followed, it is ignored.
+export function resolveFollow(follow, manifest, resolve) {
+  if (!follow) return null;
+  const p = follow.passage, l = follow.link;
+  if (!(p >= 1) || !(l >= 1)) return null;
+  const m = (manifest || []).find(x => x.p === p);
+  if (!m) return null;
+  const it = m.items[l - 1];
+  if (!it) return null;
+  const rec = resolve(it.id);
+  return rec ? { passage: p, link: l, rec } : null;
+}
+
+export async function judgeCoverage(question, passages, key, opts) {
+  const o = opts || {};
+  const manifest = (o.follow && typeof o.resolve === 'function') ? followManifest(passages, o.resolve, o) : [];
+  const first = await judgeAsk(question, passages, key, o, manifest);
+  // The control arm: the manifest is offered and the prompt is byte-identical, and the
+  // hop is refused. It separates 'the judge changed because it was offered a link' from
+  // 'the judge changed because it opened one' - which are different claims about the
+  // feature and only one of them is about the feature.
+  if (o.noHop) return first;
+  if (!manifest.length || !first.follow) return first;
+  const t = resolveFollow(first.follow, manifest, o.resolve);
+  if (!t) return first;
+  // The opened record rides as a passage of its own, marked, so the verdict can cite
+  // it by number like any other and the page can say where it came from.
+  const opened = Object.assign({}, t.rec, { openedFrom: t.passage });
+  let second;
+  try { second = await judgeAsk(question, passages.concat([opened]), key, o, []); }
+  catch (e) { return Object.assign({}, first, { followFailed: String((e && e.message) || e) }); }
+  return Object.assign({}, second, { followed: { from: t.passage, link: t.link, to: t.rec.id, title: String(t.rec.heading || t.rec.id), hop: 1 } });
 }
 
 // --- what to do when the judge says no --------------------------------------
