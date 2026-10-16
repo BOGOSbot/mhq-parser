@@ -44,6 +44,13 @@ export const CARD_CSS = [
   // task-72: a rule the corpus also holds in full is a pointer, and its text sits
   // one tap away, collapsed.
   '.wcard-more { margin:.15rem 0 0; font-size:.85rem; }',
+  // task-78 B: the labelled layouts - a stratagem's CP badge, an ability's rows.
+  '.svl-head { display:flex; align-items:center; gap:8px; margin:0 0 10px; }',
+  '.svl-cp { display:inline-block; min-width:34px; text-align:center; padding:4px 8px; border-radius:6px; background:#7a1f1f; color:#fff; font-weight:700; }',
+  '.svl-type { font-size:.85em; letter-spacing:.04em; text-transform:uppercase; opacity:.75; }',
+  '.svl-rows { width:100%; border-collapse:collapse; margin:0 0 12px; }',
+  '.svl-rows th { text-align:left; vertical-align:top; white-space:nowrap; padding:6px 10px 6px 0; font-size:.8em; letter-spacing:.04em; text-transform:uppercase; opacity:.7; border-top:1px solid rgba(255,255,255,.12); }',
+  '.svl-rows td { padding:6px 0; border-top:1px solid rgba(255,255,255,.12); vertical-align:top; }',
   // The datasheet's flavour is its own column in the export; it reads as flavour
   // only if it looks like flavour. task-72.
   '.wcard-legend { margin:.7rem 0 0; color:var(--dim, #98a2b3); font-size:.85rem; font-style:italic; }',
@@ -427,6 +434,55 @@ export function proseHtml(text, opts) {
   return '<div class="wprose"' + langAttr + '>' + parts.join('') + '</div>';
 }
 
+// --- task-78 B: the labelled layouts --------------------------------------------
+// The classifier is the (Type, CP) pair and nothing else; kind is untouched because
+// the tree places by it. An EMPTY Type with an empty CP is deliberately NOT an ability:
+// the 6 Aeldari records shaped that way are the same family by their content, but an
+// empty Type cannot be told from a missing field, so they take a layout only when the
+// content actually carries the ability rows (MAXIMUM DISTANCE / WHEN / EFFECT).
+const SHAPE_ROWS = ['MAXIMUM DISTANCE', 'WHEN', 'TARGET', 'EFFECT'];
+const SHAPE_ROW_LINE = /^\s*(?:Type|CP|Maximum Distance|When|Target|Effect)\s*:/i;
+function shapeGrab(text, label, inline) {
+  // Type and CP decide the family, so they must start a line: an inline match would
+  // file datasheet prose as an ability. The row labels may sit mid-line after the
+  // record's name echo, so those are bounded by a non-letter instead.
+  const pat = inline ? '(?:^|[^A-Za-z])' : '(?:^|\\n)\\s*';
+  const m = new RegExp(pat + label + '\\s*:\\s*([^\\n]*)', 'i').exec(text);
+  if (!m) return '';
+  // Labels share a line in the flat transcription: the 22 ability records read
+  // 'CP:  Turn:   Phase: Ability "Move"', so the CP value is what comes before the
+  // next label, not the rest of the line. An empty CP is what makes them abilities.
+  const nxt = /\b([A-Z][A-Za-z ]{2,20})\s*:\s/.exec(m[1]);
+  return (nxt ? m[1].slice(0, nxt.index) : m[1]).trim();
+}
+export function recordShape(text) {
+  const t = String(text == null ? '' : text);
+  const type = shapeGrab(t, 'Type');
+  const cp = shapeGrab(t, 'CP');
+  const rows = SHAPE_ROWS.map(function (L) { return [L, shapeGrab(t, L, true)]; }).filter(function (r) { return r[1]; });
+  const hasRows = rows.length > 0;
+  // The empty-Type candidate needs its rows at line starts: datasheet prose carries
+  // label-shaped words inline, and that rule would swallow 115 unit cards.
+  const strictRows = SHAPE_ROWS.some(function (L) { return shapeGrab(t, L, false); });
+  if (/stratagem/i.test(type) && cp !== '') return { family: 'stratagem', type: type, cp: cp, rows: rows };
+  // A move/shoot ability is the Type line and the empty CP, rows or no rows (the 22).
+  if (/^(movement|shooting) ability$/i.test(type) && cp === '') return { family: 'ability', type: type, cp: '', rows: rows };
+  // An empty Type with an empty CP is only an ability when the content rows are there -
+  // that is how the 6 Aeldari records join the family without guessing from a blank.
+  if (type === '' && cp === '' && strictRows) return { family: 'ability', type: 'Ability', cp: '', rows: rows };
+  return null;
+}
+function shapeHtml(text, opts) {
+  const shape = recordShape(text);
+  if (!shape) return proseHtml(text, opts);
+  const head = shape.family === 'stratagem'
+    ? '<div class="svl-head svl-strat"><span class="svl-cp">' + esc(shape.cp) + '</span><span class="svl-type">' + esc(shape.type) + '</span></div>'
+    : '<div class="svl-head svl-ability"><span class="svl-type">' + esc(shape.type) + '</span></div>';
+  const body = shape.rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('');
+  const table = body ? '<table class="svl-rows">' + body + '</table>' : '';
+  const rest = String(text == null ? '' : text).split(/\r?\n/).filter(function (l) { return !SHAPE_ROW_LINE.test(l); }).join('\n');
+  return head + table + proseHtml(rest, opts);
+}
 export function recordBody(record, opts) {
   const o = opts || {};
   // The card prose gets the same links as the prose path, and the record's own id
@@ -434,13 +490,22 @@ export function recordBody(record, opts) {
   if (record && !o.selfId) o.selfId = record.id;
   const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
   if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang, o);
+  // task-78 B: the labelled families come before the card. FALL-BACK MOVE is kind
+  // 'stratagem' and had a stratagem card; its Type line says Movement Ability, and
+  // Mandal's point is that it is not a stratagem, so the layout wins over the card.
+  // Only records the classifier claims are affected; every other card is untouched.
+  if (recordShape(stripBuiltBlock(record))) {
+    return banner + shapeHtml(stripBuiltBlock(record), { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading });
+  }
   const card = cardFor(record, o);
   if (card) return banner + cardHtml(card, o);
   // An index page carpeted in links is worse than an index with none: kind
   // 'index' keeps its text plain (cap 0).
   const cap = record && record.kind === 'index' ? 0 : 40;
-  return banner + proseHtml(stripBuiltBlock(record), { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading });
+  // task-78 B: the two labelled families get their own layout; every other record
+  // takes the same proseHtml call, with the same options, as before - byte-identical.
+  return banner + shapeHtml(stripBuiltBlock(record), { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading });
 }
 
-export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, proseHtml, recordBody, rulingBody };
+export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, proseHtml, recordBody, rulingBody, recordShape };
 

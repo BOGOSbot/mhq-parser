@@ -64,7 +64,7 @@ const dmg = byId.get('datasheet#000000884');
 ok('a damaged bracket is rendered when the datasheet has one', bodyOf(dmg).indexOf('wcard-damaged') !== -1);
 
 // --- the text fallback -------------------------------------------------------
-const st = byId.get('stratagem#000000001') || all.find(r => r.kind === 'stratagem');
+const st = all.find(r => r.kind === 'rule' && !/^\s*Type\s*:/im.test(String(r.text)) && String(r.text).length > 200) || byId.get('stratagem#000000001') || all.find(r => r.kind === 'stratagem');
 const stBody = bodyOf(st);
 // task-74: it keeps its text, rendered as prose rather than as one monospace block.
 t('a record with no card keeps its text, as prose', stBody.indexOf('<div class="wprose">'), 0);
@@ -92,12 +92,14 @@ ok('and the cells wrap rather than push', /\.wcard-table th, \.wcard-table td \{
 const fb = byId.get('core-stratagem#000010850002');
 const adv = byId.get('core-stratagem#000010851002');
 const fbText = String(fb.text);
-const fbHtml = bodyOf(fb);
+// task-78 B: FALL-BACK MOVE is a move ability now, so the label-run contract is tested
+// on proseHtml directly and the record's own rendering is asserted below.
+const fbHtml = proseHtml(fbText, { selfId: fb.id, selfHeading: fb.heading });
 ok('(5) the label run breaks before ELIGIBLE IF', fbHtml.indexOf('<br>ELIGIBLE IF:') !== -1);
 ok('(5) and before EFFECT and BEFORE MOVING', fbHtml.indexOf('<br>EFFECT:') !== -1 && fbHtml.indexOf('<br>BEFORE MOVING:') !== -1);
 ok('(5) the wall is gone: no label follows a stop on the same line', !/\. (?:ELIGIBLE IF|EFFECT|BEFORE MOVING|AFTER MOVING):/.test(fbHtml));
-ok('(5) FALL-BACK MOVE breaks at its labels', bodyOf(fb).indexOf('<br>ELIGIBLE IF:') !== -1);
-ok('(5) ADVANCE MOVE breaks at its labels', bodyOf(adv).indexOf('<br>ELIGIBLE IF:') !== -1);
+ok('(5) FALL-BACK MOVE breaks at its labels', proseHtml(fbText, { selfId: fb.id }).indexOf('<br>ELIGIBLE IF:') !== -1);
+ok('(5) ADVANCE MOVE breaks at its labels', proseHtml(String(adv.text), { selfId: adv.id }).indexOf('<br>ELIGIBLE IF:') !== -1);
 ok('(5) rendering does not mutate the stored text', String(fb.text) === fbText && /MAXIMUM DISTANCE: .* ELIGIBLE IF:/.test(fbText));
 const weaponLine = [...byId.values()].find(r => String(r.text || '').indexOf('AP 0 D 1') !== -1 && /LETHAL HITS/.test(String(r.text)));
 ok('(5) a weapon profile is not shredded: LETHAL HITS keeps its stat line', !weaponLine || bodyOf(weaponLine).indexOf('<br>LETHAL HITS') === -1);
