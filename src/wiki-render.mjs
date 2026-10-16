@@ -375,7 +375,10 @@ for (const r of delivered) {
     '<main class="wrec">',
     '<p class="wcrumb">' + (crumbHtml || '<a href="index.html">index</a>') + '</p>',
     '<h1 class="wtitle">' + esc(leaf) + '</h1>',
-    '<p class="wmeta">' + esc(r.id) + ' &middot; ' + esc(r.kind) + ' &middot; ' + esc(r.source) + '</p>',
+    // task-73: the kind and the book are provenance a reader can use; the raw record
+    // id ('rules-appendix#Random-Characteristics') is a key, and it wrapped mid-word
+    // on a phone. The card's own foot still names the source.
+    '<p class="wmeta">' + esc(r.kind) + ' &middot; ' + esc(r.source) + '</p>',
     // The record body: the structured card for a datasheet or unitrules record,
     // the flat text for everything else (and for the 111 card records whose CSV
     // row is missing, which fall back to the same text).

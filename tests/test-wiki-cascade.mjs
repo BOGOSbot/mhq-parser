@@ -118,7 +118,12 @@ ok('the root variable is the three-branch index', /window\.WIKI_TREE_INDEX/.test
 ok('a node is fetched by name, on demand', /function loadNode/.test(tocSrc.TOC_JS) && /s\.src = BASE \+ f/.test(tocSrc.TOC_JS));
 ok('the left column jumps back to any level', /data-wc-jump/.test(tocSrc.TOC_JS) && /wccol/.test(tocSrc.TOC_CSS));
 ok('the pane opens the next level down', /data-wc-node/.test(tocSrc.TOC_JS) && /wcpane/.test(tocSrc.TOC_CSS));
-ok('opening a record navigates and leaves the cascade retracted', /data-wc-rec/.test(tocSrc.TOC_JS) && /location\.href = BASE \+ f/.test(tocSrc.TOC_JS));
+// task-73: a record opens IN the page (its <main class="wrec"> moved in); navigation
+// to the rendered page stays the fallback when the fetch or the parse fails.
+ok('opening a record renders it in the page, and leaves the cascade retracted',
+  /data-wc-rec/.test(tocSrc.TOC_JS) && /function showRec/.test(tocSrc.TOC_JS)
+  && /data-wc-back/.test(tocSrc.TOC_JS) && /#wcr=/.test(tocSrc.TOC_JS)
+  && /location\.href = BASE \+ f/.test(tocSrc.TOC_JS));
 // task-72: the index opens in the page, under the top bar - never over the banner.
 ok('the bar is the resting form and opens the index under the banner',
   /data-wc-open/.test(tocSrc.TOC_JS) && /wcasc/.test(tocSrc.TOC_CSS)

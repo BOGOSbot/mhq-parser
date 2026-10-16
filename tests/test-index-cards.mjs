@@ -77,10 +77,14 @@ ok('clicking a cutoff expands it instead of drilling', /data-wc-cut.*expandInlin
 ok('the expansion fetches the record route the page already uses', js.indexOf('/rules/record?id=') !== -1 && js.indexOf('format=html') !== -1);
 ok('and renders full text, not a link list', js.indexOf('renderExpanded') !== -1 && js.indexOf('details') !== -1);
 ok('the CSS carries the expanded record blocks', TOC_CSS.indexOf('.wcrec{') !== -1 && TOC_CSS.indexOf('.wcexpand{') !== -1);
+ok('and the in-page record view', TOC_CSS.indexOf('.wrecpage{') !== -1 && TOC_CSS.indexOf('.wrecpage.hidden{display:none}') !== -1 && TOC_CSS.indexOf('.wcrecback{') !== -1);
 
 // --- the record pages and routes survive --------------------------------------
-ok('a record row still opens its record page', js.indexOf('function openRec') !== -1 && js.indexOf('location.href = BASE + f') !== -1);
-t('the index has exactly one navigating path: the record row', (js.match(/location\.href/g) || []).length, 1);
+// task-73: a record row opens the record IN the page. The rendered page stays the
+// fallback for the two ways that can fail (a bad response, a parse miss), so the
+// navigating paths are exactly those two and nothing else.
+ok('a record row opens its record in the page', js.indexOf('function openRec') !== -1 && js.indexOf('function showRec') !== -1 && js.indexOf('if (!showRec(h)) { location.href = BASE + f; return; }') !== -1);
+t('and the only navigating paths are its two fallbacks', (js.match(/location\.href/g) || []).length, 2);
 const server = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
 ok('the server still serves /rules/record', server.indexOf("'/rules/record'") !== -1 && server.indexOf('handleRulesRecord') !== -1);
 ok('and the wiki pages', server.indexOf('handleWiki') !== -1);
