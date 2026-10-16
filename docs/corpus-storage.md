@@ -4,6 +4,22 @@ Where the /rules corpus lives, why it is not in this repository, and what the
 off-disk copy is. What the corpus *is* and how it is built is in
 `docs/rules-page.md`; this is the storage posture only.
 
+## The frame: the source is refetchable, the parser is the artifact
+
+The corpus is a **cache**, not a document. Wahapedia's pages and its CSV export are
+refetchable on demand, so nothing here is irreplaceable: losing a file costs a scrape,
+not data.
+
+What is *not* replaceable is the **parser**, because it runs again on every Wahapedia
+update - a balance pass, a new edition, an FAQ. A loss it has is therefore not a one-off:
+it fires on the next update, silently, with nobody watching the diff. The parser's
+contract is that it reproduces the corpus it produced, and the drift guard below is what
+holds it to that.
+
+So read **"a file is wrong" as "the parser is wrong"** until proven otherwise - never as
+"restore the file and move on". The reverse also holds: before blaming the parser,
+compare like with like. The pipeline has two stages and the stored file is the output of
+the **second** one.
 ## What is in workspace/rules-corpus/
 
 68 files, 21.8 MB, on one machine (measured 2026-10-13): the scraped Wahapedia
