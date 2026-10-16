@@ -39,6 +39,8 @@ GET /rules/content/<book>     -> { book, records: { id: { id, slug, heading, kin
 
 - **`index`** is the tree: branches with counts, then one payload per branch, fetched when the branch is opened. It is today's 284 node files (258 KB) folded into three.
 - **`content/<book>`** is the records. `book` is `rules`, `missions`, `faction-aeldari`, ... The mass is the factions: measured at the source, a faction is 0.01-0.61 MB (faction-tl to faction-sm), before the tree hands each one its 1,213 stratagems, 818 enhancements and 270 detachments. So the boundary follows how people read - you are in the core rules or you are in your army - and slice 1 measures what the payloads actually weigh.
+- **Measured, slice 1** (`1f52a5a`): 30 files, 9.17 MB raw, **1.30 MB gzipped** (7.1x), baked in **1.93 s** against the render's ~5 minutes and 6,275 pages. The biggest payload is `content/rules.json` at 1.41 MB raw / 243 KB on the wire; the biggest faction is space-marines at 997 KB / 116 KB. Uncompressed these look fat; on the wire a whole army is 50-120 KB and the core rules 243 KB, and a cold `#<slug>` fetches exactly one content file because the slug names its book.
+
 - **No manifest.** A record's slug carries its book: `<book>--<readable>-<hash>`, e.g. `rules--random-characteristics-dfgrnr`. A cold `#<slug>` splits on `--`, fetches that book, and finds the record. This is what deletes `map.json` (481 KB) and `legacy.json` (536 KB) outright - they existed to answer a question the slug now answers itself.
 
 **The interface is the test surface.** A test builds payloads from a fixture corpus and asserts the three shapes; nothing needs a browser.
@@ -80,7 +82,8 @@ Also kept: `wiki-cards.mjs` (the card, `recordBody`, `proseHtml` - the ask dialo
 **Written:**
 
 - `src/wiki-payload.mjs` - corpus to payloads. One entry point, `buildPayloads(corpus, outDir)`, returning the stats the tests read.
-- `src/wiki-surface.mjs` - the client, one JS/CSS pair like today's `TOC_JS`/`TOC_CSS`: the viewscreen, the drawer, the tree, the record component, the findings tiers.
+- `src/wiki-surface.js` + `src/wiki-surface.css` - the client: the viewscreen, the drawer, the tree, the record component, the findings tiers. **Real source files, not a template literal.** This PRD first said one `.mjs` exporting a JS/CSS string pair like `TOC_JS`/`TOC_CSS`; that is exactly how the shell broke once - a regex written into a single-quoted string lost its backslashes and the whole page stopped parsing, and `node --check` could not see it. The client is the largest and most-edited surface in this revamp, so it gets an editor.
+- `src/wiki-surface.mjs` - the server-side adapter: serves those two files and mounts the shell, so the flip has one place to wire the page in.
 
 `node src/wiki-render.mjs` (~5 min, 6,275 files) is replaced by the payload bake (~seconds, ~30 files). The running product stays reproducible: what is tested is what was built.
 
