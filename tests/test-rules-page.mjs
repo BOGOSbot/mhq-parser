@@ -295,7 +295,9 @@ ok('the record re-renders with the list on every mark', /function refresh\(state
 // The wiki, on this origin: the page links to it, the server serves the render
 // directory, and the route refuses a path that climbs out of it.
 ok('the header links to the wiki', /id="wikinav" href="\/wiki\/"/.test(PAGE) && /wk\.textContent = t\('wikiNav'\)/.test(code));
-ok('the record links to the wiki page when it has one', /wiki\.href = state\.recordWiki \|\| '\/wiki\/';/.test(code));
+// task-77: the record's deep link is the finding's slug (the surface answers #<slug>),
+// and only a record with no slug falls back to the old wiki address.
+ok('the record deep-links to the slug when it has one', /deepSlug \? '#' \+ deepSlug/.test(code) && /wiki\.href = deepSlug/.test(code));
 ok('the server serves the wiki render', server.indexOf("u.pathname.indexOf('/wiki/') === 0") !== -1 && server.indexOf('function handleWiki(') !== -1);
 ok('and refuses a path outside it', /!abs\.startsWith\(root \+ path\.sep\)/.test(server));
 ok('the record route exists', server.indexOf("'/rules/record'") !== -1 && server.indexOf('handleRulesRecord') !== -1 && /recordCard\(id, \{ corpora: corpora\(\), index: corpusById\(\) \}\)/.test(server));

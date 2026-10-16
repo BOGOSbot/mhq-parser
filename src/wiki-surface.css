@@ -52,3 +52,7 @@ a{color:var(--sv-acc)}
 .sv-tail-row{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--sv-line);background:none;color:var(--sv-ink);padding:9px 4px;font:inherit}
 .sv-tail-title{display:block}
 .sv-icon-note{color:var(--sv-dim);font-size:.72em;flex:0 0 auto}
+/* Drawer mode: the record sheet a cold #<slug> opens on a page that has its own viewscreen. */
+.sv-overlay{position:fixed;inset:0;background:var(--sv-bg);z-index:30;overflow-y:auto;padding:12px 12px 96px;display:none}
+.sv-overlay.sv-open{display:block}
+.sv-overlay .sv-page-body{max-width:52rem;margin:0 auto}

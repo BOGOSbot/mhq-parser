@@ -66,7 +66,7 @@ export function surfacePage(opts) {
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
     '<title>' + title + '</title>',
-    '<link rel="stylesheet" href="/rules/dev/surface.css">',
+    '<link rel="stylesheet" href="/rules/surface.css">',
     '</head>',
     '<body>',
     '<header class="sv-top">',
@@ -91,7 +91,7 @@ export function surfacePage(opts) {
     '  <div id="sv-tree" class="sv-tree" role="tree"></div>',
     '</aside>',
     '<script>window.WIKI_SURFACE = { data: ' + JSON.stringify(o.dataBase || '/rules/data') + ', record: ' + JSON.stringify(o.recordBase || '/rules/record') + ' };</script>',
-    '<script src="/rules/dev/surface.js"></script>',
+    '<script src="/rules/surface.js"></script>',
     '</body>',
     '</html>',
   ].join('\n');

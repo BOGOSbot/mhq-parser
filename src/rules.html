@@ -9,16 +9,18 @@
 <link rel="stylesheet" href="/card.css">
 <!-- The wiki shell: the same file the wiki render writes as shell.css, so the
      top bar and the tree are one asset on both surfaces. -->
-<link rel="stylesheet" href="/wiki/shell.css">
+<link rel="stylesheet" href="/rules/surface.css">
 <!-- The tab and home-screen icons: the 32x32 PNG and the 180x180 touch icon. -->
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <!-- The tree: one implementation, written by the wiki render and served from
      there. tree/index.js is the cascade's root (three branches); shell.js fetches
      one node at a time, under /wiki/, when the Wiki control opens a level. -->
-<script>window.WIKI_TREE_BASE = '/wiki/';</script>
-<script src="/wiki/tree/index.js" defer></script>
-<script src="/wiki/shell.js" defer></script>
+<!-- The wiki is the surface's drawer now (task-77). It mounts itself on #wikinav
+     and reads the baked payloads; the page keeps its own ask, findings and
+     passages untouched. -->
+<script>window.WIKI_SURFACE = { data: '/rules/data', record: '/rules/record', mode: 'drawer', toggle: '#wikinav' };</script>
+<script src="/rules/surface.js" defer></script>
 <style>
 :root{
   --bg:#0f1116; --panel:#161a22; --panel2:#1c212b; --line:#2a3040;
@@ -1768,7 +1770,10 @@ function renderRecord(state) {
   var ctl = el('div', 'recctl');
   if (state.selectable && !state.rerun) ctl.appendChild(findingControls(state, f, isFirsted(state, f), isIgnored(state, f)));
   var wiki = el('a', 'recwiki', t('recordWiki'));
-  wiki.href = state.recordWiki || '/wiki/';
+  // The deep link is the record's slug, not a wiki page address: the surface
+  // answers #<slug> on a cold load, and the hash is the whole address.
+  var deepSlug = (f && f.slug) || (data && data.slug) || '';
+  wiki.href = deepSlug ? '#' + deepSlug : (state.recordWiki || '/wiki/');
   wiki.target = '_blank';
   wiki.rel = 'noopener';
   ctl.appendChild(wiki);

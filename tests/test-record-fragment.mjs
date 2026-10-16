@@ -152,7 +152,8 @@ async function main() {
     t('and serves it for the ask page', servedShell.status, 200);
     t('byte for byte', servedShell.body, shellSrc.SHELL_CSS + '\n' + (await import('../src/wiki-toc.mjs')).TOC_CSS);
     const askPage = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
-    ok('the ask page links the same asset', askPage.indexOf('href="/wiki/shell.css"') !== -1);
+    // task-77: the ask page's wiki asset is the surface's stylesheet now, not the shell's.
+ok('the ask page links the surface stylesheet', askPage.indexOf('href="/rules/surface.css"') !== -1 && askPage.indexOf('/wiki/shell.css') === -1);
     ok('and keeps no copy of the shell stylesheet', askPage.indexOf('.wtop{') === -1 && askPage.indexOf('.wrec{') === -1);
     // --- the cascade, one implementation for both surfaces ---------------------
     // The old two-pane index and area files are still written and served, so

@@ -15,7 +15,8 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const page = surfacePage();
 ok('(A) the page carries the toggle, the drawer, the tree and the viewscreen', ['sv-drawer-toggle', 'sv-drawer', 'sv-tree', 'sv-viewscreen', 'sv-filter', 'sv-ask'].every(id => page.indexOf('id="' + id + '"') !== -1));
 ok('(A) the drawer starts closed', page.indexOf('id="sv-drawer" class="sv-drawer" aria-hidden="true"') !== -1 && page.indexOf('sv-open') === -1);
-ok('(A) the client and its stylesheet are real files served by the dev route', page.indexOf('/rules/dev/surface.js') !== -1 && page.indexOf('/rules/dev/surface.css') !== -1);
+ok('(A) the client and its stylesheet are real files on their stable product paths', page.indexOf('/rules/surface.js') !== -1 && page.indexOf('/rules/surface.css') !== -1);
+ok('(A) the dev route serves them as an alias', fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8').indexOf("u.pathname === '/rules/surface.js'") !== -1);
 
 // (J) the assets are files, not a template literal, and the script is whole.
 const js = surfaceAsset('surface.js');
@@ -52,7 +53,7 @@ t('(C) and leaves + page-resolved + empty equals all leaves', counts.leavesWithR
 ok('(C) the client has a row for that node rather than a blank pane', js.body.indexOf('No records under this node.') !== -1);
 
 // (G)(E) the tree and the record component are the payloads and the one body.
-ok('(G) the filter re-renders from memory (no fetch in the filter handler)', /sv-filter[\s\S]{0,400}addEventListener\('input'/.test(js.body) && js.body.indexOf('getJson') !== js.body.lastIndexOf('getJson'));
+ok('(G) the filter re-renders from memory, with no fetch in the handler', js.body.indexOf("addEventListener('input', function () { state.filter") !== -1);
 ok('(E) a record body comes from the server route that calls recordBody', fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8').indexOf("recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor })") !== -1);
 
 // (3) the ask, the tail, the icon and the copy - the slice-3 targets.

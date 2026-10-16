@@ -1063,7 +1063,7 @@ async function handleRulesRecord(req, res, u) {
     if (!raw) return fail(res, 404, 'no such record: ' + id);
     return send(res, 200, recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor }), 'text/html; charset=utf-8');
   }
-  return json(res, 200, { ok: true, record, wiki: wikiPageFor(id) });
+  return json(res, 200, { ok: true, record, wiki: wikiPageFor(id), slug: surfaceSlugMap().get(id) || '' });
 }
 
 // A lookup by name, answered from the header index before anything else runs:
@@ -1631,9 +1631,12 @@ const server = http.createServer(async (req, res) => {
     try { return send(res, 200, surfacePage(), 'text/html; charset=utf-8'); }
     catch (e) { return fail(res, 500, 'the surface could not be read: ' + String((e && e.message) || e)); }
   }
-  if (req.method === 'GET' && u.pathname.indexOf('/rules/dev/surface.') === 0) {
+  // The surface's two files, on their stable product paths. /rules/dev/surface.*
+  // is kept as an alias so the dev page and old links keep working.
+  if (req.method === 'GET' && (u.pathname === '/rules/surface.js' || u.pathname === '/rules/surface.css' || u.pathname.indexOf('/rules/dev/surface.') === 0)) {
     try {
-      const asset = surfaceAsset(u.pathname.slice('/rules/dev/'.length));
+      const name = u.pathname.slice(u.pathname.lastIndexOf('/') + 1);
+      const asset = surfaceAsset(name);
       if (!asset) return fail(res, 404, 'no such surface file: ' + u.pathname);
       return send(res, 200, asset.body, asset.type);
     } catch (e) { return fail(res, 500, 'the surface file could not be read: ' + String((e && e.message) || e)); }

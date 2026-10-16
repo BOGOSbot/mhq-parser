@@ -31,6 +31,46 @@
     return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) })
       .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
   }
+  // Drawer mode: the page already has an ask surface of its own (src/rules.html),
+  // so the client mounts only the wiki - the drawer and the record sheet - and
+  // leaves the ask box, the findings and the passages to the page.
+  var DRAWER_MODE = CFG.mode === 'drawer';
+  function toggleEl() {
+    var sel = String(CFG.toggle || '');
+    if (sel && sel.charAt(0) === '#') return document.getElementById(sel.slice(1));
+    return $('sv-drawer-toggle');
+  }
+  function ensureChrome() {
+    if (!DRAWER_MODE) return;
+    if (!$('sv-drawer')) {
+      var aside = el('aside', 'sv-drawer');
+      aside.id = 'sv-drawer';
+      aside.setAttribute('aria-hidden', 'true');
+      aside.setAttribute('aria-label', 'Wiki');
+      var head = el('div', 'sv-drawer-head');
+      head.appendChild(el('strong', null, 'Wiki'));
+      var close = el('button', 'sv-btn sv-close', 'Close');
+      close.type = 'button'; close.id = 'sv-drawer-close';
+      head.appendChild(close);
+      aside.appendChild(head);
+      var filter = el('input', 'sv-filter');
+      filter.id = 'sv-filter'; filter.type = 'search'; filter.placeholder = 'Filter the tree';
+      filter.setAttribute('aria-label', 'Filter the tree');
+      aside.appendChild(filter);
+      var tree = el('div', 'sv-tree'); tree.id = 'sv-tree'; tree.setAttribute('role', 'tree');
+      aside.appendChild(tree);
+      document.body.appendChild(aside);
+    }
+    if (!$('sv-viewscreen') && !$('sv-overlay')) {
+      var ov = el('div', 'sv-overlay');
+      ov.id = 'sv-overlay';
+      ov.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(ov);
+    }
+  }
+  // Where a record is shown: the page's own viewscreen when it has one, else the
+  // sheet this mode creates (a cold #<slug> must still render the record).
+  function stage() { return $('sv-viewscreen') || $('sv-overlay'); }
   function bookOf(slug) { var i = String(slug || '').indexOf('--'); return i === -1 ? '' : String(slug).slice(0, i); }
   function leafOfId(id) { var s = String(id); var h = s.indexOf('#'); return h === -1 ? s : s.slice(h + 1); }
   function headingLeaf(h) { var p = String(h || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : ''; }
@@ -75,7 +115,7 @@
 
   // --- the drawer -----------------------------------------------------------
   function drawerOpen(want) {
-    var d = $('sv-drawer'), t = $('sv-drawer-toggle');
+    var d = $('sv-drawer'), t = toggleEl();
     if (!d) return;
     d.classList.toggle('sv-open', !!want);
     d.setAttribute('aria-hidden', want ? 'false' : 'true');
@@ -198,8 +238,10 @@
     state.mode = 'page';
     state.record = record;
     state.from = from || 'deep';
-    var v = $('sv-viewscreen');
+    var v = stage();
     if (!v) return;
+    v.classList.add('sv-open');
+    v.setAttribute('aria-hidden', 'false');
     v.textContent = '';
     var cold = state.from === 'deep';
     var back = el('button', 'sv-back', cold ? 'Open the wiki' : '\u2190 Back');
@@ -225,8 +267,11 @@
     state.from = '';
     if (location.hash) { try { history.pushState(null, '', location.pathname + location.search); } catch (e) { location.hash = ''; } }
     if (from === 'findings' && state.answer) { renderAnswer(); return; }
-    var v = $('sv-viewscreen');
-    if (v) v.innerHTML = '<p class=\"sv-hint\">Ask a rules question, or open the wiki to browse.</p>';
+    var v = stage();
+    if (v) {
+      if (v.id === 'sv-overlay') { v.classList.remove('sv-open'); v.setAttribute('aria-hidden', 'true'); v.textContent = ''; return; }
+      v.innerHTML = '<p class=\"sv-hint\">Ask a rules question, or open the wiki to browse.</p>';
+    }
   }
   function openSlug(slug, from) {
     var book = bookOf(slug);
@@ -397,8 +442,9 @@
   }
 
   function boot() {
-    var form = $('sv-ask'), toggle = $('sv-drawer-toggle'), close = $('sv-drawer-close'), filter = $('sv-filter');
-    if (toggle) toggle.addEventListener('click', function () { var d = $('sv-drawer'); drawerOpen(!(d && d.classList.contains('sv-open'))); });
+    ensureChrome();
+    var form = $('sv-ask'), toggle = toggleEl(), close = $('sv-drawer-close'), filter = $('sv-filter');
+    if (toggle) toggle.addEventListener('click', function (ev) { if (ev && ev.preventDefault) ev.preventDefault(); var d = $('sv-drawer'); drawerOpen(!(d && d.classList.contains('sv-open'))); });
     if (close) close.addEventListener('click', function () { drawerOpen(false); });
     if (form) form.addEventListener('submit', function (ev) { ev.preventDefault(); ask(); });
     if (filter) filter.addEventListener('input', function () { state.filter = String(filter.value || '').trim().toLowerCase(); renderTree(); });
