@@ -51,3 +51,4 @@ a{color:var(--sv-acc)}
 .sv-tail-h{font-size:.95rem;color:var(--sv-dim);margin:.2rem 0 .4rem}
 .sv-tail-row{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--sv-line);background:none;color:var(--sv-ink);padding:9px 4px;font:inherit}
 .sv-tail-title{display:block}
+.sv-icon-note{color:var(--sv-dim);font-size:.72em;flex:0 0 auto}

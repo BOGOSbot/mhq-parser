@@ -84,5 +84,18 @@ t('every table is inside a scroll container', (dsHtml.match(/<div class="wcard-s
 ok('the card CSS never lets a table force the page wide', /\.wcard-scroll \{ overflow-x:auto/.test(CARD_CSS) && /\.wcard-table \{ width:100%/.test(CARD_CSS) && /\.wcard-table \{[^}]*table-layout:fixed/.test(CARD_CSS));
 ok('and the cells wrap rather than push', /\.wcard-table th, \.wcard-table td \{[^}]*overflow-wrap:anywhere/.test(CARD_CSS));
 
+// --- task-76 (5): a field run breaks before its labels, display only ---------
+const fb = byId.get('core-stratagem#000010850002');
+const adv = byId.get('core-stratagem#000010851002');
+const fbText = String(fb.text);
+const fbHtml = bodyOf(fb);
+ok('(5) the label run breaks before ELIGIBLE IF', fbHtml.indexOf('<br>ELIGIBLE IF:') !== -1);
+ok('(5) and before EFFECT and BEFORE MOVING', fbHtml.indexOf('<br>EFFECT:') !== -1 && fbHtml.indexOf('<br>BEFORE MOVING:') !== -1);
+ok('(5) the wall is gone: no label follows a stop on the same line', !/\. (?:ELIGIBLE IF|EFFECT|BEFORE MOVING|AFTER MOVING):/.test(fbHtml));
+ok('(5) FALL-BACK MOVE breaks at its labels', bodyOf(fb).indexOf('<br>ELIGIBLE IF:') !== -1);
+ok('(5) ADVANCE MOVE breaks at its labels', bodyOf(adv).indexOf('<br>ELIGIBLE IF:') !== -1);
+ok('(5) rendering does not mutate the stored text', String(fb.text) === fbText && /MAXIMUM DISTANCE: .* ELIGIBLE IF:/.test(fbText));
+const weaponLine = [...byId.values()].find(r => String(r.text || '').indexOf('AP 0 D 1') !== -1 && /LETHAL HITS/.test(String(r.text)));
+ok('(5) a weapon profile is not shredded: LETHAL HITS keeps its stat line', !weaponLine || bodyOf(weaponLine).indexOf('<br>LETHAL HITS') === -1);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

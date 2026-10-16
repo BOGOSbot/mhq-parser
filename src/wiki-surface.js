@@ -51,9 +51,26 @@
     return b;
   }
   function kindLabel(k) { var s = String(k || '').replace(/-/g, ' '); return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+  // A snippet cut at the cap gets a marker: 'MAXIMU' with nothing after it reads
+  // as the rule's own typo rather than as an excerpt.
+  function cut(text, n) {
+    var t = String(text == null ? '' : text);
+    if (t.length <= n) return t;
+    return t.slice(0, n).replace(/\s+$/, '') + '\u2026';
+  }
   function snippetOf(rec) {
     var t = String((rec && (rec.excerpt || rec.passage || rec.text)) || '').replace(/\s+/g, ' ').trim();
-    return t.slice(0, 100);
+    return cut(t, 100);
+  }
+  // The source string is a code ('core-rules', 'rules-appendix'): the reader gets
+  // the book's name, so every finding's meta line has the same shape even when the
+  // record has no payload page (and therefore no slug).
+  var SOURCE_BOOKS = { 'core-rules': 'Core Rules', 'core-stratagems': 'Core Rules', 'rules-appendix': 'Rules appendix', 'event-companion': 'Event companion', 'stratagems': 'Faction rules' };
+  function bookFromSource(src) {
+    var s = String(src || '');
+    if (!s) return '';
+    if (SOURCE_BOOKS[s]) return SOURCE_BOOKS[s];
+    return kindLabel(s.replace(/^core-/, ''));
   }
 
   // --- the drawer -----------------------------------------------------------
@@ -151,7 +168,9 @@
     b.appendChild(el('span', 'sv-rec-title', r.title || leafOfId(r.id)));
     var meta = bookLabel(r.slug);
     if (meta) b.appendChild(el('span', 'sv-rec-meta', meta));
-    if (r.snippet) b.appendChild(el('span', 'sv-rec-snip', r.snippet));
+    // The payload caps a row's snippet at 100; a full-length snippet was cut, so
+    // the row says so (the payload itself is not touched).
+    if (r.snippet) b.appendChild(el('span', 'sv-rec-snip', r.snippet.length >= 100 ? r.snippet + '\u2026' : r.snippet));
     b.addEventListener('click', function (ev) { ev.preventDefault(); toggleInline(r, wrap); });
     wrap.appendChild(b);
     return wrap;
@@ -226,7 +245,7 @@
     return false;
   }
 
-  // --- the ask: ten judged, the tail, the one icon ---------------------------
+  // --- the ask: the judged findings, the tail, the one icon --------------------
   function ask() {
     drawerOpen(false);
     var q = String(($('sv-q') || {}).value || '').trim();
@@ -246,6 +265,8 @@
     var a = state.answer;
     var v = $('sv-viewscreen');
     if (!a || !v) return;
+    // (6) An answer must land under the sticky header, not scrolled behind it.
+    try { window.scrollTo(0, 0); } catch (e) {}
     v.textContent = '';
     v.appendChild(el('h1', 'sv-page-title', 'Findings'));
     var judged = a.findings || [];
@@ -255,7 +276,7 @@
     // what was judged, so the reader does not read it as 'we do not know'.
     var copy = answered
       ? 'The judge says these findings answer the question.'
-      : (tail.length ? 'None of the top ten states the rule. The tail below is further matched, unjudged.' : 'No finding states the rule.');
+      : (tail.length ? 'None of the judged findings states the rule. The tail below is further matched, unjudged.' : 'No judged finding states the rule.');
     v.appendChild(el('p', 'sv-verdict', copy));
     if (a.judge && a.judge.why) v.appendChild(el('p', 'sv-why', String(a.judge.why)));
     var list = el('div', 'sv-findings');
@@ -267,25 +288,42 @@
     var none = el('button', 'sv-btn sv-none', 'None of these');
     none.type = 'button';
     none.setAttribute('data-none', '1');
+    // (1) The reader's signal is only reported as landed when the server says it
+    // landed. Traces off (the product default) means {ok:true, saved:false}, and
+    // then the button says so instead of thanking them for nothing.
     none.addEventListener('click', function () {
       var id = a.traceId;
-      if (id) postJson(ANSWERED, { id: id, none: true });
-      none.textContent = 'Recorded: none of these';
-      none.disabled = true;
+      if (!id) { none.textContent = 'Not kept (traces off)'; none.disabled = true; return; }
+      postJson(ANSWERED, { id: id, none: true }).then(function (r) {
+        none.textContent = (r && r.saved === true) ? 'Recorded: none of these' : 'Not kept (traces off)';
+        none.disabled = true;
+      });
     });
     foot.appendChild(none);
     v.appendChild(foot);
     if (tail.length) {
       var t = el('section', 'sv-tail');
       t.appendChild(el('h2', 'sv-tail-h', 'Also matched, not judged (' + tail.length + ')'));
-      tail.forEach(function (f) { t.appendChild(renderTailRow(f)); });
+      // (2) No two rows in one tail may read the same: a repeated heading's chain
+      // is usually enough, and the number settles the rest.
+      var seen = {};
+      tail.forEach(function (f) {
+        var row = renderTailRow(f);
+        var key = row.textContent;
+        if (seen[key]) { row.querySelector('.sv-tail-title').textContent += ' (' + (f.n || '') + ')'; key = row.textContent; }
+        seen[key] = true;
+        t.appendChild(row);
+      });
       v.appendChild(t);
     }
   }
+  // (3) Every finding carries the same shape: Kind \u00b7 Book. The book is the slug's
+  // prefix, else the faction's display name, else the source's own name - never a
+  // bare kind with the book silently missing.
   function sourceLine(f) {
-    var label = bookLabel(f.slug);
-    var kind = kindLabel(f.set === 'factions' ? 'faction' : (f.set === 'rules' ? 'rule' : f.set));
-    return [kind, label].filter(Boolean).join(' \u00b7 ');
+    var kind = f.set === 'factions' ? 'Faction' : (f.set === 'rules' ? 'Rule' : kindLabel(f.set));
+    var book = bookLabel(f.slug) || String(f.faction || '') || bookFromSource(f.source) || 'Rules';
+    return [kind, book].filter(Boolean).join(' \u00b7 ');
   }
   function renderFinding(f, i) {
     var art = el('article', 'sv-finding');
@@ -295,7 +333,9 @@
     t.type = 'button';
     t.addEventListener('click', function () { openFinding(f); });
     head.appendChild(t);
-    head.appendChild(iconFor(f));
+    var note = el('span', 'sv-icon-note');
+    head.appendChild(iconFor(f, note));
+    head.appendChild(note);
     art.appendChild(head);
     var meta = sourceLine(f);
     if (meta) art.appendChild(el('div', 'sv-rec-meta', meta));
@@ -306,7 +346,13 @@
   function renderTailRow(f) {
     var row = el('button', 'sv-tail-row');
     row.type = 'button';
-    row.appendChild(el('span', 'sv-tail-title', titleOf(f)));
+    // (2) A bare heading repeats across books - 'INDIRECT SHOOTING' three times -
+    // so the row shows the heading's own chain below the first crumb, and the book
+    // beside it. The caller appends the number to any two rows that still read the
+    // same, so no two rows in one tail can be told apart only by their order.
+    var chain = String(f.heading || '').split(' > ').filter(Boolean);
+    var title = chain.length > 1 ? chain.slice(1).join(' \u203a ') : (chain[0] || leafOfId(f.id));
+    row.appendChild(el('span', 'sv-tail-title', title));
     var meta = sourceLine(f);
     if (meta) row.appendChild(el('span', 'sv-rec-meta', meta));
     row.addEventListener('click', function () { openFinding(f); });
@@ -318,7 +364,7 @@
     if (v) v.appendChild(el('p', 'sv-hint', 'This record has no page in the payloads.'));
   }
   function pushSlug(slug) { try { history.pushState({ sv: 1 }, '', '#' + slug); } catch (e) { location.hash = slug; } }
-  function iconFor(f) {
+  function iconFor(f, note) {
     var st = state.icons[f.id] || 'neutral';
     var b = el('button', 'sv-icon sv-icon-' + st, st === 'yes' ? '\u2713' : st === 'no' ? '\u2715' : '\u00b7');
     b.type = 'button';
@@ -327,11 +373,20 @@
     b.addEventListener('click', function () {
       var next = st === 'neutral' ? 'yes' : st === 'yes' ? 'no' : 'neutral';
       state.icons[f.id] = next;
+      // (1) Both channels are written, and the note reflects what the server
+      // answered - never an unconditional 'Recorded'.
       var a = state.answer || {};
       var id = a.traceId;
-      if (id) {
-        if (next === 'yes') { postJson(VOTE, { id: id, vote: 'up' }); postJson(ANSWERED, { id: id, by: f.id }); }
-        else if (next === 'no') { postJson(VOTE, { id: id, vote: 'down' }); postJson(ANSWERED, { id: id, none: true }); }
+      if (next === 'neutral') { if (note) note.textContent = ''; }
+      else if (!id) { if (note) note.textContent = 'Not kept (traces off)'; }
+      else {
+        var jobs = next === 'yes'
+          ? [postJson(VOTE, { id: id, vote: 'up' }), postJson(ANSWERED, { id: id, by: f.id })]
+          : [postJson(VOTE, { id: id, vote: 'down' }), postJson(ANSWERED, { id: id, none: true })];
+        Promise.all(jobs).then(function (rs) {
+          var saved = rs.some(function (r) { return r && r.saved === true; });
+          if (note) note.textContent = saved ? 'Recorded' : 'Not kept (traces off)';
+        });
       }
       b.className = 'sv-icon sv-icon-' + next;
       b.textContent = next === 'yes' ? '\u2713' : next === 'no' ? '\u2715' : '\u00b7';

@@ -319,6 +319,35 @@ export function rulingBody(record, lang, opts) {
     + '<div class="wlang-body wlang-en" lang="en">' + en + note + '</div></div>';
 }
 
+// task-76 (5): the corpus stores a rule's fields as one run on one line -
+// 'MAXIMUM DISTANCE: ... ELIGIBLE IF: ... EFFECT: ...' - and a phone reads a wall.
+// Break before the field labels, and only those labels: the STORED text, the
+// payload's text and what the vector sees are untouched, because this is a
+// rendering of the stored line. Labels and the records containing them, measured
+// over the 7,157-record corpus: EFFECT 1494, WHEN 1399, TARGET 1254, ELIGIBLE IF
+// 202, AFTER MOVING 164, MAXIMUM DISTANCE 145, RESTRICTIONS 74, WHILE MOVING 51,
+// BEFORE MOVING 41, SET-UP DISTANCE 29, STARTS 26, UNITS 26, USE LIMIT 26,
+// COMPLETES 26, AFTER SHOOTING 20, WHILE SHOOTING 17, WHEN DRAWN 11, TRIGGER 6,
+// RESTRICTION 6. The stat-line labels the measurement also found (LETHAL HITS,
+// DEVASTATING WOUNDS) are deliberately NOT here: they follow 'AP 0 D 1 -', not a
+// field run, and breaking there would shred a weapon profile.
+const FIELD_LABELS = /(?:MAXIMUM DISTANCE|SET-UP DISTANCE|ELIGIBLE IF|BEFORE MOVING|WHILE MOVING|AFTER MOVING|WHEN DRAWN|AFTER SHOOTING|WHILE SHOOTING|USE LIMIT|RESTRICTIONS?|EFFECT|TARGET|TRIGGER|WHEN|STARTS|COMPLETES|UNITS):/g;
+function fieldLines(line) {
+  FIELD_LABELS.lastIndex = 0;
+  const idx = [];
+  let m;
+  while ((m = FIELD_LABELS.exec(line))) idx.push(m.index);
+  if (!idx.length) return [line];
+  const segs = [];
+  for (let i = 0; i < idx.length; i++) {
+    const end = i + 1 < idx.length ? idx[i + 1] : line.length;
+    segs.push(line.slice(idx[i], end).trim());
+  }
+  const head = line.slice(0, idx[0]).trim();
+  if (head) segs.unshift(head);
+  return segs.filter(Boolean);
+}
+
 // The rule body as prose. The stored text is a flat transcription: paragraphs separated
 // by blank lines, '- ' bullets, tables pasted as runs of spaces, and the record's own
 // breadcrumb as its first line. Printing it inside one <pre> kept every line break and
@@ -358,8 +387,10 @@ export function proseHtml(text, opts) {
     }
     if (isTable(b)) { parts.push('<pre class="wtable">' + link(b.join('\n')) + '</pre>'); continue; }
     // Linked line by line, never after joining: linkify escapes what it is given, so a
-    // <br> spliced in first would come out as text.
-    parts.push('<p>' + b.map(l => link(l.trim())).join('<br>') + '</p>');
+    // <br> spliced in first would come out as text. Field labels split a line into
+    // its own lines first, then each line is linked and the <br>s are joined between
+    // the already-escaped pieces.
+    parts.push('<p>' + b.flatMap(fieldLines).map(l => link(l.trim())).join('<br>') + '</p>');
   }
   return '<div class="wprose"' + langAttr + '>' + parts.join('') + '</div>';
 }

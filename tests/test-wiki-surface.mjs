@@ -60,7 +60,7 @@ const srv = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
 ok('(3) the client asks the same endpoint the old page uses', js.body.indexOf("CFG.ask || '/rules/ask'") !== -1);
 ok('(3) the icon writes BOTH channels through the existing endpoints', js.body.indexOf("CFG.vote || '/rules/vote'") !== -1 && js.body.indexOf("CFG.answered || '/rules/answered'") !== -1 && js.body.indexOf("postJson(VOTE, { id: id, vote: 'up' })") !== -1 && js.body.indexOf("postJson(ANSWERED, { id: id, by: f.id })") !== -1 && js.body.indexOf("postJson(VOTE, { id: id, vote: 'down' })") !== -1 && js.body.indexOf("postJson(ANSWERED, { id: id, none: true })") !== -1);
 ok('(3) the tail renders under a heading that says it is unjudged', js.body.indexOf("Also matched, not judged") !== -1);
-ok('(3) the refusal copy names the ten, not the corpus', js.body.indexOf('None of the top ten states the rule.') !== -1);
+ok('(7) the refusal copy names what is on screen, not a number the protection layer can move', js.body.indexOf('None of the judged findings states the rule.') !== -1 && js.body.indexOf('top ten') === -1);
 ok('(3) none of these is at the foot, not on a finding', js.body.indexOf("el('div', 'sv-foot')") !== -1 && js.body.indexOf("sv-none") !== -1);
 ok('(3) the server returns the tail and the trace id, and slugs the findings', srv.indexOf('tail: withSlug(tail)') !== -1 && srv.indexOf('traceId, judge, answer') !== -1 && srv.indexOf('surfaceSlugMap') !== -1);
 // (a) the reader never sees a raw record id or a bare source string in the meta.
@@ -76,5 +76,13 @@ ok('(H) rules.html does not reference the surface', rulesHtml.indexOf('wiki-surf
 const server = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
 ok('(A) the server has the dev route and the payload route', server.indexOf("u.pathname === '/rules/dev'") !== -1 && server.indexOf('handleSurfaceData') !== -1 && server.indexOf("'/rules/data/'") !== -1);
 ok('(H) the old /wiki route is untouched', server.indexOf("u.pathname.indexOf('/wiki/') === 0") !== -1);
+// --- task-76 polish: honest feedback, distinguishable tail, one meta shape ---
+ok('(1) the icon reports what the server answered, and no id means no claim', js.body.indexOf('r.saved === true') !== -1 && js.body.indexOf("'Not kept (traces off)'") !== -1 && js.body.indexOf("'Recorded'") !== -1 && js.body.indexOf('if (!id) { none.textContent') !== -1);
+ok('(1) the foot button has both endings, not an unconditional one', js.body.indexOf("none.textContent = (r && r.saved === true) ? 'Recorded: none of these'") !== -1);
+ok('(2) tail rows carry the heading chain and a dedupe suffix', js.body.indexOf('chain.slice(1).join') !== -1 && js.body.indexOf("+= ' (' + (f.n || '') + ')'") !== -1);
+ok('(3) the meta falls back to the faction then the source, so the shape holds', js.body.indexOf('SOURCE_BOOKS') !== -1 && js.body.indexOf("String(f.faction || '')") !== -1);
+ok('(4) a cut snippet is marked', js.body.indexOf('function cut(text, n)') !== -1 && js.body.indexOf(String.fromCharCode(92) + 'u2026') !== -1);
+ok('(7) the refusal copy names no number it cannot keep', js.body.indexOf('None of the judged findings states the rule.') !== -1 && js.body.indexOf('the top ten') === -1);
+ok('(6) a new answer scrolls under the header, not behind it', js.body.indexOf('window.scrollTo(0, 0);') !== -1);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
