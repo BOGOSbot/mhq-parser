@@ -38,11 +38,12 @@ minutes.
 
 | snapshot id | taken | holds | sha256 | restore checked |
 |---|---|---|---|---|
-| **`322e7b93-21ee-4aab-b6cd-0a4a8782642a`** | 2026-10-15 | `rules-corpus-20261015.tar.gz`, 4,399,943 B | `84bff8775b97b8b4b9fa9849e2dd4aa8d41fe15d558112d692e7c25ff3d6ff6b` | yes |
+| **`0cbbbc59-5043-4dc0-8617-629f2c2f5b24`** | 2026-10-16 | `rules-corpus-20261016.tar.gz`, 3,191,557 B | `2e04a0e7b176495640da905f3ccfc14dabbfd44e7746cc10f180bbf44d87206e` | yes (restored into `many-bird-81711`, hash matched, both boxes deleted) |
+| `322e7b93-21ee-4aab-b6cd-0a4a8782642a` (superseded) | 2026-10-15 | `rules-corpus-20261015.tar.gz`, 4,399,943 B | `84bff8775b97b8b4b9fa9849e2dd4aa8d41fe15d558112d692e7c25ff3d6ff6b` | yes |
 | `5087ed6c-efa1-4bac-8aca-ad02ef6a6c88` (superseded) | 2026-10-15 | `rules-corpus-20261015.tar.gz`, 4,384,405 B | `e6e89de214b6f04037af189ed8c700de5f9d6a4cf4aaeb1e88e01a5ff182b978` | yes |
 | `5f703039-dc4f-4ae6-b7ed-9ede21a73eb8` | 2026-10-14 | `rules-corpus-20261014-0146.tar.gz`, 4,164,914 B | `2ad929d4e1c699051fa31fe75e3cc247ed0df70e565a7d0d8e6393bb425dfeaa` | yes |
 
-Both boxes are deleted and `box list` is empty. The snapshot's own reported `size_bytes` (10,219 for the 2026-10-15 one) is metadata, **not the payload** - it is no use as a completeness check, and the restored file's sha256 is the only one that counts.
+Both boxes are deleted and `box list` is empty. The snapshot's own reported `size_bytes` (10,219 every time) is metadata, **not the payload** - it is no use as a completeness check, and the restored file's sha256 is the only one that counts.
 
 **The trap, written down because it bites:** `box snapshot list` needs a box
 selected, so once the box is deleted the snapshot id is the ONLY handle on the
