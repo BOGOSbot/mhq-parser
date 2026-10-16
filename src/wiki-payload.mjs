@@ -144,6 +144,26 @@ export function buildPayloads(corpus, outDir) {
     if (root.kids) node.kids = root.kids.map(k => (k.f && tree.files[k.f]) ? inlineNode(k.f, tree, slugOf, byId, new Set([k.f])) : { n: k.n, lvl: k.lvl, c: k.c, ...(k.cut ? { cut: true } : {}), ...(k.pg ? { page: true } : {}) });
     if (root.recs) node.recs = root.recs.map(r => row(r, slugOf, byId));
     node.pages = (tree.pages || []).filter(p => p.path && p.path[0] && p.path[0].f === ref.f).map(p => ({ n: p.n, lvl: p.lvl, area: p.area || '', recs: p.recs || [] }));
+    // task-81: the rows only reachable through this branch's pages (Army rules)
+    // or a detachment's owned list. Built per branch so each row is carried once,
+    // and only for the ids this branch actually mentions.
+    const branchIds = new Set();
+    for (const p of node.pages) for (const id of (p.recs || [])) branchIds.add(id);
+    const ownOf = id => (tree.owned && tree.owned.get(id)) ? tree.owned.get(id).enh.concat(tree.owned.get(id).strat) : null;
+    const annotate = n => {
+      for (const r of (n.recs || [])) { const own = ownOf(r.id); if (own && own.length) { r.own = own; for (const id of own) branchIds.add(id); } }
+      for (const k of (n.kids || [])) annotate(k);
+    };
+    annotate(node);
+    if (branchIds.size) {
+      const rowMap = {};
+      for (const id of branchIds) {
+        const raw = byId.get(id);
+        if (!raw) continue;
+        rowMap[id] = row({ i: id, t: raw.heading || '' }, slugOf, byId);
+      }
+      node.rows = rowMap;
+    }
     write('index/' + b.b + '.json', node);
   }
 

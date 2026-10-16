@@ -62,3 +62,5 @@ a{color:var(--sv-acc)}
 /* While the drawer is open it is the page: the page's own chrome steps aside so
    its head, Close and filter are the controls on screen, at any width. */
 body.sv-drawer-open header, body.sv-drawer-open .sv-top{display:none}
+.sv-ownlist{margin-top:8px;border-top:1px dashed var(--sv-line);padding-top:6px}
+.sv-owntitle{color:var(--sv-dim);font-size:.8em;margin-bottom:2px}

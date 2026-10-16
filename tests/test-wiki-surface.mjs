@@ -85,5 +85,11 @@ ok('(3) the meta falls back to the faction then the source, so the shape holds',
 ok('(4) a cut snippet is marked', js.body.indexOf('function cut(text, n)') !== -1 && js.body.indexOf(String.fromCharCode(92) + 'u2026') !== -1);
 ok('(7) the refusal copy names no number it cannot keep', js.body.indexOf('None of the judged findings states the rule.') !== -1 && js.body.indexOf('the top ten') === -1);
 ok('(6) a new answer scrolls under the header, not behind it', js.body.indexOf('window.scrollTo(0, 0);') !== -1);
+
+// --- task-81: the five defects -------------------------------------------------
+ok('(81-1) a page is matched by the faction in the node key, not by its name', /function pageFor\(n, key\)/.test(js.body) && /p\.area === area/.test(js.body) && /pageFor\(n, key\)/.test(js.body));
+ok('(81-2) a snippet drops a leading prefix equal to the row title', /function snippetFor\(r\)/.test(js.body) && /s\.indexOf\(t\) === 0/.test(js.body) && /var snip = snippetFor\(r\)/.test(js.body));
+ok('(81-3) a page or owned id renders through the branch row map', js.body.indexOf('function rowFromBranch(id)') !== -1 && /branch\.rows/.test(js.body) && js.body.indexOf('renderRec(rowFromBranch(id))') !== -1);
+ok('(81-3) a detachment row lists what it owns', js.body.indexOf("'Its enhancements and stratagems ('") !== -1 && js.body.indexOf('sv-ownlist') !== -1);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

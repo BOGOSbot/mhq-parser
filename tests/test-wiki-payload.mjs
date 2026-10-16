@@ -107,5 +107,18 @@ if (rows.length) {
 // WIKI_HERE carries - 261 of the 270 annotations have one.
 const annotated = [...seen.keys()].filter(id => { const c = read('content/' + seen.get(id) + '.json'); return c.records[id] && c.records[id].at; });
 ok('(b) some content records carry an annotation target in at', annotated.length > 200);
+
+// --- task-81: the rows only reachable through a page or a detachment ----------
+const facPayload = read('index/factions.json');
+const rowMapIds = Object.keys(facPayload.rows || {});
+t('(81-3) the branch row map carries the page and owned ids', rowMapIds.length, 2082);
+let ownRows = 0, ownIds = new Set(), biggestOwn = 0;
+const walkOwn = n => { for (const r of (n.recs || [])) { if (r.own && r.own.length) { ownRows++; biggestOwn = Math.max(biggestOwn, r.own.length); for (const id of r.own) ownIds.add(id); } } for (const k of (n.kids || [])) walkOwn(k); };
+walkOwn(facPayload);
+t('(81-3) detachments carrying their owned ids', ownRows, 252);
+t('(81-3) the biggest owned list is Lords of Dread (12)', biggestOwn, 12);
+t('(81-3) every owned id has a row in the branch map', [...ownIds].filter(id => !(facPayload.rows || {})[id]).length, 0);
+t('(81-3) and a page id does too', (facPayload.pages || []).every(pg => (pg.recs || []).every(id => (facPayload.rows || {})[id])), true);
+ok('(81-3) a row in the map has the drawer shape', ['id', 'slug', 'title', 'source', 'snippet'].every(k => k in ((facPayload.rows || {})[rowMapIds[0]] || {})));
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

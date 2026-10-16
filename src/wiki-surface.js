@@ -169,10 +169,30 @@
     });
     if (!box.childNodes.length) box.appendChild(el('div', 'sv-empty', 'No matching branches.'));
   }
-  function pageFor(n) {
+  // task-81: every faction's page is named 'Army rules', so matching on the name
+  // alone gave the FIRST one (Adepta Sororitas) to all 24 factions. The node's own
+  // key carries its faction ('branch/alliance/faction/node'): that identifies the
+  // page. A page with no area (or no match) falls back to the first, as before.
+  function pageFor(n, key) {
     var branch = state.branch ? state.cache[state.branch] : null;
     if (!branch || !branch.pages) return null;
-    return branch.pages.filter(function (p) { return p.n === n.n && p.recs && p.recs.length; })[0] || null;
+    var list = branch.pages.filter(function (p) { return p.n === n.n && p.recs && p.recs.length; });
+    var parts = String(key || '').split('/');
+    var area = parts.length >= 2 ? parts[parts.length - 2] : '';
+    if (area) {
+      var own = list.filter(function (p) { return p.area === area; });
+      if (own.length) return own[0];
+    }
+    return list[0] || null;
+  }
+  // task-81: a page id or an owned id resolves through the branch's own row map
+  // (built for exactly those ids), so it renders with its real title/snippet
+  // instead of an id leaf.
+  function rowFromBranch(id) {
+    var branch = state.branch ? state.cache[state.branch] : null;
+    var m = (branch && branch.rows) || {};
+    var r = m[id];
+    return r ? { id: r.id, slug: r.slug, title: r.title, source: r.source, snippet: r.snippet } : { id: id, title: leafOfId(id), slug: '', snippet: '' };
   }
   function renderNode(n, key) {
     if (!nodeMatches(n, key)) return null;
@@ -196,12 +216,32 @@
     // head-room, not a cut - and if a future payload passes it, the reader is told.
     if (shown.length > ROW_CAP) body.appendChild(el('div', 'sv-empty', (shown.length - ROW_CAP) + ' more not shown.'));
     if (page) {
-      var p = pageFor(n);
-      if (p) p.recs.forEach(function (id) { body.appendChild(renderRec({ id: id, title: leafOfId(id), slug: '', snippet: '' })); });
+      var p = pageFor(n, key);
+      if (p) p.recs.forEach(function (id) { body.appendChild(renderRec(rowFromBranch(id))); });
     }
     if (!body.childNodes.length) body.appendChild(el('div', 'sv-empty', state.filter ? 'No matching rows.' : 'No records under this node.'));
     wrap.appendChild(body);
     return wrap;
+  }
+  // task-81: a row's snippet starts with the record's own heading chain, so the
+  // drawer printed the title, the meta, then the title again. Drop a leading
+  // prefix equal to the title (or a ' > ' chain ending in it) before rendering.
+  function snippetFor(r) {
+    var s = String(r.snippet || '');
+    var t = String(r.title || '').trim();
+    if (!s || !t) return s;
+    if (s.indexOf(t) === 0) {
+      var rest = s.slice(t.length).replace(/^[\s\u2013\u2014-]+/, '');
+      if (rest) return rest;
+      return s;
+    }
+    var chain = t.split(' > ').filter(Boolean);
+    var leaf = chain.length ? chain[chain.length - 1] : '';
+    if (leaf && s.indexOf(leaf) === 0) {
+      var rest2 = s.slice(leaf.length).replace(/^[\s\u2013\u2014-]+/, '');
+      if (rest2) return rest2;
+    }
+    return s;
   }
   function renderRec(r) {
     var wrap = el('div', 'sv-recwrap');
@@ -213,7 +253,8 @@
     if (meta) b.appendChild(el('span', 'sv-rec-meta', meta));
     // The payload caps a row's snippet at 100; a full-length snippet was cut, so
     // the row says so (the payload itself is not touched).
-    if (r.snippet) b.appendChild(el('span', 'sv-rec-snip', r.snippet.length >= 100 ? r.snippet + '\u2026' : r.snippet));
+    var snip = snippetFor(r);
+    if (snip) b.appendChild(el('span', 'sv-rec-snip', snip.length >= 100 ? snip + '\u2026' : snip));
     b.addEventListener('click', function (ev) { ev.preventDefault(); toggleInline(r, wrap); });
     wrap.appendChild(b);
     return wrap;
@@ -228,6 +269,14 @@
     var body = el('div', 'sv-inline-body');
     body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
     box.appendChild(body);
+    // task-81: a detachment owns its enhancements and stratagems; they are rows
+    // here, each opening its own record.
+    if (r.own && r.own.length) {
+      var ownBox = el('div', 'sv-ownlist');
+      ownBox.appendChild(el('div', 'sv-owntitle', 'Its enhancements and stratagems (' + r.own.length + ')'));
+      r.own.forEach(function (id) { ownBox.appendChild(renderRec(rowFromBranch(id))); });
+      box.appendChild(ownBox);
+    }
     wrap.appendChild(box);
     if (state.rows[r.id]) { body.innerHTML = state.rows[r.id]; return; }
     fetch(REC + '?id=' + encodeURIComponent(r.id) + '&format=html', { credentials: 'same-origin' })
