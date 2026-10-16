@@ -16,8 +16,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { readAllCorpus } from './rules-corpus.mjs';
-import { renderLinks } from './wiki-plan.mjs';
-import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
+import { renderLinks, stripBuiltBlock } from './wiki-plan.mjs';
+import { CARD_CSS, cardFor, cardIndex, recordBody } from './wiki-cards.mjs';
 import { SHELL_CSS, shellHead, topBar } from './wiki-shell.mjs';
 import { TOC_CSS, TOC_JS, tocData, tocIndex, tocTree, pageNamer, pageSlug, factionRoster, factionAssigner, allianceAssigner, isAnnotation } from './wiki-toc.mjs';
 import { cardTables } from './unit-card.mjs';
@@ -313,9 +313,19 @@ fs.writeFileSync(path.join(OUT, 'anomalies.html'), page('Reading aids', NAV, [
 // no script, so the open/closed state is per page load and does not survive
 // navigation.
 const leafOf = rec => { const p = String(rec.heading || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : rec.id; };
+// task-72: a record with no heading still needs a readable name. The id is a slug
+// chain ('core-rules#4.-Inflict-Damage->-Modifying-Dice-Rolls-...'), and printing
+// it as an h1 put a paragraph of hyphens on a phone. The last link of the chain,
+// opened up and stripped of its rule number, is the name.
+const humanTitle = rec => {
+  const raw = String(rec.id || '').split('#').pop() || String(rec.heading || rec.id || '');
+  const tail = raw.split('->').filter(Boolean).pop() || raw;
+  const words = tail.replace(/^\d+(?:\.\d+)*[-.\s]+/, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return words || raw;
+};
 // The tree's own nesting: a subsection is never a sibling of its parent.
 const sectionKids = rec => (tree.childrenOf.get(rec.id) || []).map(id => byId.get(id)).filter(Boolean);
-const sectionText = rec => { const t = String(rec.text || ''); return '<pre class="text">' + esc(t.length > 1600 ? t.slice(0, 1600) + '\n…' : t) + '</pre>'; };
+const sectionText = rec => { const t = stripBuiltBlock(rec); return '<pre class="text">' + esc(t.length > 1600 ? t.slice(0, 1600) + '\n…' : t) + '</pre>'; };
 const sectionsHtml = (rec, depth) => {
   if (depth <= 0) return '';
   const kids = sectionKids(rec);
@@ -339,7 +349,7 @@ for (const r of delivered) {
   // The product shell: the top bar the ask page has, over the record itself. The
   // developer furniture (the link block, the reading aids) moves into one row of
   // links at the foot, so nothing is lost and nothing is in the reader's way.
-  const leaf = crumbs.length ? crumbs[crumbs.length - 1] : (r.heading || r.id);
+  const leaf = crumbs.length ? crumbs[crumbs.length - 1] : (String(r.heading || '').trim() || humanTitle(r));
   const annoTitle = a => { const p = String(a.heading || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : a.id; };
   const folded = tree.attach.get(r.id) || [];
   const foldsInto = tree.attachTarget.get(r.id) || '';
@@ -355,18 +365,21 @@ for (const r of delivered) {
   // the keywords and abilities, so the twin is a collapsed section, not a row.
   // One page per datasheet: the twin and any extra part of the same record are
   // folded on as collapsed sections, not listed as units of their own.
+  // The card is built once and handed to recordBody below: the page has to know
+  // whether this record IS its twin's content before it repeats the twin.
+  const card = cardFor(r, { corpora, index: cardIdx });
   const mergedList = (tree.mergedOn.get(r.id) || []).map(mid => byId.get(mid)).filter(Boolean);
-  const mergedHtml = mergedList.length ? '<h2>Merged records (' + mergedList.length + ')</h2>' + mergedList.map(x => '<details class="wsec"><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 4000)) + '</div><p class="wseclink"><a href="' + esc(hrefOf(x.id)) + '">Open the merged record</a></p></details>').join('') : '';
+  const mergedHtml = (!card && mergedList.length) ? '<h2>Merged records (' + mergedList.length + ')</h2>' + mergedList.map(x => '<details class="wsec"><summary>' + esc(leafOf(x)) + '</summary><div class="wsecbody">' + esc(String(x.text || '').slice(0, 4000)) + '</div><p class="wseclink"><a href="' + esc(hrefOf(x.id)) + '">Open the merged record</a></p></details>').join('') : '';
   const body = [
     topBar({}),
     '<main class="wrec">',
     '<p class="wcrumb">' + (crumbHtml || '<a href="index.html">index</a>') + '</p>',
     '<h1 class="wtitle">' + esc(leaf) + '</h1>',
-    '<p class="wmeta">' + esc(r.id) + ' &middot; ' + esc(r.kind) + ' &middot; ' + esc(r.source) + ' &middot; ' + r.chars + ' chars</p>',
+    '<p class="wmeta">' + esc(r.id) + ' &middot; ' + esc(r.kind) + ' &middot; ' + esc(r.source) + '</p>',
     // The record body: the structured card for a datasheet or unitrules record,
     // the flat text for everything else (and for the 111 card records whose CSV
     // row is missing, which fall back to the same text).
-    recordBody(r, { corpora, index: cardIdx, href: id => hrefOf(id) }),
+    recordBody(r, { corpora, index: cardIdx, href: id => hrefOf(id), cardBuilder: () => card }),
     // The rule's own sections and subsections, each a collapsible <details>.
     sections,
     ownedHtml,
@@ -376,13 +389,13 @@ for (const r of delivered) {
     // The annotation's section carries the folded questions and errata, so they
     // stay reachable from the tree even though they are not tree rows.
     folded.length ? '<h2>Questions and errata (' + folded.length + ')</h2>' + folded.map(a => '<details class="wqa"><summary>' + esc(annoTitle(a)) + '</summary><div class="wsecbody">' + esc(String(a.text || '').slice(0, 1200)) + '</div><p class="wseclink"><a href="' + esc(hrefOf(a.id)) + '">Open question</a></p></details>').join('') : '',
-    '<h2>Links (' + r.links.length + ')</h2>',
-    linkChips(r.links, true),
-    (r.parent && live.has(r.parent)) ? '<p class="num">Parent: <a href="' + esc(hrefOf(r.parent)) + '">' + esc(byId.get(r.parent).heading) + '</a></p>' : '',
-    back.filter(id => live.has(id)).length ? '<h2>Linked from (' + back.filter(id => live.has(id)).length + ')</h2><ul class="chips">' + back.filter(id => live.has(id)).map(id => '<li><a href="' + esc(hrefOf(id)) + '">' + esc(byId.get(id).heading || id) + '</a></li>').join('') + '</ul>' : '',
-    (r.onlyText.length || r.onlyArray.length) ? '<p class="num missing">This page\'s text and its link array disagree.</p>' : '',
-    r.links.length ? '<h2>The corpus\'s own link block</h2><pre class="block">' + esc(r.arrayBlock) + '</pre>' : '',
-    '<p class="wfoot">' + esc(r.id) + ' &middot; ' + esc(r.kind) + ' &middot; ' + esc(r.source) + '</p>',
+    // task-72: 'Links (1) - faction faction-ae' is the corpus's link array, and the
+    // card already links its rules inline. The array is metadata; it is off the page.
+    // task-72: the developer furniture (parent, backlinks, the corpus's raw link
+    // array, a text/array mismatch) is not the reader's page. It stays in the build
+    // and on the reading-aids page the foot links to; the page shows the record.
+    // The links themselves are chips above - inline links are the product.
+    // The wmeta line above already names the record; the foot's copy is dropped.
     '<div class="wdev"><a href="index.html">Index</a><a href="search.html">Search</a><a href="anomalies.html">Reading aids</a></div>',
     '</main>',
   ].filter(Boolean).join('\n');

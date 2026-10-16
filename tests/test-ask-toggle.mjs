@@ -41,7 +41,8 @@ t('the page states fast exactly as ASK_MODES does',
 t('the page states deep exactly as ASK_MODES does',
   deepRow ? [num(deepRow[1], 'judge'), num(deepRow[1], 'second'), num(deepRow[1], 'first'), num(deepRow[1], 'passes'), num(deepRow[1], 'grepNet'), num(deepRow[1], 'jevMax')] : null,
   ['medium', 'none', '10', '3', '60', '80']);
-ok('the page maps the two measured accuracies to the two modes', /fast:[^\n]*61\.8%/.test(page) && /deep:[^\n]*79\.4%/.test(page));
+// task-72: the measured score is test-bank knowledge, not reader-facing page copy.
+ok('the page states the mapping and no measured accuracy', !/acc:/.test(page) && !/61\.8|79\.4/.test(page));
 ok('the note says retrieval is mode-bound, not fixed', /Retrieval moves with the mode/.test(html) && /MODE-BOUND/i.test(html));
 // task-69: the writer is off, and the copy must say so rather than implying prose
 // that never arrives. The behaviour assertions below are unchanged.

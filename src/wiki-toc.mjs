@@ -24,7 +24,10 @@ export const TOC_CSS = [
   '.wcblead{color:var(--w-txt);font-weight:700}',
   '.wcbhere{color:var(--w-acc);font-weight:700}',
   '.wcsep{color:var(--w-dim)}',
-  '.wcasc{position:fixed;inset:0;z-index:80;background:var(--w-bg);display:flex;flex-direction:column}',
+  // task-72: the cascade opens IN THE PAGE, as the top bar's next sibling, so the
+  // banner keeps its height and stays readable; --wcasc-top is the bar's measured
+  // height (fit()), so the index fills exactly the rest of the viewport.
+  '.wcasc{position:relative;z-index:5;background:var(--w-bg);display:flex;flex-direction:column;height:calc(100vh - var(--wcasc-top,0px));min-height:360px}',
   '.wcasc.hidden{display:none}',
   '.wcaschead{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--w-line);background:var(--w-panel)}',
   '.wcaschead .wcbpath{font-size:12px}',
@@ -55,9 +58,12 @@ export const TOC_CSS = [
   // The path row keeps the pills; the body entries are full-width ROWS (Mandal:
   // choices belong in the body). One class, two contexts.
   '#wcpane{display:flex;flex-direction:column;gap:4px;padding:8px 10px}',
-  '#wcpane .wccard{width:100%;justify-content:space-between;text-align:left;border-radius:10px;padding:8px 11px}',
+  '#wcpane .wccard{width:100%;justify-content:space-between;text-align:left;border-radius:10px;padding:11px 12px;min-height:44px}',
   '#wcpane .wclabel{margin-top:6px}',
-  '.wccard{flex:0 0 auto;border:1px solid var(--w-line);background:var(--w-panel2);color:var(--w-dim);border-radius:999px;padding:6px 11px;font:12px system-ui;cursor:pointer;white-space:nowrap}',
+  '.wccard{flex:0 0 auto;display:flex;align-items:center;gap:8px;border:1px solid var(--w-line);background:var(--w-panel2);color:var(--w-txt);border-radius:999px;padding:8px 12px;font:13.5px system-ui;cursor:pointer;white-space:nowrap}',
+  // task-72: the count is its own chip, never a digit glued to the name ('Rules794').
+  '.wccard .wcc{margin-left:auto;font:10px var(--w-mono);color:var(--w-dim);border:1px solid var(--w-line);border-radius:4px;padding:1px 5px}',
+  '.wccard.on .wcc{color:var(--w-txt);border-color:var(--w-acc)}',
   '.wccard.on{color:var(--w-txt);border-color:var(--w-acc);font-weight:700}',
   '.wccut{margin-left:6px;color:var(--w-acc)}',
   '.wcexpand{padding:9px 12px 3px;color:var(--w-dim);font-size:12px}',
@@ -150,6 +156,8 @@ export const TOC_JS = [
   '  if (!IDX || !IDX.branches || !IDX.branches.length) return;',
   '  var BASE = window.WIKI_TREE_BASE || "";',
   '  var CACHE = {}, path = [], nodes = [], open = false, pushed = false, expandedF = null;',
+  '  var TOP = document.querySelector(".wtop") || document.querySelector("header") || null;',
+  '  function fit() { document.documentElement.style.setProperty("--wcasc-top", (TOP ? Math.round(TOP.getBoundingClientRect().height) : 0) + "px"); }',
   '  var herePath = (HERE && HERE.path) || [], hereId = HERE && (HERE.at || HERE.id);',
   '  function el(t, c, txt) { var e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; }',
   '  function loadNode(f, cb) {',
@@ -182,12 +190,13 @@ export const TOC_JS = [
   '    if (!col || !pane) return;',
   '    col.textContent = "";',
   '    var levels = [{ n: "Wiki" }].concat(path);',
-  '    for (i = 0; i < levels.length; i++) {',
+  '    for (i = levels.length > 1 ? 0 : 1; i < levels.length; i++) {',
   '      var cr = el("button", "wccard" + (i === levels.length - 1 ? " on" : ""));',
   '      cr.type = "button"; cr.setAttribute("data-wc-jump", String(i - 1));',
   '      cr.appendChild(el("span", "wcn", levels[i].n));',
   '      col.appendChild(cr);',
   '    }',
+  '    col.style.display = col.childNodes.length ? "" : "none";',
   // The top bar is the INDEX: path cards only. The BODY carries the current
   // level's choices, so no level is ever an empty pane (task-61's brief put the
   // entries in the bar and left the body blank at every non-leaf).
@@ -253,7 +262,8 @@ export const TOC_JS = [
   '  function pushOpen() { if (!pushed) { pushed = true; try { history.pushState({ wc: 1 }, ""); } catch (e) { pushed = false; } } }',
   '  function openUp() {',
   '    if (open) { render(); return; }',
-  '    open = true; pushOpen();',
+  '    open = true; pushOpen(); fit();',
+  '    window.scrollTo(0, 0);',
   '    if (herePath.length && !path.length) prewalk(function () { render(); });',
   '    render();',
   '  }',
@@ -332,10 +342,12 @@ export const TOC_JS = [
   '    location.href = BASE + f;',
   '  }',
   '  function mount() {',
-  '    var host = document.querySelector(".wtop") || document.querySelector("header") || document.body;',
+  '    var host = TOP || document.body;',
   '    var b = el("button", "wcbar");',
   '    b.id = "wcbar"; b.type = "button"; b.setAttribute("data-wc-open", "1"); b.setAttribute("aria-label", "Open the wiki index");',
-  '    host.insertBefore(b, host.firstChild);',
+  '    // The resting bar is the LAST row of the banner, after the brand, the search',
+  '    // box and the nav - never the first thing on the page (Mandal, task-72).',
+  '    host.appendChild(b);',
   '    var o = el("div", "wcasc hidden"); o.id = "wcasc";',
   '    var head = el("div", "wcaschead");',
   '    var x = el("button", "wcclose", "\u00d7"); x.type = "button"; x.setAttribute("data-wc-close", "1"); x.setAttribute("aria-label", "Close");',
@@ -351,7 +363,10 @@ export const TOC_JS = [
   '    o.appendChild(col);',
   '    panes.appendChild(pane);',
   '    o.appendChild(panes);',
-  '    document.body.appendChild(o);',
+  // The cascade is the page's, not an overlay: the top bar's next sibling, measured.
+  '    if (TOP && TOP.parentNode) TOP.parentNode.insertBefore(o, TOP.nextSibling); else document.body.appendChild(o);',
+  '    fit();',
+  '    window.addEventListener("resize", fit);',
   '  }',
   '  document.addEventListener("click", function (e) {',
   '    var t = e.target;',

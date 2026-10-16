@@ -623,7 +623,7 @@ var I18N = {
     answerFailed: 'The prose could not be written this time - the findings above are what was retrieved.',
     requestFailed: 'The request failed. Try again.',
     streamCut: 'the connection dropped before the end - what arrived is above, ask again for the rest',
-    retention: 'What you type is kept, anonymously, to make this page better: the question, what it found, and the answer. No IP address, no browser, no account — just a random number for the question.',
+    retention: 'What you type is kept anonymously to improve this page: the question, what it found, the answer. No IP, no browser, no account — a random number per question.',
     dataFrom: 'Data from: ',
     footRepo: 'Source code',
     footBug: 'Report a problem',
@@ -798,7 +798,7 @@ var I18N = {
     answerFailed: 'La réponse n\u2019a pas pu être rédigée cette fois — les constats ci-dessus sont ce qui a été trouvé.',
     requestFailed: 'La requête a échoué. Réessayez.',
     streamCut: 'la connexion a lâché avant la fin — ce qui est arrivé est ci-dessus, relancez pour la suite',
-    retention: 'Ce que vous écrivez est conservé, anonymement, pour améliorer cette page : la question, ce qu’elle a trouvé et la réponse. Ni adresse IP, ni navigateur, ni compte — juste un numéro tiré au hasard pour la question.',
+    retention: 'Ce que vous écrivez est conservé anonymement pour améliorer cette page : la question, ce qu’elle a trouvé, la réponse. Ni IP, ni navigateur, ni compte — un numéro tiré au hasard par question.',
     dataFrom: 'Données de : ',
     footRepo: 'Code source',
     footBug: 'Signaler un problème',
@@ -973,10 +973,10 @@ function applyLang() {
 // AND the retrieval scope to the mode, so this is the mapping, from the same
 // table the server reads (src/rules-corpus.mjs, ASK_MODES):
 //
-//   fast (default): judge reasoning off  (measured 61.8% on the bank)
+// The reader's page states the mapping and NOT an accuracy: the measured score is
 //                   second judge 'medium'
 //                   retrieval: first 5, passes 2, grepNet 50, jevMax 60
-//   deep          : judge reasoning 'medium' (measured 79.4%)
+// test-bank knowledge, and it was being served as page copy (Mandal, task-72).
 //                   second judge off
 //                   retrieval: first 10, passes 3, grepNet 60, jevMax 80
 //
@@ -985,20 +985,18 @@ function applyLang() {
 // off by default (RULES_WRITER) and, when it is on, it writes without reasoning
 // first - the mode never reaches it.
 var MODE_MAP = {
-  fast: { judge: 'none', second: 'medium', first: 5, passes: 2, grepNet: 50, jevMax: 60, acc: '61.8%' },
-  deep: { judge: 'medium', second: 'none', first: 10, passes: 3, grepNet: 60, jevMax: 80, acc: '79.4%' }
+  fast: { judge: 'none', second: 'medium', first: 5, passes: 2, grepNet: 50, jevMax: 60 },
+  deep: { judge: 'medium', second: 'none', first: 10, passes: 3, grepNet: 60, jevMax: 80 }
 };
 var MODE = 'fast';
 function modeOn(m) { return m.judge !== 'none'; }
 function modeNote(m) {
   var fr = LANG === 'fr';
   var on = modeOn(m) ? (fr ? 'activ\u00e9' : 'on') : (fr ? 'd\u00e9sactiv\u00e9' : 'off');
-  if (fr) return 'Juge : raisonnement ' + on + ' \u2014 ' + m.acc + ' mesur\u00e9 sur la banque de 33 questions. ' +
-    'Second juge : ' + (m.second === 'none' ? 'sans raisonnement' : 'raisonnement ' + m.second) + '. ' +
+  if (fr) return 'Juge : raisonnement ' + on + '. Second juge : ' + (m.second === 'none' ? 'sans raisonnement' : 'raisonnement ' + m.second) + '. ' +
     'La recherche suit le mode (' + m.first + ' constats, ' + m.passes + ' passes). ' +
     'L\u2019appel de r\u00e9daction est d\u00e9sactiv\u00e9 : les constats, le verdict du juge et les citations sont la page.';
-  return 'Judge: reasoning ' + on + ' \u2014 ' + m.acc + ' measured on the 33-question bank. ' +
-    'Second judge: ' + (m.second === 'none' ? 'without reasoning' : m.second + ' reasoning') + '. ' +
+  return 'Judge: reasoning ' + on + '. Second judge: ' + (m.second === 'none' ? 'without reasoning' : m.second + ' reasoning') + '. ' +
     'Retrieval moves with the mode (' + m.first + ' findings, ' + m.passes + ' passes). ' +
     'The model-written answer is off: the findings, the judge verdict and the citations are the page.';
 }

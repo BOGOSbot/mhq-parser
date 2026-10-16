@@ -81,7 +81,10 @@ ok('with the section path, not its own', hereOf(PLAIN_Q).path.map(p => p.n).join
 const detPage = pageOf(AURIC);
 ok('the detachment page holds its enhancements and stratagems', detPage.indexOf('Enhancements (') !== -1 && detPage.indexOf('Stratagems (') !== -1 && detPage.indexOf(map[STRAT]) !== -1);
 ok('the detachment is a row in the Detachments level, with its owned count and no kids', (function () { const f = tree.files['tree/factions/imperium/adeptus-custodes/detachments.js']; const row = f.recs.find(r => r.i === AURIC); return !!(row && row.q > 0 && !('kids' in f)); })());
-ok('the datasheet page carries its merged unitrules twin as a collapsed section', pageOf(UNIT_REC).indexOf('Merged records (') !== -1 && tree.mergedOn.has(UNIT_REC));
+// task-72: the card IS the merge - the twin's keywords and abilities are already
+// printed on it - so the page no longer repeats them under a 'Merged records' head.
+ok('the card is the merge: the page does not repeat the unitrules twin', pageOf(UNIT_REC).indexOf('Merged records (') === -1 && tree.mergedOn.has(UNIT_REC));
+ok('and that content is on the card instead', /Core abilities and army rules/.test(pageOf(UNIT_REC)));
 // Mandal's guard rail: the name is never the filter. The Seer Council detachment
 // still renders its Strands of Fate ability after the edition filters run.
 const seerPage = pageOf(SEER);
@@ -116,7 +119,12 @@ ok('a node is fetched by name, on demand', /function loadNode/.test(tocSrc.TOC_J
 ok('the left column jumps back to any level', /data-wc-jump/.test(tocSrc.TOC_JS) && /wccol/.test(tocSrc.TOC_CSS));
 ok('the pane opens the next level down', /data-wc-node/.test(tocSrc.TOC_JS) && /wcpane/.test(tocSrc.TOC_CSS));
 ok('opening a record navigates and leaves the cascade retracted', /data-wc-rec/.test(tocSrc.TOC_JS) && /location\.href = BASE \+ f/.test(tocSrc.TOC_JS));
-ok('the bar is the resting form and opens full screen', /data-wc-open/.test(tocSrc.TOC_JS) && /wcasc/.test(tocSrc.TOC_CSS) && /position:fixed;inset:0/.test(tocSrc.TOC_CSS));
+// task-72: the index opens in the page, under the top bar - never over the banner.
+ok('the bar is the resting form and opens the index under the banner',
+  /data-wc-open/.test(tocSrc.TOC_JS) && /wcasc/.test(tocSrc.TOC_CSS)
+  && /TOP\.parentNode\.insertBefore\(o, TOP\.nextSibling\)/.test(tocSrc.TOC_JS)
+  && /calc\(100vh - var\(--wcasc-top/.test(tocSrc.TOC_CSS)
+  && !/\.wcasc\{position:fixed/.test(tocSrc.TOC_CSS));
 ok('a back press retracts it', /history\.pushState/.test(tocSrc.TOC_JS) && /addEventListener\("popstate"/.test(tocSrc.TOC_JS));
 ok('and it pre-walks the record path only when opened', /function prewalk/.test(tocSrc.TOC_JS) && /if \(herePath\.length && !path\.length\) prewalk/.test(tocSrc.TOC_JS));
 ok('the state is exposed for the measurement', /window\.WIKI_CASCADE/.test(tocSrc.TOC_JS) && /fetched: Object\.keys\(CACHE\)/.test(tocSrc.TOC_JS));

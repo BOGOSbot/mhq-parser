@@ -23,6 +23,10 @@
 import { buildUnitCard, resolveRecordLinks } from './unit-card.mjs';
 // task-66: one escaper and one linkifier for the whole card and prose path.
 import { linkify, esc } from './wikilinks.mjs';
+// The corpus's own link block rides inside the stored text (it is what the vector
+// sees). It is not the reader's text: stripped here, exactly, from the record's own
+// links array. task-72.
+import { stripBuiltBlock } from './wiki-plan.mjs';
 
 // The two kinds whose text is a flat transcription of the CSV card. Every other
 // kind (stratagem, enhancement, detachment, rule, ability, index) has no card
@@ -37,6 +41,13 @@ const norm = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 // class names are semantic on purpose: a restyle (slice 2) targets .wcard-* and
 // never has to guess what a div was for.
 export const CARD_CSS = [
+  // task-72: a rule the corpus also holds in full is a pointer, and its text sits
+  // one tap away, collapsed.
+  '.wcard-more { margin:.15rem 0 0; font-size:.85rem; }',
+  // The datasheet's flavour is its own column in the export; it reads as flavour
+  // only if it looks like flavour. task-72.
+  '.wcard-legend { margin:.7rem 0 0; color:var(--dim, #98a2b3); font-size:.85rem; font-style:italic; }',
+  '.wcard-more summary { cursor:pointer; color:var(--w-dim, #98a2b3); }',
   '.wcard { margin:0 0 1.2rem; }',
   // The rulings' provenance banner: it rides in the fragment (recordBody), so
   // the page and the ask dialog share it. Loud enough to not be mistaken for GW
@@ -189,8 +200,15 @@ function cardHtml(card, o) {
   const rules = abilities.filter(a => /core|army|faction/i.test(a.type));
   const named = abilities.filter(a => !/core|army|faction/i.test(a.type));
   if (rules.length) {
-    const rows = rules.map(a => '<tr><td>' + esc(a.type) + '</td><th scope="row">' + esc(a.name) + '</th><td>'
-      + a.text + (a.text && a.link ? ' ' : '') + a.link + '</td></tr>').join('');
+    // A rule the corpus holds in full is a POINTER here, never a second copy: the
+    // description is collapsed, one tap away, so the card is not a wall of another
+    // page's text (Mandal: 'Leader and Battle Focus still having full description').
+    const rows = rules.map(a => {
+      const cell = a.link
+        ? a.link + (a.text ? ' <details class="wcard-more"><summary>the text</summary>' + a.text + '</details>' : '')
+        : a.text;
+      return '<tr><td>' + esc(a.type) + '</td><th scope="row">' + esc(a.name) + '</th><td>' + cell + '</td></tr>';
+    }).join('');
     parts.push('<h2 class="wcard-h">Core abilities and army rules</h2>'
       + '<div class="wcard-scroll"><table class="wcard-table wcard-abilities"><thead><tr><th scope="col">Type</th><th scope="col">Name</th><th scope="col">Description</th></tr></thead><tbody>' + rows + '</tbody></table></div>');
   }
@@ -204,7 +222,7 @@ function cardHtml(card, o) {
     parts.push('<h2 class="wcard-h">Composition</h2><ul class="wcard-composition">' + card.composition.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>');
   }
   if (card.loadout) parts.push('<p class="wcard-loadout">' + esc(card.loadout) + '</p>');
-  if (card.legend) parts.push('<p class="wcard-loadout">' + esc(card.legend) + '</p>');
+  if (card.legend) parts.push('<p class="wcard-legend">' + esc(card.legend) + '</p>');
 
   const factionKw = (card.keywords && card.keywords.faction) || [];
   const otherKw = (card.keywords && card.keywords.other) || [];
@@ -301,7 +319,7 @@ export function recordBody(record, opts) {
   // An index page carpeted in links is worse than an index with none: kind
   // 'index' keeps its text plain (cap 0).
   const cap = record && record.kind === 'index' ? 0 : 40;
-  return banner + '<pre class="text">' + linkify(record && record.text, { selfId: record && record.id, href: o.href, cap: cap }) + '</pre>';
+  return banner + '<pre class="text">' + linkify(stripBuiltBlock(record), { selfId: record && record.id, href: o.href, cap: cap }) + '</pre>';
 }
 
 export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, recordBody, rulingBody };
