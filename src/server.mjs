@@ -1617,7 +1617,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/rules/answered') return handleRulesAnswered(req, res);
   if (req.method === 'POST' && u.pathname === '/rules/labels') return handleRulesLabels(req, res);
   if (req.method === 'GET' && u.pathname === '/rules/record') return handleRulesRecord(req, res, u);
-  if (req.method === 'GET' && u.pathname === '/rules/asset') return handleRulesAsset(req, res, u);
+  if ((req.method === 'GET' || req.method === 'HEAD') && u.pathname === '/rules/asset') return handleRulesAsset(req, res, u);
   if (req.method === 'GET' && u.pathname === '/rules/lookup') return handleRulesLookup(req, res, u);
   return fail(res, 404, 'not found: ' + u.pathname);
 });

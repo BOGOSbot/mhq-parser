@@ -66,4 +66,7 @@ body.sv-drawer-open header, body.sv-drawer-open .sv-top{display:none}
 .sv-owntitle{color:var(--sv-dim);font-size:.8em;margin-bottom:2px}
 
 /* task-78: the mission card face above the record's own text. */
-.sv-recface{display:block;width:100%;max-width:420px;margin:0 auto 12px;border-radius:8px;border:1px solid rgba(255,255,255,.14)}
+/* task-78: the face is tall (1564x2680); at full width it pushes the record's own
+   text off screen, so it is capped and a tap shows it whole. */
+.sv-recface{display:block;width:100%;max-width:420px;max-height:52vh;object-fit:contain;margin:0 auto 12px;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:#0d0d0f;cursor:zoom-in}
+.sv-recface.sv-recface-full{max-height:none;cursor:zoom-out}

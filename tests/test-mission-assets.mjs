@@ -61,6 +61,9 @@ if (up) {
   ok('with an immutable cache', /immutable/.test(String(r1.headers.get('cache-control'))));
   const body = Buffer.from(await r1.arrayBuffer());
   ok('the bytes are the file', body.length === fs.statSync(path.join(ASSETS, real.file.replace(/^missions[\/]/, ''))).size);
+  const rh = await fetch(base + encodeURIComponent(real.file), { method: 'HEAD' });
+  t('HEAD on a face answers like GET', rh.status, 200);
+  t('HEAD carries no body', (await rh.text()).length, 0);
   const r2 = await fetch(base + encodeURIComponent('missions/primary/take-and-hold/no-such-card.png'));
   t('a missing face is a 404, not a 500', r2.status, 404);
   const r3 = await fetch(base + encodeURIComponent('../src/server.mjs'));
@@ -77,6 +80,8 @@ const surface = fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.js'), 'utf8
 const server = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
 ok('the surface loads the mission manifest', surface.indexOf('missions/sources.json') !== -1 && surface.indexOf('function loadFaces') !== -1);
 ok('the surface prepends the face to the record', surface.indexOf('faceHtml(r.id)') !== -1 && surface.indexOf('faceHtml(record.id)') !== -1);
+ok('the face is capped and expands on tap',
+  /sv-recface\{[^}]*max-height/.test(fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.css'), 'utf8')) && surface.indexOf('sv-recface-full') !== -1 && surface.indexOf('function wireFaces') !== -1);
 ok('the css styles it', fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.css'), 'utf8').indexOf('.sv-recface') !== -1);
 ok('the route is anchored and refuses a traversal', server.indexOf('const ASSET_PATH =') !== -1 && server.indexOf("'/rules/asset'") !== -1);
 ok('the route reads under the corpus assets', server.indexOf("path.join(corpusDir(), 'assets', rel)") !== -1);

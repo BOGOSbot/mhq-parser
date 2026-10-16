@@ -316,10 +316,10 @@
       box.appendChild(ownBox);
     }
     wrap.appendChild(box);
-    if (state.rows[r.id]) { body.innerHTML = faceHtml(r.id) + state.rows[r.id]; return; }
+    if (state.rows[r.id]) { body.innerHTML = faceHtml(r.id) + state.rows[r.id]; wireFaces(body); return; }
     fetch(REC + '?id=' + encodeURIComponent(r.id) + '&format=html', { credentials: 'same-origin' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
-      .then(function (html) { state.rows[r.id] = html; loadFaces().then(function () { body.innerHTML = faceHtml(r.id) + html; }); })
+      .then(function (html) { state.rows[r.id] = html; loadFaces().then(function () { body.innerHTML = faceHtml(r.id) + html; wireFaces(body); }); })
       .catch(function () { body.textContent = 'The record could not be loaded.'; });
   }
 
@@ -340,6 +340,10 @@
       return map;
     }).catch(function () { FACES = {}; return FACES; });
     return FACES_LOAD;
+  }
+  function wireFaces(root) {
+    var f = root && root.querySelector && root.querySelector('.sv-recface');
+    if (f) f.addEventListener('click', function () { f.classList.toggle('sv-recface-full'); });
   }
   function faceHtml(id) {
     var a = FACES && FACES[id];
@@ -368,10 +372,10 @@
     var body = el('div', 'sv-page-body');
     body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
     v.appendChild(body);
-    if (state.rows[record.id]) { body.innerHTML = faceHtml(record.id) + state.rows[record.id]; return; }
+    if (state.rows[record.id]) { body.innerHTML = faceHtml(record.id) + state.rows[record.id]; wireFaces(body); return; }
     fetch(REC + '?id=' + encodeURIComponent(record.id) + '&format=html', { credentials: 'same-origin' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
-      .then(function (html) { state.rows[record.id] = html; loadFaces().then(function () { body.innerHTML = faceHtml(record.id) + html; }); })
+      .then(function (html) { state.rows[record.id] = html; loadFaces().then(function () { body.innerHTML = faceHtml(record.id) + html; wireFaces(body); }); })
       .catch(function () { body.textContent = 'The record could not be loaded.'; });
   }
   function closePage() {
