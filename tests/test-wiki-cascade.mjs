@@ -37,6 +37,12 @@ ok('every placed record has a pre-walked path', tree.paths.size === tree.stats.p
 ok('every step of every path names a file that exists', [...tree.paths.values()].every(p => p.length && p.every(s => !!tree.files[s.f])));
 t('the 163 navigation stubs have no path (they are not in the tree)', (tree.paths.get('faction-index#faction-ac') || []).length, 0);
 ok('the path files are the per-node files, not one tree file', [...tree.paths.values()].every(p => new Set(p.map(s => s.f)).size === p.length));
+// A merged twin is the same rule split into parts: it pre-walks where its primary
+// does. Before this was pinned, every twin was handed the path of whichever
+// faction the walk reached last - measured, all 1,774 of them, core-rules twins
+// included, pre-walked to Tyranids.
+t('a core-rules twin pre-walks in Core Rules, not inside a faction', names('core-rules#Battle-shock-Rolls~2').slice(0, 2), ['Rules', 'Core Rules']);
+ok('every merged twin pre-walks exactly where its primary does', [...tree.mergedOn].every(([primary, list]) => list.every(id => JSON.stringify(names(id)) === JSON.stringify(names(primary)))));
 
 // --- the record page carries that path, and nothing else ---------------------
 const outDir = path.join(ROOT, 'workspace', 'wiki-cascade-test');

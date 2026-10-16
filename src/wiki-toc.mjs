@@ -710,7 +710,7 @@ export function tocTree(records, pageOf, opts) {
   // the parts group by base id, the first is the row, and the rest fold onto its
   // page. Also collected: what the edition filter removed, what was merged, and
   // the synthetic one-page collections.
-  const filteredIds = [], mergedIds = [], mergedHere = [], pages = [];
+  const filteredIds = [], mergedIds = [], pages = [];
   const owned = new Map(), mergedOn = new Map();
   const baseOf = id => String(String(id).split('#')[1] || '').split('~')[0];
   const primaryOf = list => {
@@ -722,7 +722,7 @@ export function tocTree(records, pageOf, opts) {
       out.push(g[0]);
       if (g.length > 1) {
         mergedOn.set(g[0].id, g.slice(1).map(x => x.id));
-        for (const x of g.slice(1)) { mergedIds.push(x.id); mergedHere.push(x.id); }
+        for (const x of g.slice(1)) mergedIds.push(x.id);
       }
     }
     return out;
@@ -1077,7 +1077,7 @@ export function tocTree(records, pageOf, opts) {
         const extras = parts.slice(1).concat(urGroups.get(n) || []);
         if (extras.length) {
           mergedOn.set(d.id, extras.map(x => x.id));
-          for (const x of extras) { mergedIds.push(x.id); mergedHere.push(x.id); }
+          for (const x of extras) mergedIds.push(x.id);
           mergedC += extras.length;
         }
       }
@@ -1087,7 +1087,7 @@ export function tocTree(records, pageOf, opts) {
         units.push(u);
         if (parts.length > 1) {
           mergedOn.set(u.id, parts.slice(1).map(x => x.id));
-          for (const x of parts.slice(1)) { mergedIds.push(x.id); mergedHere.push(x.id); }
+          for (const x of parts.slice(1)) mergedIds.push(x.id);
           mergedC += parts.length - 1;
         }
       }
@@ -1121,8 +1121,6 @@ export function tocTree(records, pageOf, opts) {
       const unitsRef = { n: 'Units', lvl: 'group', f: base + '/units.js' };
       files[base + '/units.js'] = { n: 'Units', lvl: 'group', c: units.length, recs: units.map(ent) };
       for (const r of units) paths.set(r.id, [factionsRef, allianceRef, facRef, unitsRef]);
-      // A merged twin still has a page: it pre-walks to the Units level too.
-      for (const u of mergedHere) paths.set(u, [factionsRef, allianceRef, facRef, unitsRef]);
       let army = null;
       if (rules.length) {
         const armyFile = base + '/army-rules.html';
@@ -1245,6 +1243,17 @@ export function tocTree(records, pageOf, opts) {
     for (const k of (files[f].kids || [])) {
       if (k.pg || (k.f && files[k.f] && files[k.f].cut)) k.cut = true;
     }
+  }
+
+  // A merged twin - a rule the importer split into parts - still has a page, and it
+  // pre-walks exactly where its primary does. It used to be handed the path of
+  // whichever faction was walked last: measured, all 1,774 twins pre-walked to
+  // Tyranids, core-rules twins included. The primary's chain exists by now, so the
+  // twins are settled here, once, after every book has been walked.
+  for (const [primary, twins] of mergedOn) {
+    const chain = paths.get(primary);
+    if (!chain) continue;
+    for (const t of twins) if (!paths.has(t)) paths.set(t, chain);
   }
 
   // A record folded across books - a mission errata into the core rule it names,
