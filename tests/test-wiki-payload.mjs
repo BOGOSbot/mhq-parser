@@ -14,7 +14,14 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'workspace', 'wiki-data-test');
 
 const corpus = readAllCorpus();
+// Carry-over (a): a stale file from an earlier layout must not survive the bake.
+fs.mkdirSync(path.join(OUT, 'index'), { recursive: true });
+fs.mkdirSync(path.join(OUT, 'content'), { recursive: true });
+fs.writeFileSync(path.join(OUT, 'index', 'stale-branch.json'), '{"stale":true}');
+fs.writeFileSync(path.join(OUT, 'content', 'faction-zzz-stale.json'), '{"stale":true}');
 const stats = buildPayloads(corpus, OUT);
+ok('(a) the bake sweeps a stale branch file', !fs.existsSync(path.join(OUT, 'index', 'stale-branch.json')));
+ok('(a) the bake sweeps a stale content file', !fs.existsSync(path.join(OUT, 'content', 'faction-zzz-stale.json')));
 const read = rel => JSON.parse(fs.readFileSync(path.join(OUT, rel), 'utf8'));
 const index = read('index.json');
 
@@ -95,5 +102,9 @@ if (rows.length) {
   t('(h) every snippet is at most 100 characters', rows.filter(r => r.snippet.length > 100).length, 0);
   ok('(h) and every row has a slug and a title', rows.every(r => r.slug && (r.title || r.id)));
 }
+// Carry-over (b): 'at' is the annotation target, exactly what productPage's
+// WIKI_HERE carries - 261 of the 270 annotations have one.
+const annotated = [...seen.keys()].filter(id => { const c = read('content/' + seen.get(id) + '.json'); return c.records[id] && c.records[id].at; });
+ok('(b) some content records carry an annotation target in at', annotated.length > 200);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

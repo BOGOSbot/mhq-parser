@@ -43,6 +43,9 @@ import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
 import { lookupRecord } from './header-index.mjs';
 import { devHtml, devState } from './dev-report.mjs';
+// Slice 2, additive: the dev route and the surface's static files. The flip in
+// slice 4 wires the surface into rules.html; nothing here touches it.
+import { dataDir as surfaceDataDir, surfaceAsset, surfacePage } from './wiki-surface.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // The process's own birth time, published by /dev: a src/ file newer than this is
@@ -1029,6 +1032,18 @@ async function handleRulesLabels(req, res) {
 // view opens - unit, faction, detachment, rules section. Ids only, resolved
 // against the corpus this process already holds, so a client cannot ask for a
 // record the corpus does not have, and the page never asks the model for one.
+// The baked payloads, read straight from workspace/wiki-data. Only the three
+// shapes are addressable - index.json, index/<branch>.json, content/<book>.json -
+// so a crafted path cannot walk out of the directory.
+function handleSurfaceData(req, res, u) {
+  const rel = String(u.pathname.slice('/rules/data/'.length));
+  if (!/^(index\.json|index\/[a-z0-9-]+\.json|content\/[a-z0-9-]+\.json)$/.test(rel)) return fail(res, 404, 'no such payload: ' + rel);
+  try {
+    const body = fs.readFileSync(path.join(surfaceDataDir(), rel));
+    return send(res, 200, body, 'application/json; charset=utf-8');
+  } catch (e) { return fail(res, 404, 'no such payload: ' + rel); }
+}
+
 async function handleRulesRecord(req, res, u) {
   const id = String((u && u.searchParams.get('id')) || '');
   if (!id) return fail(res, 400, 'need ?id=<record id>');
@@ -1597,6 +1612,20 @@ const server = http.createServer(async (req, res) => {
     try { return send(res, 200, readRules(), 'text/html; charset=utf-8'); }
     catch (e) { return fail(res, 500, 'rules.html could not be read: ' + String((e && e.message) || e)); }
   }
+  // The slice-2 dev route: the new surface beside the old one. It reads the baked
+  // payloads from workspace/wiki-data and serves the two real client files.
+  if (req.method === 'GET' && u.pathname === '/rules/dev') {
+    try { return send(res, 200, surfacePage(), 'text/html; charset=utf-8'); }
+    catch (e) { return fail(res, 500, 'the surface could not be read: ' + String((e && e.message) || e)); }
+  }
+  if (req.method === 'GET' && u.pathname.indexOf('/rules/dev/surface.') === 0) {
+    try {
+      const asset = surfaceAsset(u.pathname.slice('/rules/dev/'.length));
+      if (!asset) return fail(res, 404, 'no such surface file: ' + u.pathname);
+      return send(res, 200, asset.body, asset.type);
+    } catch (e) { return fail(res, 500, 'the surface file could not be read: ' + String((e && e.message) || e)); }
+  }
+  if (req.method === 'GET' && u.pathname.indexOf('/rules/data/') === 0) return handleSurfaceData(req, res, u);
   if (req.method === 'GET' && u.pathname === '/health') {
     const a = archiveIndex();
     return json(res, 200, {

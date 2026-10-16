@@ -117,6 +117,12 @@ export function buildPayloads(corpus, outDir) {
   };
 
   // --- write ----------------------------------------------------------------
+  // Sweep first: the bake owns these two directories, and without this the output
+  // becomes the union of every state ever baked (a renamed book or branch leaves
+  // its old file behind and a cold address still resolves it - wiki-render.mjs
+  // learned the same lesson on its tree sweep).
+  fs.rmSync(path.join(out, 'index'), { recursive: true, force: true });
+  fs.rmSync(path.join(out, 'content'), { recursive: true, force: true });
   fs.mkdirSync(path.join(out, 'index'), { recursive: true });
   fs.mkdirSync(path.join(out, 'content'), { recursive: true });
   const files = [];
@@ -150,7 +156,9 @@ export function buildPayloads(corpus, outDir) {
         ruleId: raw.ruleId || '', set: raw.set || '', text: textOf(raw),
         links: Array.isArray(raw.links) ? raw.links : [], parent: raw.parent || '',
         children: Array.isArray(raw.children) ? raw.children : [],
-        at: raw.at == null ? '' : String(raw.at),
+        // 'at' is where this record sits when it is an annotation: the section it
+        // was attached to, exactly what wiki-render's productPage puts in WIKI_HERE.
+        at: tree.attachTarget.get(id) || '',
       };
     }
     write('content/' + book + '.json', { book: book, records: recordsOut });
