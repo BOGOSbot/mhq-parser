@@ -1,6 +1,6 @@
 # The wiki revamp - PRD
 
-*Status: agreed with Mandal 2026-10-16, not started. Supersedes the wiki shell as it stands.*
+*Status: agreed with Mandal 2026-10-16. Slices 1-4 are landed (`1f52a5a` the bake, `1be92ff` the surface, `8a932a1` the findings, `c42e9ef` the polish, `fe09095` the flip); slice 5 is acceptance and Mandal's sign-off. Supersedes the wiki shell as it stood.*
 
 ## Why
 

@@ -385,9 +385,10 @@ matched - the words it matched.
   and a failed fetch stays readable. The view carries the same caret, x and dev
   controls, a top-right x back, and a horizontal swipe (or the arrow keys) that
   walks the findings in the hero list's own order; the ends hold rather than wrap.
-  The static wiki (`src/wiki-render.mjs`) is served on the same origin under
-  `/wiki`, and the render's `map.json` gives each record its own page, so the
-  view links to it without a second implementation of the slug.
+  A record's address is its payload slug in the hash (`#<slug>`), and the payloads
+  `src/wiki-payload.mjs` bakes into `workspace/wiki-data/` are what the drawer and
+  the record sheet read, so a link needs neither a second implementation of the slug
+  nor a redirect map.
 - **The evidence behind a verdict is never collapsed.** The list shown whole is
   the union of the top five by rank and the passages the judge names in its
   verdict, in the rerank's order, the cited ones badged (`cité par le juge`), with no
