@@ -143,8 +143,8 @@ nothing to re-ingest.
 ## The drift guard
 
 `tests/test-corpus-drift.mjs` runs the pipeline from **source only** - the scraped HTML
-and the CSV export on disk, nothing stored - in a temp directory the `RULES_CORPUS_DIR`
-environment variable points at, and checks three things (baseline recorded 2026-10-16):
+and the CSV export on disk, nothing stored - in a temp directory passed explicitly into
+the build, and checks three things:
 
 - the **scrape stage** (375 sections / 281,473 characters of `core-rules`);
 - the **shape stage** (375 sections / 294,892 characters of `core-rules`;
@@ -152,7 +152,10 @@ environment variable points at, and checks three things (baseline recorded 2026-
 - **no rule text is lost**: every stored section the rebuild does not reproduce
   verbatim still has its text in the rebuild, allowing for re-chunking.
 
-A parser change that drops a sentence, a section or the CSV output fails the test.
+A parser change that drops a sentence, a section or the CSV output fails the test. The
+baselines move only when the change is intended, in the same commit, with the reason in
+the test's docstring; the CSV check is a **content** identity, not a file identity - the
+rebuilt file differs from the stored one by its own `scrapedAt` stamp.
 
 ### The two traps this test exists to avoid
 
@@ -167,13 +170,13 @@ fix stops the `See-Also` widget becoming a section at all - its list rides on th
 enclosing rule instead. Those are structure and duplicates, not lost rules; the
 stored-only sections' text is present in the rebuild.
 
-**The env trap.** `writeWikiCorpus(dir, data)` falls back to `readPlanInput()`, which
-takes **no directory**: it reads whatever `RULES_CORPUS_DIR` points at. Build into a
-temp dir with that variable unset and the build reads the LIVE corpus and writes it
-back - a perfect reproduction of itself, which reads as 'zero drift'. The test sets the
-variable before importing the modules (hence dynamic imports). That mistake produced the
-'zero drift, 401 sections, 334,155 characters' figure on 2026-10-16; it measured
-nothing.
+**The env trap, fixed.** The corpus directory is resolved per call, and `readPlanInput` /
+`writeWikiCorpus` take it explicitly: a build with no data and no explicit directory
+**throws** rather than falling back to the live corpus, and the drift guard proves the fix
+by using static imports. Before that fix (2026-10-16) the fallback made a temp-dir build
+read the LIVE corpus and write it back - a perfect reproduction of itself, which read as
+'zero drift' and produced a figure that measured nothing.
+
 ## What must not happen
 
 - `git add -f` to get a corpus file past `.gitignore`, for any reason.
