@@ -26,13 +26,19 @@ function ok(name, got) { t(name, !!got, true); }
 // re-chunks long rules and skips the 18 core-ability records the ability-defs
 // builder owns; no rule text is lost, which the invariant below checks.
 //
+// Baseline moved 2026-10-16 (task-85 D4): the shaper no longer writes the 'section'
+// child links into the record text, and core-rules' link blocks were entirely those
+// lines, so the shape-stage character count now equals the scrape stage's - 281,473.
+// The other four block kinds (- faction:, - card:, - index:, - rule:) are untouched;
+// they are the cross-reference index the vectors were measured with.
+//
 // Decision recorded here, not to be re-run without reason: the pipeline's re-chunking
 // (375 against 401, same content) is not worth a reparse today - it would rewrite 78
 // sections, move ids, re-embed, and refetch 26 faction pages for no user-visible
 // gain. It belongs to the next real Wahapedia update, when the corpus moves anyway.
 const BASELINE = {
   scrape: { sections: 375, chars: 281473 },
-  shape: { 'core-rules': { sections: 375, chars: 294892 }, 'factions-csv': { sections: 6400, bytes: 10024842 } },
+  shape: { 'core-rules': { sections: 375, chars: 281473 }, 'factions-csv': { sections: 6400, bytes: 10024842 } },
 };
 
 const REAL = path.join(process.cwd(), 'workspace', 'rules-corpus');

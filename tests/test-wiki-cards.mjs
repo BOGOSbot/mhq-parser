@@ -1,4 +1,5 @@
 import { readAllCorpus } from '../src/rules-corpus.mjs';
+import { proseHtml } from '../src/wiki-cards.mjs';
 import { CARD_CSS, CARD_KINDS, abilityTarget, cardFor, cardIndex, recordBody } from '../src/wiki-cards.mjs';
 
 // The wiki's datasheet card: the one shape Wahapedia's own UI puts in front of a
@@ -115,5 +116,10 @@ if (actions) {
   const body2 = recordBody(actions, { record: actions }).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   ok('(81-D) a real sentence that opens with the name is kept', body2.indexOf('Actions represent vital battlefield tasks') === 0);
 }
+
+// --- task-85 D4: the link index is not card prose --------------------------------
+const indexed = proseHtml('Body line.\n\n- faction: faction-tyr\n- card: Some Card\n- Combat Disembark: the unit may disembark\n', {});
+ok('(85) a link-index line is not rendered', indexed.indexOf('faction-tyr') === -1 && indexed.indexOf('card: Some Card') === -1);
+ok('(85) a real content line that starts the same way is kept', indexed.indexOf('Combat Disembark') !== -1 && indexed.indexOf('Body line.') !== -1);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

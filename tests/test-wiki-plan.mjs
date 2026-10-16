@@ -57,7 +57,8 @@ const byId = plan.index;
 // A parent carries the NAMES of its children in its own text: that is the bet.
 const parent = byId.get('r#parent');
 ok('the parent links to its child', parent.links.some(l => l.to === 'r#parent->-Child'));
-ok('the parent text carries the child title', parent.text.indexOf('Child Rule') !== -1);
+// task-85 D4: the section link is metadata, not prose - the text no longer carries it.
+ok('the parent text no longer carries the section link', parent.text.indexOf('- section: ') === -1);
 t('the child keeps its own id and text', [byId.get('r#parent->-Child').id, byId.get('r#parent->-Child').text], ['r#parent->-Child', 'The child states the rule.']);
 ok('every link in the plan resolves', plan.records.every(r => (r.links || []).every(l => byId.has(l.to))));
 t('no link was dropped against a plan that holds every target', plan.stats.linksDropped, 0);
@@ -109,7 +110,7 @@ const bigRules = [
 ];
 const withBlock = planWiki({ rules: bigRules });
 const without = planWiki({ rules: bigRules }, { blockInText: false });
-ok('with the block in, the parent text carries the block', chars(withBlock.index.get('r#big').text) > chars(bigBody));
+ok('with a section-only link the block adds nothing to the text (task-85 D4)', chars(withBlock.index.get('r#big').text) === chars(bigBody));
 t('with the block out, the parent text is its own body', without.index.get('r#big').text, bigBody);
 t('and the link is still on the record', (without.index.get('r#big').links || []).map(l => l.to), ['r#big->-Kid']);
 
@@ -156,8 +157,11 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-wiki-'));
 try {
   const manifest = writeWikiCorpus(tmp, { rules, factions, abilities, factionsCsv }, { blockInText: true });
   const written = JSON.parse(fs.readFileSync(path.join(tmp, 'core-rules.json'), 'utf8'));
-  ok('the written corpus carries the link block in the text',
-    written.sections.some(s => /- [a-z]+: /.test(String(s.text))));
+  ok('the written corpus carries no section link in the text (task-85 D4)',
+    written.sections.every(s => !/^- section: /m.test(String(s.text))));
+  ok('a non-section link still renders its block line', /- faction: X/.test(renderLinks([{ to: 'x', title: 'X', kind: 'faction' }], 40).text));
+  ok('renderLinks still renders a section line; the plan is what drops it',
+    /- section: X/.test(renderLinks([{ to: 'x', title: 'X', kind: 'section' }], 40).text) && plan.records.every(r => !/^- section: /m.test(String(r.text))));
   t('and its count is what it wrote', written.count, manifest.written['core-rules']);
 } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 

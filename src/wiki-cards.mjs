@@ -394,7 +394,13 @@ export function proseHtml(text, opts) {
   if (first && (names.indexOf(first) !== -1 || shortEcho)) all.shift();
   const blocks = [];
   let cur = [];
+  // task-85 D4: the shaper wrote a link index into some records' text; the card
+  // rendered it as raw '- faction: faction-tyr' bullets. Drop those lines, keyed on
+  // the five known kinds - never on the pattern, because '- Combat Disembark: ...'
+  // is real content that starts the same way.
+  const LINK_INDEX = /^- (?:section|faction|card|index|rule): /;
   for (const line of all) {
+    if (LINK_INDEX.test(line.trim())) continue;
     if (line.trim()) cur.push(line);
     else if (cur.length) { blocks.push(cur); cur = []; }
   }

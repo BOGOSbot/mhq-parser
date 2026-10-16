@@ -318,13 +318,13 @@ export function planWiki(data, opts) {
     // link list cannot force a split that leaves the record naming links its text no
     // longer shows. The block's own size is not the chunker's business.
     if (rec.links.length) stats.links += rec.links.length;
-    if (blockInText && rec.links.length) { const b = renderLinks(rec.links, LINK_BLOCK_MAX); stats.linksOmitted += b.omitted; }
+    if (blockInText && rec.links.length) { const b = renderLinks(rec.links.filter(l => l && l.kind !== 'section'), LINK_BLOCK_MAX); stats.linksOmitted += b.omitted; }
     fit(rec, 'rules');
     // The block is appended AFTER the chunk decision: it is not part of the body the
     // chunker measures, so a long link list cannot force a split that leaves the
     // record naming links its text no longer shows.
-    if (rec.links.length && blockInText && String(rec.text).indexOf(renderLinks(rec.links, LINK_BLOCK_MAX).text) === -1) {
-      rec.text = String(rec.text).replace(/\s+$/, '') + '\n\n' + renderLinks(rec.links, LINK_BLOCK_MAX).text;
+    if (rec.links.length && blockInText && String(rec.text).indexOf(renderLinks(rec.links.filter(l => l && l.kind !== 'section'), LINK_BLOCK_MAX).text) === -1) {
+      rec.text = String(rec.text).replace(/\s+$/, '') + '\n\n' + renderLinks(rec.links.filter(l => l && l.kind !== 'section'), LINK_BLOCK_MAX).text;
     }
     rec.chars = chars(rec.text);
     push(rec);
@@ -376,7 +376,7 @@ export function planWiki(data, opts) {
       // The list is attached after the chunk decision, as everywhere else: the parts a
       // split creates then carry no links, and the page that shows the list carries all
       // of them.
-      head.text = String(head.text).replace(/\s+$/, '') + '\n' + renderLinks(resolved.links, 1000).text;
+      head.text = String(head.text).replace(/\s+$/, '') + '\n' + renderLinks(resolved.links.filter(l => l && l.kind !== 'section'), 1000).text;
       stats.linksInText += Math.min(resolved.links.length, 1000);
       head.chars = chars(head.text);
       push(head);
@@ -394,8 +394,8 @@ export function planWiki(data, opts) {
       stats.links++;
       fit(rec, 'factions');
       // Same order as the rules half: chunk the body, then attach the block.
-      if (blockInText && rec.links.length && String(rec.text).indexOf(renderLinks(rec.links, LINK_BLOCK_MAX).text) === -1) {
-        rec.text = String(rec.text).replace(/\s+$/, '') + '\n\n' + renderLinks(rec.links, LINK_BLOCK_MAX).text;
+      if (blockInText && rec.links.length && String(rec.text).indexOf(renderLinks(rec.links.filter(l => l && l.kind !== 'section'), LINK_BLOCK_MAX).text) === -1) {
+        rec.text = String(rec.text).replace(/\s+$/, '') + '\n\n' + renderLinks(rec.links.filter(l => l && l.kind !== 'section'), LINK_BLOCK_MAX).text;
         stats.linksInText++;
       }
       rec.chars = chars(rec.text);
