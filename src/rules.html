@@ -1235,161 +1235,48 @@ function sendPick(state, by, none) {
 // where 'none of these' is the whole answer and the out-of-corpus candidate the
 // bank is shortest of. It is not gated on the rerank selection: the reader may
 // pick whether or not they re-ask.
-function pickRow(state) {
-  if (!state || !state.traceId) return null;
-  var row = el('div', 'pickrow');
-  row.appendChild(el('div', 'pickq', t('pickHelp')));
-  var none = el('button', 'picknone' + (state.pick === 'none' ? ' on' : ''), t('pickNone'));
-  none.type = 'button';
-  none.setAttribute('aria-pressed', state.pick === 'none' ? 'true' : 'false');
-  none.addEventListener('click', function () { sendPick(state, '', true); });
-  row.appendChild(none);
-  var note = state.pickSaved === true
-    ? (state.pick === 'none' ? t('pickNoneThanks') : t('pickThanks'))
-    : (state.pickPending ? t('pickWaiting') : '');
-  row.appendChild(el('div', 'picknote', note));
-  return row;
-}
+
 
 // The reader's two marks, in one place: a careted record (the positive example)
 // and an ignored one (the negative). Both only exist while the first answer is
 // the one on screen.
-function isFirsted(state, f) {
-  return !!(state && state.selectable && !state.rerun && f && (state.positive || []).indexOf(f.id) !== -1);
-}
-function isIgnored(state, f) {
-  return !!(state && state.selectable && !state.rerun && f && state.keep[f.id] === false);
-}
+
+
 
 // The order the reader sees, in one place: the caret's picks first (newest
 // first), then the passages the judge cited, then rank order, then the ignored
 // ones. The hero list draws it and a swipe in the full-screen record walks it,
 // so the two surfaces cannot disagree about what comes next. The judge's
 // citations and the reader's picks both resort, and the reader wins.
-function heroOrder(findings, cited, state) {
-  findings = sortedFindings(findings);
-  cited = cited || [];
-  var picked = [], citedOnes = [], rest = [], dropped = [];
-  for (var j = 0; j < findings.length; j++) {
-    var f = findings[j];
-    if (isIgnored(state, f)) dropped.push(f);
-    else if (isFirsted(state, f)) picked.push(f);
-    else if (cited.indexOf(f.n) !== -1) citedOnes.push(f);
-    else rest.push(f);
-  }
-  // The caret's order is the reader's, newest first: the sort is on the record's
-  // position in state.positive, not on its rank.
-  if (state && state.selectable && !state.rerun) {
-    picked.sort(function (a, b) { return state.positive.indexOf(a.id) - state.positive.indexOf(b.id); });
-  }
-  return picked.concat(citedOnes, rest, dropped);
-}
 
-function findingsCard(findings, counts, cited, state) {
-  // Ordered by the rank the retrievers gave them, not by arrival: a widened
-  // pass re-renders this card with the wider list, and the order is the whole
-  // point of showing it. Each half keeps its own rank order, and the halves
-  // stay in the order the server sent them.
-  findings = sortedFindings(findings);
-  cited = cited || [];
-  var title = t('findingsTitle') + ' - ' + findings.length;
-  if (counts) title += ' (' + counts.rules + t('findingsCounts') + counts.factions + t('findingsCountsTail') + ')';
-  var card = sectionCard(title);
-  if (!findings.length) {
-    card.appendChild(el('div', 'note warn', t('nothingMatchedCard')));
-    // Nothing to pick from, but 'none of these' is still an assertion the reader
-    // can make - and this is the out-of-corpus case the bank is shortest of.
-    var noneOnly = pickRow(state);
-    if (noneOnly) card.appendChild(noneOnly);
-    return card;
-  }
-  // The passages the reader is shown whole whatever their rank: the top five by
-  // rank and the passages the verdict rests on. The evidence behind a verdict is
-  // never collapsed - the ability that answered a question once sat at rank 15,
-  // inside the collapse, while the writer cited it.
-  var isCited = function (f) { return cited.indexOf(f.n) !== -1; };
-  var prominent = {};
-  for (var i = 0; i < findings.length; i++) if (i < 5 || isCited(findings[i])) prominent[findings[i].id] = true;
-  var selectable = !!(state && state.selectable && !state.rerun);
-  var firsted = function (f) { return isFirsted(state, f); };
-  var ignored = function (f) { return isIgnored(state, f); };
-  var order = heroOrder(findings, cited, state);
-  var shown = [], behind = [], shownIds = {};
-  for (var k = 0; k < order.length; k++) {
-    var g = order[k];
-    if (prominent[g.id] || firsted(g) || ignored(g)) { shown.push(g); shownIds[g.id] = true; }
-  }
-  // The more-findings block keeps rank order underneath: the hidden remainder is read
-  // after everything shown whole.
-  for (var m = 0; m < order.length; m++) if (!shownIds[order[m].id]) behind.push(order[m]);
-  var ol = el('ol', 'cites');
-  for (var c = 0; c < shown.length; c++) ol.appendChild(findingItem(shown[c], true, isCited(shown[c]), state));
-  card.appendChild(ol);
-  if (behind.length) {
-    var det = document.createElement('details');
-    det.className = 'moref';
-    det.appendChild(el('summary', null, t('moreFindings') + ' (' + behind.length + ')'));
-    var ol2 = el('ol', 'cites');
-    for (var r = 0; r < behind.length; r++) ol2.appendChild(findingItem(behind[r], false, isCited(behind[r]), state));
-    det.appendChild(ol2);
-    card.appendChild(det);
-  }
-  if (selectable) {
-    // The manual rerank footer. The button only exists once the reader has
-    // actually changed the selection: a control that re-asks the same list is
-    // noise, and an accidental tap must not spend a judge and a writer. The
-    // caret's order travels with the ids, so the second answer is written from
-    // the passages in the order the reader put them.
-    var positive = state.positive || [];
-    var kept = [];
-    for (var k1 = 0; k1 < state.shownIds.length; k1++) {
-      var id1 = state.shownIds[k1];
-      if (state.keep[id1] !== false && positive.indexOf(id1) !== -1) kept.push(id1);
-    }
-    for (var k2 = 0; k2 < state.shownIds.length; k2++) {
-      var id2 = state.shownIds[k2];
-      if (state.keep[id2] !== false && positive.indexOf(id2) === -1) kept.push(id2);
-    }
-    var droppedN = state.shownIds.length - kept.length;
-    var foot = el('div', 'rerunfoot');
-    foot.appendChild(el('div', 'note', t('rerankHelp')));
-    var again = el('button', 'rerunbtn', t('rerankButton'));
-    again.type = 'button';
-    again.disabled = !droppedN || !kept.length;
-    again.addEventListener('click', function () {
-      ask({ question: state.question || $('#q').value, asked: state.asked, over: state.traceId, keep: kept, shown: state.shownIds, append: true, english: true });
-    });
-    foot.appendChild(again);
-    card.appendChild(foot);
-  }
-  var pickFoot = pickRow(state);
-  if (pickFoot) card.appendChild(pickFoot);
-  return card;
-}
+
+
 
 // One place that draws the list, so a new verdict can re-draw it with its
 // citations without the findings event and the judge event disagreeing about
 // what is on screen.
+// task-80: the finding card is the surface's renderer, one implementation. This is
+// the page's only entry point into it; PAGE_CTX carries what the page still owns -
+// i18n, the record dialog, the reader's marks, the ask transport.
+var PAGE_CTX = {
+  t: t, sectionCard: sectionCard, openRecord: openRecord, markTerms: markTerms,
+  linkChips: linkChips, passageBody: passageBody, legClass: legClass, legLabel: legLabel,
+  crumbs: crumbs, fmtScore: fmtScore, toggleFirst: toggleFirst, toggleIgnore: toggleIgnore,
+  toggleDev: toggleDev, sendPick: sendPick,
+  rerank: function (o) { ask(o); },
+  questionValue: function (state) { return state.question || $('#q').value; },
+};
 function renderFindings(state) {
   state.findingSlot.textContent = '';
-  state.findingSlot.appendChild(findingsCard(state.findings, state.counts, state.cited, state));
+  var api = window.WIKI_SURFACE_API;
+  if (api && api.findings) api.findings(state.findingSlot, state, PAGE_CTX);
+  else state.findingSlot.appendChild(sectionCard(t('findingsTitle')));
 }
 
 // Sorting is per half: ranks are per-half positions, so a rules rank 3 and a
 // faction rank 3 are not comparable and interleaving them would invent an
 // order. Within a half the rank the retriever assigned is the order shown.
-function sortedFindings(list) {
-  var halves = ['rules', 'factions'];
-  var out = [];
-  for (var h = 0; h < halves.length; h++) {
-    var part = [];
-    for (var i = 0; i < list.length; i++) if ((list[i].set || 'rules') === halves[h]) part.push(list[i]);
-    part.sort(function (a, b) { return (a.rank || a.n || 0) - (b.rank || b.n || 0); });
-    out = out.concat(part);
-  }
-  for (var j = 0; j < list.length; j++) if (halves.indexOf(list[j].set || 'rules') === -1) out.push(list[j]);
-  return out;
-}
+
 
 // Which leg produced a finding, and what it scored there. The similarity is
 // labelled a rank score on purpose: it orders passages, and it is not a
@@ -1433,74 +1320,12 @@ function markTerms(text, terms) {
 // are labelled examples, not local display state: the trace that holds the
 // question gets the caret as a positive for the record id and the x as a
 // negative.
-function findingItem(f, prominent, cited, state) {
-  var selectable = !!(state && state.selectable && !state.rerun);
-  var first = selectable && (state.positive || []).indexOf(f.id) !== -1;
-  var ignored = selectable && state.keep[f.id] === false;
-  var li = el('li', 'fitem hero' + (prominent ? ' top' : '') + (ignored ? ' dropped' : ''));
-  var head = el('div', 'fhead');
-  head.appendChild(el('span', 'num', '[' + f.n + ']'));
-  if (f.leg) head.appendChild(el('span', 'leg ' + legClass(f.leg), legLabel(f.leg)));
-  if (cited) head.appendChild(el('span', 'leg cite', t('citedByJudge')));
-  if (first) head.appendChild(el('span', 'leg badgetop', t('heroTop')));
-  if (ignored) head.appendChild(el('span', 'leg badgeign', t('heroIgnored')));
-  var parts = crumbs(f.heading);
-  var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + (parts.length ? parts[parts.length - 1] : f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
-  a.href = f.href || f.url; a.target = '_blank'; a.rel = 'noopener';
-  // The title opens the record, not the source page: the source is one tap
-  // further in, inside the record, where the reader is already looking.
-  a.setAttribute('aria-label', t('recordOpen') + ': ' + a.textContent);
-  a.addEventListener('click', function (ev) { ev.preventDefault(); openRecord(state, f.id); });
-  head.appendChild(a);
-  if (selectable) head.appendChild(findingControls(state, f, first, ignored));
-  li.appendChild(head);
-  // The whole card is the tap target; the controls are not, so a caret or an x
-  // is never swallowed by the navigation.
-  li.addEventListener('click', function (ev) {
-    if (ev.target && ev.target.closest && ev.target.closest('.fctl, .fdev, .flinks, .pickbtn, .ftitle')) return;
-    openRecord(state, f.id);
-  });
-  if (parts.length > 1) li.appendChild(el('div', 'fcrumbs', parts.slice(0, -1).join(' \u203a ')));
-  // One line at rest: the card says what the passage is, and the dev toggle opens
-  // the whole record instead of a wall of prose above the answer.
-  var p = el('p', 'ftext heroline');
-  p.appendChild(markTerms(f.excerpt || '', (f.leg === 'lexical' || f.leg === 'both') ? f.matchedTerms : []));
-  li.appendChild(p);
-  var chips = linkChips(f);
-  if (chips) li.appendChild(chips);
-  if (state && state.devOpen && state.devOpen[f.id]) li.appendChild(devPanel(f, state));
-  return li;
-}
+
 
 // The three controls, in Mandal's order: rank first, ignore, dev. An icon-only
 // control carries its table key as both aria-label and title, so a screen reader
 // has a name and a phone shows what the gesture is.
-function findingControls(state, f, first, ignored) {
-  var ctl = el('span', 'fctl');
-  var caret = el('button', 'herocaret' + (first ? ' on' : ''), '^');
-  caret.type = 'button';
-  caret.setAttribute('aria-pressed', first ? 'true' : 'false');
-  caret.setAttribute('aria-label', first ? t('heroCaretOn') : t('heroCaret'));
-  caret.title = caret.getAttribute('aria-label');
-  caret.addEventListener('click', function () { toggleFirst(state, f.id); });
-  ctl.appendChild(caret);
-  var x = el('button', 'herox' + (ignored ? ' on' : ''), 'x');
-  x.type = 'button';
-  x.setAttribute('aria-pressed', ignored ? 'true' : 'false');
-  x.setAttribute('aria-label', ignored ? t('heroIgnoreOn') : t('heroIgnore'));
-  x.title = x.getAttribute('aria-label');
-  x.addEventListener('click', function () { toggleIgnore(state, f.id); });
-  ctl.appendChild(x);
-  var open = !!(state.devOpen && state.devOpen[f.id]);
-  var dev = el('button', 'herodev' + (open ? ' on' : ''), '<>');
-  dev.type = 'button';
-  dev.setAttribute('aria-expanded', open ? 'true' : 'false');
-  dev.setAttribute('aria-label', open ? t('heroDevHide') : t('heroDev'));
-  dev.title = dev.getAttribute('aria-label');
-  dev.addEventListener('click', function () { toggleDev(state, f.id); });
-  ctl.appendChild(dev);
-  return ctl;
-}
+
 
 // The dev view: the provenance spelled out - which retriever found it, at what
 // rank and score, the words the lexical leg matched - and the whole chunk. This
@@ -1508,43 +1333,9 @@ function findingControls(state, f, first, ignored) {
 // The provenance line: which retriever found the record, at what rank and score,
 // and the words the lexical leg matched. One builder for the card's dev panel and
 // the full-screen record, so the two cannot say different things.
-function findingMeta(f) {
-  var meta = el('div', 'fmeta');
-  meta.appendChild(el('span', null, t('rankN') + (f.rank || f.n)));
-  meta.appendChild(el('span', 'devleg', t('foundBy') + (legLabel(f.leg) || t('legUnknown'))));
-  if (f.leg === 'vector' || f.leg === 'both') {
-    var sc = el('span', 'score', t('rankScore') + fmtScore(f.vectorScore));
-    sc.title = t('rankScoreTitle');
-    meta.appendChild(sc);
-  }
-  if ((f.leg === 'lexical' || f.leg === 'both') && f.matchedTerms && f.matchedTerms.length) {
-    meta.appendChild(el('span', 'words', t('matchedWords') + f.matchedTerms.join(', ')));
-  }
-  return meta;
-}
 
-function devPanel(f, state) {
-  var box = el('div', 'fdev');
-  box.appendChild(findingMeta(f));
-  box.appendChild(passageBody(f));
-  // The reader's own 'this passage answered it': an assertion about the answer,
-  // one per question, replacing any earlier pick. It sits in the dev view because
-  // it is made after reading the passage, and it is NOT the caret or the x - the
-  // caret only changes the order, the x only changes what the second answer rests
-  // on, and this one is a candidate for the test bank.
-  if (state && state.traceId && f.id) {
-    var picked = state.pick === f.id;
-    var pickBtn = el('button', 'pickbtn' + (picked ? ' on' : ''), t('pickThis'));
-    pickBtn.type = 'button';
-    pickBtn.setAttribute('aria-pressed', picked ? 'true' : 'false');
-    pickBtn.addEventListener('click', function () { sendPick(state, f.id, false); });
-    box.appendChild(pickBtn);
-  }
-  var link = el('a', 'psource', t('openSource'));
-  link.href = f.href || f.url; link.target = '_blank'; link.rel = 'noopener';
-  box.appendChild(link);
-  return box;
-}
+
+
 
 // The record's own text, as paragraphs with the lexical leg's words outlined.
 // One renderer for the passage popup and the dev view, so a matched word is
@@ -1683,7 +1474,7 @@ function closeRecord(state) {
 // jump back to the first.
 function recordStep(state, delta) {
   if (!state || !state.recordId) return;
-  var order = heroOrder(state.findings, state.cited, state);
+  var order = window.WIKI_SURFACE_API.findingOrder(state.findings, state.cited, state, PAGE_CTX);
   var at = -1;
   for (var i = 0; i < order.length; i++) if (order[i].id === state.recordId) { at = i; break; }
   if (at === -1) return;
@@ -1731,7 +1522,7 @@ function loadRecord(state) {
 function renderRecord(state) {
   var node = recordNode();
   var id = state && state.recordId;
-  var order = heroOrder(state.findings, state.cited, state);
+  var order = window.WIKI_SURFACE_API.findingOrder(state.findings, state.cited, state, PAGE_CTX);
   var at = -1;
   for (var i = 0; i < order.length; i++) if (order[i].id === id) { at = i; break; }
   if (at === -1) { closeRecord(state); return; }
@@ -1756,7 +1547,7 @@ function renderRecord(state) {
   var parts = data ? data.crumb : crumbs(f.heading).slice(0, -1);
   if (parts && parts.length) body.appendChild(el('div', 'reccrumb', parts.join(' \u203a ')));
   var ctl = el('div', 'recctl');
-  if (state.selectable && !state.rerun) ctl.appendChild(findingControls(state, f, isFirsted(state, f), isIgnored(state, f)));
+  if (state.selectable && !state.rerun) ctl.appendChild(window.WIKI_SURFACE_API.controls(state, f, PAGE_CTX));
   var wiki = el('a', 'recwiki', t('recordWiki'));
   // The deep link is the record's slug, not a wiki page address: the surface
   // answers #<slug> on a cold load, and the hash is the whole address.
@@ -1772,7 +1563,7 @@ function renderRecord(state) {
   ctl.appendChild(source);
   body.appendChild(ctl);
   // The dev control opens the same provenance panel it opens on the card.
-  if (state.devOpen && state.devOpen[f.id]) body.appendChild(findingMeta(f));
+  if (state.devOpen && state.devOpen[f.id]) body.appendChild(window.WIKI_SURFACE_API.meta(f, PAGE_CTX));
   // One body, from one renderer. Until the fragment lands the payload's own
   // passage is on screen, so the dialog is never empty and a failed fetch still
   // leaves the reader what the findings carried.

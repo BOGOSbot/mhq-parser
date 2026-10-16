@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 // script exists in them. A third catches a fresh hardcoded label.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PAGE = fs.readFileSync(path.join(__dirname, '..', 'src', 'rules.html'), 'utf8');
+const SURFACE = fs.readFileSync(path.join(__dirname, '..', 'src', 'wiki-surface.js'), 'utf8');
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -90,7 +91,7 @@ ok('the dialog fetches the shared fragment',
 ok('and builds no card of its own anymore', code.indexOf('body.appendChild(unitCardView(data.card))') === -1);
 ok('the fragment links are NOT rebased: the address is the slug', code.indexOf('wikiHrefs') === -1 && fs.readFileSync(path.join(__dirname, '..', 'src', 'server.mjs'), 'utf8').indexOf("return slug ? '#' + slug : '';") !== -1);
 ok('while the dialog keeps its shell: marks, chips, wiki link, swipe',
-  ['findingControls(state, f, isFirsted(state, f), isIgnored(state, f))', "el('a', 'recwiki', t('recordWiki'))", "el('h3', null, t('recordLinks'))", "el('p', 'recswipe', t('recordSwipe'))"].every(function (s) { return code.indexOf(s) !== -1; }));
+  ['window.WIKI_SURFACE_API.controls(state, f, PAGE_CTX)', "el('a', 'recwiki', t('recordWiki'))", "el('h3', null, t('recordLinks'))", "el('p', 'recswipe', t('recordSwipe'))"].every(function (s) { return code.indexOf(s) !== -1; }));
 ok('a widening flashes the rebuilt list', /if \(ev\.attempt > 0\) flash\(state\.findingSlot\)/.test(code));
 ok('the popup reads the passage from the payload', /f\.passage \|\| f\.excerpt/.test(code));
 ok('the similarity is labelled a rank score', /rankScoreTitle/.test(code));
@@ -115,9 +116,9 @@ ok('done no longer short-circuits on a card', code.indexOf('if (state.card) { se
 // The evidence behind a verdict is never collapsed: the list is the union of the
 // top five by rank and the passages the judge names, in rank order, cited ones
 // badged, no duplicate when a cited passage is already in the top five.
-ok('the card takes the cited passages', /function findingsCard\(findings, counts, cited, state\)/.test(code));
-ok('the union keeps the top five and promotes the cited ones', /i < 5 \|\| isCited\(findings\[i\]\)/.test(code));
-ok('a cited finding is badged and shown whole', /if \(cited\) head\.appendChild\(el\('span', 'leg cite'/.test(code));
+ok('the card takes the cited passages', /function findingsCard\(findings, counts, cited, state, ctx\)/.test(SURFACE));
+ok('the union keeps the top five and promotes the cited ones', /i < 5 \|\| isCited\(findings\[i\]\)/.test(SURFACE));
+ok('a cited finding is badged and shown whole', /if \(cited\) head\.appendChild\(el\('span', 'leg cite'/.test(SURFACE));
 ok('the verdict links to the passages it rests on', /ev\.appendChild\(citeLink\(f, '\[' \+ cited\[c\] \+ '\]'\)\)/.test(code));
 ok('a widening drops the citations it renumbered', /if \(ev\.attempt > 0\) state\.cited = \[\];/.test(code));
 ok('citations show only against the list the verdict judged', /var samePass = /.test(code));
@@ -131,7 +132,7 @@ ok('one place draws the findings list', /function renderFindings\(state\)/.test(
 // are on the card itself: the green caret reranks a record to the top, the x
 // ignores it, and <> opens the whole chunk with the provenance behind it. Each
 // control is one edit away from being undone, so each is asserted structurally.
-ok('each finding is a hero card with its own caret and x', /el\('button', 'herocaret'/.test(code) && /el\('button', 'herox'/.test(code) && /'fitem hero'/.test(code));
+ok('each finding is a hero card with its own caret and x', /el\('button', 'herocaret'/.test(SURFACE) && /el\('button', 'herox'/.test(SURFACE) && /'fitem hero'/.test(SURFACE));
 ok('the caret is a positive example in the same trace as the question', code.indexOf('state.positive.unshift(id)') !== -1 && code.indexOf('postLabels(state)') !== -1);
 ok('the x is a negative example in the same trace as the question', /negative: state\.shownIds\.filter/.test(code));
 // They are posted the moment they are made: the trace is written when the answer
@@ -140,19 +141,19 @@ ok('the x is a negative example in the same trace as the question', /negative: s
 ok('the caret and the x are posted the moment they are made', /function markLabels\(state\) \{[\s\S]{0,80}postLabels\(state\);/.test(code));
 t('and nothing waits for the run to end any more', code.indexOf('labelsPending'), -1);
 ok('a widening cannot undo the reader\'s marks', /state\.keep\[sid\] = prevKeep\[sid\] !== false;/.test(code));
-ok('the dev toggle opens the whole passage and its indicators', /function devPanel\(f, state\)/.test(code) && code.indexOf("t('foundBy')") !== -1 && /passageBody\(f\)/.test(code) && code.indexOf("t('rankScore')") !== -1);
+ok('the dev toggle opens the whole passage and its indicators', /function devPanel\(f, state, ctx\)/.test(SURFACE) && SURFACE.indexOf("t('foundBy')") !== -1 && /ctx\.passageBody\(f\)/.test(SURFACE) && SURFACE.indexOf("t('rankScore')") !== -1);
 ok('the card shows one line at rest', /\.heroline\{white-space:nowrap;overflow:hidden;text-overflow:ellipsis\}/.test(PAGE));
 ok('the caret is green and a phone-sized target', /\.herocaret\{color:var\(--ok\)/.test(PAGE) && /\.fctl button\{[^}]*min-height:44px/.test(PAGE));
-ok('the judge citations and the reader picks both resort the list', /picked\.concat\(citedOnes, rest, dropped\)/.test(code) && /picked\.sort\(/.test(code));
-ok('and the reader wins over the judge', code.slice(code.indexOf('var picked = []'), code.indexOf('var order = picked')).indexOf('citedOnes') !== -1);
-ok('an ignored record sinks but never leaves the page', /if \(prominent\[g\.id\] \|\| firsted\(g\) \|\| ignored\(g\)\)/.test(code));
+ok('the judge citations and the reader picks both resort the list', /picked\.concat\(citedOnes, rest, dropped\)/.test(SURFACE) && /picked\.sort\(/.test(SURFACE));
+ok('and the reader wins over the judge', SURFACE.slice(SURFACE.indexOf('var picked = []'), SURFACE.indexOf('var order = picked')).indexOf('citedOnes') !== -1);
+ok('an ignored record sinks but never leaves the page', /if \(prominent\[g\.id\] \|\| firsted\(g\) \|\| ignored\(g\)\)/.test(SURFACE));
 // The links render from the payload's own array and nowhere else: the page must
 // never parse a link line out of the passage text, or the two drift.
 ok('the links render from the payload array', /function linkChips\(f\)/.test(code) && /var links = f\.links \|\| \[\];/.test(code));
 ok('the chip preview is the target title and url', /prev\.appendChild\(el\('b', null, l\.title \|\| l\.to\)\)/.test(code) && /linkHref\(l\)/.test(code));
 ok('the preview is a hover and focus style, not a fetch', /\.linkchip:hover \.linkprev,\.linkchip:focus-visible \.linkprev\{display:block\}/.test(PAGE));
 ok('the page never parses a link line out of the text', code.indexOf("'- section:") === -1 && code.indexOf("'- ability:") === -1);
-ok('the rerun keeps the caret order for the server', /if \(state\.keep\[id1\] !== false && positive\.indexOf\(id1\) !== -1\) kept\.push\(id1\)/.test(code));
+ok('the rerun keeps the caret order for the server', /if \(state\.keep\[id1\] !== false && positive\.indexOf\(id1\) !== -1\) kept\.push\(id1\)/.test(SURFACE));
 ok('the request carries the kept ids', /keep: Array\.isArray\(o\.keep\) \? o\.keep : undefined/.test(code));
 ok('and the ids the reader was shown', /shown: Array\.isArray\(o\.shown\) \? o\.shown : undefined/.test(code));
 ok('and the trace of the answer it overrides', /over: o\.over \|\| undefined/.test(code));
@@ -181,7 +182,7 @@ ok('the page ignores a vote the server could not keep', /out\.saved === false/.t
 ok('the page posts the pick to its own route', /fetch\('\/rules\/answered'/.test(code));
 ok('a pick names a record, or none of them', /none \? \{ id: state\.traceId, none: true \} : \{ id: state\.traceId, by: state\.pick \}/.test(code));
 ok('the pick controls are phone-sized targets', /\.pickbtn\{min-height:44px/.test(PAGE) && /\.picknone\{min-height:44px/.test(PAGE));
-ok('the pick is offered with findings and with none', (code.match(/pickRow\(state\)/g) || []).length, 2);
+ok('the pick is offered with findings and with none', (SURFACE.match(/pickRow\(state, ctx\)/g) || []).length, 2);
 ok('the pick is not gated on the rerank selection', code.slice(code.indexOf('function pickRow'), code.indexOf('function findingsCard')).indexOf('selectable'), -1);
 ok('a pick waits for the run that writes its trace', /if \(state\.runDone\) \{ state\.pickPending = false; postPick\(state\); \}/.test(code));
 ok('one pick per question: a second replaces the first', /state\.pick = none \? 'none' : String\(by \|\| ''\)/.test(code));
@@ -262,8 +263,8 @@ t('it is bilingual', new Set(lookupFixture.lookups.map(l => l.lang)).size, 2);
 // categories, with the same controls, a swipe through the findings, and the
 // static wiki wired in on the same origin. Each is one edit from being undone
 // and none is visible to an i18n check, so each is asserted structurally.
-ok('a card tap opens the record', /openRecord\(state, f\.id\)/.test(code));
-ok('the controls do not open it', code.indexOf(".closest('.fctl, .fdev, .flinks, .pickbtn, .ftitle')") !== -1);
+ok('a card tap opens the record', /ctx.openRecord\(state, f\.id\)/.test(SURFACE));
+ok('the controls do not open it', SURFACE.indexOf(".closest('.fctl, .fdev, .flinks, .pickbtn, .ftitle')") !== -1);
 ok('the whole card is the tap target', /\.fitem\.hero\{cursor:pointer\}/.test(PAGE));
 ok('the record is a full-screen dialog', /el\('div', 'record hidden'\)/.test(code) && /setAttribute\('role', 'dialog'\)/.test(code));
 ok('the record draws one shape for every category', /function renderRecord\(state\)/.test(code) && /recordKindLabel\(/.test(code));
@@ -275,8 +276,8 @@ ok('but the CSV card view still exists for the question path', /function unitCar
 ok('the dialog fetches the one fragment instead', /'\/rules\/record\?id=' \+ encodeURIComponent\(id\) \+ '&format=html'/.test(code) && /frag\.innerHTML = fragHtml/.test(code));
 ok('while a record with no fragment still shows the payload passage', /passageBody\(\{ passage: \(data && data\.text\) \|\| f\.passage/.test(code));
 ok('and the links stay the dialog\'s own', /linkChips\(\{ links: \(data && data\.links/.test(code));
-ok('the record carries the same three controls', /ctl\.appendChild\(findingControls\(state, f, isFirsted\(state, f\), isIgnored\(state, f\)\)\)/.test(code));
-ok('and the dev toggle opens the same provenance line', /body\.appendChild\(findingMeta\(f\)\)/.test(code));
+ok('the record carries the same three controls', /ctl\.appendChild\(window\.WIKI_SURFACE_API\.controls\(state, f, PAGE_CTX\)\)/.test(code));
+ok('and the dev toggle opens the same provenance line', /body\.appendChild\(window\.WIKI_SURFACE_API\.meta\(f, PAGE_CTX\)\)/.test(code));
 ok('a swipe moves through the findings', /addEventListener\('touchstart'/.test(code) && /addEventListener\('touchend'/.test(code) && /Math\.abs\(dx\) > 46 && Math\.abs\(dx\) > Math\.abs\(dy\)/.test(code) && /recordStep\(RECORD_STATE, dx < 0 \? 1 : -1\)/.test(code));
 ok('the arrow keys move too', /e\.key === 'ArrowLeft' \|\| e\.key === 'ArrowRight'/.test(code));
 // task-41's up/down swipe: vertical pages only at the scroll edge, so a long
@@ -284,7 +285,7 @@ ok('the arrow keys move too', /e\.key === 'ArrowLeft' \|\| e\.key === 'ArrowRigh
 ok('an up/down swipe pages at the scroll edge', /recordAtEdge\(body, dy < 0\)/.test(code) && /recordStep\(RECORD_STATE, dy < 0 \? 1 : -1\)/.test(code));
 ok('the edge test reads the body scroll, not the window', /function recordAtEdge\(box, forward\)/.test(code) && /box\.scrollTop \+ box\.clientHeight >= box\.scrollHeight - 2/.test(code) && /box\.scrollTop <= 2/.test(code));
 ok('and the horizontal swipe still comes first', /if \(Math\.abs\(dx\) > 46 && Math\.abs\(dx\) > Math\.abs\(dy\)\) \{ recordStep\(RECORD_STATE, dx < 0 \? 1 : -1\); return; \}/.test(code));
-ok('a swipe walks the order the list draws', /var order = heroOrder\(state\.findings, state\.cited, state\);/.test(code));
+ok('a swipe walks the order the list draws', /var order = window\.WIKI_SURFACE_API\.findingOrder\(state\.findings, state\.cited, state, PAGE_CTX\);/.test(code));
 ok('the ends hold rather than wrap', /if \(next < 0 \|\| next >= order\.length\) return;/.test(code));
 ok('the x is the top-right way back', /el\('button', 'recclose'/.test(code) && /\.recclose\{[^}]*width:44px/.test(PAGE));
 ok('no horizontal scroll in the record', /\.recbody\{[^}]*overflow-x:hidden/.test(PAGE) && /\.recbody \*\{max-width:100%\}/.test(PAGE));
@@ -466,5 +467,16 @@ ok('nothing hides it', !/^.*retention.*(classList|add\('hidden'\))/m.test(code))
 ok('its text is a table key, not a literal', code.indexOf("rt.textContent = t('retention')") !== -1);
 t('the retention text exists in both languages', ['retention'].filter(k => I18N.en[k] === undefined || I18N.fr[k] === undefined), []);
 
+
+// --- task-80: one findings renderer, and it is not on this page ----------------
+// The page's copy was deleted and the surface's renderer is the only one; a future
+// edit that pastes it back fails here rather than in a screenshot review.
+const moved = ['findingsCard', 'findingItem', 'findingControls', 'findingMeta', 'devPanel', 'sortedFindings', 'heroOrder', 'pickRow', 'isFirsted', 'isIgnored'];
+t('(80) no moved findings identifier is defined on the page', moved.filter(n => PAGE.indexOf('function ' + n + '(') !== -1), []);
+t('(80) the surface defines every moved renderer', moved.filter(n => SURFACE.indexOf('function ' + n + '(') === -1), []);
+ok('(80) the page renders findings through the surface API', PAGE.indexOf('window.WIKI_SURFACE_API') !== -1 && PAGE.indexOf('api.findings(state.findingSlot, state, PAGE_CTX)') !== -1);
+ok('(80) the surface exposes the findings entry points', ['findings:', 'findingOrder:', 'controls:', 'meta:'].every(k => SURFACE.indexOf(k) !== -1));
+ok('(80) the page keeps the concerns that are not finding rendering', ['function sectionCard(', 'function markTerms(', 'function linkChips(', 'function passageBody('].every(k => PAGE.indexOf(k) !== -1));
+ok('(80) the page still receives the same findings fields', PAGE.indexOf('state.findings') !== -1 && PAGE.indexOf('state.counts') !== -1 && PAGE.indexOf('state.cited') !== -1);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

@@ -542,7 +542,262 @@
     window.addEventListener('hashchange', function () { fromHash(); });
     drawerOpen(drawerWanted());
     fromHash();
-    window.WIKI_SURFACE_LOADED = true;
+  
+function pickRow(state, ctx) {
+  if (!state || !state.traceId) return null;
+  var row = el('div', 'pickrow');
+  row.appendChild(el('div', 'pickq', ctx.t('pickHelp')));
+  var none = el('button', 'picknone' + (state.pick === 'none' ? ' on' : ''), ctx.t('pickNone'));
+  none.type = 'button';
+  none.setAttribute('aria-pressed', state.pick === 'none' ? 'true' : 'false');
+  none.addEventListener('click', function () { ctx.sendPick(state, '', true); });
+  row.appendChild(none);
+  var note = state.pickSaved === true
+    ? (state.pick === 'none' ? ctx.t('pickNoneThanks') : ctx.t('pickThanks'))
+    : (state.pickPending ? ctx.t('pickWaiting') : '');
+  row.appendChild(el('div', 'picknote', note));
+  return row;
+}
+
+function isFirsted(state, f) {
+  return !!(state && state.selectable && !state.rerun && f && (state.positive || []).indexOf(f.id) !== -1);
+}
+
+function isIgnored(state, f) {
+  return !!(state && state.selectable && !state.rerun && f && state.keep[f.id] === false);
+}
+
+function heroOrder(findings, cited, state, ctx) {
+  findings = sortedFindings(findings);
+  cited = cited || [];
+  var picked = [], citedOnes = [], rest = [], dropped = [];
+  for (var j = 0; j < findings.length; j++) {
+    var f = findings[j];
+    if (isIgnored(state, f)) dropped.push(f);
+    else if (isFirsted(state, f)) picked.push(f);
+    else if (cited.indexOf(f.n) !== -1) citedOnes.push(f);
+    else rest.push(f);
+  }
+  // The caret's order is the reader's, newest first: the sort is on the record's
+  // position in state.positive, not on its rank.
+  if (state && state.selectable && !state.rerun) {
+    picked.sort(function (a, b) { return state.positive.indexOf(a.id) - state.positive.indexOf(b.id); });
+  }
+  return picked.concat(citedOnes, rest, dropped);
+}
+
+function findingsCard(findings, counts, cited, state, ctx) {
+  // Ordered by the rank the retrievers gave them, not by arrival: a widened
+  // pass re-renders this card with the wider list, and the order is the whole
+  // point of showing it. Each half keeps its own rank order, and the halves
+  // stay in the order the server sent them.
+  findings = sortedFindings(findings);
+  cited = cited || [];
+  var title = ctx.t('findingsTitle') + ' - ' + findings.length;
+  if (counts) title += ' (' + counts.rules + ctx.t('findingsCounts') + counts.factions + ctx.t('findingsCountsTail') + ')';
+  var card = ctx.sectionCard(title);
+  if (!findings.length) {
+    card.appendChild(el('div', 'note warn', ctx.t('nothingMatchedCard')));
+    // Nothing to pick from, but 'none of these' is still an assertion the reader
+    // can make - and this is the out-of-corpus case the bank is shortest of.
+    var noneOnly = pickRow(state, ctx);
+    if (noneOnly) card.appendChild(noneOnly);
+    return card;
+  }
+  // The passages the reader is shown whole whatever their rank: the top five by
+  // rank and the passages the verdict rests on. The evidence behind a verdict is
+  // never collapsed - the ability that answered a question once sat at rank 15,
+  // inside the collapse, while the writer cited it.
+  var isCited = function (f) { return cited.indexOf(f.n) !== -1; };
+  var prominent = {};
+  for (var i = 0; i < findings.length; i++) if (i < 5 || isCited(findings[i])) prominent[findings[i].id] = true;
+  var selectable = !!(state && state.selectable && !state.rerun);
+  var firsted = function (f) { return isFirsted(state, f); };
+  var ignored = function (f) { return isIgnored(state, f); };
+  var order = heroOrder(findings, cited, state, ctx);
+  var shown = [], behind = [], shownIds = {};
+  for (var k = 0; k < order.length; k++) {
+    var g = order[k];
+    if (prominent[g.id] || firsted(g) || ignored(g)) { shown.push(g); shownIds[g.id] = true; }
+  }
+  // The more-findings block keeps rank order underneath: the hidden remainder is read
+  // after everything shown whole.
+  for (var m = 0; m < order.length; m++) if (!shownIds[order[m].id]) behind.push(order[m]);
+  var ol = el('ol', 'cites');
+  for (var c = 0; c < shown.length; c++) ol.appendChild(findingItem(shown[c], true, isCited(shown[c]), state, ctx));
+  card.appendChild(ol);
+  if (behind.length) {
+    var det = document.createElement('details');
+    det.className = 'moref';
+    det.appendChild(el('summary', null, ctx.t('moreFindings') + ' (' + behind.length + ')'));
+    var ol2 = el('ol', 'cites');
+    for (var r = 0; r < behind.length; r++) ol2.appendChild(findingItem(behind[r], false, isCited(behind[r]), state, ctx));
+    det.appendChild(ol2);
+    card.appendChild(det);
+  }
+  if (selectable) {
+    // The manual rerank footer. The button only exists once the reader has
+    // actually changed the selection: a control that re-asks the same list is
+    // noise, and an accidental tap must not spend a judge and a writer. The
+    // caret's order travels with the ids, so the second answer is written from
+    // the passages in the order the reader put them.
+    var positive = state.positive || [];
+    var kept = [];
+    for (var k1 = 0; k1 < state.shownIds.length; k1++) {
+      var id1 = state.shownIds[k1];
+      if (state.keep[id1] !== false && positive.indexOf(id1) !== -1) kept.push(id1);
+    }
+    for (var k2 = 0; k2 < state.shownIds.length; k2++) {
+      var id2 = state.shownIds[k2];
+      if (state.keep[id2] !== false && positive.indexOf(id2) === -1) kept.push(id2);
+    }
+    var droppedN = state.shownIds.length - kept.length;
+    var foot = el('div', 'rerunfoot');
+    foot.appendChild(el('div', 'note', ctx.t('rerankHelp')));
+    var again = el('button', 'rerunbtn', ctx.t('rerankButton'));
+    again.type = 'button';
+    again.disabled = !droppedN || !kept.length;
+    again.addEventListener('click', function () {
+      ctx.rerank({ question: ctx.questionValue(state), asked: state.asked, over: state.traceId, keep: kept, shown: state.shownIds, append: true, english: true });
+    });
+    foot.appendChild(again);
+    card.appendChild(foot);
+  }
+  var pickFoot = pickRow(state, ctx);
+  if (pickFoot) card.appendChild(pickFoot);
+  return card;
+}
+
+function sortedFindings(list) {
+  var halves = ['rules', 'factions'];
+  var out = [];
+  for (var h = 0; h < halves.length; h++) {
+    var part = [];
+    for (var i = 0; i < list.length; i++) if ((list[i].set || 'rules') === halves[h]) part.push(list[i]);
+    part.sort(function (a, b) { return (a.rank || a.n || 0) - (b.rank || b.n || 0); });
+    out = out.concat(part);
+  }
+  for (var j = 0; j < list.length; j++) if (halves.indexOf(list[j].set || 'rules') === -1) out.push(list[j]);
+  return out;
+}
+
+function findingItem(f, prominent, cited, state, ctx) {
+  var selectable = !!(state && state.selectable && !state.rerun);
+  var first = selectable && (state.positive || []).indexOf(f.id) !== -1;
+  var ignored = selectable && state.keep[f.id] === false;
+  var li = el('li', 'fitem hero' + (prominent ? ' top' : '') + (ignored ? ' dropped' : ''));
+  var head = el('div', 'fhead');
+  head.appendChild(el('span', 'num', '[' + f.n + ']'));
+  if (f.leg) head.appendChild(el('span', 'leg ' + ctx.legClass(f.leg), ctx.legLabel(f.leg)));
+  if (cited) head.appendChild(el('span', 'leg cite', ctx.t('citedByJudge')));
+  if (first) head.appendChild(el('span', 'leg badgetop', ctx.t('heroTop')));
+  if (ignored) head.appendChild(el('span', 'leg badgeign', ctx.t('heroIgnored')));
+  var parts = ctx.crumbs(f.heading);
+  var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + (parts.length ? parts[parts.length - 1] : f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
+  a.href = f.href || f.url; a.target = '_blank'; a.rel = 'noopener';
+  // The title opens the record, not the source page: the source is one tap
+  // further in, inside the record, where the reader is already looking.
+  a.setAttribute('aria-label', ctx.t('recordOpen') + ': ' + a.textContent);
+  a.addEventListener('click', function (ev) { ev.preventDefault(); ctx.openRecord(state, f.id); });
+  head.appendChild(a);
+  if (selectable) head.appendChild(findingControls(state, f, first, ignored, ctx));
+  li.appendChild(head);
+  // The whole card is the tap target; the controls are not, so a caret or an x
+  // is never swallowed by the navigation.
+  li.addEventListener('click', function (ev) {
+    if (ev.target && ev.target.closest && ev.target.closest('.fctl, .fdev, .flinks, .pickbtn, .ftitle')) return;
+    ctx.openRecord(state, f.id);
+  });
+  if (parts.length > 1) li.appendChild(el('div', 'fcrumbs', parts.slice(0, -1).join(' \u203a ')));
+  // One line at rest: the card says what the passage is, and the dev toggle opens
+  // the whole record instead of a wall of prose above the answer.
+  var p = el('p', 'ftext heroline');
+  p.appendChild(ctx.markTerms(f.excerpt || '', (f.leg === 'lexical' || f.leg === 'both') ? f.matchedTerms : []));
+  li.appendChild(p);
+  var chips = ctx.linkChips(f);
+  if (chips) li.appendChild(chips);
+  if (state && state.devOpen && state.devOpen[f.id]) li.appendChild(devPanel(f, state, ctx));
+  return li;
+}
+
+function findingControls(state, f, first, ignored, ctx) {
+  var ctl = el('span', 'fctl');
+  var caret = el('button', 'herocaret' + (first ? ' on' : ''), '^');
+  caret.type = 'button';
+  caret.setAttribute('aria-pressed', first ? 'true' : 'false');
+  caret.setAttribute('aria-label', first ? ctx.t('heroCaretOn') : ctx.t('heroCaret'));
+  caret.title = caret.getAttribute('aria-label');
+  caret.addEventListener('click', function () { ctx.toggleFirst(state, f.id); });
+  ctl.appendChild(caret);
+  var x = el('button', 'herox' + (ignored ? ' on' : ''), 'x');
+  x.type = 'button';
+  x.setAttribute('aria-pressed', ignored ? 'true' : 'false');
+  x.setAttribute('aria-label', ignored ? ctx.t('heroIgnoreOn') : ctx.t('heroIgnore'));
+  x.title = x.getAttribute('aria-label');
+  x.addEventListener('click', function () { ctx.toggleIgnore(state, f.id); });
+  ctl.appendChild(x);
+  var open = !!(state.devOpen && state.devOpen[f.id]);
+  var dev = el('button', 'herodev' + (open ? ' on' : ''), '<>');
+  dev.type = 'button';
+  dev.setAttribute('aria-expanded', open ? 'true' : 'false');
+  dev.setAttribute('aria-label', open ? ctx.t('heroDevHide') : ctx.t('heroDev'));
+  dev.title = dev.getAttribute('aria-label');
+  dev.addEventListener('click', function () { ctx.toggleDev(state, f.id); });
+  ctl.appendChild(dev);
+  return ctl;
+}
+
+function findingMeta(f, ctx) {
+  var meta = el('div', 'fmeta');
+  meta.appendChild(el('span', null, ctx.t('rankN') + (f.rank || f.n)));
+  meta.appendChild(el('span', 'devleg', ctx.t('foundBy') + (ctx.legLabel(f.leg) || ctx.t('legUnknown'))));
+  if (f.leg === 'vector' || f.leg === 'both') {
+    var sc = el('span', 'score', ctx.t('rankScore') + ctx.fmtScore(f.vectorScore));
+    sc.title = ctx.t('rankScoreTitle');
+    meta.appendChild(sc);
+  }
+  if ((f.leg === 'lexical' || f.leg === 'both') && f.matchedTerms && f.matchedTerms.length) {
+    meta.appendChild(el('span', 'words', ctx.t('matchedWords') + f.matchedTerms.join(', ')));
+  }
+  return meta;
+}
+
+function devPanel(f, state, ctx) {
+  var box = el('div', 'fdev');
+  box.appendChild(findingMeta(f, ctx));
+  box.appendChild(ctx.passageBody(f));
+  // The reader's own 'this passage answered it': an assertion about the answer,
+  // one per question, replacing any earlier pick. It sits in the dev view because
+  // it is made after reading the passage, and it is NOT the caret or the x - the
+  // caret only changes the order, the x only changes what the second answer rests
+  // on, and this one is a candidate for the test bank.
+  if (state && state.traceId && f.id) {
+    var picked = state.pick === f.id;
+    var pickBtn = el('button', 'pickbtn' + (picked ? ' on' : ''), ctx.t('pickThis'));
+    pickBtn.type = 'button';
+    pickBtn.setAttribute('aria-pressed', picked ? 'true' : 'false');
+    pickBtn.addEventListener('click', function () { ctx.sendPick(state, f.id, false); });
+    box.appendChild(pickBtn);
+  }
+  var link = el('a', 'psource', ctx.t('openSource'));
+  link.href = f.href || f.url; link.target = '_blank'; link.rel = 'noopener';
+  box.appendChild(link);
+  return box;
+}
+
+  // task-80: the findings renderer lives here, not on the page. The page keeps the
+  // i18n, the record dialog, the ask transport and the reader's marks; it calls in
+  // with a ctx carrying those helpers, so there is exactly one implementation.
+  window.WIKI_SURFACE_API = {
+    findings: function (host, state, ctx) {
+      host.textContent = '';
+      host.appendChild(findingsCard(state.findings, state.counts, state.cited, state, ctx));
+    },
+    findingOrder: function (findings, cited, state, ctx) { return heroOrder(findings, cited, state, ctx); },
+    controls: function (state, f, ctx) { return findingControls(state, f, isFirsted(state, f), isIgnored(state, f), ctx); },
+    meta: function (f, ctx) { return findingMeta(f, ctx); },
+  };
+  window.WIKI_SURFACE_LOADED = true;
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
