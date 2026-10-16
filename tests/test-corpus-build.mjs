@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   CORE_STRATAGEMS, JUDGE_PASSAGE_CHARS, buildFactionSections, dedupeKey, dedupeSections, splitInlineRules, splitLong, splitSection,
-  CORPUS_DIR, SOURCES, extractSections,
+  corpusDir, SOURCES, extractSections,
 } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
@@ -199,7 +199,7 @@ t('it belongs to the rules half', CORE_STRATAGEMS.set, 'rules');
 
 
 // --- task-81 step 5: the See-Also widget is LINKS, not a section --------------
-const coreHtml = fs.readFileSync(path.join(CORPUS_DIR, 'core-rules.html'), 'utf8');
+const coreHtml = fs.readFileSync(path.join(corpusDir(), 'core-rules.html'), 'utf8');
 const coreSource = SOURCES.find(s => s.name === 'core-rules') || { name: 'core-rules', url: 'https://wahapedia.ru/wh40k11ed/the-rules/core-rules/' };
 const seeSecs = extractSections(coreHtml, coreSource);
 t('(81-5) no section is the See-Also widget', seeSecs.filter(s => /See-Also|See Also/i.test(String(s.heading) + ' ' + String(s.anchor))).length, 0);

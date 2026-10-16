@@ -30,7 +30,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { CSV_DIR, MAX_CHARS, csvRows, htmlToText, readAllCorpus, splitSection, trimAbilityTail } from './rules-corpus.mjs';
+import { MAX_CHARS, csvRows, csvDir, htmlToText, readAllCorpus, splitSection, trimAbilityTail , corpusDir} from './rules-corpus.mjs';
 
 export const WIKI_BUDGET = 2000;
 export const LINK_BLOCK_MAX = 40;
@@ -137,11 +137,12 @@ function baseRecord(r, extra) {
   }, extra || {});
 }
 
-export function readPlanInput() {
-  const read = f => csvRows(fs.readFileSync(path.join(CSV_DIR, f), 'utf8'));
+export function readPlanInput(dir) {
+  if (!dir) throw new Error('readPlanInput: a corpus directory is required - no silent fallback to the live corpus');
+  const read = f => csvRows(fs.readFileSync(path.join(csvDir(dir), f), 'utf8'));
   return {
-    rules: readAllCorpus('rules'),
-    factions: readAllCorpus('factions'),
+    rules: readAllCorpus('rules', dir),
+    factions: readAllCorpus('factions', dir),
     abilities: read('Abilities.csv').map(a => ({ id: a.id, name: a.name, faction_id: a.faction_id || '', description: a.description || '', legend: a.legend || '' })),
     factionsCsv: read('Factions.csv').map(f => ({ id: f.id, name: f.name })),
   };
@@ -441,7 +442,7 @@ export function idReport(existing, planned) {
 // Exact basename: 'test-wiki-plan.mjs' also ends with 'wiki-plan.mjs', and a
 // test that imports this module must not run its report.
 if (process.argv[1] && path.basename(process.argv[1]) === 'wiki-plan.mjs') {
-  const input = readPlanInput();
+  const input = readPlanInput(corpusDir());
   const plan = planWiki(input);
   const existing = input.rules.concat(input.factions);
   const afterRules = plan.records.filter(r => r.set === 'rules');

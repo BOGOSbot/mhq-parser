@@ -45,7 +45,12 @@ import { FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_ENDPO
 import { TRACE_RETENTION_MONTHS, sweepTraces } from './rules-traces.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const CORPUS_DIR = process.env.RULES_CORPUS_DIR || path.join(__dirname, '..', 'workspace', 'rules-corpus');
+// task-83: the corpus directory is resolved PER CALL. Captured at import it was a
+// hidden global: a caller that set RULES_CORPUS_DIR after the import still read the
+// directory the process started with, and a temp-dir build read the LIVE corpus back
+// and wrote it out - the artifact behind two wrong 'zero drift' measurements.
+const DEFAULT_CORPUS_DIR = path.join(__dirname, '..', 'workspace', 'rules-corpus');
+export function corpusDir() { return process.env.RULES_CORPUS_DIR || DEFAULT_CORPUS_DIR; }
 const SESSION_ID = crypto.randomUUID();
 
 const UA = 'Mozilla/5.0 (compatible; mhq-rules/1)';
@@ -108,11 +113,11 @@ export const CSV_FILES = [
   'Abilities.csv', 'Stratagems.csv', 'Detachments.csv', 'Detachment_abilities.csv', 'Enhancements.csv',
 ];
 
-export const CSV_DIR = path.join(CORPUS_DIR, 'csv');
+export function csvDir(dir) { return path.join(dir || corpusDir(), 'csv'); }
 
 // The staged rulings inputs. Read-only to this module: the text is stored
 // verbatim, never re-normalised and never re-fetched.
-export const RULINGS_DIR = path.join(CORPUS_DIR, 'rulings');
+export function rulingsDir(dir) { return path.join(dir || corpusDir(), 'rulings'); }
 
 // One source for the whole export: it is downloaded and built as a unit, and a
 // per-faction split would only fragment the refresh.
@@ -690,11 +695,11 @@ export function csvRows(text) {
 // still better than none, as long as the caller knows the stamp is the newest
 // file's.
 export async function downloadCsvExport(opts) {
-  fs.mkdirSync(CSV_DIR, { recursive: true });
+  fs.mkdirSync(csvDir(), { recursive: true });
   const written = [];
   let failures = 0;
   for (const f of CSV_FILES) {
-    const dest = path.join(CSV_DIR, f);
+    const dest = path.join(csvDir(), f);
     let body = null;
     for (let attempt = 0; attempt < 3 && body === null; attempt++) {
       try {
@@ -745,7 +750,7 @@ export function trimAbilityTail(desc) {
 let EDITION_TABLES = null;
 export function editionTables() {
   if (EDITION_TABLES) return EDITION_TABLES;
-  const read = f => { try { return csvRows(fs.readFileSync(path.join(CSV_DIR, f), 'utf8')); } catch { return []; } };
+  const read = f => { try { return csvRows(fs.readFileSync(path.join(csvDir(), f), 'utf8')); } catch { return []; } };
   const sources = new Map(read('Source.csv').map(s => [s.id, s]));
   const byName = new Map();
   for (const s of sources.values()) if (!byName.has(s.name)) byName.set(s.name, s);
@@ -876,7 +881,7 @@ export function deliveredHits(hits) {
 // six tables because that is how the export splits it; the reader wants the
 // datasheet, not the sixth of it that happens to live in one file.
 export function buildFactionSections() {
-  const read = f => csvRows(fs.readFileSync(path.join(CSV_DIR, f), 'utf8'));
+  const read = f => csvRows(fs.readFileSync(path.join(csvDir(), f), 'utf8'));
   const lastUpdate = (read('Last_update.csv')[0] || {}).last_update || '';
   const factions = read('Factions.csv');
   const factionName = new Map(factions.map(f => [f.id, f.name]));
@@ -1129,15 +1134,15 @@ export function buildFactionCorpus() {
 export const RULING_DROP_IDS = new Set(['wtc11-did-you-know-057']);
 
 export function buildRulingsCorpus() {
-  const manifest = JSON.parse(fs.readFileSync(path.join(RULINGS_DIR, 'sources.json'), 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(rulingsDir(), 'sources.json'), 'utf8'));
   const bySource = new Map((manifest.sources || []).map(s => [s.source_id, s]));
-  const read = f => csvQuotedRows(fs.readFileSync(path.join(RULINGS_DIR, f), 'utf8'));
+  const read = f => csvQuotedRows(fs.readFileSync(path.join(rulingsDir(), f), 'utf8'));
   // The staged English for the French document. It is ADDITIONAL to the French,
   // never a replacement: the normalised CSV stays the source of record, and this
   // file is a display aid whose own metadata says a human has never read it. It
   // is joined on the record id, and an orphan key throws at build time - a
   // silently unmatched translation would be a hole in a ruling.
-  const enPath = path.join(RULINGS_DIR, 'feq-11-faq.en.json');
+  const enPath = path.join(rulingsDir(), 'feq-11-faq.en.json');
   const english = fs.existsSync(enPath) ? JSON.parse(fs.readFileSync(enPath, 'utf8')) : {};
   const enText = english.text_en || {};
   const enMeta = english.translation || null;
@@ -1287,7 +1292,7 @@ export function splitMissionDecks() {
     // The pre-split bytes are kept beside the corpus so the integrity of the
     // split stays checkable after the chunks are gone: the test concatenates the
     // new records and compares against this file, byte for byte.
-    fs.writeFileSync(path.join(CORPUS_DIR, 'event-companion.deck-' + deck.deck.split(' ')[0].toLowerCase() + '.presplit.txt'), joined);
+    fs.writeFileSync(path.join(corpusDir(), 'event-companion.deck-' + deck.deck.split(' ')[0].toLowerCase() + '.presplit.txt'), joined);
     const parts = splitMissionText(joined, deck.label);
     if (parts.map(p => p.text).join('') !== joined) throw new Error('mission split lost text in ' + deck.deck);
     const used = new Set();
@@ -1364,7 +1369,7 @@ export function abilityDefsOnPage(page) {
 }
 
 export function buildAbilityDefsCorpus() {
-  const page = fs.readFileSync(path.join(CORPUS_DIR, 'core-rules.html'), 'utf8');
+  const page = fs.readFileSync(path.join(corpusDir(), 'core-rules.html'), 'utf8');
   const blocks = abilityDefsOnPage(page);
   // Exclude this source's own previous output by ID, not by its section label: the
   // sections carry source 'core-rules' (their real page), the FACTION_SOURCES
@@ -1416,18 +1421,18 @@ export function buildAbilityDefsCorpus() {
 }
 
 // --- the corpus on disk -----------------------------------------------------
-export function corpusPath(name) {
-  return path.join(CORPUS_DIR, name + '.json');
+export function corpusPath(name, dir) {
+  return path.join(dir || corpusDir(), name + '.json');
 }
 
-export function writeCorpus(name, payload) {
-  fs.mkdirSync(CORPUS_DIR, { recursive: true });
-  fs.writeFileSync(corpusPath(name), JSON.stringify(payload));
-  return corpusPath(name);
+export function writeCorpus(name, payload, dir) {
+  fs.mkdirSync(dir || corpusDir(), { recursive: true });
+  fs.writeFileSync(corpusPath(name, dir), JSON.stringify(payload));
+  return corpusPath(name, dir);
 }
 
-export function readCorpus(name) {
-  try { return JSON.parse(fs.readFileSync(corpusPath(name), 'utf8')); }
+export function readCorpus(name, dir) {
+  try { return JSON.parse(fs.readFileSync(corpusPath(name, dir), 'utf8')); }
   catch { return null; }
 }
 // --- the snapshot, before anything writes the corpus -------------------------
@@ -1481,7 +1486,7 @@ export function tarGzOfDir(dir, arcName) {
 }
 export function snapshotCorpus(opts) {
   const o = opts || {};
-  const dir = o.dir || CORPUS_DIR;
+  const dir = o.dir || corpusDir();
   const outDir = o.outDir || path.join(__dirname, '..', 'workspace', 'box-snapshot');
   const keep = o.keep == null ? 3 : o.keep;
   fs.mkdirSync(outDir, { recursive: true });
@@ -1506,10 +1511,10 @@ export function readCorpusStamped(name) {
   return c;
 }
 
-export function readAllCorpus(setName) {
+export function readAllCorpus(setName, dir) {
   const all = [];
   for (const s of sourcesFor(setName)) {
-    const c = readCorpus(s.name);
+    const c = readCorpus(s.name, dir);
     if (c && Array.isArray(c.sections)) {
       // The faction pages carry the Boarding Actions expansion's rules with no
       // type column, so they are dropped here by the expansion's own wording.
@@ -3311,7 +3316,7 @@ export const VECTOR_BACKEND = String(process.env.RULES_VECTOR_BACKEND || 'upstas
 // question never wants a faction vector and scanning them costs nothing, the
 // files stay small, and a rewrite of one half cannot corrupt the other.
 const LOCAL_EMBED_MODEL = process.env.RULES_LOCAL_EMBED_MODEL || 'bge-m3';
-const localStorePath = (ns, ext) => path.join(CORPUS_DIR, 'local-index-' + (ns || 'all') + ext);
+const localStorePath = (ns, ext) => path.join(corpusDir(), 'local-index-' + (ns || 'all') + ext);
 const localStores = new Map();
 
 // Raw text in, one vector per input out. Same payload shape Upstash sees -
@@ -3681,13 +3686,13 @@ export async function ingest(only, opts) {
   for (const source of list) {
     const payload = readCorpusStamped(source.name);
     if (!payload) { report.sources.push({ source: source.name, skipped: 'no corpus on disk' }); continue; }
-    const stateFile = path.join(CORPUS_DIR, source.name + '.index.json');
+    const stateFile = path.join(corpusDir(), source.name + '.index.json');
     let state = {};
     try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')); } catch { state = {}; }
     // Every rebuild is counted: the ledger beside the state records what each
     // one upserted, deleted and left alone, so a rebuild is a step with a
     // number rather than an event nobody can account for afterwards.
-    const ledgerPath = path.join(CORPUS_DIR, source.name + '.rebuilds.json');
+    const ledgerPath = path.join(corpusDir(), source.name + '.rebuilds.json');
     let ledger = [];
     try { const l = JSON.parse(fs.readFileSync(ledgerPath, 'utf8')); if (Array.isArray(l)) ledger = l; } catch { }
     // Only what moved. An upsert replaces the vectors of the ids it names and
@@ -3816,7 +3821,7 @@ async function main() {
     if (!flag('--no-snapshot')) { try { console.log('snapshot    ' + snapshotCorpus()); } catch (e) { console.log('snapshot    failed: ' + e.message); } }
     if (set === 'factions') {
       const files = await downloadCsvExport({ allowCached: flag('--cached') });
-      console.log('downloaded ' + files.length + ' CSV files to ' + CSV_DIR);
+      console.log('downloaded ' + files.length + ' CSV files to ' + csvDir());
       const built = buildFactionCorpus();
       console.log('  ' + 'faction records'.padEnd(24) + String(built.factions).padStart(5) + '  -> ' + corpusPath(FACTIONS_CSV.name));
       console.log('  ' + 'core stratagems'.padEnd(24) + String(built.core).padStart(5) + '  -> ' + corpusPath(CORE_STRATAGEMS.name));
@@ -3826,7 +3831,7 @@ async function main() {
       console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 missing / 0 stray - a rebuild without an ingest leaves the index serving a dead layout.');
       console.log('export last update: ' + built.marker.lastUpdate);
       console.log('total ' + built.count + ' records from ' + CSV_FILES.length + ' CSV files');
-      if (scrapeBuildsWiki(argv)) await buildWikiShape(CORPUS_DIR);
+      if (scrapeBuildsWiki(argv)) await buildWikiShape(corpusDir());
       else console.log('--flat: the corpus is NOT the shape the live index was built from.');
       return;
     }
@@ -3860,8 +3865,8 @@ async function main() {
     }
     const done = await scrapeAll(only, set);
     for (const p of done) console.log(p.source.padEnd(17) + ' ' + String(p.count).padStart(4) + ' sections (' + p.anchored + ' anchored)  ' + Math.round(p.bytes / 1024) + ' KB');
-    console.log('written to ' + CORPUS_DIR);
-    if (scrapeBuildsWiki(argv)) await buildWikiShape(CORPUS_DIR);
+    console.log('written to ' + corpusDir());
+    if (scrapeBuildsWiki(argv)) await buildWikiShape(corpusDir());
     else console.log('--flat: the corpus is NOT the shape the live index was built from.');
     return;
   }

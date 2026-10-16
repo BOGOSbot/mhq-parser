@@ -28,7 +28,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { CSV_DIR, csvRows, htmlToText, trimAbilityTail } from './rules-corpus.mjs';
+import { csvDir, csvRows, htmlToText, trimAbilityTail } from './rules-corpus.mjs';
 
 const clean = s => htmlToText(String(s == null ? '' : s)).replace(/\s+/g, ' ').trim();
 
@@ -148,7 +148,7 @@ let TABLES = null;
 // asks for one datasheet, so the tables are indexed by id at load.
 export function cardTables() {
   if (TABLES) return TABLES;
-  const read = f => csvRows(fs.readFileSync(path.join(CSV_DIR, f), 'utf8'));
+  const read = f => csvRows(fs.readFileSync(path.join(csvDir(), f), 'utf8'));
   const byDatasheet = rows => {
     const m = new Map();
     for (const r of rows) {

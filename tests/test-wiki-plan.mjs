@@ -148,7 +148,7 @@ t('no scrape flag reports the default', scrapeBuildsWiki([]), true);
 const scrapeSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'rules-corpus.mjs'), 'utf8');
 const scrapeBranch = scrapeSrc.slice(scrapeSrc.indexOf("if (flag('--scrape'))"), scrapeSrc.indexOf("if (flag('--ingest'))"));
 ok('the scrape branch routes through the build, guarded by the flag',
-  scrapeBranch.indexOf('scrapeBuildsWiki(argv)') !== -1 && scrapeBranch.indexOf('buildWikiShape(CORPUS_DIR)') !== -1);
+  scrapeBranch.indexOf('scrapeBuildsWiki(argv)') !== -1 && scrapeBranch.indexOf('buildWikiShape(corpusDir())') !== -1);
 
 // And the build lands the shape the scrape must keep: the link block inside the
 // text (that is what the vector sees), on a record that has children.

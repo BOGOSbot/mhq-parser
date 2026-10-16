@@ -24,10 +24,11 @@ const ids = list => list.map(s => s.id);
 const dupes = list => { const m = {}; for (const id of ids(list)) m[id] = (m[id] || 0) + 1; return Object.keys(m).filter(id => m[id] > 1); };
 const readOut = (dir, source) => (JSON.parse(fs.readFileSync(path.join(dir, source + '.json'), 'utf8')).sections) || [];
 
-const input = readPlanInput();
+const input = readPlanInput(path.join(ROOT, 'workspace', 'rules-corpus'));
 const tmpA = fs.mkdtempSync(path.join(os.tmpdir(), 'wiki-build-a-'));
 const tmpB = fs.mkdtempSync(path.join(os.tmpdir(), 'wiki-build-b-'));
-const first = writeWikiCorpus(tmpA, input);
+const CORPUS = path.join(ROOT, 'workspace', 'rules-corpus');
+const first = writeWikiCorpus(tmpA, input, { sourceDir: CORPUS });
 
 // The second run reads the FIRST run's output, the way the next build reads the
 // corpus directory. Before the fix, core-rules doubled here.
@@ -40,7 +41,7 @@ const second = writeWikiCorpus(tmpB, {
   rules: rules.map(r => Object.assign({}, r, { set: 'rules' })),
   factions: factions.map(r => Object.assign({}, r, { set: 'factions' })),
   abilities: input.abilities, factionsCsv: input.factionsCsv,
-});
+}, { sourceDir: CORPUS });
 
 const before = fs.readFileSync(path.join(tmpA, 'core-rules.json'));
 const after = fs.readFileSync(path.join(tmpB, 'core-rules.json'));

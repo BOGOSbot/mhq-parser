@@ -20,7 +20,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ALL_SOURCES, CORPUS_DIR, deliveredSections, namespaceFor, rangeIds, readAllCorpus, routeStats } from './rules-corpus.mjs';
+import { ALL_SOURCES, corpusDir, deliveredSections, namespaceFor, rangeIds, readAllCorpus, routeStats } from './rules-corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,7 +76,7 @@ export async function devState(opts) {
   return {
     corpus: { total: all.length, delivered: delivered.length, filtered: all.length - delivered.length, byNamespace: byNamespace },
     namespaces: namespaces,
-    rebuilds: lastRebuilds(o.corpusDir || CORPUS_DIR),
+    rebuilds: lastRebuilds(o.corpusDir || corpusDir()),
     route: routeStats(),
     code: code,
     bootedAt: bootedAt,

@@ -64,7 +64,8 @@ export function carryStamps(src, sections) {
 }
 
 export function writeWikiCorpus(dir, data, opts) {
-  const input = data || readPlanInput();
+  if (!data && !dir) throw new Error('writeWikiCorpus: a corpus directory is required - no silent fallback to the live corpus');
+  const input = data || readPlanInput(dir);
   const plan = planWiki(input, opts);
   fs.mkdirSync(dir, { recursive: true });
   // The rules half is four files by source; the faction half is ONE file that
@@ -78,7 +79,11 @@ export function writeWikiCorpus(dir, data, opts) {
   // three builds turned 19 definitions into 57 duplicates and a red protocol. A
   // rebuild must replace, never append: ids owned by another builder are skipped,
   // and any remaining duplicate id is collapsed to its first record.
-  const ownedElsewhere = new Set(((readCorpus(ABILITY_DEFS.name) || {}).sections || []).map(s => s.id));
+  // The stamps and the ids owned elsewhere come from the corpus this build is DERIVED
+  // from, which is the target directory when a scrape re-shapes in place (the CLI)
+  // and the live corpus when a caller builds into a scratch directory.
+  const sourceDir = (opts && opts.sourceDir) || dir;
+  const ownedElsewhere = new Set(((readCorpus(ABILITY_DEFS.name, sourceDir) || {}).sections || []).map(s => s.id));
   const byFile = new Map();
   const seen = new Set();
   for (const rec of plan.records) {
@@ -94,7 +99,7 @@ export function writeWikiCorpus(dir, data, opts) {
     if (!sections.length) continue;
     // Read the source payload before writing it: the stamps are the only thing the
     // build must carry from the corpus it is derived from.
-    fs.writeFileSync(path.join(dir, source + '.json'), JSON.stringify(carryStamps(readCorpus(source), sections), null, 0));
+    fs.writeFileSync(path.join(dir, source + '.json'), JSON.stringify(carryStamps(readCorpus(source, sourceDir), sections), null, 0));
     written[source] = sections.length;
   }
   const manifest = {

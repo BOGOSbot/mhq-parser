@@ -18,7 +18,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const CORPUS = process.env.RULES_CORPUS_DIR || path.join('workspace', 'rules-corpus');
+import { corpusDir } from './rules-corpus.mjs';
+const CORPUS = corpusDir();
 const OUT = path.join('workspace', 'box-snapshot');
 const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 const archive = path.join(OUT, 'rules-corpus-' + stamp + '.tar.gz');
