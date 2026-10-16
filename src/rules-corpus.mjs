@@ -36,6 +36,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
 import http from 'http';
 import https from 'https';
 import crypto from 'crypto';
@@ -1429,6 +1430,69 @@ export function readCorpus(name) {
   try { return JSON.parse(fs.readFileSync(corpusPath(name), 'utf8')); }
   catch { return null; }
 }
+// --- the snapshot, before anything writes the corpus -------------------------
+// The corpus directory is the one store with no other copy: the vector index can be
+// rebuilt from it, not the other way round. On 2026-10-16 a local rebuild script
+// overwrote core-rules.json and its own backup, and the file came back only because
+// a box snapshot from the day before happened to hold the directory. Every command
+// that can write it now snapshots first: a tar.gz under workspace/box-snapshot/
+// named for the minute, keeping the last three. It is a plain ustar + gzip, written
+// here so a snapshot needs no platform tar (Windows tar exists, but the guard must
+// run wherever the tests do), and it is verified by extracting it in the test.
+const TAR_BLOCK = 512;
+function tarHeader(name, size, mtime) {
+  const h = Buffer.alloc(TAR_BLOCK);
+  const put = (s, off, len) => { Buffer.from(String(s)).copy(h, off, 0, Math.min(String(s).length, len)); };
+  const octal = (n, len) => String(n.toString(8)).padStart(len - 1, '0') + '\0';
+  put(name, 0, 100);
+  put(octal(0o644, 8), 100, 8);
+  put(octal(0, 8), 108, 8);
+  put(octal(0, 8), 116, 8);
+  put(octal(size, 12), 124, 12);
+  put(octal(Math.floor(mtime / 1000), 12), 136, 12);
+  h.write('        ', 148, 8);                    // checksum placeholder
+  put('0', 156, 1);
+  h.write('ustar\0' + '00', 257, 8);
+  put('corpus', 265, 32);
+  put('corpus', 297, 32);
+  let sum = 0;
+  for (let i = 0; i < TAR_BLOCK; i++) sum += h[i];
+  h.write(String(sum.toString(8)).padStart(6, '0') + '\0 ', 148, 8);
+  return h;
+}
+export function tarGzOfDir(dir, arcName) {
+  const chunks = [];
+  const walk = (rel, abs) => {
+    for (const entry of fs.readdirSync(abs, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const absChild = path.join(abs, entry.name);
+      const relChild = rel ? rel + '/' + entry.name : entry.name;
+      if (entry.isDirectory()) { walk(relChild, absChild); continue; }
+      const body = fs.readFileSync(absChild);
+      chunks.push(tarHeader(relChild, body.length, fs.statSync(absChild).mtimeMs), body);
+      const pad = (TAR_BLOCK - (body.length % TAR_BLOCK)) % TAR_BLOCK;
+      if (pad) chunks.push(Buffer.alloc(pad));
+    }
+  };
+  const before = chunks.length;
+  walk(arcName || path.basename(dir), dir);
+  if (chunks.length === before) throw new Error('snapshot: nothing to archive in ' + dir);
+  chunks.push(Buffer.alloc(TAR_BLOCK * 2));
+  return zlib.gzipSync(Buffer.concat(chunks));
+}
+export function snapshotCorpus(opts) {
+  const o = opts || {};
+  const dir = o.dir || CORPUS_DIR;
+  const outDir = o.outDir || path.join(__dirname, '..', 'workspace', 'box-snapshot');
+  const keep = o.keep == null ? 3 : o.keep;
+  fs.mkdirSync(outDir, { recursive: true });
+  const stamp = o.stamp || new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+  const file = path.join(outDir, 'rules-corpus-' + stamp + '.tar.gz');
+  fs.writeFileSync(file, tarGzOfDir(dir, path.basename(dir)));
+  const kept = fs.readdirSync(outDir).filter(f => /^rules-corpus-\d{12}\.tar\.gz$/.test(f)).sort();
+  for (const old of kept.slice(0, Math.max(0, kept.length - keep))) fs.unlinkSync(path.join(outDir, old));
+  return file;
+}
+
 
 // The same payload with its editions stamped. They are computed at read time
 // (the wiki shape drops fields it does not know), so a planner that reads the
@@ -3746,6 +3810,10 @@ async function main() {
 
   const set = value('--set');
   if (flag('--scrape')) {
+    // task-82: the corpus is the one store with no other copy, and a scrape, a
+    // rebuild or an ingest is the moment it can be lost. Snapshot first, keep the
+    // last three (--no-snapshot skips; tests point the output at a temp dir).
+    if (!flag('--no-snapshot')) { try { console.log('snapshot    ' + snapshotCorpus()); } catch (e) { console.log('snapshot    failed: ' + e.message); } }
     if (set === 'factions') {
       const files = await downloadCsvExport({ allowCached: flag('--cached') });
       console.log('downloaded ' + files.length + ' CSV files to ' + CSV_DIR);
@@ -3798,6 +3866,7 @@ async function main() {
     return;
   }
   if (flag('--ingest')) {
+    if (!flag('--no-snapshot') && !flag('--dry-run')) { try { console.log('snapshot    ' + snapshotCorpus()); } catch (e) { console.log('snapshot    failed: ' + e.message); } }
     const dryRun = flag('--dry-run');
     if (dryRun) console.log('dry run - nothing is written to the index or to the state files');
     const r = await ingest(only, { set, dryRun, allowMassDelete: flag('--allow-mass-delete') });

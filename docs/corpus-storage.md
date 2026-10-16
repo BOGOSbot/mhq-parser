@@ -80,8 +80,66 @@ git log --all --diff-filter=A --name-only --pretty=format: | grep '^workspace/' 
 git grep -l -F '<a sentence only the corpus holds>'                               # nothing
 ```
 
+## The local snapshot, before any write
+
+`--scrape` (every `--set`) and `--ingest` call `snapshotCorpus()` in `src/rules-corpus.mjs`
+before touching the corpus. It writes a plain `ustar` + gzip of the whole directory to
+`workspace/box-snapshot/rules-corpus-YYYYMMDDHHmm.tar.gz` and keeps the last **three**,
+deleting older ones. `--no-snapshot` skips it; a dry run writes nothing and therefore
+does not snapshot. A failed snapshot prints `snapshot    failed: ...` and does not abort
+the command - if that line appears, stop and fix the snapshot before going on.
+
+The snapshot is deliberately not the Box copy: the Box one is the off-disk recovery
+point taken after an ingest, this one is the local rollback point taken before the
+write that could go wrong. Both exist; neither replaces the other.
+
+## Restore one file
+
+The 2026-10-16 incident: a local rebuild script overwrote `core-rules.json` **and its
+own backup** (the backup was the re-parse it had just written, not the original), and
+the file came back only because the preceding box snapshot happened to hold the
+directory. Restore is therefore **extract to a temp dir and copy the one file** - never
+extract over the live directory, which would put back files that are newer on disk:
+
+```powershell
+cd C:\GitRepos\mhq-parser
+# 1. see what the snapshot holds
+tar -tzf workspace/box-snapshot/rules-corpus-202610151200.tar.gz | Select-Object -First 20
+
+# 2. extract to a temp dir OUTSIDE the live corpus
+New-Item -ItemType Directory -Force -Path workspace\restore-tmp | Out-Null
+tar -xzf workspace/box-snapshot/rules-corpus-202610151200.tar.gz -C workspace\restore-tmp
+
+# 3. copy only the file that was lost
+Copy-Item workspace\restore-tmp\rules-corpus\core-rules.json workspace\rules-corpus\core-rules.json -Force
+
+# 4. check it, then clean up
+node src/rules-corpus.mjs --stats
+Remove-Item -Recurse -Force workspace\restore-tmp
+```
+
+On Linux or macOS: `tar -xzf ... -C /tmp/restore`, then `cp /tmp/restore/rules-corpus/core-rules.json workspace/rules-corpus/core-rules.json`.
+`--stats` is the check that matters: per-source section counts, corpus records, delivered
+records, and whether the index still matches the delivered set. Restoring one file
+should leave all of them as they were - and it changes nothing in the index, so there is
+nothing to re-ingest.
+
+## The drift guard
+
+`tests/test-corpus-drift.mjs` runs the real pipeline in a temp copy - the scrape stage
+from the stored HTML, then the wiki-shape build - and compares the result with the
+stored files. The recorded baseline (2026-10-16) is **zero drift**: `core-rules.json` is
+401 sections / 334,155 characters with every section text identical. A parser or shape
+change that alters a section fails the test, so content cannot go missing silently again.
+
+Measurement note, because the incident started with a wrong one: comparing the **scrape
+stage** (375 sections from the HTML) with the stored file (401) is not drift. The stored
+file is the **shape** stage; the 26 extra sections - the `~2` chunk parts, the 18
+core-ability records, the FAQ texts - are put there by `writeWikiCorpus` in
+`src/wiki-build.mjs`. Compare like with like: scrape then shape, then the file.
 ## What must not happen
 
 - `git add -f` to get a corpus file past `.gitignore`, for any reason.
+- Extract a snapshot over `workspace/rules-corpus/` in place: it would restore files that are newer on disk.
 - A "temporary" corpus dump committed to move it between machines. Re-scrape.
 - The corpus copied into a tracked file to make a test pass.
