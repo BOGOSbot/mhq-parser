@@ -362,6 +362,13 @@ export function extractSections(html, source) {
     const idMatch = attrs.match(/\bid="([^"]*)"/i);
     const raw = htmlToText(m[3]);
     if (!raw) continue;
+    // task-81 step 5: the 'See Also' widget is a list of RELATED RULES, not a
+    // section. Cut at its heading and it becomes a record (the mashed chain
+    // 'See-Also') whose <li> entries become child records; the 50 widgets without
+    // a heading already merge into their rule. Make the heading form behave like
+    // the span form: invisible here, so the list stays in the enclosing rule's body
+    // and the link builder turns those names into links.
+    if (/^See Also$/i.test(raw) && /CornerSeeAlso/.test(page.slice(Math.max(0, m.index - 300), m.index))) continue;
     marks.push({
       at: m.index,
       end: head.lastIndex,

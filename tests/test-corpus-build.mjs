@@ -1,8 +1,12 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   CORE_STRATAGEMS, JUDGE_PASSAGE_CHARS, buildFactionSections, dedupeKey, dedupeSections, splitInlineRules, splitLong, splitSection,
+  CORPUS_DIR, SOURCES, extractSections,
 } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
+function ok(name, got) { t(name, !!got, true); }
 function t(name, got, want) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
   if (ok) { pass++; }
@@ -193,5 +197,16 @@ t('it belongs to the rules half', CORE_STRATAGEMS.set, 'rules');
   t('the stratagem key entry is there', !!fb, true);
 }
 
+
+// --- task-81 step 5: the See-Also widget is LINKS, not a section --------------
+const coreHtml = fs.readFileSync(path.join(CORPUS_DIR, 'core-rules.html'), 'utf8');
+const coreSource = SOURCES.find(s => s.name === 'core-rules') || { name: 'core-rules', url: 'https://wahapedia.ru/wh40k11ed/the-rules/core-rules/' };
+const seeSecs = extractSections(coreHtml, coreSource);
+t('(81-5) no section is the See-Also widget', seeSecs.filter(s => /See-Also|See Also/i.test(String(s.heading) + ' ' + String(s.anchor))).length, 0);
+// The widget heading no longer cuts a section: its list stays in the rule body that
+// enclosed it (the Inflict Damage chain), where the link builder resolves the names.
+const carrier = seeSecs.find(s => /Modifying Dice Rolls/.test(String(s.text)) && /Measuring To A Destroyed Model Or Unit/.test(String(s.text))) || {};
+ok('(81-5) the related-rules list stays inside the Inflict Damage body', /Inflict Damage/.test(String(carrier.heading)) || /Inflict Damage/.test(String(carrier.path)));
+t('(81-5) and it keeps its entries', ['Modifying Dice Rolls', 'Random Characteristics', 'Destroyed', 'Fight On Death'].every(n => String(carrier.text || '').indexOf(n) !== -1), true);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
