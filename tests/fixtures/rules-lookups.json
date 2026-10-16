@@ -233,8 +233,10 @@
   {
    "q": "find shadow in the warp",
    "lang": "en",
-   "kind": "ambiguous",
-   "expect": []
+   "kind": "literal",
+   "expect": [
+    "faction-rule#000000707"
+   ]
   },
   {
    "q": "cherche les règles de mouvement",

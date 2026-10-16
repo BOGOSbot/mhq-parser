@@ -19,8 +19,9 @@ t('an edition-0 datasheet is not delivered', isDelivered({ id: 'datasheet#000000
 t('an edition-11 datasheet is', isDelivered({ id: 'datasheet#000000882', edition: '11' }), true);
 t('an index stub is delivered (counted navigation, not filtered content)', isDelivered({ id: 'faction-index#faction-ae', edition: '11' }), true);
 t('an empty record is not delivered', isDelivered(null), false);
-t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7311, 7311]);
-t('delivered is 6,271 (154 rulings + 19 ability definitions + 43 mission cards) and filtered is 1,040', [delivered.length, filtered.length], [6271, 1040]);
+// task-85 rebuilt the corpus from source: 7,283 records, 6,245 delivered, 1,038 filtered.
+t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7283, 7283]);
+t('delivered is 6,245 (154 rulings + 19 ability definitions + 43 mission cards) and filtered is 1,038', [delivered.length, filtered.length], [6245, 1038]);
 
 // --- the query path cannot return what the product does not deliver -----------
 const ids = deliveredIds();
@@ -33,10 +34,10 @@ ok('both query backends return through that filter', (src.match(/deliveredHits\(
 
 // --- the ingest plan skips the filtered records -------------------------------
 const dry = await ingest(null, { set: 'factions', dryRun: true });
-t('a dry-run faction ingest filtered exactly the 1,040', dry.filtered, 1040);
+t('a dry-run faction ingest filtered exactly the 1,038', dry.filtered, 1038);
 const row = dry.sources.find(s => s.source === 'factions-csv');
 ok('and the source row reports its delivered sections, not the corpus count', !!row && row.sections + row.filtered > row.sections);
-ok('the source row reports its delivered and filtered counts', row.sections === 5360 && row.filtered === 1040);
+ok('the source row reports its delivered and filtered counts', row.sections === 5358 && row.filtered === 1038);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

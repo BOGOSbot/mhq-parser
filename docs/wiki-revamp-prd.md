@@ -10,7 +10,7 @@ Three complaints, one cause:
 2. **Records are pages rather than fragments.** Every record costs a file, a URL and a full page load, so nothing can be blended - a finding and a wiki page are two renderings of the same record that drift apart.
 3. **The rendering is raw.** A rule body is one `pre` of the stored text: legible on a desktop, a wall of monospace on a phone.
 
-The corpus is not the problem and is not touched: 7,311 records, 6,271 delivered, the index, the ids.
+The corpus is not the problem this revamp addresses and was not touched by it: 7,311 records, 6,271 delivered at the time, the index and the ids unchanged. (A later parser fix - task-85 - rebuilt it to 7,283 / 6,245 without changing the payload shape.)
 
 ## What changes
 

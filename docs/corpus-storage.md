@@ -49,10 +49,12 @@ selected, so once the box is deleted the snapshot id is the ONLY handle on the
 recovery point. If the id is not written here, the snapshot is unreachable in
 practice even though it exists.
 
-The current snapshot holds **7,311 corpus records / 6,271 delivered** - the rulings
-branch (154, WTC + FEQ), the 19 universal ability definitions, and the 25 Primary and
-18 Secondary mission cards split out of the deck chunks. Take the next one after the
-next ingest - the cadence is tied to the ingest, not to a calendar.
+After the 2026-10-16 task-85 rebuild the corpus holds **7,283 records / 6,245 delivered**
+- the rulings branch (154, WTC + FEQ), the 19 universal ability definitions, and the 43
+mission cards split out of the deck chunks. Before it, 7,311 / 6,271: the drop is the
+re-chunking the fix exposed, not lost text (the drift guard's content comparison and an
+independent window scan of all 7,136 old records both say nothing was dropped). Take the
+next snapshot after the next ingest - the cadence is tied to the ingest, not a calendar.
 
 ## Why it is not ours to publish
 
@@ -146,11 +148,13 @@ nothing to re-ingest.
 and the CSV export on disk, nothing stored - in a temp directory passed explicitly into
 the build, and checks three things:
 
-- the **scrape stage** (375 sections / 281,473 characters of `core-rules`);
-- the **shape stage** (375 sections / 294,892 characters of `core-rules`;
-  `factions-csv.json` at 6,400 sections / 10,024,842 bytes);
+- the **scrape stage** (374 sections / 283,486 characters of `core-rules`);
+- the **shape stage** (374 sections / 283,486 characters of `core-rules`;
+  `factions-csv.json` at 6,396 sections / 10,013,193 bytes);
 - **no rule text is lost**: every stored section the rebuild does not reproduce
-  verbatim still has its text in the rebuild, allowing for re-chunking.
+  verbatim still has its text in the rebuild, allowing for re-chunking, and the
+  comparison is content-based: it strips the whitespace task-85 removed and the
+  `- <kind>:` link lines, so it cannot read an intended fix as loss.
 
 A parser change that drops a sentence, a section or the CSV output fails the test. The
 baselines move only when the change is intended, in the same commit, with the reason in

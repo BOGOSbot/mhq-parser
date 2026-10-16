@@ -261,6 +261,16 @@ export function htmlToText(html) {
     .replace(/[ \t\u00a0]+/g, ' ')
     .replace(/ *\n */g, '\n')
     .replace(/\n{3,}/g, '\n\n')
+    // task-85 D1: the tag-to-space rule above is load-bearing - 'REMAIN
+    // STATIONARY<span>09.04</span>' needs that space for the rule-id splitter -
+    // but it also left one before the punctuation that followed a tag
+    // ('rounds</a>,' became 'rounds ,', 806 times on this page alone). Drop the
+    // space before punctuation, and only when the punctuation ends a token.
+    .replace(/[ \t\u00a0]+([.,;:!?])(?=\s|$)/g, '$1')
+    // Same class, brackets: '<i>Fight On Death (<span>05.04.05</span>)</i>' became
+    // '( 05.04.05 )' - 162 and 221 occurrences against the raw page's 3 and 0.
+    .replace(/\([ \t\u00a0]+/g, '(')
+    .replace(/[ \t\u00a0]+\)/g, ')')
     .trim();
 }
 
@@ -606,8 +616,11 @@ export function deriveTitle(text) {
   if (!flat || /^Book\s+Kind\s+Edition/i.test(flat)) return '';
   const q = flat.match(/^Q:\s*([^?]{10,110}\?)/);
   if (q) return q[1].trim();
+  // task-85 D2: the 90-character cut put a literal '...' into 49 core-rules headings,
+  // and the heading is the record's id and its citation label. A title is a label, not
+  // a slug budget: keep it whole and let the id be as long as it is.
   const first = flat.split(/(?<=[.!?])\s+/)[0] || flat;
-  return first.length > 90 ? first.slice(0, 87).replace(/\s+\S*$/, '') + '...' : first;
+  return first;
 }
 
 export function sectionId(source, section) {
