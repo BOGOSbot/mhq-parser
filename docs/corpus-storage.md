@@ -142,17 +142,38 @@ nothing to re-ingest.
 
 ## The drift guard
 
-`tests/test-corpus-drift.mjs` runs the real pipeline in a temp copy - the scrape stage
-from the stored HTML, then the wiki-shape build - and compares the result with the
-stored files. The recorded baseline (2026-10-16) is **zero drift**: `core-rules.json` is
-401 sections / 334,155 characters with every section text identical. A parser or shape
-change that alters a section fails the test, so content cannot go missing silently again.
+`tests/test-corpus-drift.mjs` runs the pipeline from **source only** - the scraped HTML
+and the CSV export on disk, nothing stored - in a temp directory the `RULES_CORPUS_DIR`
+environment variable points at, and checks three things (baseline recorded 2026-10-16):
 
-Measurement note, because the incident started with a wrong one: comparing the **scrape
-stage** (375 sections from the HTML) with the stored file (401) is not drift. The stored
-file is the **shape** stage; the 26 extra sections - the `~2` chunk parts, the 18
-core-ability records, the FAQ texts - are put there by `writeWikiCorpus` in
-`src/wiki-build.mjs`. Compare like with like: scrape then shape, then the file.
+- the **scrape stage** (375 sections / 281,473 characters of `core-rules`);
+- the **shape stage** (375 sections / 294,892 characters of `core-rules`;
+  `factions-csv.json` at 6,400 sections / 10,024,842 bytes);
+- **no rule text is lost**: every stored section the rebuild does not reproduce
+  verbatim still has its text in the rebuild, allowing for re-chunking.
+
+A parser change that drops a sentence, a section or the CSV output fails the test.
+
+### The two traps this test exists to avoid
+
+**The stage trap.** The stored `core-rules.json` is the SHAPE stage - the output of
+`writeWikiCorpus` in `src/wiki-build.mjs` - not the scrape stage. Comparing a fresh
+`extractSections` output (375 sections) with it (401) and calling the difference loss
+was a real mistake here: the 26 extra sections are the shape stage's own work. The
+stored file is not reproduced section for section even by the full pipeline: the shape
+stage re-chunks long rules (the `~2` parts), skips the 18 core-ability records because
+the ability-defs builder owns them (see the note in `writeWikiCorpus`), and the step-5
+fix stops the `See-Also` widget becoming a section at all - its list rides on the
+enclosing rule instead. Those are structure and duplicates, not lost rules; the
+stored-only sections' text is present in the rebuild.
+
+**The env trap.** `writeWikiCorpus(dir, data)` falls back to `readPlanInput()`, which
+takes **no directory**: it reads whatever `RULES_CORPUS_DIR` points at. Build into a
+temp dir with that variable unset and the build reads the LIVE corpus and writes it
+back - a perfect reproduction of itself, which reads as 'zero drift'. The test sets the
+variable before importing the modules (hence dynamic imports). That mistake produced the
+'zero drift, 401 sections, 334,155 characters' figure on 2026-10-16; it measured
+nothing.
 ## What must not happen
 
 - `git add -f` to get a corpus file past `.gitignore`, for any reason.
