@@ -523,8 +523,25 @@ function shapeHtml(text, opts) {
     : '<div class="svl-head svl-ability">' + (shape.type ? '<span class="svl-type">' + esc(shape.type) + '</span>' : '') + '</div>';
   const body = shape.rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('');
   const table = body ? '<table class="svl-rows">' + body + '</table>' : '';
-  const rest = String(text == null ? '' : text).split(/\r?\n/).filter(function (l) { return !SHAPE_ROW_LINE.test(l); }).join('\n');
-  return head + table + proseHtml(rest, opts);
+  // task-92: the table takes the labels it models, and only those fragments leave the
+  // prose. The CSV transcription puts a whole move on ONE line ('MAXIMUM DISTANCE: ...
+  // ELIGIBLE IF: ... EFFECT: ... BEFORE MOVING: ...'), so filtering the line out because
+  // it starts with a modelled label silently dropped ELIGIBLE IF, BEFORE MOVING and
+  // AFTER MOVING - Mandal's 'missing data'. Type: and CP: are the head's own fields, so
+  // those lines still go.
+  const rx = function (s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
+  const rest = String(text == null ? '' : text).split(/\r?\n/).map(function (line) {
+    if (/^\s*(?:Type|CP)\s*:/.test(line)) return '';
+    if (!SHAPE_ROW_LINE.test(line)) return line;
+    let out = line;
+    shape.rows.forEach(function (r) {
+      out = out.replace(new RegExp('(?:^|[^A-Za-z])' + rx(r[0]) + '\\s*:\\s*' + rx(r[1]), 'i'), ' ');
+    });
+    return out.replace(/\s+/g, ' ').trim();
+  }).filter(function (l) { return l !== ''; }).join('\n');
+  // The 'Turn:   Phase: Ability "Move"' fragment is CSV navigation, not the book's words:
+  // stripped on this path too (task-89 stripped it only in the plain fallback).
+  return head + table + proseHtml(stripTurnPhase(rest), opts);
 }
 export function recordBody(record, opts) {
   const o = opts || {};
