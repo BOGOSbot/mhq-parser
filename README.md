@@ -249,14 +249,17 @@ La dernière ligne est la signature la plus fiable, mais **18 % seulement** des 
 
 ## Taux d'avertissements
 
-Sur les 240 listes avec unités présentes dans ce dépôt (11 événements), l'analyseur produit 35 avertissements (14,6 %).
+Sur l'archive au 2026-10-17 - **262 événements, 7 424 armées** - l'analyseur produit **7 191 avertissements**, et un seul type en fait **87 %** : `force disposition not found` (6 305). Ce n'est pas une erreur de lecture : sur ces 6 305, **11 seulement** nomment une disposition que l'analyseur a manquée, et la page MHQ n'en porte aucune (l'en-tête `+++` de l'appli n'a pas ce champ). L'avertissement est juste sur l'absence et faux sur le défaut.
 
-| Avertissement | Nombre | Cause |
+| Avertissement | Listes | Cause |
 |---------|-------|-------|
-| Points mismatch | 24 | Total déclaré ≠ total calculé |
-| Force disposition not found | 17 | Disposition de la force introuvable |
-| Detachment not found | 2 | Détachement introuvable |
-| Missing total points | 2 | Aucun total déclaré lisible dans l'en-tête ni dans le corps |
+| Force disposition not found | 6 305 | Aucune disposition déclarée : la source ne la porte pas |
+| Points mismatch | 416 | Total déclaré ≠ total calculé ; 21 viennent de listes non lues, qui comptent 0 point |
+| Detachment not found | 206 | Dont 116 en-têtes appli au champ vide ; 10 valeurs seulement manquées |
+| Missing total points | 135 | 141 de moins depuis l'ajout des libellés `ARMY POINTS` / `POINTS D'ARMÉE TOTAL` |
+| Unrecognized format | 129 | Formats non lus : armylistnetwork (63), notes libres (37), dialectes appli (17) |
+
+Le détail, la méthode et les signatures répétées sont dans [warnings.md](./warnings.md), rejouable avec `node src/warnings.mjs`.
 
 ## Prérequis
 
@@ -267,9 +270,9 @@ Sur les 240 listes avec unités présentes dans ce dépôt (11 événements), l'
 
 Le dépôt a une disposition simple : les sources dans **src/**, la documentation dans **docs/**, les données de travail dans **workspace/** (non suivi, régénérable) et les tests dans **tests/**.
 
-- **src/** - tout ce qui s'exécute, et les deux pages que le serveur lit à chaque requête : `parse.mjs` (l'analyseur), `server.mjs`, `archive.mjs`, `formats.mjs`, `verify-points.mjs`, `glossary.mjs`, `translate-fr-en.mjs`, `rules.mjs` (édition, clés, ancres), `rules-corpus.mjs` (corpus, recherche, juge, rédaction), `index.html`, `rules.html`
+- **src/** - tout ce qui s'exécute, et les deux pages que le serveur lit à chaque requête : `parse.mjs` (l'analyseur), `server.mjs`, `archive.mjs`, `formats.mjs`, `warnings.mjs`, `verify-points.mjs`, `glossary.mjs`, `translate-fr-en.mjs`, `rules.mjs` (édition, clés, ancres), `rules-corpus.mjs` (corpus, recherche, juge, rédaction), `index.html`, `rules.html`
 - **archive/** - les événements fermés déjà récoltés, un fichier JSON par tournoi (suivi : c'est le magasin que le site relit)
-- **docs/** - `developer-doc.md` (comment fonctionne l'analyseur et pourquoi), `rules-page.md` (la page /rules, de la question à la citation), `corpus-wiki.md` (le corpus en wiki : schéma, règle d'identifiants, overflow, dry run), `translate.md` (dictionnaire FR/EN), `formats.md`, `glossary-fr-en.md`, `HANDOFF.md`
+- **docs/** - `developer-doc.md` (comment fonctionne l'analyseur et pourquoi), `rules-page.md` (la page /rules, de la question à la citation), `corpus-wiki.md` (le corpus en wiki : schéma, règle d'identifiants, overflow, dry run), `translate.md` (dictionnaire FR/EN), `formats.md`, `warnings.md`, `glossary-fr-en.md`, `HANDOFF.md`
 - **tests/** - une suite par sujet ; `tests/fixtures/` porte les listes réelles, les questions reddit et françaises et leur clé de réponses
 - **workspace/** - le corpus de règles et l'export CSV, l'état de l'index vectoriel, les exécutions d'évaluation et les journaux du serveur. Non suivi, propre à la machine : `node src/rules-corpus.mjs --scrape` le reconstruit
 - **README.md** - ce fichier, la façade du dépôt (humain et agent)
@@ -544,9 +547,9 @@ Across the 240 lists with units in this repository (11 events), the parser produ
 
 The repository keeps one shape: sources in **src/**, documentation in **docs/**, working data in **workspace/** (untracked, regenerable) and tests in **tests/**.
 
-- **src/** - everything that runs, plus the two pages the server reads on each request: `parse.mjs` (the parser), `server.mjs`, `archive.mjs`, `formats.mjs`, `verify-points.mjs`, `glossary.mjs`, `translate-fr-en.mjs`, `rules.mjs` (edition, keys, anchors), `rules-corpus.mjs` (corpus, retrieval, judge, writer), `index.html`, `rules.html`
+- **src/** - everything that runs, plus the two pages the server reads on each request: `parse.mjs` (the parser), `server.mjs`, `archive.mjs`, `formats.mjs`, `warnings.mjs`, `verify-points.mjs`, `glossary.mjs`, `translate-fr-en.mjs`, `rules.mjs` (edition, keys, anchors), `rules-corpus.mjs` (corpus, retrieval, judge, writer), `index.html`, `rules.html`
 - **archive/** - the closed events harvested so far, one JSON file per tournament (tracked: the store the site reads back)
-- **docs/** - `developer-doc.md` (how the parser works and why), `rules-page.md` (the /rules page, from question to citation), `corpus-wiki.md` (the corpus as a wiki: schema, id rule, overflow, dry run), `translate.md` (FR/EN dictionary), `formats.md`, `glossary-fr-en.md`, `HANDOFF.md`
+- **docs/** - `developer-doc.md` (how the parser works and why), `rules-page.md` (the /rules page, from question to citation), `corpus-wiki.md` (the corpus as a wiki: schema, id rule, overflow, dry run), `translate.md` (FR/EN dictionary), `formats.md`, `warnings.md`, `glossary-fr-en.md`, `HANDOFF.md`
 - **tests/** - one suite per subject; `tests/fixtures/` holds the real lists, the reddit and French question banks and their answer key
 - **workspace/** - the rules corpus and CSV export, the vector-index state, the eval runs and the server logs. Untracked and per-machine: `node src/rules-corpus.mjs --scrape` rebuilds it
 - **README.md** - this file, the repository's front page (human and agent)

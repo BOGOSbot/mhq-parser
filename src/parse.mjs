@@ -620,7 +620,10 @@ const HEADER_ALIAS = {
   'DISPOSITIONS DES FORCES': 'forceDisposition',
   'FORCE DE DISPOSITION': 'forceDisposition',
   'TOTAL ARMY POINTS': 'totalPoints',
+  'ARMY POINTS': 'totalPoints',
   "POINTS D'ARMÉE": 'totalPoints',
+  "POINTS D'ARMÉE TOTAL": 'totalPoints',
+  "TOTAL DE POINTS D'ARMÉE": 'totalPoints',
   "TOTAL DE POINTS D'ARME": 'totalPoints',
   "TOTAL DE POINTS D'ARMÉE": 'totalPoints',
   'WARLORD': 'warlord',
@@ -1403,8 +1406,13 @@ const BANNER_RE = new RegExp(
 // A whole line that is a unit entry rather than a banner: it starts with a
 // count ("1x ..."), a character label ("Char1: ..."), a bullet, or a pipe.
 const UNIT_SHAPED_RE = /^(?:\d+\s*[x\u00d7]\b|Char\d+:|[\u2022\u25e6|])/i;
-// Labels that introduce the army's own total in a freeform list.
-const TOTAL_LABELS = String.raw`(?:Total\s+Army\s+Points|Total\s+Army|Total\s+de\s+Points|Points\s+d['\u2019]?\s*arm(?:\u00e9e|ee)|Total\s+de\s+l['\u2019]?\s*arm(?:\u00e9e|ee))`;
+// Labels that introduce the army's own total in a freeform list. "Army
+// Points", "Points d'armee total" and the bare "Total"/"Points" are what the
+// app's other header dialect and armylistnetwork's footer print; without them
+// 63 lists read as having no total at all. The bare forms are safe here because
+// every reader of TOTAL_LABELS bounds the number to an army size (1000-3000),
+// which is why they are not header aliases: a header value is taken as written.
+const TOTAL_LABELS = String.raw`(?:Total\s+Army\s+Points|Total\s+Army|Army\s+Points|Total\s+de\s+Points|Points\s+d['\u2019]?\s*arm(?:\u00e9e|ee)\s+total|Points\s+d['\u2019]?\s*arm(?:\u00e9e|ee)|Total\s+de\s+l['\u2019]?\s*arm(?:\u00e9e|ee)|Total|Points)`;
 // Labels that introduce the game size instead: the app freeform export prints
 // "Strike Force (2000 points)" on every list and WarOrgan prints "Battle Size:
 // Strike Force (2000 point limit)", both regardless of what the army costs. The

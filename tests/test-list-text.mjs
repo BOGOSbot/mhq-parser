@@ -337,5 +337,25 @@ const bannerP = parseListText(bannerList, { name: 'x' }).output.players[0];
 t('budget: the banner is still the declaration', totals(bannerP).declaredPts, 1990);
 t('budget: a banner mismatch still warns', playerWarnings(bannerP, getMeta(bannerP)).some(w => w.type === 'mismatch'), true);
 
+// --- the total under a label the parser used to skip ---------------------------
+// The app's other header dialect prints "+ ARMY POINTS:", armylistnetwork's
+// footer prints "TOTAL : 2000 points - 53 figurines", and the French header
+// spells it "POINTS D'ARMÉE TOTAL". None was a label, so 141 armies read as
+// having no total at all and warned "missing total points" (2026-10-17 survey
+// of the 258-event archive). The bare forms are safe only because the number is
+// bounded to an army size.
+const totalOf = label => {
+  const body = '+++++++++++++++++++++++++++++\n+ PLAYER NAME: T\n+ FACTION KEYWORD: Xenos - Orks\n' +
+    '+ DETACHMENT: X\n+ ' + label + '\n+++++++++++++++++++++++++++++\n\n' +
+    'CHARACTER\nChar1: 1x Boss (100 pts)\nBATTLELINE\n10x Boyz (100 pts)\n';
+  const p = parseListText(body, { name: 'x' }).output.players[0];
+  return { declared: totals(p).declaredPts, missing: playerWarnings(p, getMeta(p)).some(w => w.type === 'missing-total') };
+};
+t('total: + ARMY POINTS', totalOf('ARMY POINTS: 2000 pts'), { declared: 2000, missing: false });
+t('total: + POINTS D\'ARMÉE TOTAL', totalOf("POINTS D'ARMÉE TOTAL : 1995pts"), { declared: 1995, missing: false });
+t('total: bare TOTAL footer', totalOf('TOTAL : 2000 points - 53 figurines - 12'), { declared: 2000, missing: false });
+t('total: bare POINTS', totalOf('POINTS : 2000pts'), { declared: 2000, missing: false });
+t('total: an out-of-range bare TOTAL is not a total', totalOf('TOTAL : 80 pts'), { declared: null, missing: true });
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);
