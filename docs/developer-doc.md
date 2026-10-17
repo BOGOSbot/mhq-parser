@@ -434,6 +434,7 @@ node src/archive.mjs --verify        # every entry still resolves to a readable 
 node src/archive.mjs --reindex       # rebuild the index from the files on disk
 node src/archive.mjs --prune         # drop what has fallen out of the window
 node src/archive.mjs --prune --months 0   # drop everything (defeats the point)
+node src/archive.mjs --drop-before 2026-07-01   # drop the previous edition's events
 ```
 
 The archive keeps **one year** (`WINDOW_MONTHS`). It exists to characterise the
@@ -441,6 +442,16 @@ formats the parser has to be right about and to answer the site; a list from
 three editions ago does neither. The harvest ignores anything older than the
 window and `--prune` deletes what is already on disk. `--months <n>` moves the
 window; `--months 0` means all time.
+
+A year is a bound on fetching, not the thing worth keeping, and an edition turns
+over inside it. `--drop-before <date>` drops the events an older edition
+produced and writes each into the refusal ledger, because an older edition never
+becomes the current one - so the next harvest does not fetch any of them back.
+**The cut is content, not a date**: the 2025-2026 league played its last fixture
+on 2026-06-30 while a tournament on 2026-06-27 already plays the new edition, so
+the dates overlap and a date alone would either keep the league or throw the
+tournament away. An event dated before the cut is kept when one of its lists
+declares a Force Disposition, which is the field the new edition introduced.
 
 The index has two lists. `events` is the parsed 40k events, one entry per file.
 `checked` is the **refusal ledger**: every event judged and dropped, with the
@@ -489,9 +500,10 @@ and `live: true` wins over the cache whenever the cache is what you doubt.
 
 ### Numbers
 
-The 12 months before 2026-10-05: **1,203** closed tournaments in the sitemap,
-**252** kept and **83** refused and remembered - so a second run has nothing to
-check. The files are **59.7 MB**. The whole closed catalogue, back to 2021, would
+After the 2026-10-17 harvest and the edition cut: **45** events kept - the ones
+dated 2026-07-01 or later, plus the five late-June events that already declare a
+Force Disposition - and **297** refused and remembered, so a harvest run has
+nothing left to check. The files are **9.5 MB**. The whole closed catalogue, back to 2021, would
 be roughly 210 MB, which is why the default harvest is bounded rather than
 absolute.
 

@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { parseListText, listStartIndexes, isUnrecognizedFormat, playerWarnings, getMeta, totals, armyBudget, nameFromFile } from '../src/parse.mjs';
+import { parseListText, listStartIndexes, isUnrecognizedFormat, playerWarnings, getMeta, totals, armyBudget, realUnits, nameFromFile } from '../src/parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -223,6 +223,31 @@ t('unrecognised: a good list is not flagged', isUnrecognizedFormat(good), false)
 // A single unit is not an army either.
 t('unrecognised: one unit is flagged',
   isUnrecognizedFormat(parseListText('5x Sisters (100 pts)\n• 1x Sister\n• 4x Sister\n', { name: 'x' }).output.players[0]), true);
+
+// --- the shapes the 2026-10-17 survey found -----------------------------------
+// armylistnetwork reads perfectly well - 5 to 16 units a list - and used to be
+// shown as an empty army because the recognition test wanted a bracket, a
+// bullet or "Char1:" and this dialect has none of the three.
+const aln = parseListText([
+  'Thousand Sons : Tournoi armageddon', '', '### Détachements :', '* Thousand Sons - Phalange Rubricae',
+  '=> Disposition : Prendre et tenir', '', '--- Ligne ---', '',
+  'Marines Rubricae (10) : 190 pts', '- 9 Lance-flammes Warp', '',
+  '| Ahriman  (seigneur de guerre): 100 pts', '| - Bâton noir', '',
+  '--- Infanterie ---', '', 'Terminators du Scarabée (5) : 370 pts', '- 7 Combi-bolter', '',
+  'Total : 660 points - 16 figurines -',
+].join('\n'), { name: 'x' }).output.players[0];
+t('aln: the units are read', realUnits(aln).map(u => u.points), [190, 100, 370]);
+t('aln: not flagged unrecognised', isUnrecognizedFormat(aln), false);
+t('aln: the Total footer is not a unit', realUnits(aln).some(u => /^Total\b/i.test(u.model)), false);
+// "Incursion (1000 points)" is the battle size, not an army banner called
+// Incursion with a 1000-point total: under it is normal, over it still warns.
+const incursion = units => parseListText('Orks\nIncursion (1000 points)\nForce Dispositions: Take and Hold\n' +
+  '\nCHARACTERS\n' + units.map((c, i) => 'Unit ' + (i + 1) + ' (' + c + ' points)\n\u2022 1x Body').join('\n') + '\n',
+  { name: 'x' }).output.players[0];
+const incWarn = units => playerWarnings(incursion(units), getMeta(incursion(units))).map(w => w.type);
+t('budget: Incursion is read as the size', armyBudget(incursion([600])), 1000);
+t('budget: under an Incursion limit warns nothing', incWarn([600, 300]).filter(w => w === 'mismatch' || w === 'over-budget'), []);
+t('budget: over it warns', incWarn([600, 600]).filter(w => w === 'mismatch' || w === 'over-budget'), ['over-budget']);
 
 // --- errors -------------------------------------------------------------------
 throws('empty text', () => parseListText('   ', {}), 'the text is empty - nothing to parse');

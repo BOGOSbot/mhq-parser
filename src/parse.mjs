@@ -1439,7 +1439,12 @@ const TOTAL_LABELS = String.raw`(?:Total\s+Army\s+Points|Total\s+Army|Army\s+Poi
 // Strike Force (2000 point limit)", both regardless of what the army costs. The
 // figure is a ceiling the list has to fit under, never what the list costs, so
 // it is read apart from the total.
-const BUDGET_LABELS = String.raw`(?:Strike\s+Force|Force\s+de\s+Frappe|Taille\s+de\s+la\s+force|Battle\s+Size|Size\s+of\s+the\s+Force)`;
+// The sizes a list can be built for. "Incursion (1000 points)" is the 1000-point
+// one and the app prints it on every list of that size; it was missing here, so
+// the line was read as the army's own banner - an army called "Incursion" with a
+// 1000-point total - and every one of those lists warned a 5-point mismatch
+// (measured 2026-10-17: 29 lines in the archive, 6 of them warned).
+const BUDGET_LABELS = String.raw`(?:Strike\s+Force|Force\s+de\s+Frappe|Incursion|Onslaught|Taille\s+de\s+la\s+force|Battle\s+Size|Size\s+of\s+the\s+Force)`;
 // "Strike force : 1995 PTS" - the legacy freeform dialect prints the army
 // total with a colon, not the parenthesised game size, so these labels are kept
 // for the bare shape and never for the parenthesised one.
@@ -1457,7 +1462,7 @@ const TOTAL_PTS_RE = new RegExp(TOTAL_LABELS + String.raw`[^()\n]*?\(\s*` + PTS_
 const BUDGET_BARE_RE = new RegExp(BUDGET_SIZE_LABELS + String.raw`\s*[:\-]\s*` + PTS_NUM_G + String.raw`\s*(?:` + PTS_WORD + String.raw`)?\b`, 'i');
 const BUDGET_PTS_RE = new RegExp(BUDGET_LABELS + String.raw`[^()\n]*?\(\s*` + PTS_NUM_G + String.raw`\s*` + PTS_WORD + String.raw`\b`, 'i');
 // A line that names a force layout or battle size rather than an army.
-const FORCE_LAYOUT_RE = /^(?:Strike\s+Force|Force\s+de\s+Frappe|Force\s+of|DA\s+Recon)\b/i;
+const FORCE_LAYOUT_RE = /^(?:Strike\s+Force|Force\s+de\s+Frappe|Incursion|Onslaught|Force\s+of|DA\s+Recon)\b/i;
 const BUDGET_LINE_RE = /^(?:Battle\s+Size|Size\s+of\s+the\s+Force|Taille\s+de\s+la\s+force)\b/i;
 function isBudgetShape(s) {
   const t = String(s || '').trim();
@@ -1609,7 +1614,10 @@ function extractEvent(url, html, fallbackName = null) {
 // summary lines are not units, and neither is anything priced like an army.
 function realUnits(player) {
   return (player.units || []).filter(u => u.points && u.points < 1000 &&
-    !/^(?:Strike Force|Force de Frappe|Force of|DA Recon)/i.test(u.model || ''));
+    // "Total" is armylistnetwork's footer ("Total : 1995 points - 42 figurines"),
+    // read as a unit: on a 1000-point event its 995 sneaks under the army-size
+    // bound and lands in the unit list. It is a summary line, like the two above.
+    !/^(?:Strike Force|Force de Frappe|Force of|DA Recon|Total\b)/i.test(u.model || ''));
 }
 
 function totals(player) {
@@ -1653,16 +1661,18 @@ function armyBudget(player) {
 // (points first, then detachment, then force disposition).
 // Whether the text could be recognised as one of the formats the parser knows.
 //
-// Two ways to fail, and both used to pass silently: the text carries neither
-// marker family, or it parsed to fewer than two units. Either way the card
-// rendered as an army with nothing in it, which reads as an empty submission
-// rather than as a list in a shape this tool does not know. Measured on 233
-// real lists, exactly two trip it - both Ironbuilt exports.
+// A list that comes out with fewer than two units used to pass silently: the
+// card rendered as an army with nothing in it, which reads as an empty
+// submission rather than as a list in a shape this tool does not know.
+//
+// The question is whether the card has an army in it, and the only honest answer
+// is structural: two units or more is a list, whatever dialect put them there;
+// fewer is a shape this tool could not read. It used to also require one of three
+// marker families (bracketed points, "Char1:", a bullet), which turned out to be
+// a proxy that lies: measured 2026-10-17, 15 armylistnetwork exports and one
+// freeform paste parse perfectly - 5 to 16 units each, points and all - and were
+// still rendered as empty armies because their dialect uses none of the three.
 function isUnrecognizedFormat(player) {
-  const text = player.bodyText || player.bodyRest || '';
-  const newrecruit = /\[\s*\d+\s*pts?\s*\]/.test(text);
-  const bullets = /\(\s*\d+\s*(?:pts?|points?)\s*\)|^\s*Char\d+:|^\s*[\u00b7\u2022\u25e6]/m.test(text);
-  if (!newrecruit && !bullets) return true;
   return realUnits(player).length < 2;
 }
 

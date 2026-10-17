@@ -249,17 +249,19 @@ La dernière ligne est la signature la plus fiable, mais **18 % seulement** des 
 
 ## Taux d'avertissements
 
-L'archive garde un an, et un an couvre **deux éditions** : une liste 10e n'a pas de Force Disposition à déclarer, donc ses avertissements ne disent rien de l'analyseur. C'est **l'édition courante** qu'on mesure (`--since 2026-07-01`, le mois où 98 % des listes déclarent une disposition, contre 0 % avant) : **44 événements, 1 115 listes, 224 avertissements**.
+**L'archive ne garde que l'édition courante.** Les 213 événements de la 10e ont été supprimés le 2026-10-17 (`node src/archive.mjs --drop-before 2026-07-01`), et le ledger de récolte les retient comme refus définitifs. Le seuil est le **contenu**, pas la date : la ligue 2025-2026 a joué son dernier match le 06-30 alors qu'un tournoi du 06-27 joue déjà la nouvelle édition, donc un événement antérieur est gardé quand une de ses listes déclare une Force Disposition. Le partage par mois le confirme : 0 % des listes déclarent une disposition de 2025-10 à 2026-05, puis 98 % à partir de 2026-07.
+
+**49 événements, 1 194 listes, 226 avertissements** (18,9 %).
 
 | Avertissement | Listes | Cause |
 |---------|-------|-------|
-| Points mismatch | 115 | 51 % des avertissements ; 26 sous 30 points. Non attribué : les lignes d'unité sont lues à 96 % |
-| Force disposition not found | 48 | Aucune disposition déclarée ; les 1 055 listes qui en portent une sont lues |
-| Missing total points | 23 | Aucun total lisible et aucune ligne de format |
-| Unrecognized format | 21 | armylistnetwork 13 sur 13, notes libres 5, ironbuilt 2, newrecruit 1 |
-| Detachment not found | 17 | Champ laissé vide dans l'en-tête de la source |
+| Points mismatch | 119 | 53 % des avertissements ; 26 sous 30 points. Non attribué : les lignes d'unité sont lues à ~96 % |
+| Force disposition not found | 60 | Aucune disposition déclarée ; toutes les listes qui en portent une sont lues |
+| Missing total points | 20 | Aucun total et aucune taille de partie |
+| Detachment not found | 19 | Champ laissé vide dans l'en-tête de la source |
+| Unrecognized format | 8 | Plus un dialecte inconnu : des soumissions vides (corps vide, URL seule, moins de deux unités) |
 
-Toute l'archive, pour mémoire : 262 événements, 7 424 listes, 7 176 avertissements - dont **6 290 du même `disposition` sur des listes 10e**, soit 87 % du total et 0,9 % de celui de l'édition courante. Méthode, verdicts et correctifs du 2026-10-17 : [warnings.md](./warnings.md).
+Cinq correctifs le 2026-10-17, chacun mesuré avant d'être écrit puis figé par un test : les libellés de total (141 listes), les dispositions non lues (15), la reconnaissance d'une liste lisible (16), la ligne `Total` comptée comme unité, et `Incursion (1000 points)` lue comme bannière d'armée. Détail : [warnings.md](./warnings.md).
 
 ## Prérequis
 
