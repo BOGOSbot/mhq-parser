@@ -21,6 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readAllCorpus } from './rules-corpus.mjs';
 import { allianceAssigner, factionAssigner, factionRoster, hash8, pageNamer, pageTitleSlug, tocTree } from './wiki-toc.mjs';
+import { stripSeeAlso } from './wiki-plan.mjs';
 import { cardTables } from './unit-card.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -48,8 +49,12 @@ const textOf = rec => String((rec && rec.text) || '');
 function row(rec, slugOf, byId) {
   const raw = byId.get(rec.i) || {};
   const plain = textOf(raw).replace(/\s+/g, ' ').trim();
-  // task-87: the rule's own number ('01.05'); the row renders 'num title' when set.
-  return { id: rec.i, slug: slugOf(rec.i), title: rec.t || '', num: raw.ruleId || '', source: raw.source || '', snippet: plain.slice(0, 100) };
+  // task-87: the rule's own number ('01.05'); the row renders 'num title' when set. The
+  // field is omitted when empty: the factions branch has no ruleId and 5,185 rows carrying
+  // num:'' cost 50 KB of the payload for nothing.
+  const out = { id: rec.i, slug: slugOf(rec.i), title: rec.t || '', source: raw.source || '', snippet: plain.slice(0, 100) };
+  if (raw.ruleId) out.num = raw.ruleId;
+  return out;
 }
 
 // One node of a branch, inlined: the file references ('f') become nested objects
@@ -179,7 +184,7 @@ export function buildPayloads(corpus, outDir) {
       const raw = byId.get(id) || {};
       recordsOut[id] = {
         id: id, slug: slugOf(id), heading: raw.heading || '', kind: raw.kind || '', source: raw.source || '',
-        ruleId: raw.ruleId || '', set: raw.set || '', text: textOf(raw),
+        ruleId: raw.ruleId || '', set: raw.set || '', text: stripSeeAlso({ text: textOf(raw), links: raw.links }),
         links: Array.isArray(raw.links) ? raw.links : [], parent: raw.parent || '',
         children: Array.isArray(raw.children) ? raw.children : [],
         // 'at' is where this record sits when it is an annotation: the section it

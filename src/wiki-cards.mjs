@@ -23,10 +23,12 @@
 import { buildUnitCard, resolveRecordLinks } from './unit-card.mjs';
 // task-66: one escaper and one linkifier for the whole card and prose path.
 import { linkify, esc } from './wikilinks.mjs';
-// The corpus's own link block rides inside the stored text (it is what the vector
-// sees). It is not the reader's text: stripped here, exactly, from the record's own
-// links array. task-72.
-import { stripBuiltBlock } from './wiki-plan.mjs';
+// The corpus's own link block and the page's terminal 'SEE ALSO' list ride inside the
+// stored text (they are what the vector sees). Neither is the reader's text: the link
+// block is stripped exactly from the record's own links array (task-72), and the SEE
+// ALSO block is stripped for display only when it names the record's own section links
+// (task-87).
+import { stripBuiltBlock, stripSeeAlso } from './wiki-plan.mjs';
 
 // The two kinds whose text is a flat transcription of the CSV card. Every other
 // kind (stratagem, enhancement, detachment, rule, ability, index) has no card
@@ -494,14 +496,17 @@ export function recordBody(record, opts) {
   // The card prose gets the same links as the prose path, and the record's own id
   // is carried so it never links to itself.
   if (record && !o.selfId) o.selfId = record.id;
+  // task-87: the two display-only strips happen once, here. The stored text keeps both
+  // blocks; the vector sees them and the corpus is unchanged.
+  const text = stripSeeAlso({ text: stripBuiltBlock(record), links: record && record.links });
   const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
   if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang, o);
   // task-78 B: the labelled families come before the card. FALL-BACK MOVE is kind
   // 'stratagem' and had a stratagem card; its Type line says Movement Ability, and
   // Mandal's point is that it is not a stratagem, so the layout wins over the card.
   // Only records the classifier claims are affected; every other card is untouched.
-  if (recordShape(stripBuiltBlock(record), record && record.heading)) {
-    return banner + shapeHtml(stripBuiltBlock(record), { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading });
+  if (recordShape(text, record && record.heading)) {
+    return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading });
   }
   const card = cardFor(record, o);
   if (card) return banner + cardHtml(card, o);
@@ -510,7 +515,7 @@ export function recordBody(record, opts) {
   const cap = record && record.kind === 'index' ? 0 : 40;
   // task-78 B: the two labelled families get their own layout; every other record
   // takes the same proseHtml call, with the same options, as before - byte-identical.
-  return banner + shapeHtml(stripBuiltBlock(record), { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading });
+  return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading });
 }
 
 export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, proseHtml, recordBody, rulingBody, recordShape };

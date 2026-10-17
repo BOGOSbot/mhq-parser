@@ -97,6 +97,27 @@ export function stripBuiltBlock(rec) {
   return text.endsWith(suffix) ? text.slice(0, text.length - suffix.length) : text;
 }
 
+// task-87: the page's 'SEE ALSO' block is a navigation list of the rules the reader can
+// also reach as rows in the tree, so in prose it repeats the reader's siblings. Stripped
+// for DISPLAY only - the corpus text and the index keep it, because its numbers
+// ('01.05.01') are real search material. Stripped only when the block is terminal and
+// its tail really names one of the record's section links; a block naming anything else
+// is not ours to cut.
+export function stripSeeAlso(rec) {
+  const text = String((rec && rec.text) || '');
+  const at = text.lastIndexOf('\nSEE ALSO\n');
+  if (at === -1) return text;
+  const tail = text.slice(at + '\nSEE ALSO\n'.length);
+  if (!tail.trim()) return text;
+  const titles = ((rec && rec.links) || [])
+    .filter(l => l && l.kind === 'section' && l.title)
+    .map(l => String(l.title).toLowerCase());
+  if (!titles.length) return text;
+  const lower = tail.toLowerCase();
+  if (!titles.some(t => lower.includes(t))) return text;
+  return text.slice(0, at).replace(/\s+$/, '');
+}
+
 export function resolveLinks(links, has) {
   const kept = [];
   let dropped = 0;

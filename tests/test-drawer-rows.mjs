@@ -9,7 +9,7 @@ const surface = fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.js'), 'utf8
 const payload = fs.readFileSync(path.join(ROOT, 'src', 'wiki-payload.mjs'), 'utf8');
 ok('the inline box no longer prints a duplicate title', surface.indexOf('sv-inline-title') === -1 && surface.indexOf('sv-inline-meta') === -1);
 ok('the row prints the number before the title when it has one', /r\.num \? r\.num \+ ' '/.test(surface));
-ok('the payload row carries the rule number', /num: raw\.ruleId \|\| ''/.test(payload));
+ok('the payload row carries the rule number, and only when the record has one', /if \(raw\.ruleId\) out\.num = raw\.ruleId/.test(payload) && !/num: raw\.ruleId \|\| ''/.test(payload));
 // The corpus records the number: Dice is 01.05, its children 01.05.01 and 01.05.02.
 const core = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'rules-corpus', 'core-rules.json'), 'utf8'));
 const dice = (core.sections || []).find(s => s.heading === 'Dice');

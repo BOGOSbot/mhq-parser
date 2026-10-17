@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cardFor, recordBody, recordShape, proseHtml, CARD_KINDS } from '../src/wiki-cards.mjs';
-import { stripBuiltBlock } from '../src/wiki-plan.mjs';
+import { stripBuiltBlock, stripSeeAlso } from '../src/wiki-plan.mjs';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -27,9 +27,11 @@ for (const r of all) {
     continue;
   }
   fam.other++; byKind[kind].other++;
-  // The old rendering, verbatim: the prose call recordBody made before the layouts.
+  // The old rendering, verbatim: the prose call recordBody made before the layouts. The
+  // task-87 display strip is in both sides, so a SEE ALSO block leaving the reader's text
+  // is not read as a layout change.
   const opts = { selfId: r.id, href: undefined, cap: kind === 'index' ? 0 : 40, selfHeading: r.heading };
-  const old = proseHtml(text, opts);
+  const old = proseHtml(stripSeeAlso({ text: text, links: r.links }), opts);
   const now = recordBody(r);
   let isCard = kind === 'ruling' || (CARD_KINDS && CARD_KINDS.has && CARD_KINDS.has(kind));
   if (!isCard) { try { isCard = !!cardFor(r, {}); } catch (e) { isCard = false; } }
