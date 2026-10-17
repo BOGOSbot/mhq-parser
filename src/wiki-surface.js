@@ -278,7 +278,9 @@
     var b = el('button', 'sv-rec');
     b.type = 'button';
     b.setAttribute('data-rec', r.id);
-    b.appendChild(el('span', 'sv-rec-title', r.title || leafOfId(r.id)));
+    // task-87: the row carries the rule's own number ('01.05 Dice'); the payload's
+    // row has a num when the corpus record has a ruleId.
+    b.appendChild(el('span', 'sv-rec-title', (r.num ? r.num + ' ' : '') + (r.title || leafOfId(r.id))));
     var meta = bookLabel(r.slug);
     if (meta) b.appendChild(el('span', 'sv-rec-meta', meta));
     // The payload caps a row's snippet at 100; a full-length snippet was cut, so
@@ -293,9 +295,8 @@
     var existing = wrap.querySelector('.sv-inline');
     if (existing) { existing.remove(); return; }
     var box = el('div', 'sv-inline');
-    box.appendChild(el('div', 'sv-inline-title', r.title || leafOfId(r.id)));
-    var meta = [bookLabel(r.slug)].filter(Boolean).join(' \u00b7 ');
-    if (meta) box.appendChild(el('div', 'sv-inline-meta', meta));
+    // task-87: no inline title or meta - the row above this box IS the header, and
+    // printing the title again read as a duplicate 'Dice / Core Rules'.
     var body = el('div', 'sv-inline-body');
     body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
     box.appendChild(body);

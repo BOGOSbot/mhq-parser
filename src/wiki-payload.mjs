@@ -48,7 +48,8 @@ const textOf = rec => String((rec && rec.text) || '');
 function row(rec, slugOf, byId) {
   const raw = byId.get(rec.i) || {};
   const plain = textOf(raw).replace(/\s+/g, ' ').trim();
-  return { id: rec.i, slug: slugOf(rec.i), title: rec.t || '', source: raw.source || '', snippet: plain.slice(0, 100) };
+  // task-87: the rule's own number ('01.05'); the row renders 'num title' when set.
+  return { id: rec.i, slug: slugOf(rec.i), title: rec.t || '', num: raw.ruleId || '', source: raw.source || '', snippet: plain.slice(0, 100) };
 }
 
 // One node of a branch, inlined: the file references ('f') become nested objects

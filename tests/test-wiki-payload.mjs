@@ -99,7 +99,7 @@ const findRecs = n => (n.recs || []).concat((n.kids || []).flatMap(findRecs));
 const rows = findRecs(branch).concat((branch.pages || []).flatMap(p => []));
 ok('(h) the branch carries record rows', rows.length > 0);
 if (rows.length) {
-  t('(h) the row fields are exactly id, slug, title, source, snippet', Object.keys(rows[0]).sort(), ['id', 'slug', 'snippet', 'source', 'title']);
+  t('(h) the row fields are exactly id, slug, title, source, snippet', Object.keys(rows[0]).sort(), ['id', 'num', 'slug', 'snippet', 'source', 'title']);
   t('(h) every snippet is at most 100 characters', rows.filter(r => r.snippet.length > 100).length, 0);
   ok('(h) and every row has a slug and a title', rows.every(r => r.slug && (r.title || r.id)));
 }

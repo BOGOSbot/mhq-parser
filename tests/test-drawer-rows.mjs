@@ -1,0 +1,21 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.join(__dirname, '..');
+let pass = 0, fail = 0;
+const ok = (name, cond) => { if (cond) { pass++; } else { fail++; console.log('FAIL ' + name); } };
+const surface = fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.js'), 'utf8');
+const payload = fs.readFileSync(path.join(ROOT, 'src', 'wiki-payload.mjs'), 'utf8');
+ok('the inline box no longer prints a duplicate title', surface.indexOf('sv-inline-title') === -1 && surface.indexOf('sv-inline-meta') === -1);
+ok('the row prints the number before the title when it has one', /r\.num \? r\.num \+ ' '/.test(surface));
+ok('the payload row carries the rule number', /num: raw\.ruleId \|\| ''/.test(payload));
+// The corpus records the number: Dice is 01.05, its children 01.05.01 and 01.05.02.
+const core = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'rules-corpus', 'core-rules.json'), 'utf8'));
+const dice = (core.sections || []).find(s => s.heading === 'Dice');
+ok('Dice carries ruleId 01.05', !!dice && dice.ruleId === '01.05');
+const app = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'rules-corpus', 'rules-appendix.json'), 'utf8'));
+const kids = (app.sections || []).filter(s => /^01\.05\.\d{2}$/.test(String(s.ruleId || '')));
+ok('the two numbered children resolve', kids.length >= 2);
+console.log(pass + ' passed, ' + fail + ' failed');
+process.exitCode = fail ? 1 : 0;
