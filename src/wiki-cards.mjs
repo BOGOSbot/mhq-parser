@@ -179,8 +179,13 @@ function abilityRow(a, o) {
     type: a.type || '',
     text: a.description ? '<span class="wcard-ability-text">' + linkify(a.description, { selfId: o.selfId, href: o.href })
       + (a.truncated ? ' <span class="wcard-note">(cut short)</span>' : '') + '</span>' : '',
+    // task-93: the link is labelled with the UNIT'S OWN ability name, not the title of the
+    // record it resolves to. That title is a heading path ('Attached Units > Forming Attached
+    // Units > LEADER 24.22 / SUPPORT'), which reads as a page address, not as the ability the
+    // unit has - Mandal's list wants 'Leader'. The suffix 'in the rules' goes with it: the
+    // anchor is already a link.
     link: href ? '<a class="wcard-ability-link" href="' + esc(href) + '">'
-      + esc(target.title || a.name || 'the rule') + ' in the rules</a>' : '',
+      + esc(a.name || target.title || 'the rule') + '</a>' : '',
     // task-81 step 4: the resolved record id, so the card can name each DISTINCT
     // ability once however many rows point at it.
     to: (target && target.to) || '',
@@ -243,8 +248,10 @@ function cardHtml(card, o) {
       const a = it.head;
       const texts = (a.text ? [a.text] : []).concat(it.texts);
       const more = texts.map(t => '<details class="wcard-more"><summary>the text</summary>' + t + '</details>').join('');
-      return '<li class="wcard-abilityline">' + (a.link || '<b>' + esc(a.name) + '</b>')
-        + (a.type ? ' <span class="wcard-abtype">' + esc(a.type) + '</span>' : '') + more + '</li>';
+      // task-93: no 'Core'/'Faction' tag on the row - the heading above already says
+      // 'Core abilities and army rules' and the tag was the only thing on the line that was
+      // not the ability.
+      return '<li class="wcard-abilityline">' + (a.link || '<b>' + esc(a.name) + '</b>') + more + '</li>';
     }).join('');
     parts.push('<h2 class="wcard-h">Core abilities and army rules</h2>'
       + '<ul class="wcard-abilities wcard-abilitylist">' + lines + '</ul>');

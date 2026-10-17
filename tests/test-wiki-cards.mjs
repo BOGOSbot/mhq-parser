@@ -51,7 +51,10 @@ ok('and holds the datasheet\'s own weapon with its stats', dsHtml.indexOf('Guard
 ok('the melee table is headed with WS, where the export puts the skill', /Melee weapons<\/h2><div class="wcard-scroll"><table class="wcard-table wcard-weapons"><thead><tr>(<th scope="col">(Range|A|WS|S|AP|D)<\/th>){6}<\/tr>/.test(dsHtml) && dsHtml.indexOf('Misericordia') !== -1);
 t('every name row is followed by its stats row', (dsHtml.match(/<tr class="wcard-name"/g) || []).length, (dsHtml.match(/<tr class="wcard-stats"/g) || []).length);
 ok('(81-4) the rule abilities are one link per distinct ability, not a table', dsHtml.indexOf('Core abilities and army rules') !== -1 && dsHtml.indexOf('<ul class="wcard-abilities wcard-abilitylist">') !== -1 && dsHtml.indexOf('wcard-table wcard-abilities') === -1);
-ok('(81-4) the heading keeps the linked name in the rules', dsHtml.indexOf('in the rules</a>') !== -1);
+// task-93: the link is labelled with the unit's own ability name, not the resolved record's
+// heading path ('Attached Units > Forming Attached Units > LEADER 24.22 / SUPPORT').
+ok('(81-4/task-93) the ability link is labelled by the unit ability name', /class="wcard-ability-link"[^>]*>[^<]+<\/a>/.test(dsHtml) && dsHtml.indexOf('in the rules</a>') === -1);
+ok('(task-93) and the row carries no Core/Faction tag', dsHtml.indexOf('wcard-abtype') === -1);
 ok('(81-4) a differing wording stays reachable collapsed', /<details class="wcard-more"><summary>the text<\/summary>/.test(dsHtml));
 ok('(81-4) the render is pure: the stored text and the payload text are unchanged', (function () { const before = String(ds.text); bodyOf(ds); return String(ds.text) === before && String(ds.text).indexOf('\n') !== -1; })());
 ok('the named abilities are bold-name paragraphs', dsHtml.indexOf('<b class="wcard-ability-name">Stand Vigil</b>') !== -1);
