@@ -46,14 +46,22 @@ function project(r) {
 const textOf = rec => String((rec && rec.text) || '');
 // The drawer's one-line row: id, slug, title, source and a plain-text snippet of
 // at most 100 characters, so a branch renders its lines without fetching content.
-function row(rec, slugOf, byId) {
+function row(rec, slugOf, byId, chapter) {
   const raw = byId.get(rec.i) || {};
   const plain = textOf(raw).replace(/\s+/g, ' ').trim();
-  // task-87: the rule's own number ('01.05'); the row renders 'num title' when set. The
-  // field is omitted when empty: the factions branch has no ruleId and 5,185 rows carrying
-  // num:'' cost 50 KB of the payload for nothing.
-  const out = { id: rec.i, slug: slugOf(rec.i), title: rec.t || '', source: raw.source || '', snippet: plain.slice(0, 100) };
-  if (raw.ruleId) out.num = raw.ruleId;
+  // task-88: a record whose heading ends in its chapter's own name is the chapter's lead
+  // block, and the chapter header already names it: '05 Attack Sequence' under the chapter
+  // '05 Attack Sequence' names the same thing twice. Such a block takes its own heading's
+  // remaining segments ('3. Resolve Attacks > Attack Sequence' -> '3. Resolve Attacks'),
+  // and the chapter's number is not its number, so it is not printed twice either.
+  const chName = String(chapter || '').replace(/^\d{2}(?:\.\d+)?\s*/, '').trim();
+  const chNum = (String(chapter || '').match(/^(\d{2})/) || [])[1] || '';
+  const segs = String(raw.heading || '').split(' > ').map(s => s.trim()).filter(Boolean);
+  const own = chName && segs.length && segs[segs.length - 1].toLowerCase() === chName.toLowerCase() ? segs.slice(0, -1).join(' > ') : '';
+  // task-87: the rule's own number ('01.05'); the row renders 'num title' when set. Omitted
+  // when empty (the factions branch's 5,185 rows) and when it is only the chapter's number.
+  const out = { id: rec.i, slug: slugOf(rec.i), title: own || rec.t || '', source: raw.source || '', snippet: plain.slice(0, 100) };
+  if (raw.ruleId && raw.ruleId !== chNum) out.num = raw.ruleId;
   return out;
 }
 
@@ -66,7 +74,7 @@ function inlineNode(key, tree, slugOf, byId, seen) {
   if (node.cut) out.cut = true;
   if (node.pg) out.page = true;
   if (node.kids && node.kids.length) out.kids = node.kids.map(k => (k.f && tree.files[k.f] && !seen.has(k.f)) ? inlineNode(k.f, tree, slugOf, byId, new Set([...seen, k.f])) : { n: k.n, lvl: k.lvl, c: k.c, ...(k.cut ? { cut: true } : {}), ...(k.pg ? { page: true } : {}) });
-  if (node.recs && node.recs.length) out.recs = node.recs.map(r => row(r, slugOf, byId));
+  if (node.recs && node.recs.length) out.recs = node.recs.map(r => row(r, slugOf, byId, node.n));
   return out;
 }
 
