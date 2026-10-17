@@ -44,6 +44,11 @@ function ok(name, got) { t(name, !!got, true); }
 // sections, move ids, re-embed, and refetch 26 faction pages for no user-visible
 // gain. It belongs to the next real Wahapedia update, when the corpus moves anyway.
 const BASELINE = {
+  // task-90: the heading hierarchy is the number's depth, not the tag level. A SECTION
+  // is an h2 and a CHAPTER an h3 on the page, so chapter '02 Datasheets' was filed
+  // under '01.07 Battle-shock Rolls'. The heading's own dotted number is now the depth
+  // ('02' = 1, '01.07' = 2), tag level the fallback; 138 headings and 76 parents change
+  // and the core-rules text carries the corrected paths (+5,180 characters).
   // task-86: the wound/hit-roll dice are text now. Wahapedia draws them as .cruD1..6
   // sprite divs; htmlToText substitutes '$1+' for the '+N' modifier and '$1' for a bare
   // face, so core-rules gains 30 characters (the five wound values plus the hit 1 and 6)
@@ -52,9 +57,9 @@ const BASELINE = {
   // task-86 pass 2: the abilities builder is covered here too. It emits one record per
   // distinct CSV ability name that has no record of its own (71 distinct, 14 already
   // covered by a core-rules heading, 57 built). A change in that count is a parser change.
-  scrape: { sections: 374, chars: 283516 },
+  scrape: { sections: 374, chars: 288696 },
   shape: {
-    'core-rules': { sections: 374, chars: 283516 },
+    'core-rules': { sections: 374, chars: 288696 },
     'factions-csv': { sections: 6396, bytes: 10013445 },
     abilities: { sections: 62 },
   },

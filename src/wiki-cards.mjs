@@ -490,6 +490,11 @@ export function recordShape(text, heading) {
 }
 // task-89: 'Turn:   Phase: Ability "Shoot"' is CSV navigation metadata, not a rule.
 // Dropped for display only; the corpus keeps it and the index still searches it.
+// task-90: the CSV's own columns ('Type: Movement Ability', 'CP:') are not the book's
+  // words, so they leave the display in this path too; the corpus keeps them.
+function stripCsvColumns(text) {
+  return String(text == null ? '' : text).split(/\r?\n/).filter(function (l) { return !/^\s*(?:Type|CP)\s*:/.test(l); }).join('\n');
+}
 function stripTurnPhase(text) {
   return String(text == null ? '' : text)
     .replace(/Turn:\s+Phase:\s+Ability\s+"[^"]*"/g, '')
@@ -512,7 +517,7 @@ function shapeHtml(text, opts) {
   const shape = recordShape(text, opts && opts.selfHeading);
   if (!shape) return proseHtml(text, opts);
   // task-89: the plain fallback - no head, no table, the CSV fragment gone, ALL CAPS styled.
-  if (shape.family === 'ability-plain') return capsHtml(proseHtml(stripTurnPhase(text), opts));
+  if (shape.family === 'ability-plain') return capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(text)), opts));
   const head = shape.family === 'stratagem'
     ? '<div class="svl-head svl-strat"><span class="svl-cp">' + esc(shape.cp) + '</span><span class="svl-type">' + esc(shape.type) + '</span></div>'
     : '<div class="svl-head svl-ability">' + (shape.type ? '<span class="svl-type">' + esc(shape.type) + '</span>' : '') + '</div>';

@@ -425,11 +425,17 @@ export function extractSections(html, source) {
     const body = stripMarker(htmlToText(page.slice(marks[i].end, i + 1 < marks.length ? marks[i + 1].at : page.length)));
     let title = marks[i].heading.replace(/\s+\d{2}(?:\.\d{2})*\s*$/, '').trim() || marks[i].heading;
     const ruleId = (marks[i].heading.match(/\s(\d{2}(?:\.\d{2})*)\s*$/) || [])[1] || '';
-    const level = marks[i].level;
+    // task-90: the page's tag level is NOT the hierarchy - a SECTION is an h2 and a
+    // CHAPTER an h3, so chapter '02 Datasheets' was filed under the section before it
+    // ('01.07 Battle-shock Rolls'). The heading's own dotted number is the depth:
+    // '02' = 1, '01.07' = 2, '01.05.01' = 3. Tag level is the fallback when it has none.
+    const tagLevel = marks[i].level;
+    const depth = ruleId ? ruleId.split('.').length : 0;
+    const level = depth || tagLevel;
     // An h1 is the page, not a rule on it: its body is the introduction and a
     // citation to it says nothing. Same for the marker table the page carries at
     // the top - it is how we date the copy, not something anyone asks about.
-    if (level === 1) { stack.length = 0; continue; }
+    if (tagLevel === 1) { stack.length = 0; continue; }
     // The export's own stamp, as a heading: "Book Kind Edition Version Last
     // update". It dates the copy; nobody asks about it.
     if (/^Book\s+Kind\s+Edition\s+Version\s+Last update/i.test(title)) continue;
