@@ -31,7 +31,7 @@ t('found counts groups, not ids', satisfiedGroups([['a', 'b'], ['c']], ['b', 'c'
 // --- the lines the partial block prints --------------------------------------
 t('a missing single id is named', missingGroupLine(['unitrules#000002541~2'], []), 'missing: unitrules#000002541~2');
 t('a missing group names its alternatives', missingGroupLine(['core-rules#Engagement', 'rules-appendix#What-Is-Engagement'], []), 'missing group: core-rules#Engagement  |  rules-appendix#What-Is-Engagement');
-t('a moved alternative is named as reachable', missingGroupLine(['core-rules#Disembarking'], ['core-rules#Disembarking->-EMERGENCY-DISEMBARK-MOVE']), 'missing: core-rules#Disembarking   (reachable as core-rules#Disembarking->-EMERGENCY-DISEMBARK-MOVE)');
+t('a moved alternative is named as reachable', missingGroupLine(['core-rules#Transports->-Disembarking'], ['core-rules#Transports->-Disembarking->-EMERGENCY-DISEMBARK-MOVE']), 'missing: core-rules#Transports->-Disembarking   (reachable as core-rules#Transports->-Disembarking->-EMERGENCY-DISEMBARK-MOVE)');
 t('the headline counts groups, not ids', partialHeadline(2, 1, 7, 20), '      expected 2 groups, found 1  (best rank #7)');
 t('one group reads in the singular', partialHeadline(1, 0, null, 20), '      expected 1 group, found 0  (nothing in the top 20)');
 

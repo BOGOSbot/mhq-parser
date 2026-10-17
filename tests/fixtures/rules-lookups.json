@@ -15,7 +15,7 @@
    "lang": "en",
    "kind": "literal",
    "expect": [
-    "core-rules#Abilities->-Duplicated-Abilities->-DEADLY-DEMISE",
+    "core-rules#Core-Abilities->-Duplicated-Abilities->-DEADLY-DEMISE",
     "ability#000008339"
    ]
   },
@@ -122,7 +122,7 @@
    "lang": "en",
    "kind": "literal",
    "expect": [
-    "core-rules#Abilities->-Duplicated-Abilities->-DEEP-STRIKE",
+    "core-rules#Core-Abilities->-Duplicated-Abilities->-DEEP-STRIKE",
     "ability#000008343"
    ]
   },
@@ -131,7 +131,7 @@
    "lang": "en",
    "kind": "paraphrase",
    "expect": [
-    "core-rules#3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
+    "core-rules#Movement-Phase->-3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
    ]
   },
   {
@@ -139,7 +139,7 @@
    "lang": "en",
    "kind": "paraphrase",
    "expect": [
-    "core-rules#3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-ADVANCE-MOVE"
+    "core-rules#Movement-Phase->-3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-ADVANCE-MOVE"
    ]
   },
   {
@@ -172,7 +172,7 @@
    "lang": "fr",
    "kind": "paraphrase",
    "expect": [
-    "core-rules#3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
+    "core-rules#Movement-Phase->-3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
    ]
   },
   {
@@ -312,7 +312,7 @@
    "lang": "fr",
    "kind": "literal",
    "expect": [
-    "core-rules#Abilities->-Duplicated-Abilities->-FEEL-NO-PAIN"
+    "core-rules#Core-Abilities->-Duplicated-Abilities->-FEEL-NO-PAIN"
    ]
   },
   {

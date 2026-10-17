@@ -60,8 +60,8 @@ t('whitespace around an id is trimmed', parseExpectation('  a  ,  b  '), ['a', '
 t('an empty --expect names no ids', parseExpectation(''), []);
 t('and neither does a missing one', parseExpectation(null), []);
 t('the real Secured-Objectives id survives the parser',
-  parseExpectation('unitrules#000002541~2,core-rules#Secured-Objectives->-Q:-If-my-unit-has-taken-control-of-an-objective-at-the-end-of-my-movement-phase-and-that-unit-has-as-an-ability-that-secures-an-objective-they-control\\,-can-they-secure-that-objective?'),
-  ['unitrules#000002541~2', 'core-rules#Secured-Objectives->-Q:-If-my-unit-has-taken-control-of-an-objective-at-the-end-of-my-movement-phase-and-that-unit-has-as-an-ability-that-secures-an-objective-they-control,-can-they-secure-that-objective?']);
+  parseExpectation('unitrules#000002541~2,core-rules#Objectives->-Secured-Objectives->-Q:-If-my-unit-has-taken-control-of-an-objective-at-the-end-of-my-movement-phase-and-that-unit-has-as-an-ability-that-secures-an-objective-they-control\\,-can-they-secure-that-objective?'),
+  ['unitrules#000002541~2', 'core-rules#Objectives->-Secured-Objectives->-Q:-If-my-unit-has-taken-control-of-an-objective-at-the-end-of-my-movement-phase-and-that-unit-has-as-an-ability-that-secures-an-objective-they-control,-can-they-secure-that-objective?']);
 
 // --- expectations are checked against the corpus -----------------------------
 t('an id the corpus does not have is reported', validateExpectation(['nope#x'], [{ id: 'a#b' }]), ['nope#x']);

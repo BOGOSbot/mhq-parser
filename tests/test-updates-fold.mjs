@@ -27,8 +27,10 @@ const updates = all.filter(r => updateRuleNumber(r));
 t('the corpus carries 22 numbered updates', updates.length, 22);
 const resolved = updates.filter(u => tree.attachTarget.has(u.id));
 const visible = updates.filter(u => !tree.attachTarget.has(u.id));
-t('16 of them resolve to the rule they name', resolved.length, 16);
-t('and 6 do not, and stay visible', visible.length, 6);
+// task-90: the heading hierarchy is the number's depth now, so one more update's
+// heading carries the number its target does. 17 resolve, 5 stay visible.
+t('17 of them resolve to the rule they name', resolved.length, 17);
+t('and 5 do not, and stay visible', visible.length, 5);
 ok('no update is silently unattached', !updates.some(u => tree.unattached.indexOf(u.id) !== -1));
 ok('every unresolved update is a row of the tree, labelled by its number', visible.every(u => tree.paths.has(u.id) && /^\d{2}(\.\d{2}){1,2}\b/.test(String(u.heading).split(' > ').pop().trim())));
 

@@ -479,6 +479,12 @@ export function tocTree(records, pageOf, opts) {
       const rows = primaryOf(ch.recs).sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
       // A subsection is never a sibling of its own parent: within a chapter, a
       // section whose heading extends another section's heading nests under it.
+      // The chapter's own LEAD row is not a container: every section's heading now
+      // extends the chapter name ('Core Concepts > Dice'), so nesting under the lead
+      // would hide the whole chapter behind one row - and the payload carries no
+      // nested rows, so those records left the drawer entirely (88 of them, measured
+      // 2026-10-18). Sections stay siblings of the lead, as they always were.
+      const lead = String(ch.title || '').trim();
       const parentOfSection = new Map(), nestedSection = new Set();
       for (const r of rows) {
         const h = String(r.heading || '');
@@ -486,6 +492,7 @@ export function tocTree(records, pageOf, opts) {
         for (const o of rows) {
           if (o.id === r.id) continue;
           const oh = String(o.heading || '');
+          if (oh === lead) continue;
           if (oh && h.indexOf(oh + ' > ') === 0 && oh.length > bestLen) { best = o; bestLen = oh.length; }
         }
         if (best) { parentOfSection.set(r.id, best.id); nestedSection.add(r.id); }
