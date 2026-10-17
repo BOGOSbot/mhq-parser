@@ -45,7 +45,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { checkEvent, detectExporter, detectFormat, getAllEvents, parseUrl } from './parse.mjs';
+import { checkEvent, detectExporter, detectFormat, getAllEvents, getMeta, parseUrl } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -261,6 +261,49 @@ export function prune(dir = ARCHIVE_DIR, { months = WINDOW_MONTHS, log = () => {
   return { kept: keep.length, dropped: dropped.length, checked: checked.length };
 }
 
+// Drop the events an older edition produced.
+//
+// The archive keeps a year to bound the harvest, and a year spans two editions.
+// The older one characterises nothing the parser has to be right about, and it
+// drags every count: one warning alone is 87% of the archive's, because a
+// 10th-edition list has no Force Disposition to declare. So those events go,
+// and the ledger remembers them - a dropped event is a permanent refusal, since
+// an older edition never becomes the current one.
+//
+// The cut is content, not a date. The 2025-2026 league played its last fixture
+// on 2026-06-30 while a tournament on 2026-06-27 already plays the new edition,
+// so those dates overlap and a date alone would either keep the league or throw
+// the tournament away. What separates them is the field the new edition
+// introduced: an event dated before the cut is kept when one of its lists
+// declares a Force Disposition.
+export function dropBefore(dir = ARCHIVE_DIR, { date, log = () => {} } = {}) {
+  if (!date) throw new Error('dropBefore needs a date');
+  const index = loadIndex(dir);
+  const keep = [];
+  const dropped = [];
+  for (const e of index.events) {
+    if (!(typeof e.date === 'string' && e.date < date)) { keep.push(e); continue; }
+    const out = readEvent(dir, e);
+    const current = !!(out && (out.players || []).some(p => getMeta(p).forceDisposition));
+    if (current) { keep.push(e); log('  kept    ' + e.date + '  ' + e.name); continue; }
+    try { fs.unlinkSync(path.join(dir, e.file)); } catch { /* already gone */ }
+    dropped.push(e);
+    log('  dropped ' + e.date + '  ' + e.name);
+  }
+  const checked = (index.checked || []).concat(dropped.map(e => ({
+    key: e.key,
+    type: e.type,
+    slug: e.slug,
+    date: e.date,
+    game: 'Warhammer 40,000',
+    hasLists: false,
+    checkedAt: e.date,
+    dropped: date,
+  })));
+  saveIndex(dir, { events: keep, checked });
+  return { kept: keep.length, dropped: dropped.length, checked: checked.length };
+}
+
 // One event's worth of fetching: judge it, then parse it if it qualifies.
 //
 // Both steps can fail for reasons that are not about the event - a throttled
@@ -467,7 +510,7 @@ export function reindex(dir = ARCHIVE_DIR) {
 // --- CLI ---------------------------------------------------------------
 
 function parseArgs(argv) {
-  const o = { plan: false, list: false, verify: false, reindex: false, prune: false, refresh: false, limit: 0, months: WINDOW_MONTHS, concurrency: DEFAULT_CONCURRENCY, dir: ARCHIVE_DIR };
+  const o = { plan: false, list: false, verify: false, reindex: false, prune: false, refresh: false, limit: 0, months: WINDOW_MONTHS, concurrency: DEFAULT_CONCURRENCY, dir: ARCHIVE_DIR, dropBefore: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--plan') o.plan = true;
@@ -475,6 +518,8 @@ function parseArgs(argv) {
     else if (a === '--verify') o.verify = true;
     else if (a === '--reindex') o.reindex = true;
     else if (a === '--prune') o.prune = true;
+    else if (a === '--drop-before') o.dropBefore = argv[++i];
+    else if (a.startsWith('--drop-before=')) o.dropBefore = a.slice(14);
     else if (a === '--refresh') o.refresh = true;
     else if (a === '--limit') o.limit = Number(argv[++i]) || 0;
     else if (a.startsWith('--limit=')) o.limit = Number(a.slice(8)) || 0;
@@ -508,6 +553,13 @@ async function main() {
     console.log(r.entries.length + ' events indexed from ' + path.join(o.dir, 'events') +
       ', ' + r.checked + ' rejected entries kept');
     if (r.dropped.length) console.log(r.dropped.length + ' unreadable file(s) skipped: ' + r.dropped.join(', '));
+    return;
+  }
+
+  if (o.dropBefore) {
+    const r = dropBefore(o.dir, { date: o.dropBefore, log: s => console.log(s) });
+    console.log('Kept ' + r.kept + ' event(s) at or after ' + o.dropBefore + ' (or already of the current edition), ' +
+      'dropped ' + r.dropped + ', ' + r.checked + ' refusals remembered.');
     return;
   }
 
