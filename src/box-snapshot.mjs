@@ -12,6 +12,13 @@
  * is that `box snapshot list` needs a box selected, so once the box is deleted the
  * snapshot id is the ONLY handle on the recovery point and has to be written down
  * (docs/corpus-storage.md keeps it).
+ *
+ * The mission card faces (workspace/rules-corpus/assets, ~9 MB) are EXCLUDED: they are
+ * refetchable from gdm and assets/missions/sources.json carries each url and sha256, so
+ * a restore re-downloads them. Including them pushed the archive past the Box CLI's
+ * upload cap ('file exceeds maximum size of 100 MB' on an 11 MB file, measured
+ * 2026-10-17), and the recovery point that matters is the JSON corpus and the raw
+ * sources, which the archive still holds.
  */
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -39,12 +46,14 @@ const recipe = [
 if (!process.argv.includes('--print')) {
   if (!fs.existsSync(CORPUS)) { console.error('no corpus at ' + CORPUS); process.exit(1); }
   fs.mkdirSync(OUT, { recursive: true });
-  execFileSync('tar', ['-czf', archive, '-C', path.dirname(CORPUS), path.basename(CORPUS)]);
+  // assets/ excluded on purpose - see the header. Everything else is in.
+  execFileSync('tar', ['-czf', archive, '-C', path.dirname(CORPUS), '--exclude=' + path.basename(CORPUS) + '/assets', path.basename(CORPUS)]);
   const bytes = fs.readFileSync(archive);
   const sha = crypto.createHash('sha256').update(bytes).digest('hex');
   console.log('archive  ' + archive);
   console.log('  bytes  ' + bytes.length + '  (' + (bytes.length / 1048576).toFixed(2) + ' MB)');
   console.log('  sha256 ' + sha);
+  console.log('  (assets/ excluded: refetchable faces, urls + sha256 in assets/missions/sources.json)');
   console.log('  write both into docs/corpus-storage.md with the snapshot id.');
 }
 console.log('');

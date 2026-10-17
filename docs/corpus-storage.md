@@ -38,7 +38,8 @@ minutes.
 
 | snapshot id | taken | holds | sha256 | restore checked |
 |---|---|---|---|---|
-| **`0cbbbc59-5043-4dc0-8617-629f2c2f5b24`** | 2026-10-16 | `rules-corpus-20261016.tar.gz`, 3,191,557 B | `2e04a0e7b176495640da905f3ccfc14dabbfd44e7746cc10f180bbf44d87206e` | yes (restored into `many-bird-81711`, hash matched, both boxes deleted) |
+| **`9418c840-18db-444b-9e77-6e176165db65`** | 2026-10-17 | `rules-corpus-20261017.tar.gz`, 3,205,616 B | `de3961ab6318a9bd3d4840e19d77d80eb6e5129209ac3674d384cb6c6fb7bbc3` | yes (restored into `top-ostrich-13225`, hash matched, both boxes deleted) |
+| `0cbbbc59-5043-4dc0-8617-629f2c2f5b24` (superseded) | 2026-10-16 | `rules-corpus-20261016.tar.gz`, 3,191,557 B | `2e04a0e7b176495640da905f3ccfc14dabbfd44e7746cc10f180bbf44d87206e` | yes (restored into `many-bird-81711`, hash matched, both boxes deleted) |
 | `322e7b93-21ee-4aab-b6cd-0a4a8782642a` (superseded) | 2026-10-15 | `rules-corpus-20261015.tar.gz`, 4,399,943 B | `84bff8775b97b8b4b9fa9849e2dd4aa8d41fe15d558112d692e7c25ff3d6ff6b` | yes |
 | `5087ed6c-efa1-4bac-8aca-ad02ef6a6c88` (superseded) | 2026-10-15 | `rules-corpus-20261015.tar.gz`, 4,384,405 B | `e6e89de214b6f04037af189ed8c700de5f9d6a4cf4aaeb1e88e01a5ff182b978` | yes |
 | `5f703039-dc4f-4ae6-b7ed-9ede21a73eb8` | 2026-10-14 | `rules-corpus-20261014-0146.tar.gz`, 4,164,914 B | `2ad929d4e1c699051fa31fe75e3cc247ed0df70e565a7d0d8e6393bb425dfeaa` | yes |
@@ -50,12 +51,18 @@ selected, so once the box is deleted the snapshot id is the ONLY handle on the
 recovery point. If the id is not written here, the snapshot is unreachable in
 practice even though it exists.
 
-After the 2026-10-16 task-85 rebuild the corpus holds **7,283 records / 6,245 delivered**
-- the rulings branch (154, WTC + FEQ), the 19 universal ability definitions, and the 43
-mission cards split out of the deck chunks. Before it, 7,311 / 6,271: the drop is the
-re-chunking the fix exposed, not lost text (the drift guard's content comparison and an
-independent window scan of all 7,136 old records both say nothing was dropped). Take the
-next snapshot after the next ingest - the cadence is tied to the ingest, not a calendar.
+After the 2026-10-17 task-86 rebuild the corpus holds **7,345 records / 6,307 delivered**
+- the rulings branch (154, WTC + FEQ), the 19 universal ability definitions, the 43 mission
+cards, and 62 faction-ability records (57 distinct names from `Abilities.csv` plus 5 split
+parts; 14 names the core rules already carry are excluded). Before task-85 it was
+7,311 / 6,271: the drop was the re-chunking that fix exposed, not lost text. Take the next
+snapshot after the next ingest - the cadence is tied to the ingest, not a calendar.
+
+**The archive excludes `assets/`.** The 43 mission card faces are ~9 MB of gdm's images
+and the Box CLI refuses the full archive ('file exceeds maximum size of 100 MB' on an
+11 MB file, measured 2026-10-17 on both a small and a medium box). They are refetchable
+and `assets/missions/sources.json` carries each url and sha256, so a restore re-downloads
+them; the JSON corpus and the raw sources - the part with no other copy - are all in.
 
 ## Why it is not ours to publish
 
@@ -149,9 +156,9 @@ nothing to re-ingest.
 and the CSV export on disk, nothing stored - in a temp directory passed explicitly into
 the build, and checks three things:
 
-- the **scrape stage** (374 sections / 283,486 characters of `core-rules`);
-- the **shape stage** (374 sections / 283,486 characters of `core-rules`;
-  `factions-csv.json` at 6,396 sections / 10,013,193 bytes);
+- the **scrape stage** (374 sections / 283,516 characters of `core-rules`);
+- the **shape stage** (374 sections / 283,516 characters of `core-rules`;
+  `factions-csv.json` at 6,396 sections / 10,013,445 bytes; `abilities.json` at 62);
 - **no rule text is lost**: every stored section the rebuild does not reproduce
   verbatim still has its text in the rebuild, allowing for re-chunking, and the
   comparison is content-based: it strips the whitespace task-85 removed and the
