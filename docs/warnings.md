@@ -121,12 +121,16 @@ open, then look at the warnings.
 node src/archive.mjs --plan --months 12   # what a harvest would consider
 node src/archive.mjs --months 12          # archive the newly closed events
 node src/archive.mjs --verify             # every entry still resolves
-node src/warnings.mjs --json workspace/weekly/warnings-<date>.json
+node src/scan-open.mjs                    # parse the open events into workspace/weekly/future-parses
+node src/warnings.mjs --labelled archive=archive/events \
+  --labelled future=workspace/weekly/future-parses --json workspace/weekly/warnings-<date>.json
 ```
 
 An upcoming event is parsed fresh each week rather than archived - its lists are
 still being submitted, which is why `/parse` declines the cache for one
-(`notYetPlayed()`). 2026-10-17: of 133 not-closed events, 4 had lists out
+(`notYetPlayed()`). `src/scan-open.mjs` checks every event dated today or later
+and keeps a manifest of the verdicts; a failure is never recorded as a verdict,
+so the next run retries it. 2026-10-17: of 133 not-closed events, 4 had lists out
 (*LTC 12* and three *League Wars 2026-2027* fixtures); the other 120 had not
 published, and 9 were another game. Their parses live in
 `workspace/weekly/future-parses/`, untracked like the rest of `workspace/`.
