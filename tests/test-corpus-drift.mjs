@@ -44,8 +44,13 @@ function ok(name, got) { t(name, !!got, true); }
 // sections, move ids, re-embed, and refetch 26 faction pages for no user-visible
 // gain. It belongs to the next real Wahapedia update, when the corpus moves anyway.
 const BASELINE = {
-  scrape: { sections: 374, chars: 283486 },
-  shape: { 'core-rules': { sections: 374, chars: 283486 }, 'factions-csv': { sections: 6396, bytes: 10013193 } },
+  // task-86: the wound/hit-roll dice are text now. Wahapedia draws them as .cruD1..6
+  // sprite divs; htmlToText substitutes '$1+' for the '+N' modifier and '$1' for a bare
+  // face, so core-rules gains 30 characters (the five wound values plus the hit 1 and 6)
+  // and the CSV path gains 252 bytes (the same markup in a few CSV cells). Sections and
+  // records are unchanged: 374.
+  scrape: { sections: 374, chars: 283516 },
+  shape: { 'core-rules': { sections: 374, chars: 283516 }, 'factions-csv': { sections: 6396, bytes: 10013445 } },
 };
 
 const REAL = path.join(process.cwd(), 'workspace', 'rules-corpus');
@@ -123,7 +128,7 @@ t('(drift) the CSV path reproduces factions-csv.json', {
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
   added: csvAdded,
   missing: csvMissing,
-}, { sections: 6396, bytes: 10013193, added: 0, missing: 0 });
+}, { sections: 6396, bytes: 10013445, added: 0, missing: 0 });
 
 const rebuiltPool = fs.readdirSync(root).filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')))

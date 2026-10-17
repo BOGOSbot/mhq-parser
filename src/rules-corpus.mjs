@@ -255,6 +255,13 @@ export function htmlToText(html) {
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<!--[\s\S]*?-->/g, ' ')
     .replace(/<br\s*\/?>/gi, '\n')
+    // task-86: Wahapedia draws the wound/hit-roll dice as CSS sprite divs, not text
+    // (main1.css maps .cruD1..6 to a die face). The block-close rule below turns the
+    // div into a newline before the generic strip can see it, so this must come first;
+    // '2+' and '1' are the record's content. Only these two patterns - the other sprite
+    // classes (abIcon, str11*Bg, Corner*, h_number*) are chrome, postponed by Mandal.
+    .replace(/<div class="cruD([1-6])"><\/div>\s*<b>\+<\/b>/gi, '$1+')
+    .replace(/<div class="cruD([1-6])"><\/div>/gi, '$1')
     .replace(/<\/(p|div|li|tr|h[1-6]|table|ul|ol|blockquote|section|article)>/gi, '\n')
     .replace(/<[^>]+>/g, ' ');
   return decodeEntities(text)
