@@ -337,6 +337,36 @@ const bannerP = parseListText(bannerList, { name: 'x' }).output.players[0];
 t('budget: the banner is still the declaration', totals(bannerP).declaredPts, 1990);
 t('budget: a banner mismatch still warns', playerWarnings(bannerP, getMeta(bannerP)).some(w => w.type === 'mismatch'), true);
 
+// --- the disposition dialects the parser used to miss --------------------------
+// Four shapes measured on the 2026-10-17 survey; all four left the field null and
+// warned "force disposition not found" on a list that declares one.
+// A "+ KEY:" header with no fence at all: findPlusBlock used to return null.
+t('disp: + KEY header with no fence', dispOf(
+  '+ TEAM: DiceMen\n+ PLAYER : Heavens31\n+ FACTION KEYWORD: Imperium - Adeptus Astartes\n' +
+  '+ DETACHMENT: Ceramite Sentinels\n+ FORCE DISPOSITION: Take and Hold\n+ TOTAL ARMY POINTS: 2000pts\n' +
+  '\nChar1: 1x Captain (100 pts): sword\nChar2: 1x Lieutenant (100 pts): sword\n'), 'Take and Hold');
+// The same header with a "+++" fence, short of the 20-plus delimiter test.
+t('disp: short +++ fence', dispOf(
+  '+++\n+ FACTION KEYWORD: Xenos - Aeldari\n+ DETACHMENT: Armoured Warhost\n' +
+  '+ FORCE DISPOSITION: Reconnaissance\n+ TOTAL ARMY POINTS: 2000pts\n' +
+  '\nChar1: 1x X (100 pts): y\nChar2: 1x Y (100 pts): z\n'), 'Reconnaissance');
+// newrecruit's dashed header: the dash rode into the key and the field was never mapped.
+t('disp: dash-prefixed header key', dispOf(
+  '+++++++++++++++++++++++++++++\n- Nom du joueur : LAF\n- Factions utilisées : Orks\n' +
+  "- Disposition : Eliminer l'adversaire\n+++++++++++++++++++++++++++++\n" +
+  '\nChar1: 1x X (100 pts): y\nChar2: 1x Y (100 pts): z\n'), "Eliminer l'adversaire");
+// The French word order, which the alias table did not carry.
+t('disp: disposition de force key', dispOf(
+  '+++++++++++++++++++++++++++++\n+ FACTION KEYWORD: Legiones Daemonica\n+ DETACHMENT: Scintillating Legion\n' +
+  '+ disposition de force: priority asset\n+ TOTAL ARMY POINTS: 1995pts\n+++++++++++++++++++++++++++++\n' +
+  '\nChar1: 1x X (100 pts): y\nChar2: 1x Y (100 pts): z\n'), 'priority asset');
+// Declared under the units, after the preamble has ended: the detachment had a
+// whole-body fallback and the disposition did not.
+t('disp: declared under the units', dispOf(
+  'battleline (1995 points)\n\nSpace Marines\nForce de Frappe (2000 points)\n' +
+  'Bastion Task Force (3 Points de Détachement)\nDispositions des Forces : Reconnaissance\n' +
+  '\nChar1: 1x X (100 pts): y\nChar2: 1x Y (100 pts): z\n'), 'Reconnaissance');
+
 // --- the total under a label the parser used to skip ---------------------------
 // The app's other header dialect prints "+ ARMY POINTS:", armylistnetwork's
 // footer prints "TOTAL : 2000 points - 53 figurines", and the French header

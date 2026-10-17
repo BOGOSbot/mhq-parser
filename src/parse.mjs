@@ -579,12 +579,26 @@ function findPlusBlock(lines) {
   // No delimiter anywhere — look for a block of + KEY: VALUE lines.
   const firstPlusLine = lines.findIndex(l => /^\+\s*[A-ZÉÈÀÂÇÛÖÜ]/i.test(l.trim()));
   if (firstPlusLine === -1) return null;
+  // No fence at all ("+ PLAYER: X" then the units), or a fence too short for
+  // isDelim ("+++") — both are headers. The block ends at the first line that is
+  // not a "+ KEY: value" line, so the units below it stay out of it. This used
+  // to return null whenever no delimiter was found, which is always here: the
+  // delimiter would have been found above. Measured 2026-10-17, that left the
+  // disposition of 6 current-edition lists in the freeform path, where the "+ "
+  // prefix keeps it from matching.
   let closeIdx = -1;
-  for (let i = firstPlusLine; i < lines.length; i++) {
-    if (isDelim(lines[i])) { closeIdx = i; break; }
+  for (let i = firstPlusLine + 1; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (!t) continue;
+    if (/^\+/.test(t)) continue;
+    closeIdx = i;
+    break;
   }
-  if (closeIdx === -1) return null;
-  return { openIdx: firstPlusLine, closeIdx };
+  if (closeIdx === -1) closeIdx = lines.length;
+  // openIdx is the fence in the fenced path, so the call site's openIdx + 1 is
+  // the first key; here there is no fence, so the line above the first key
+  // stands in for one and the same slice starts on it.
+  return { openIdx: firstPlusLine - 1, closeIdx };
 }
 
 const HEADER_ALIAS = {
@@ -619,6 +633,8 @@ const HEADER_ALIAS = {
   'DISPOSITION DES FORCES': 'forceDisposition',
   'DISPOSITIONS DES FORCES': 'forceDisposition',
   'FORCE DE DISPOSITION': 'forceDisposition',
+  'DISPOSITION DE FORCE': 'forceDisposition',
+  'DISPOSITIONS DE FORCE': 'forceDisposition',
   'TOTAL ARMY POINTS': 'totalPoints',
   'ARMY POINTS': 'totalPoints',
   "POINTS D'ARMÉE": 'totalPoints',
@@ -639,9 +655,10 @@ function parseHeaderLines(lines) {
   const out = {};
   let lastKey = null;
   for (const raw of lines) {
-    // Bullet-prefixed keys ("• DETACHMENT: ...") are the same dialect as the
-    // '+' keys: strip the marker, not just the plus.
-    const line = raw.trim().replace(/^[+•◦]\s*/, '');
+    // Prefixed keys are the same dialect as the '+' keys: strip the marker,
+    // plus, bullet or dash. newrecruit's dashed header writes "- Disposition : X"
+    // and the dash used to ride into the key, so the field was never mapped.
+    const line = raw.trim().replace(/^[+•◦-]\s*/, '');
     if (!line) continue;
     // continuation: line starts with "& " (multi-tweak warlord)
     if (/^&\s+/i.test(line) && lastKey) {
@@ -941,10 +958,10 @@ function parseBullets(text) {
 // Force dispositions. The bare form is a whole line, as the app's freeform
 // export prints it; the labelled form ("Dispositions des Forces : …") is
 // handled separately below.
-const FORCE_RE = /^(?:Reconnaissance|Take and Hold|Prendre et Tenir|Priority Assets|Atouts Prioritaires|Purge the Foe|Prey in Ambush|Disruption|Perturbation|[ÉE]liminez l['\u2019]Adversaire|[ÉE]liminer l['\u2019]adversaire|Purger l['\u2019]Ennemi|Proie en Embuscade)\s*$/im;
+const FORCE_RE = /^(?:[+•◦-][ \t]*)?(?:Reconnaissance|Take and Hold|Prendre et Tenir|Priority Assets|Atouts Prioritaires|Purge the Foe|Prey in Ambush|Disruption|Perturbation|[ÉE]liminez l['\u2019]Adversaire|[ÉE]liminer l['\u2019]adversaire|Purger l['\u2019]Ennemi|Proie en Embuscade)\s*$/im;
 // "Dispositions des Forces : Éliminez l'Adversaire", "Force Dispositions: Purge
 // the Foe", "=> Disposition : Prendre et tenir", "Force de disposition : …".
-const DISPOSITION_LABEL_RE = /^(?:=>[ \t]*)?(?:FORCE[ \t]+)?(?:DISPOSITIONS?(?:[ \t]+(?:DES|DE)[ \t]+FORCES?)?|FORCE[ \t]+DE[ \t]+DISPOSITION)[ \t]*:[ \t]*(.+)$/im;
+const DISPOSITION_LABEL_RE = /^(?:=>[ \t]*)?(?:[+•◦-][ \t]*)?(?:FORCE[ \t]+)?(?:DISPOSITIONS?(?:[ \t]+(?:DES|DE)[ \t]+FORCES?)?|DE[ \t]+FORCE|FORCE[ \t]+DE[ \t]+DISPOSITION)[ \t]*:[ \t]*(.+)$/im;
 const DET_PATTERNS = [
   // "Lions of the Emperor (3 Detachment Points)" / "(3 Points de Détachement)".
   [/^(.+?)[ \t]*\([ \t]*\d+[ \t]*(?:Points?[ \t]+de[ \t]+D[ée]tachement|Detachment[ \t]+Points?)[ \t]*\)/im, m => m[1]],
@@ -1091,7 +1108,11 @@ function parsePreamble(bodyText, faction = null) {
     if (!detachment) detachment = bareLabelDetachment(lines);
     if (!detachment) detachment = bareHeadDetachment(lines);
   }
-  const dispM = preamble.match(FORCE_RE) || preamble.match(DISPOSITION_LABEL_RE);
+  // The disposition gets the same whole-body fallback the detachment has: a
+  // list that declares it under its units, or whose first category heading is
+  // on line 0 (findPreambleEnd then leaves no preamble at all), still names it.
+  const dispM = preamble.match(FORCE_RE) || preamble.match(DISPOSITION_LABEL_RE)
+    || bodyText.match(FORCE_RE) || bodyText.match(DISPOSITION_LABEL_RE);
   return { detachment, forceDisposition: dispM ? (dispM[1] || dispM[0]).trim() : null };
 }
 

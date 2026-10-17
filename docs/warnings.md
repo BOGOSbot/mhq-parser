@@ -4,10 +4,10 @@ Which warnings the parser emits, how often, and which repeats are the parser's
 fault. [src/warnings.mjs](../src/warnings.mjs) is the survey:
 
 ```powershell
-node src/warnings.mjs                      # the archive: archive/events
-node src/warnings.mjs --dir <dir>          # any directory of parse outputs, repeatable
-node src/warnings.mjs --labelled future=workspace/weekly/future-parses
-node src/warnings.mjs --json <file>        # every warning as one JSON record
+node src/warnings.mjs --since 2026-07-01 --labelled archive=archive/events --labelled future=workspace/weekly/future-parses
+node src/warnings.mjs                                  # the whole archive, both editions
+node src/warnings.mjs --dir <dir>                      # any directory of parse outputs, repeatable
+node src/warnings.mjs --json <file>                    # every warning as one JSON record
 ```
 
 It walks parse outputs - `{ event, count, players }`, the shape `/parse`
@@ -22,108 +22,147 @@ exporter, is a shape the parser was never taught. Every repeated signature
 prints its spread - how many events, how many exporters - and every exporter
 prints its warning rate against the pool.
 
+## Measure the current edition, not the archive
+
+The archive keeps **one year**, and a year spans **two editions**. The two do
+not give the same warnings, because they do not carry the same fields: a
+10th-edition list has no Force Disposition to declare, so warning about its
+absence is a fact about the edition and not about the parser. Read whole-archive
+numbers as archaeology.
+
+The boundary is visible in the data and it is **2026-07-01**, not a year back:
+the share of lists declaring a disposition goes 0% for every month from 2025-10
+to 2026-05, 2% in 2026-06, then **98%** from 2026-07 on (the 2026-06 bucket is one
+league whose fixtures all carry a 06-30 date; a handful of late-June events
+already have the field). The app's own `+++` header changes with it - it prints
+`SECONDARY` before and `FORCE DISPOSITION` after.
+
+| month | armies | warned | declared |
+|---|---:|---:|---:|
+| 2025-10 .. 2026-05 | 3,213 | 3,213 | 0 |
+| 2026-06 | 3,096 | 3,032 | 64 |
+| 2026-07 | 214 | 41 | 173 |
+| 2026-08 | 219 | 5 | 214 |
+| 2026-09 | 368 | 7 | 361 |
+| 2026-10 | 222 | 4 | 218 |
+| 2027-06 | 92 | 3 | 89 |
+
 ## The survey of 2026-10-17
 
-258 archived events and 7,297 lists, plus the four upcoming events whose lists
-are already out (see *The weekly pass* below).
+**Current edition** (`--since 2026-07-01`), 44 events and **1,115 lists**, and
+the population every verdict below is written against:
 
 | warning | lists | share | per 100 lists |
 |---|---:|---:|---:|
-| `disposition` | 6,301 | 86.4% | 86.4 |
-| `mismatch` | 412 | 5.7% | 5.6 |
-| `detachment` | 206 | 2.9% | 2.8 |
-| `missing-total` | 135 | 1.9% | 1.9 |
-| `unrecognized` | 129 | 1.8% | 1.8 |
+| `mismatch` | 115 | 51.3% | 10.3 |
+| `disposition` | 48 | 21.4% | 4.3 |
+| `missing-total` | 23 | 10.3% | 2.1 |
+| `unrecognized` | 21 | 9.4% | 1.9 |
+| `detachment` | 17 | 7.6% | 1.5 |
 
 | exporter | lists | warnings | per 100 lists |
 |---|---:|---:|---:|
-| `app` | 6,520 | 6,232 | 95.6 |
-| `newrecruit` | 571 | 505 | 88.4 |
-| `unknown` | 89 | 202 | 227.0 |
-| `armylistnetwork` | 65 | 151 | 232.3 |
-| `warorgan` | 41 | 61 | 148.8 |
-| `legacy` | 8 | 24 | 300.0 |
+| `app` | 847 | 89 | 10.5 |
+| `newrecruit` | 219 | 60 | 27.4 |
+| `warorgan` | 19 | 17 | 89.5 |
+| `unknown` | 15 | 25 | 166.7 |
+| `armylistnetwork` | 13 | 27 | 207.7 |
+| `ironbuilt` | 2 | 6 | 300.0 |
+
+The whole archive, for contrast: 262 events, 7,424 lists, 7,176 warnings, of
+which **6,290 are the same `disposition` warning on 10th-edition lists** -
+87% of the archive's warnings, and 0.9% of the current edition's.
 
 ## What each warning means here
 
-### disposition - the format does not carry the field
-
-6,301 lists warn `force disposition not found`, and **99.8% of them declare no
-disposition at all**: a scan of every one finds only 11 whose text names a
-disposition the parser failed to read. The MHQ page itself confirms it - the
-army-lists page of *Open PACA Édition 2* (109 lists, all archived) contains the
-string "disposition" zero times, in the accordion headers and in every list
-body. The app's own `+++` header carries `FACTION KEYWORD`, `DETACHMENT`,
-`TOTAL ARMY POINTS`, `WARLORD`, `ENHANCEMENT`, `NUMBER OF UNITS` and
-`SECONDARY` - and no disposition field.
-
-So the warning is accurate about the absence and wrong about it being a defect.
-At 86% of all warnings it is also the thing that makes the other warnings hard to
-see: a list with one real problem shows two warnings. **Open decision**: warn
-only when the source can carry the field, or reword it as a neutral "not
-declared". Nothing is changed yet because it is a product call, not a parser
-one.
-
-### unrecognized - 129 lists the parser cannot read
+### unrecognized - 21 lists the parser cannot read
 
 The worst failure the product has: the card renders an army with nothing in it.
+In the current edition the group is small but total, per exporter:
 
-| exporter | lists | shape |
-|---|---:|---|
-| `armylistnetwork` | 63 of 65 | signature recognised, unit text not: `Marines Rubricae (10) : 190 pts`, `| Attached`, `--- Catégorie ---` |
-| `unknown` | 37 of 89 | freeform pastes with no marker family: `- Name (215pts) (Warlord)` |
-| `app` | 17 of 6,520 | two dialects the app does not print today: `Character 1 : Blade Champion (120), Vaultswords [120]` and `Unit 1 - [WARLORD] Knight Castellan [420pts] - weapons` |
-| `legacy` | 6 of 8 | 9th-edition exports, out of the window by design |
-| `newrecruit` | 4 of 571 | - |
-| `ironbuilt` | 2 of 2 | - |
+| exporter | lists unread | of that exporter |
+|---|---:|---:|
+| `armylistnetwork` | 13 | **13 of 13** |
+| `unknown` | 5 | 5 of 15 (freeform pastes: `- Name (215pts) (Warlord)`, `Name — 300 pts`) |
+| `ironbuilt` | 2 | 2 of 2 |
+| `newrecruit` | 1 | 1 of 219 |
 
-`armylistnetwork` is the largest single gap and the only one where the exporter
-identifies itself: the parser knows the tool and not the list. A reader for its
-unit shape is the one fix that would clear most of this group.
+**Every armylistnetwork list in the current edition is unreadable**, and the
+archive holds 63 more. The parser recognises the tool from its signature and its
+shape (`### Détachements :`, `Total : N points - N figurines`) but has no reader
+for its unit lines: `Marines Rubricae (10) : 190 pts`, `- gear`, `--- Ligne ---`,
+`| attached`. That reader is the single fix that clears this group.
 
-### missing-total - 141 of 276 were false (fixed)
+### mismatch - 115, the top warning, and not yet attributed
 
-`+ ARMY POINTS: 2000 pts`, `POINTS D'ARMÉE TOTAL : 1995pts` and
-armylistnetwork's footer `Total : 2000 points - 53 figurines` named a total
-under a label the parser did not list, so the army read as having none. The
-labels are in `TOTAL_LABELS` and `HEADER_ALIAS` now: 276 warnings became 135,
-and 32 of the 141 reappeared as a real `mismatch` - the declaration was there
-all along, and the parser could not see it. Pinned by `tests/test-list-text.mjs`.
+Half of every current-edition warning, so worth reading carefully. Two things
+are known.
 
-### mismatch - 412 lists whose declared total disagrees with the sum
+- **It is not a wholesale parse failure.** Compare unit-shaped lines in the body
+  to units read: `app` 12,838 lines to 12,390 units (96.5%), `newrecruit`
+  3,316 to 3,195 (96.4%). Three lists out of 1,094 fall below 60%, and those are
+  hard breaks - Pravdaël's Tyranids read 3 units of 14 (the reader stops at the
+  first bare `Name [Npts]` line after prefixed ones, so everything under that
+  point is lost), 0gier 4 of 17, Septarion 4 of 11.
+- **The deltas are small and have no repeated value**: -10 x9, -110 x8, -100 x8,
+  -5 x6, -85 x4, -20 x3 - 26 of the 115 are under 30 points and 18 are 30-99. A
+  systematic misread would show one delta over and over; these look like
+  enhancement points, attached units and the player's own arithmetic.
 
-Four in five are small (≤100 points) and the rest are real disagreements. Two
-shapes are worth keeping apart:
+**Open**: attribute the tail. The three hard breaks are reproducible and fixable
+in the newrecruit reader; the small deltas need a per-list diff before anything
+is called a defect.
 
-- **The parser's own gap, not the player's**: a list that did not parse
-  (`unrecognized`) counts 0 points against a declared total, which reads as a
-  2,000-point mismatch. 21 of the 412 are this. Fixing `unrecognized` fixes
-  them; they are not a separate defect.
-- **Points that a unit line does not carry**: enhancement costs, attached
-  units, and the `(N)` suffix newrecruit prints after a category header. These
-  are the player's or the format's arithmetic, and the delta distribution has no
-  repeated value that would betray a systematic misread.
+### disposition - 48, all genuinely undeclared (was 10 parser misses)
 
-### detachment - 206, mostly the field left empty
+After the 2026-10-17 fixes (below), **0 of the 48** current-edition warnings have
+a disposition in the text the parser failed to read: the lists that carry the
+field (1,055 of 1,115) are all read, and the 48 that warn declare nothing. This
+is a real signal at 4.3% now, and it was not before: in the whole archive the
+same warning fires 6,290 times on lists from an edition that has no such field.
 
-116 are app lists whose own header prints `+ DETACHMENT USED :` with nothing
-after the colon, or carries no detachment line at all: the source has no value to
-find. Only 10 of the 206 name a detachment the parser failed to read, and 9 of
-those are the `unrecognized` lists above.
+### missing-total - 23
+
+Listed as 135 archive-wide before the label fix; the current-edition remainder is
+lists that genuinely print no total and no budget line.
+
+### detachment - 17
+
+Down from 206 archive-wide. The archive residue is mostly app headers printing
+`+ DETACHMENT USED :` with nothing after the colon, which is the source leaving
+the field empty, not the parser missing a value.
+
+## The 2026-10-17 fixes
+
+Both were driven by this survey, and both are pinned by tests.
+
+- **The total labels that hid 141 lists** (`9d26fdf`): `ARMY POINTS`,
+  `POINTS D'ARMÉE TOTAL` and the bare `TOTAL`/`POINTS` were not labels, so an
+  army that printed its total under one read as having none. 276 archive-wide
+  warnings became 135, and 32 of the 141 surfaced as a real mismatch.
+- **The dispositions the parser could not see** (`a8f7b21`): four defects, all
+  measured against real lists - a `- `-prefixed header key (newrecruit's dashed
+  dialect, key landed as `-disposition`), a `+` header with no `+++` fence (or a
+  fence too short for the 20-plus delimiter test), `DISPOSITION DE FORCE` missing
+  from the alias table, and a disposition declared outside the preamble or under
+  a marker the label regex did not allow. 15 lists recovered archive-wide, **all
+  10 of the current-edition misses**, with no other number moving: unit counts,
+  points and every other warning type are byte-identical before and after.
 
 ## The weekly pass
 
 The one thing that cannot be re-fetched is a list whose event has passed and
 whose page MHQ later drops, so the pass is: archive what closed, parse what is
-open, then look at the warnings.
+open, then look at the warnings *for the current edition*.
 
 ```powershell
 node src/archive.mjs --plan --months 12   # what a harvest would consider
 node src/archive.mjs --months 12          # archive the newly closed events
 node src/archive.mjs --verify             # every entry still resolves
 node src/scan-open.mjs                    # parse the open events into workspace/weekly/future-parses
-node src/warnings.mjs --labelled archive=archive/events \
-  --labelled future=workspace/weekly/future-parses --json workspace/weekly/warnings-<date>.json
+node src/warnings.mjs --since <edition start> \\
+  --labelled archive=archive/events --labelled future=workspace/weekly/future-parses \\
+  --json workspace/weekly/warnings-<date>.json
 ```
 
 An upcoming event is parsed fresh each week rather than archived - its lists are

@@ -249,17 +249,17 @@ La dernière ligne est la signature la plus fiable, mais **18 % seulement** des 
 
 ## Taux d'avertissements
 
-Sur l'archive au 2026-10-17 - **262 événements, 7 424 armées** - l'analyseur produit **7 191 avertissements**, et un seul type en fait **87 %** : `force disposition not found` (6 305). Ce n'est pas une erreur de lecture : sur ces 6 305, **11 seulement** nomment une disposition que l'analyseur a manquée, et la page MHQ n'en porte aucune (l'en-tête `+++` de l'appli n'a pas ce champ). L'avertissement est juste sur l'absence et faux sur le défaut.
+L'archive garde un an, et un an couvre **deux éditions** : une liste 10e n'a pas de Force Disposition à déclarer, donc ses avertissements ne disent rien de l'analyseur. C'est **l'édition courante** qu'on mesure (`--since 2026-07-01`, le mois où 98 % des listes déclarent une disposition, contre 0 % avant) : **44 événements, 1 115 listes, 224 avertissements**.
 
 | Avertissement | Listes | Cause |
 |---------|-------|-------|
-| Force disposition not found | 6 305 | Aucune disposition déclarée : la source ne la porte pas |
-| Points mismatch | 416 | Total déclaré ≠ total calculé ; 21 viennent de listes non lues, qui comptent 0 point |
-| Detachment not found | 206 | Dont 116 en-têtes appli au champ vide ; 10 valeurs seulement manquées |
-| Missing total points | 135 | 141 de moins depuis l'ajout des libellés `ARMY POINTS` / `POINTS D'ARMÉE TOTAL` |
-| Unrecognized format | 129 | Formats non lus : armylistnetwork (63), notes libres (37), dialectes appli (17) |
+| Points mismatch | 115 | 51 % des avertissements ; 26 sous 30 points. Non attribué : les lignes d'unité sont lues à 96 % |
+| Force disposition not found | 48 | Aucune disposition déclarée ; les 1 055 listes qui en portent une sont lues |
+| Missing total points | 23 | Aucun total lisible et aucune ligne de format |
+| Unrecognized format | 21 | armylistnetwork 13 sur 13, notes libres 5, ironbuilt 2, newrecruit 1 |
+| Detachment not found | 17 | Champ laissé vide dans l'en-tête de la source |
 
-Le détail, la méthode et les signatures répétées sont dans [warnings.md](./warnings.md), rejouable avec `node src/warnings.mjs`.
+Toute l'archive, pour mémoire : 262 événements, 7 424 listes, 7 176 avertissements - dont **6 290 du même `disposition` sur des listes 10e**, soit 87 % du total et 0,9 % de celui de l'édition courante. Méthode, verdicts et correctifs du 2026-10-17 : [warnings.md](./warnings.md).
 
 ## Prérequis
 
@@ -270,7 +270,7 @@ Le détail, la méthode et les signatures répétées sont dans [warnings.md](./
 
 Le dépôt a une disposition simple : les sources dans **src/**, la documentation dans **docs/**, les données de travail dans **workspace/** (non suivi, régénérable) et les tests dans **tests/**.
 
-- **src/** - tout ce qui s'exécute, et les deux pages que le serveur lit à chaque requête : `parse.mjs` (l'analyseur), `server.mjs`, `archive.mjs`, `formats.mjs`, `warnings.mjs`, `verify-points.mjs`, `glossary.mjs`, `translate-fr-en.mjs`, `rules.mjs` (édition, clés, ancres), `rules-corpus.mjs` (corpus, recherche, juge, rédaction), `index.html`, `rules.html`
+- **src/** - tout ce qui s'exécute, et les deux pages que le serveur lit à chaque requête : `parse.mjs` (l'analyseur), `server.mjs`, `archive.mjs`, `scan-open.mjs`, `formats.mjs`, `warnings.mjs`, `verify-points.mjs`, `glossary.mjs`, `translate-fr-en.mjs`, `rules.mjs` (édition, clés, ancres), `rules-corpus.mjs` (corpus, recherche, juge, rédaction), `index.html`, `rules.html`
 - **archive/** - les événements fermés déjà récoltés, un fichier JSON par tournoi (suivi : c'est le magasin que le site relit)
 - **docs/** - `developer-doc.md` (comment fonctionne l'analyseur et pourquoi), `rules-page.md` (la page /rules, de la question à la citation), `corpus-wiki.md` (le corpus en wiki : schéma, règle d'identifiants, overflow, dry run), `translate.md` (dictionnaire FR/EN), `formats.md`, `warnings.md`, `glossary-fr-en.md`, `HANDOFF.md`
 - **tests/** - une suite par sujet ; `tests/fixtures/` porte les listes réelles, les questions reddit et françaises et leur clé de réponses
@@ -547,7 +547,7 @@ Across the 240 lists with units in this repository (11 events), the parser produ
 
 The repository keeps one shape: sources in **src/**, documentation in **docs/**, working data in **workspace/** (untracked, regenerable) and tests in **tests/**.
 
-- **src/** - everything that runs, plus the two pages the server reads on each request: `parse.mjs` (the parser), `server.mjs`, `archive.mjs`, `formats.mjs`, `warnings.mjs`, `verify-points.mjs`, `glossary.mjs`, `translate-fr-en.mjs`, `rules.mjs` (edition, keys, anchors), `rules-corpus.mjs` (corpus, retrieval, judge, writer), `index.html`, `rules.html`
+- **src/** - everything that runs, plus the two pages the server reads on each request: `parse.mjs` (the parser), `server.mjs`, `archive.mjs`, `scan-open.mjs`, `formats.mjs`, `warnings.mjs`, `verify-points.mjs`, `glossary.mjs`, `translate-fr-en.mjs`, `rules.mjs` (edition, keys, anchors), `rules-corpus.mjs` (corpus, retrieval, judge, writer), `index.html`, `rules.html`
 - **archive/** - the closed events harvested so far, one JSON file per tournament (tracked: the store the site reads back)
 - **docs/** - `developer-doc.md` (how the parser works and why), `rules-page.md` (the /rules page, from question to citation), `corpus-wiki.md` (the corpus as a wiki: schema, id rule, overflow, dry run), `translate.md` (FR/EN dictionary), `formats.md`, `warnings.md`, `glossary-fr-en.md`, `HANDOFF.md`
 - **tests/** - one suite per subject; `tests/fixtures/` holds the real lists, the reddit and French question banks and their answer key

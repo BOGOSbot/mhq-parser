@@ -28,7 +28,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const WARNING_TYPES = ['unrecognized', 'mismatch', 'over-budget', 'missing-total', 'detachment', 'disposition'];
 
 function parseArgs(argv) {
-  const o = { dirs: [], md: false, json: null, min: 3, top: 25 };
+  const o = { dirs: [], md: false, json: null, min: 3, top: 25, since: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dir') o.dirs.push({ label: null, dir: argv[++i] });
@@ -41,6 +41,8 @@ function parseArgs(argv) {
     else if (a === '--json') o.json = argv[++i];
     else if (a === '--min') o.min = Number(argv[++i]) || 0;
     else if (a === '--top') o.top = Number(argv[++i]) || 0;
+    else if (a === '--since') o.since = argv[++i];
+    else if (a.startsWith('--since=')) o.since = a.slice(8);
     else { console.error('unknown flag: ' + a); process.exit(2); }
   }
   if (!o.dirs.length) o.dirs.push({ label: 'archive', dir: path.join(__dirname, '..', 'archive', 'events') });
@@ -71,7 +73,12 @@ export function signature(text) {
 }
 
 // Every army in every parse output, with the parser's own verdict attached.
-export function readArmies(dirs) {
+//
+// `since` drops events dated before it. The archive keeps a year and a year
+// spans two editions, and the two do not have the same warnings to give: a
+// 10th-edition list has no Force Disposition to declare, so its warning is a
+// fact about the edition, not about the parser. Measure the current one.
+export function readArmies(dirs, { since = null } = {}) {
   const events = [];
   const armies = [];
   for (const { label, dir } of dirs) {
@@ -80,6 +87,8 @@ export function readArmies(dirs) {
       let out;
       try { out = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { continue; }
       if (!out || !Array.isArray(out.players)) continue;
+      const when = (out.event && out.event.date) || null;
+      if (since && !(when && when >= since)) continue;
       const key = path.basename(file).replace(/\.json$/, '');
       const ev = {
         key,
@@ -249,7 +258,7 @@ export function report(s, o = {}) {
 
 async function main() {
   const o = parseArgs(process.argv.slice(2));
-  const { events, armies } = readArmies(o.dirs);
+  const { events, armies } = readArmies(o.dirs, { since: o.since });
   const s = summarise(events, armies);
   console.log(report(s, o));
   if (o.json) {
@@ -257,8 +266,9 @@ async function main() {
     fs.writeFileSync(o.json, JSON.stringify({
       at: new Date().toISOString(),
       dirs: o.dirs,
+      since: o.since,
       events: s.events,
-      summary: { events: events.length, armies: s.armies, warnings: s.instances.length, byType: Object.fromEntries(s.byType) },
+      summary: { events: events.length, armies: s.armies, warnings: s.instances.length, since: o.since, byType: Object.fromEntries(s.byType) },
       instances: s.instances,
     }, null, 2) + '\n');
     console.error('Wrote ' + o.json);
