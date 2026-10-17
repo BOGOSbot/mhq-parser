@@ -34,8 +34,9 @@ The boundary is visible in the data and it is **2026-07-01**, not a year back:
 the share of lists declaring a disposition goes 0% for every month from 2025-10
 to 2026-05, 2% in 2026-06, then **98%** from 2026-07 on (the 2026-06 bucket is one
 league whose fixtures all carry a 06-30 date; a handful of late-June events
-already have the field). The app's own `+++` header changes with it - it prints
-`SECONDARY` before and `FORCE DISPOSITION` after.
+already have the field). The app's header gains the field at the same boundary:
+a literal `FORCE DISPOSITION` key is on 0 lists before 2026-06 and 68 lists in
+2026-07, while `SECONDARY` - a different field - stays on both sides of it.
 
 | month | armies | warned | declared |
 |---|---:|---:|---:|
