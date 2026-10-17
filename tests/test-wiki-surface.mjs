@@ -54,7 +54,8 @@ ok('(C) the client has a row for that node rather than a blank pane', js.body.in
 
 // (G)(E) the tree and the record component are the payloads and the one body.
 ok('(G) the filter re-renders from memory, with no fetch in the handler', js.body.indexOf("addEventListener('input', function () { state.filter") !== -1);
-ok('(E) a record body comes from the server route that calls recordBody', fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8').indexOf("recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor })") !== -1);
+ok('(E) a record body comes from the server route that calls recordBody, with the record id', fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8').indexOf("recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor, selfId: raw.id })") !== -1);
+ok('(E2) the client never calls recordBody itself', (js.body.match(/recordBody\(/g) || []).length === 0);
 
 // (3) the ask, the tail, the icon and the copy - the slice-3 targets.
 const srv = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
@@ -88,8 +89,11 @@ ok('(6) a new answer scrolls under the header, not behind it', js.body.indexOf('
 
 // --- task-81: the five defects -------------------------------------------------
 ok('(81-1) a page is matched by the faction in the node key, not by its name', /function pageFor\(n, key\)/.test(js.body) && /p\.area === area/.test(js.body) && /pageFor\(n, key\)/.test(js.body));
-ok('(81-2) a snippet drops a leading prefix equal to the row title', /function snippetFor\(r\)/.test(js.body) && /var snip = snippetFor\(r\)/.test(js.body));
-ok('(81-F) and the title name part before (Faction) and a > chain leaf', /nameOf\(t\)/.test(js.body) && /nameOf\(leaf\)/.test(js.body) && /suffixOf/.test(js.body));
+// task-89: the drawer TREE row is the numbered title only. The findings/tail rows keep their
+// own meta and snippet - those are different components and different jobs.
+const recFn = js.body.slice(js.body.indexOf('function renderRec(r)'), js.body.indexOf('function toggleInline('));
+ok('(81-2) the drawer row is the numbered title only - no book label, no preview', recFn.indexOf('sv-rec-title') !== -1 && recFn.indexOf('sv-rec-meta') === -1 && recFn.indexOf('sv-rec-snip') === -1);
+ok('(81-F) and the filter still reads the payload snippet', js.body.indexOf('matches(r.snippet)') !== -1);
 ok('(81-3) a page or owned id renders through the on-demand rows file', js.body.indexOf('function rowFromBranch(id)') !== -1 && js.body.indexOf("'-rows.json'") !== -1 && js.body.indexOf('renderRec(rowFromBranch(id))') !== -1);
 ok('(81-3b) the rows file is fetched once per branch and cached', js.body.indexOf('state.rowsLoading[b]') !== -1 && js.body.indexOf('state.rowsCache[b] =') !== -1);
 ok('(81-3) a detachment row lists what it owns', js.body.indexOf("'Its enhancements and stratagems ('") !== -1 && js.body.indexOf('sv-ownlist') !== -1);

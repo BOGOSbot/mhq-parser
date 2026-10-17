@@ -957,7 +957,9 @@ async function handleRulesRecord(req, res, u) {
   if (String(u.searchParams.get('format') || '').toLowerCase() === 'html') {
     const raw = corpusById().get(id);
     if (!raw) return fail(res, 404, 'no such record: ' + id);
-    return send(res, 200, recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor }), 'text/html; charset=utf-8');
+    // task-89: selfId so a record never links to itself - '2. Select Targets > Selecting
+    // Targets' was linkified back to the record being read.
+    return send(res, 200, recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor, selfId: raw.id }), 'text/html; charset=utf-8');
   }
   return json(res, 200, { ok: true, record, slug: surfaceSlugMap().get(id) || '' });
 }
