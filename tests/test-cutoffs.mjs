@@ -46,7 +46,8 @@ ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut && !files[
 ok('the two ruling books are waypoints, their chapters are the cutoffs', !files['tree/rulings/wtc.js'].cut && !files['tree/rulings/feq.js'].cut && kids('tree/rulings/wtc.js').every(x => x.cut) && kids('tree/rulings/feq.js').every(x => x.cut));
 ok('and the books are siblings of the rulebooks, not cut themselves', (function () {
   const books = kids('tree/rules.js').filter(x => x.lvl === 'book');
-  return books.length === 4 && books.every(x => !x.cut);
+  // task-86: the Abilities book joins the two rulebooks and the two ruling books.
+  return books.length === 5 && books.every(x => !x.cut);
 })());
 
 // Missions: all three parts cut - the '?' answered by symmetry with Events.
