@@ -20,9 +20,10 @@ for (const r of all) {
   const shape = recordShape(text);
   const kind = r.kind || '(none)';
   byKind[kind] = byKind[kind] || { stratagem: 0, ability: 0, other: 0, changed: 0, identical: 0 };
+  const family = shape && shape.family === 'ability-plain' ? 'ability' : (shape && shape.family);
   if (shape) {
-    fam[shape.family]++; byKind[kind][shape.family]++; changed++;
-    if (shape.family === 'ability') abilities.push(r);
+    fam[family]++; byKind[kind][family]++; changed++;
+    if (shape.family === 'ability' || shape.family === 'ability-plain') abilities.push(r);
     if (shape.family === 'stratagem') stratagems.push(r);
     continue;
   }
@@ -48,10 +49,17 @@ for (const k of Object.keys(byKind).sort()) { const v = byKind[k]; if (v.stratag
 // The core stratagem file's own 54 records; 22 of them are typed Movement/Shooting Ability.
 const core22 = abilities.filter(r => /^core-stratagems?#/.test(String(r.id)));
 t('the 22 core ability records classify as abilities', core22.length, 22);
-ok('none of them is a stratagem', core22.every(r => recordShape(stripBuiltBlock(r), r.heading).family === 'ability'));
-ok('they render ability rows, not a CP badge', core22.every(r => { const h = recordBody(r); return h.indexOf('svl-ability') !== -1 && h.indexOf('svl-cp') === -1; }));
+// task-89: 12 of them have their rows only mid-line (a collapsed CSV table) and take
+// the plain fallback; the other 10 keep the table.
+t('the mid-line rows take the plain fallback', core22.filter(r => recordShape(stripBuiltBlock(r), r.heading).family === 'ability-plain').length, 12);
+ok('none of them is a stratagem', core22.every(r => { const f = recordShape(stripBuiltBlock(r), r.heading).family; return f === 'ability' || f === 'ability-plain'; }));
+// task-89: 12 of the 22 have their rows only mid-line and take the plain fallback.
+const table22 = core22.filter(r => recordShape(stripBuiltBlock(r), r.heading).family === 'ability');
+const plain22 = core22.filter(r => recordShape(stripBuiltBlock(r), r.heading).family === 'ability-plain');
+t('the table ones render rows and no CP badge', table22.filter(r => { const h = recordBody(r); return h.indexOf('svl-ability') === -1 || h.indexOf('svl-cp') !== -1; }).length, 0);
+ok('the plain ones render prose with the ALL-CAPS styling, no CP badge and no Turn/Phase', plain22.every(r => { const h = recordBody(r); return h.indexOf('wprose') !== -1 && h.indexOf('wcaps') !== -1 && h.indexOf('svl-cp') === -1 && h.indexOf('Turn:') === -1; }));
 const proseAbilities = abilities.filter(r => { try { return !cardFor(r, {}); } catch (e) { return true; } });
-t('every ability that takes the prose path renders as an ability', proseAbilities.filter(r => recordBody(r).indexOf('svl-ability') === -1).length, 0);
+t('every ability renders either the table or the plain fallback', proseAbilities.filter(r => { const h = recordBody(r); return !(h.indexOf('svl-ability') !== -1 || (h.indexOf('wprose') !== -1 && h.indexOf('wcaps') !== -1)); }).length, 0);
 t('the rest are cards and keep their card rendering', abilities.length - proseAbilities.length, 2);
 t('every stratagem keeps its CP badge', stratagems.filter(r => { const s = recordShape(stripBuiltBlock(r), r.heading); return !s.cp || recordBody(r).indexOf('svl-cp') === -1 || recordBody(r).indexOf(esc(s.cp)) === -1; }).length, 0);
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

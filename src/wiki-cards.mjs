@@ -53,6 +53,8 @@ export const CARD_CSS = [
   '.svl-rows { width:100%; border-collapse:collapse; margin:0 0 12px; }',
   '.svl-rows th { text-align:left; vertical-align:top; white-space:nowrap; padding:6px 10px 6px 0; font-size:.8em; letter-spacing:.04em; text-transform:uppercase; opacity:.7; border-top:1px solid rgba(255,255,255,.12); }',
   '.svl-rows td { padding:6px 0; border-top:1px solid rgba(255,255,255,.12); vertical-align:top; }',
+  // task-89: the ALL-CAPS structure in the plain ability fallback.
+  '.wcaps { font-weight:700; color:var(--dim, #98a2b3); }',
   // The datasheet's flavour is its own column in the export; it reads as flavour
   // only if it looks like flavour. task-72.
   '.wcard-legend { margin:.7rem 0 0; color:var(--dim, #98a2b3); font-size:.85rem; font-style:italic; }',
@@ -472,7 +474,13 @@ export function recordShape(text, heading) {
   const strictRows = SHAPE_ROWS.some(function (L) { return shapeGrab(t, L, false); });
   if (/stratagem/i.test(type) && cp !== '') return { family: 'stratagem', type: type, cp: cp, rows: rows };
   // A move/shoot ability is the Type line and the empty CP, rows or no rows (the 22).
-  if (/^(movement|shooting) ability$/i.test(type) && cp === '') return { family: 'ability', type: type, cp: '', rows: rows };
+  // task-89: an ability takes the table only when its rows start a line. A mid-line
+  // grab is a collapsed CSV table (every label after 'Turn: Phase: ... ' on one line)
+  // and rendering it duplicated the EFFECT sentence; that record falls to plain prose.
+  if (/^(movement|shooting) ability$/i.test(type) && cp === '') {
+    if (!strictRows) return { family: 'ability-plain', type: type, cp: '', rows: [] };
+    return { family: 'ability', type: type, cp: '', rows: rows };
+  }
   // An empty Type with an empty CP is only an ability when the content rows are there -
   // that is how the 6 Aeldari records join the family without guessing from a blank.
   // The label must be one the record actually carries: its own Type, or the phase its
@@ -480,9 +488,31 @@ export function recordShape(text, heading) {
   if (type === '' && cp === '' && strictRows) return { family: 'ability', type: phaseLabel(heading), cp: '', rows: rows };
   return null;
 }
+// task-89: 'Turn:   Phase: Ability "Shoot"' is CSV navigation metadata, not a rule.
+// Dropped for display only; the corpus keeps it and the index still searches it.
+function stripTurnPhase(text) {
+  return String(text == null ? '' : text)
+    .replace(/Turn:\s+Phase:\s+Ability\s+"[^"]*"/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .trim();
+}
+// task-89: in the plain fallback the ALL-CAPS tokens are the structure the table would
+// have shown, so they get weight and the card palette's own dim accent. Applied only on
+// this path - the byte-identical prose records are untouched.
+function capsHtml(html) {
+  return String(html).split(/(<[^>]+>)/).map(function (seg, i) {
+    if (i % 2 === 1) return seg;
+    return seg.replace(/\b[A-Z][A-Z0-9]*(?:[ \/(\[)\]]+[A-Z0-9][A-Z0-9]*)*\b/g, function (m) {
+      return (m.replace(/[^A-Z]/g, '').length >= 2) ? '<span class="wcaps">' + m + '</span>' : m;
+    });
+  }).join('');
+}
 function shapeHtml(text, opts) {
   const shape = recordShape(text, opts && opts.selfHeading);
   if (!shape) return proseHtml(text, opts);
+  // task-89: the plain fallback - no head, no table, the CSV fragment gone, ALL CAPS styled.
+  if (shape.family === 'ability-plain') return capsHtml(proseHtml(stripTurnPhase(text), opts));
   const head = shape.family === 'stratagem'
     ? '<div class="svl-head svl-strat"><span class="svl-cp">' + esc(shape.cp) + '</span><span class="svl-type">' + esc(shape.type) + '</span></div>'
     : '<div class="svl-head svl-ability">' + (shape.type ? '<span class="svl-type">' + esc(shape.type) + '</span>' : '') + '</div>';

@@ -244,49 +244,16 @@
     wrap.appendChild(body);
     return wrap;
   }
-  // task-81: a row's snippet starts with the record's own heading chain, so the
-  // drawer printed the title, the meta, then the title again. Drop a leading
-  // prefix equal to the title (or a ' > ' chain ending in it) before rendering.
-  // task-81 (F): the title and the snippet spell the same record differently - the
-  // row says 'Mirror of Fates (Chaos Knights)' where the snippet says 'Mirror of
-  // Fates - Chaos Knights enhancement ...'. Compare against the title's NAME part
-  // (before ' (' and before ' > ') and drop the matching prefix, including a
-  // ' - <faction>' suffix that follows it.
-  function snippetFor(r) {
-    var s = String(r.snippet || '');
-    var t = String(r.title || '').trim();
-    if (!s || !t) return s;
-    var chain = t.split(' > ').filter(Boolean);
-    var leaf = chain.length ? chain[chain.length - 1] : '';
-    var nameOf = function (x) { var i = x.indexOf(' ('); return (i === -1 ? x : x.slice(0, i)).trim(); };
-    var suffixOf = function (x) { var i = x.indexOf(' ('); return i === -1 ? '' : x.slice(i + 2, x.lastIndexOf(')')).trim(); };
-    var esc = function (x) { return x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
-    var cands = [t, leaf, nameOf(t), nameOf(leaf)];
-    for (var i = 0; i < cands.length; i++) {
-      var p = cands[i];
-      if (!p || s.indexOf(p) !== 0) continue;
-      var rest = s.slice(p.length);
-      var suf = suffixOf(p === t || p === leaf ? p : t);
-      if (suf && new RegExp('^\\s*[-\u2013\u2014]\\s*' + esc(suf) + '\\b').test(rest)) rest = rest.replace(/^\s*[-\u2013\u2014]\s*/, '').slice(suf.length);
-      rest = rest.replace(/^[\s\u2013\u2014-]+/, '');
-      if (rest) return rest;
-    }
-    return s;
-  }
   function renderRec(r) {
     var wrap = el('div', 'sv-recwrap');
     var b = el('button', 'sv-rec');
     b.type = 'button';
     b.setAttribute('data-rec', r.id);
-    // task-87: the row carries the rule's own number ('01.05 Dice'); the payload's
-    // row has a num when the corpus record has a ruleId.
+    // task-87/89: the row carries the rule's own number ('01.05 Dice'); the payload's
+    // row has a num when the corpus record has a ruleId. task-89: the row is the title
+    // only - the book label and the 100-character preview are gone, they repeat the
+    // chapter above and cut the text mid-sentence (Mandal, 2026-10-17).
     b.appendChild(el('span', 'sv-rec-title', (r.num ? r.num + ' ' : '') + (r.title || leafOfId(r.id))));
-    var meta = bookLabel(r.slug);
-    if (meta) b.appendChild(el('span', 'sv-rec-meta', meta));
-    // The payload caps a row's snippet at 100; a full-length snippet was cut, so
-    // the row says so (the payload itself is not touched).
-    var snip = snippetFor(r);
-    if (snip) b.appendChild(el('span', 'sv-rec-snip', snip.length >= 100 ? snip + '\u2026' : snip));
     b.addEventListener('click', function (ev) { ev.preventDefault(); toggleInline(r, wrap); });
     wrap.appendChild(b);
     return wrap;
