@@ -140,7 +140,7 @@ Both were driven by this survey, and both are pinned by tests.
   `POINTS D'ARMÉE TOTAL` and the bare `TOTAL`/`POINTS` were not labels, so an
   army that printed its total under one read as having none. 276 archive-wide
   warnings became 135, and 32 of the 141 surfaced as a real mismatch.
-- **The dispositions the parser could not see** (`a8f7b21`): four defects, all
+- **The dispositions the parser could not see** (`075d3ee`): four defects, all
   measured against real lists - a `- `-prefixed header key (newrecruit's dashed
   dialect, key landed as `-disposition`), a `+` header with no `+++` fence (or a
   fence too short for the 20-plus delimiter test), `DISPOSITION DE FORCE` missing
