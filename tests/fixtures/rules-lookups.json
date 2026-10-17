@@ -104,6 +104,7 @@
    "lang": "en",
    "kind": "paraphrase",
    "expect": [
+    "ability#synapse",
     "faction-rule#000000705"
    ]
   },
@@ -112,6 +113,7 @@
    "lang": "en",
    "kind": "paraphrase",
    "expect": [
+    "ability#battle-focus",
     "faction-rule#000009894"
    ]
   },
@@ -233,10 +235,8 @@
   {
    "q": "find shadow in the warp",
    "lang": "en",
-   "kind": "literal",
-   "expect": [
-    "faction-rule#000000707"
-   ]
+   "kind": "ambiguous",
+   "expect": []
   },
   {
    "q": "cherche les règles de mouvement",

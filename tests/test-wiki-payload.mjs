@@ -28,7 +28,7 @@ const index = read('index.json');
 // (a) the three shapes at paths mirroring the URLs -----------------------------
 t('(a) index.json is exactly the branches with name, count and key', Object.keys(index), ['branches']);
 t('(a) the three branch keys are rules, missions and factions', index.branches.map(b => b.b), ['rules', 'missions', 'factions']);
-t('(a) the branch names and counts are the tree index', index.branches.map(b => b.n + ':' + b.c), ['Rules:769', 'Missions:115', 'Factions:5185']);
+t('(a) the branch names and counts are the tree index', index.branches.map(b => b.n + ':' + b.c), ['Rules:831', 'Missions:115', 'Factions:5185']);
 for (const b of index.branches) {
   const p = read('index/' + b.b + '.json');
   t('(a) index/' + b.b + '.json carries n, lvl, c, kids, recs, pages', ['n', 'lvl', 'c', 'kids', 'recs', 'pages'].every(k => k in p) && p.n === b.n && p.lvl === 'branch', true);
@@ -47,7 +47,7 @@ for (const book of books) {
   for (const [id, rec] of Object.entries(c.records)) { if (seen.has(id)) { console.log('DUPLICATE ' + id + ' in ' + seen.get(id) + ' and ' + book); } seen.set(id, book); slugBook.set(id, rec.slug.split('--')[0]); }
 }
 t('(b) every delivered record appears exactly once', seen.size, stats.delivered);
-t('(b) the delivered count is the render rule: pageNamer minus tree.filtered', stats.delivered, 6245);
+t('(b) the delivered count is the render rule: pageNamer minus tree.filtered', stats.delivered, 6307);
 // task-77: map.json is deleted. The witness is the corpus's own delivery rule
 // (rules-corpus isDelivered), computed here without the payload builder.
 const modelDelivered = readAllCorpus().filter(isDelivered).length;

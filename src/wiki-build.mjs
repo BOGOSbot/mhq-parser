@@ -20,7 +20,7 @@ import path from 'path';
 import { planWiki, readPlanInput, distribution, chars } from './wiki-plan.mjs';
 import { readCorpus, textHash, ABILITY_DEFS } from './rules-corpus.mjs';
 
-export const RULES_SOURCES = ['core-rules', 'rules-appendix', 'event-companion', 'core-stratagems'];
+export const RULES_SOURCES = ['core-rules', 'rules-appendix', 'event-companion', 'core-stratagems', 'abilities'];
 export const FACTION_SOURCES = ['factions-csv'];
 
 // The section shape the corpus files carry. Only what readAllCorpus and the eval

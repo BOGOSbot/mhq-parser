@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  SOURCES, EDITION, assignIds, corpusDir, extractSections, isBoardingActionsPageSection, parseMarker, stripChrome, writeCorpus, buildFactionCorpus,
+  SOURCES, EDITION, assignIds, corpusDir, extractSections, isBoardingActionsPageSection, parseMarker, stripChrome, writeCorpus, buildFactionCorpus, buildAbilitiesCorpus,
 } from '../src/rules-corpus.mjs';
 import { readPlanInput } from '../src/wiki-plan.mjs';
 import { writeWikiCorpus } from '../src/wiki-build.mjs';
@@ -49,8 +49,15 @@ const BASELINE = {
   // face, so core-rules gains 30 characters (the five wound values plus the hit 1 and 6)
   // and the CSV path gains 252 bytes (the same markup in a few CSV cells). Sections and
   // records are unchanged: 374.
+  // task-86 pass 2: the abilities builder is covered here too. It emits one record per
+  // distinct CSV ability name that has no record of its own (71 distinct, 14 already
+  // covered by a core-rules heading, 57 built). A change in that count is a parser change.
   scrape: { sections: 374, chars: 283516 },
-  shape: { 'core-rules': { sections: 374, chars: 283516 }, 'factions-csv': { sections: 6396, bytes: 10013445 } },
+  shape: {
+    'core-rules': { sections: 374, chars: 283516 },
+    'factions-csv': { sections: 6396, bytes: 10013445 },
+    abilities: { sections: 62 },
+  },
 };
 
 const REAL = path.join(process.cwd(), 'workspace', 'rules-corpus');
@@ -85,6 +92,10 @@ for (const s of SOURCES) {
   scrape[s.name] = sections;
   writeCorpus(s.name, { source: s.name, set: s.set || 'rules', url: s.url, edition: EDITION, marker: parseMarker(body), scrapedAt: new Date().toISOString(), bytes: body.length, count: sections.length, anchored: sections.filter(x => x.hasAnchor).length, sections: sections }, root);
 }
+// After the scrape, so the core-rules headings exist for the exclusion: 14 CSV ability
+// names already have a record, 57 are built, and 5 descriptions exceed MAX_CHARS so the
+// shape splits them into a ~2 part - 62 sections is the pipeline's number.
+buildAbilitiesCorpus();
 writeWikiCorpus(root, null, { blockInText: true });
 
 const core = scrape['core-rules'] || [];
