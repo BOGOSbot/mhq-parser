@@ -54,11 +54,18 @@ long idle can take longer while the container resumes.
 
 ## Refresh the app after a change
 
-Rebuild the archive, upload the parts, extract over the old tree, then
-`box exec -- 'cd /workspace/home/mhq-parser && pkill -f "node src/server.mjs" ; ...'`
-and start it again (or `box pause` then a request to the URL, which runs the init
-command). The corpus and payloads are part of the archive, so a rebake is a
+Rebuild the archive, upload the parts, extract over the old tree, then stop the old
+node and start it again (or `box pause` then a request to the URL, which runs the
+init command). The corpus and payloads are part of the archive, so a rebake is a
 redeploy.
+
+**Kill and start in two execs, never one.** `pkill -f "node src/server.mjs"`
+matches the exec wrapper's own command line when the start command is in the same
+string - the pattern appears in it - so the shell kills itself before the restart
+and the deploy ends silently with the app down. Kill by pattern in one
+`box exec` (the bracket in `node src/server[.]mjs` keeps the pattern from matching
+its own text), then run the `nohup` start in a second exec and check
+`curl -s -o /dev/null -w %{http_code} http://127.0.0.1:3000/health` from the box.
 
 ## Tear down
 
