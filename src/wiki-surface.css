@@ -33,6 +33,17 @@ body{background:var(--sv-bg);color:var(--sv-ink);font:16px/1.5 system-ui,-apple-
 .sv-inline-title{font-weight:650}
 .sv-inline-meta{color:var(--sv-dim);font-size:.8em;margin-bottom:6px}
 .sv-inline .wcard,.sv-inline .text{max-width:100%}
+/* task-103: the reader's bar. Pinned to the top of the tree's scrollport while the record's
+   body is in view, so the next sibling is one tap at any body length; the box de-indents in
+   JS to the tree's own width (322 -> 366 px of 390 at depth 3), which is what the rails cost. */
+.sv-sibbar{position:sticky;top:0;z-index:2;display:flex;align-items:stretch;margin:-8px -10px 8px;background:var(--sv-panel2);border-bottom:1px solid var(--sv-line);border-radius:10px 10px 0 0}
+.sv-sib{display:flex;align-items:center;gap:4px;min-height:44px;min-width:44px;max-width:38%;border:0;background:none;color:var(--sv-acc);font:inherit;padding:0 6px}
+.sv-sib:active{background:#262b36}
+.sv-sib-chev{flex:0 0 auto}
+.sv-sib-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.85em}
+.sv-sib-next{margin-left:auto;justify-content:flex-end}
+.sv-sib-cur{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 4px;font-weight:650;font-size:.9em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sv-sib-spacer{flex:0 0 8px}
 .sv-page-title{margin:.4rem 0 .2rem}
 .sv-page-meta{color:var(--sv-dim);font-size:.85em;margin:0 0 .8rem;word-break:break-all}
 .sv-empty{color:var(--sv-dim);padding:10px 4px}

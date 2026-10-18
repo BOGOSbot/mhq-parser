@@ -225,10 +225,9 @@
     var body = el('div', 'sv-recs');
     kids.forEach(function (k) { var child = renderNode(k, key + '/' + k.n); if (child) body.appendChild(child); });
     var shown = recs.filter(function (r) { return matches(r.title) || matches(r.snippet) || matches(bookLabel(r.slug)); });
-    shown.slice(0, ROW_CAP).forEach(function (r) { body.appendChild(renderRec(r)); });
-    // Never silently: the corpus maximum is 162 rows in one node, so the cap is
-    // head-room, not a cut - and if a future payload passes it, the reader is told.
-    if (shown.length > ROW_CAP) body.appendChild(el('div', 'sv-empty', (shown.length - ROW_CAP) + ' more not shown.'));
+    // task-103: the rows of one container are the sibling list the reader's bar walks,
+    // so they are collected first and handed to every row of that container.
+    var rows = shown.slice(0, ROW_CAP);
     if (page) {
       var p = pageFor(n, key);
       if (p) {
@@ -236,34 +235,93 @@
           body.appendChild(el('div', 'sv-loading', 'Loading the records...'));
           loadRows().then(function () { renderTree(); });
         } else {
-          p.recs.forEach(function (id) { body.appendChild(renderRec(rowFromBranch(id))); });
+          rows = rows.concat(p.recs.map(function (id) { return rowFromBranch(id); }));
         }
       }
     }
+    rows.forEach(function (r) { body.appendChild(renderRec(r, rows)); });
+    // Never silently: the corpus maximum is 162 rows in one node, so the cap is
+    // head-room, not a cut - and if a future payload passes it, the reader is told.
+    if (shown.length > ROW_CAP) body.appendChild(el('div', 'sv-empty', (shown.length - ROW_CAP) + ' more not shown.'));
     if (!body.childNodes.length) body.appendChild(el('div', 'sv-empty', state.filter ? 'No matching rows.' : 'No records under this node.'));
     wrap.appendChild(body);
     return wrap;
   }
-  function renderRec(r) {
+  function renderRec(r, siblings) {
     var wrap = el('div', 'sv-recwrap');
     var b = el('button', 'sv-rec');
     b.type = 'button';
     b.setAttribute('data-rec', r.id);
+    // task-103: the row remembers the container's row list, so the reader's bar can
+    // walk to a sibling without re-deriving the tree from the DOM.
+    b.svSiblings = siblings || null;
     // task-87/89: the row carries the rule's own number ('01.05 Dice'); the payload's
     // row has a num when the corpus record has a ruleId. task-89: the row is the title
     // only - the book label and the 100-character preview are gone, they repeat the
     // chapter above and cut the text mid-sentence (Mandal, 2026-10-17).
     b.appendChild(el('span', 'sv-rec-title', (r.num ? r.num + ' ' : '') + (r.title || leafOfId(r.id))));
-    b.addEventListener('click', function (ev) { ev.preventDefault(); toggleInline(r, wrap); });
+    b.addEventListener('click', function (ev) { ev.preventDefault(); toggleInline(r, wrap, siblings); });
     wrap.appendChild(b);
     return wrap;
   }
-  function toggleInline(r, wrap) {
+  // task-103: the reader's own navigation. An open record used to push the next sibling
+  // 2,600 px down (measured: the 2,534 px body of '2. Profiles' at 390x844) and its body
+  // was 322 px wide of 390, because the tree's rails stack 12 px per level. The bar pins
+  // prev/current/next to the top of the scrollport and the box de-indents to the tree's
+  // own width, so the next section is one tap at any body length.
+  function treeEl() { return $('sv-tree'); }
+  function deIndent(box) {
+    var tree = treeEl();
+    if (!tree || !box) return;
+    var cs = window.getComputedStyle(tree);
+    var edge = tree.getBoundingClientRect().left + parseFloat(cs.paddingLeft || '0') + parseFloat(cs.borderLeftWidth || '0');
+    var d = box.getBoundingClientRect().left - edge;
+    if (d > 0) box.style.marginLeft = (-d) + 'px';
+  }
+  function rowFor(id) {
+    var tree = treeEl();
+    if (!tree) return null;
+    var rows = tree.querySelectorAll('.sv-rec');
+    for (var k = 0; k < rows.length; k++) { if (rows[k].getAttribute('data-rec') === id) return rows[k]; }
+    return null;
+  }
+  function openSibling(rec) {
+    var row = rowFor(rec.id);
+    if (!row || !row.parentNode) return;
+    toggleInline(rec, row.parentNode, row.svSiblings);
+    if (row.scrollIntoView) row.scrollIntoView({ block: 'start' });
+  }
+  function sibButton(rec, dir) {
+    var b = el('button', 'sv-sib sv-sib-' + dir);
+    b.type = 'button';
+    b.setAttribute('aria-label', (dir === 'prev' ? 'Previous: ' : 'Next: ') + titleOf(rec));
+    b.appendChild(el('span', 'sv-sib-chev', dir === 'prev' ? '\u2039' : '\u203A'));
+    b.appendChild(el('span', 'sv-sib-t', titleOf(rec)));
+    b.addEventListener('click', function (ev) { ev.preventDefault(); openSibling(rec); });
+    return b;
+  }
+  function siblingBar(r, list, i) {
+    var bar = el('div', 'sv-sibbar');
+    bar.appendChild(list[i - 1] ? sibButton(list[i - 1], 'prev') : el('span', 'sv-sib-spacer'));
+    bar.appendChild(el('span', 'sv-sib-cur', titleOf(r)));
+    bar.appendChild(list[i + 1] ? sibButton(list[i + 1], 'next') : el('span', 'sv-sib-spacer'));
+    return bar;
+  }
+  function toggleInline(r, wrap, siblings) {
     var existing = wrap.querySelector('.sv-inline');
     if (existing) { existing.remove(); return; }
+    // One record at a time: two open bodies made a 4,909 px tree with the first one
+    // 2,155 px above the viewport, and the bar removes the reason to keep two.
+    var tree = treeEl();
+    if (tree) Array.prototype.forEach.call(tree.querySelectorAll('.sv-inline'), function (n) { n.remove(); });
     var box = el('div', 'sv-inline');
+    var list = siblings || [];
+    var at = -1;
+    for (var k = 0; k < list.length; k++) { if (list[k] && list[k].id === r.id) { at = k; break; } }
+    if (at !== -1 && list.length > 1) box.appendChild(siblingBar(r, list, at));
     // task-87: no inline title or meta - the row above this box IS the header, and
-    // printing the title again read as a duplicate 'Dice / Core Rules'.
+    // printing the title again read as a duplicate 'Dice / Core Rules'. task-103: the
+    // bar carries the title instead, because it has to say where the reader is going.
     var body = el('div', 'sv-inline-body');
     body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
     box.appendChild(body);
@@ -272,7 +330,13 @@
     if (r.own && r.own.length) {
       var ownBox = el('div', 'sv-ownlist');
       ownBox.appendChild(el('div', 'sv-owntitle', 'Its enhancements and stratagems (' + r.own.length + ')'));
-      var fillOwn = function () { r.own.forEach(function (id) { ownBox.appendChild(renderRec(rowFromBranch(id))); }); };
+      var ownRows = null, filled = false;
+      var fillOwn = function () {
+        if (filled) return;
+        filled = true;
+        if (!ownRows) ownRows = r.own.map(function (id) { return rowFromBranch(id); });
+        ownRows.forEach(function (o) { ownBox.appendChild(renderRec(o, ownRows)); });
+      };
       if (state.rowsCache[state.branch]) { fillOwn(); }
       else {
         ownBox.appendChild(el('div', 'sv-loading', 'Loading...'));
@@ -284,6 +348,7 @@
       box.appendChild(ownBox);
     }
     wrap.appendChild(box);
+    deIndent(box);
     if (state.rows[r.id]) { body.innerHTML = faceHtml(r.id) + state.rows[r.id]; wireFaces(body); return; }
     fetch(REC + '?id=' + encodeURIComponent(r.id) + '&format=html', { credentials: 'same-origin' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
