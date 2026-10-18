@@ -495,6 +495,11 @@ details pre{background:var(--bg);border:1px solid var(--line);border-radius:10px
     <a id="footbug" href="https://github.com/BOGOSbot/mhq-parser/issues/new" target="_blank" rel="noopener">
       <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="8" cy="9.6" rx="3.1" ry="3.9"/><path d="M6.4 4.6A1.6 1.6 0 0 1 8 3a1.6 1.6 0 0 1 1.6 1.6v.6H6.4z"/><path d="M4.9 7.4 2.2 6.2M4.7 9.6 1.7 9.4M4.9 11.8 2.3 13.1M11.1 7.4l2.7-1.2M11.3 9.6l3-.2M11.1 11.8l2.6 1.3M6.2 3.4 5.2 2M9.8 3.4 10.8 2"/></svg>
     </a>
+    <!-- Missions are the other half of a game night; GD Missions is the reference
+         the mission records were checked against. -->
+    <a id="footgd" href="https://gdmissions.app/11th" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="2.1"/><path d="M8 1v1.8M8 13.2V15M1 8h1.8M13.2 8H15"/></svg>
+    </a>
     <a id="footwaha" href="https://wahapedia.ru/" target="_blank" rel="noopener">
       <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3.7C6.9 2.7 5.4 2.3 3.4 2.3H1.6v10.1h1.8c2 0 3.5.4 4.6 1.4"/><path d="M8 3.7c1.1-1 2.6-1.4 4.6-1.4h1.8v10.1h-1.8c-2 0-3.5.4-4.6 1.4"/><path d="M8 3.7v10.1"/></svg>
     </a>
@@ -690,6 +695,7 @@ var I18N = {
     dataFrom: 'Data from: ',
     footRepo: 'Source code',
     footBug: 'Report a problem',
+    footGd: 'GD Missions',
     footWaha: 'Wahapedia'
   },
   fr: {
@@ -869,6 +875,7 @@ var I18N = {
     dataFrom: 'Données de : ',
     footRepo: 'Code source',
     footBug: 'Signaler un problème',
+    footGd: 'GD Missions',
     footWaha: 'Wahapedia'
   }
 };
@@ -1046,6 +1053,7 @@ function applyLang() {
   var fr = $('#footrepo'); if (fr) { fr.title = t('footRepo'); fr.setAttribute('aria-label', t('footRepo')); }
   var fb = $('#footbug'); if (fb) { fb.title = t('footBug'); fb.setAttribute('aria-label', t('footBug')); }
   var fw = $('#footwaha'); if (fw) { fw.title = t('footWaha'); fw.setAttribute('aria-label', t('footWaha')); }
+  var fg = $('#footgd'); if (fg) { fg.title = t('footGd'); fg.setAttribute('aria-label', t('footGd')); }
   renderExamples();
   renderBrowse();
   applyEdition();
