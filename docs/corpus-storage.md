@@ -38,7 +38,8 @@ minutes.
 
 | snapshot id | taken | holds | sha256 | restore checked |
 |---|---|---|---|---|
-| **`9418c840-18db-444b-9e77-6e176165db65`** | 2026-10-17 | `rules-corpus-20261017.tar.gz`, 3,205,616 B | `de3961ab6318a9bd3d4840e19d77d80eb6e5129209ac3674d384cb6c6fb7bbc3` | yes (restored into `top-ostrich-13225`, hash matched, both boxes deleted) |
+| **`f566615f-1667-4524-b475-daf07c97a983`** | 2026-10-18 | `rules-corpus-20261018.tar.gz`, 3,209,181 B | `ff92ff4b91e2992f7c2a6b101225c57a88c346344b55f9875b0c825549ffe13c` | yes (restored into `more-caribou-03676`, hash matched, both boxes deleted) |
+| `9418c840-18db-444b-9e77-6e176165db65` (superseded) | 2026-10-17 | `rules-corpus-20261017.tar.gz`, 3,205,616 B | `de3961ab6318a9bd3d4840e19d77d80eb6e5129209ac3674d384cb6c6fb7bbc3` | yes (restored into `top-ostrich-13225`, hash matched, both boxes deleted) |
 | `0cbbbc59-5043-4dc0-8617-629f2c2f5b24` (superseded) | 2026-10-16 | `rules-corpus-20261016.tar.gz`, 3,191,557 B | `2e04a0e7b176495640da905f3ccfc14dabbfd44e7746cc10f180bbf44d87206e` | yes (restored into `many-bird-81711`, hash matched, both boxes deleted) |
 | `322e7b93-21ee-4aab-b6cd-0a4a8782642a` (superseded) | 2026-10-15 | `rules-corpus-20261015.tar.gz`, 4,399,943 B | `84bff8775b97b8b4b9fa9849e2dd4aa8d41fe15d558112d692e7c25ff3d6ff6b` | yes |
 | `5087ed6c-efa1-4bac-8aca-ad02ef6a6c88` (superseded) | 2026-10-15 | `rules-corpus-20261015.tar.gz`, 4,384,405 B | `e6e89de214b6f04037af189ed8c700de5f9d6a4cf4aaeb1e88e01a5ff182b978` | yes |
@@ -51,7 +52,7 @@ selected, so once the box is deleted the snapshot id is the ONLY handle on the
 recovery point. If the id is not written here, the snapshot is unreachable in
 practice even though it exists.
 
-After the 2026-10-17 task-86 rebuild the corpus holds **7,345 records / 6,307 delivered**
+After the 2026-10-18 task-94 rebuild the corpus holds **7,364 records / 6,326 delivered** (rules 814): 19 numbered sections the 80-character floor had been dropping came back (11 of them the appendix's one-line definitions, `01.07.02 Battle-shock Test` among them). Before that, 7,345 / 6,307
 - the rulings branch (154, WTC + FEQ), the 19 universal ability definitions, the 43 mission
 cards, and 62 faction-ability records (57 distinct names from `Abilities.csv` plus 5 split
 parts; 14 names the core rules already carry are excluded). Before task-85 it was
@@ -156,8 +157,8 @@ nothing to re-ingest.
 and the CSV export on disk, nothing stored - in a temp directory passed explicitly into
 the build, and checks three things:
 
-- the **scrape stage** (374 sections / 283,516 characters of `core-rules`);
-- the **shape stage** (374 sections / 283,516 characters of `core-rules`;
+- the **scrape stage** (382 sections / 289,486 characters of `core-rules`);
+- the **shape stage** (382 sections / 289,486 characters of `core-rules`;
   `factions-csv.json` at 6,396 sections / 10,013,445 bytes; `abilities.json` at 62);
 - **no rule text is lost**: every stored section the rebuild does not reproduce
   verbatim still has its text in the rebuild, allowing for re-chunking, and the
