@@ -93,7 +93,10 @@ is the door. There are no worked examples on the page: the question box is the
 only door, and a chip that filled it was one more thing between the reader and
 the ask. The retention line
 sits under that block and outside it, so a run hides the intro but never the
-note about what the page keeps.
+note about what the page keeps. **It is one sentence** - *Questions are kept
+anonymously to improve this page* - with no list of what is stored and no
+reassurance about what is not: a disclaimer that needs a second sentence to be
+read is not read.
 
 ## Finding an entry
 
@@ -184,9 +187,10 @@ button stays `type="submit"` and keeps its icon while it is disabled during a
 run; the correction keeps its too-short-to-search guard. The Voice button is not
 one of these: it keeps its mic and its visible label.
 
-The retention line is under the intro in the body, not in the bar. A run hides
-the intro block; the retention line is not inside it, so the note about what the
-page keeps stays on screen while the question runs and after it.
+The retention line is under the intro in the body, not in the bar, and it is one
+sentence. A run hides the intro block; the retention line is not inside it, so the
+note about what the page keeps stays on screen while the question runs and after
+it.
 
 ## The corpus
 
