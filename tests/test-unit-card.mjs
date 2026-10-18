@@ -1,5 +1,5 @@
 import {
-  ABILITY_CHARS, abilityRuleIds, buildUnitCard, cardTables, findAbilityRecord, findDatasheet, recordCard, resetCardTables, resolveRecordLinks, unitCard, unitCardEnabled, wantsUnitCard,
+  ABILITY_CHARS, abilityRuleIds, buildUnitCard, cardBuildCount, cardTables, findAbilityRecord, findDatasheet, recordCard, resetCardTables, resolveRecordLinks, unitCard, unitCardEnabled, wantsUnitCard,
 } from '../src/unit-card.mjs';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
 import { buildTrace } from '../src/rules-traces.mjs';
@@ -192,6 +192,27 @@ t('a link with no target in the index is dropped', resolveRecordLinks([{ to: 'gh
 const withAnchor = allRecords.find(r => (r.links || []).some(l => byId.has(l.to) && byId.get(l.to).anchor));
 const resolved = resolveRecordLinks(withAnchor.links, byId).find(l => l.anchor);
 ok('a resolved link keeps the target anchor and url', !!(resolved && resolved.url && resolved.to && resolved.title));
+
+// --- task-10: one card per id and corpora, not one per record -----------------
+// The full render calls the builder for a datasheet's record, its unitrules twin
+// and its ~n parts: 3,859 calls for 1,501 cards. The memo's own measure.
+resetCardTables(); // start from an empty cache so the count means something
+const built0 = cardBuildCount();
+const firstBuild = buildUnitCard('000000574');
+const secondBuild = buildUnitCard('000000574');
+t('the same id builds one card', cardBuildCount() - built0, 1);
+ok('and the second call returns the same card object', firstBuild === secondBuild);
+const built1 = cardBuildCount();
+buildUnitCard('000000574', { corpora: bothHalves });
+buildUnitCard('000000574', { corpora: bothHalves });
+t('a corpora object is its own cache and builds once', cardBuildCount() - built1, 1);
+const otherCorpora = { rules: allRecords, factions: allRecords };
+buildUnitCard('000000574', { corpora: otherCorpora });
+t('a different corpora object is a different cache', cardBuildCount() - built1, 2);
+resetCardTables();
+const built2 = cardBuildCount();
+buildUnitCard('000000574');
+t('resetCardTables starts a new cache generation', cardBuildCount() - built2, 1);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

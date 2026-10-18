@@ -144,6 +144,27 @@ function hrefFor(section) {
 
 let TABLES = null;
 
+// task-10: the full render calls buildUnitCard once per record, and a datasheet's
+// twin and its ~n parts all open the same card, so the same id was built over and
+// over (3,052 datasheets over 6,705 records). The card is a pure function of the
+// CSV tables and the corpora it resolves ability links against, so it is cached
+// under those two identities: resetCardTables() starts a new generation, and a
+// caller with its own corpora object gets its own map. A FRESH corpora object per
+// call is a miss by design - the cache never guesses that two objects hold the
+// same records.
+let CARD_BUILDS = 0;
+let CARD_CACHES = new WeakMap(); // corpora object -> Map(card id, card)
+let NO_CORPORA_CARDS = new Map();
+function cardCacheFor(corpora) {
+  if (!corpora) return NO_CORPORA_CARDS;
+  let m = CARD_CACHES.get(corpora);
+  if (!m) { m = new Map(); CARD_CACHES.set(corpora, m); }
+  return m;
+}
+// The number of cards actually built in this process: the measurement the memo's
+// own test reads (and the full-render bench reports).
+export function cardBuildCount() { return CARD_BUILDS; }
+
 // Read once per process, like the corpus. The export is 20 files and the card
 // asks for one datasheet, so the tables are indexed by id at load.
 export function cardTables() {
@@ -198,7 +219,11 @@ export function cardTables() {
 }
 
 // Tests only: the tables are a cache of files on disk.
-export function resetCardTables() { TABLES = null; }
+export function resetCardTables() {
+  TABLES = null;
+  CARD_CACHES = new WeakMap();
+  NO_CORPORA_CARDS = new Map();
+}
 
 // One switch, off only when it is explicit: the card is on by default, and
 // RULES_UNIT_CARD=0 puts the prose path back without a code change. A reviewer
@@ -256,9 +281,12 @@ export function findDatasheet(question, asked) {
 export function buildUnitCard(id, opts) {
   const o = opts || {};
   const corpora = o.corpora || {};
+  const key = String(id == null ? '' : id);
+  const cache = cardCacheFor(o.corpora);
+  if (cache.has(key)) return cache.get(key);
   const t = cardTables();
-  const d = t.byId.get(String(id == null ? '' : id));
-  if (!d) return null;
+  const d = t.byId.get(key);
+  if (!d) { cache.set(key, null); return null; }
   const models = (t.models.get(d.id) || []).map(m => ({
     line: m.line, name: clean(m.name),
     M: m.M, T: m.T, Sv: m.Sv,
@@ -266,7 +294,7 @@ export function buildUnitCard(id, opts) {
     W: m.W, Ld: m.Ld, OC: m.OC,
     base: clean(m.base_size),
   }));
-  if (!models.length) return null;
+  if (!models.length) { cache.set(key, null); return null; }
   const weapons = (t.wargear.get(d.id) || []).map(w => ({
     name: clean(w.name), type: clean(w.type), range: clean(w.range),
     A: w.A, BS: w.BS_WS, S: w.S, AP: w.AP, D: w.D, notes: clean(w.description),
@@ -293,7 +321,8 @@ export function buildUnitCard(id, opts) {
     .map(c => ({ label: clean(c.description), cost: clean(c.cost) }))
     .filter(c => c.cost);
   const src = t.sources.get(d.source_id);
-  return {
+  CARD_BUILDS++;
+  const card = {
     id: d.id,
     name: d.name,
     faction: d.faction,
@@ -318,6 +347,8 @@ export function buildUnitCard(id, opts) {
     points,
     damaged: d.damaged_description ? { w: d.damaged_w, description: clean(d.damaged_description) } : null,
   };
+  cache.set(key, card);
+  return card;
 }
 
 // A record's links, resolved against an index of the corpus: each target carries
@@ -363,7 +394,7 @@ export function recordCard(id, opts) {
   // both halves and every part open the same card.
   const bare = String(rec.id).replace(/^(?:datasheet|unitrules)#/, '').replace(/~\d+$/, '');
   const card = (kind === 'datasheet' || kind === 'unitrules')
-    ? buildUnitCard(bare, { corpora: corpora })
+    ? buildUnitCard(bare, o.corpora ? { corpora: o.corpora } : undefined)
     : null;
   const parts = String(rec.heading || '').split(' > ').filter(Boolean);
   return {
@@ -391,7 +422,7 @@ export function unitCard(question, opts) {
   if (!unitCardEnabled(o.env)) return null;
   if (!wantsUnitCard(question, o.asked)) return null;
   const d = findDatasheet(question, o.asked);
-  return d ? buildUnitCard(d.id, { corpora: o.corpora }) : null;
+  return d ? buildUnitCard(d.id, o.corpora ? { corpora: o.corpora } : undefined) : null;
 }
 
-export default { CARD_INTENT, ABILITY_CHARS, cardTables, resetCardTables, unitCardEnabled, wantsUnitCard, findDatasheet, buildUnitCard, recordCard, resolveRecordLinks, unitCard, abilityRuleIds, findAbilityRecord };
+export default { CARD_INTENT, ABILITY_CHARS, cardTables, resetCardTables, cardBuildCount, unitCardEnabled, wantsUnitCard, findDatasheet, buildUnitCard, recordCard, resolveRecordLinks, unitCard, abilityRuleIds, findAbilityRecord };

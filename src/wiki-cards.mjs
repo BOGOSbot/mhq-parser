@@ -165,7 +165,9 @@ export function cardFor(record, opts) {
   // "~n" suffix; the card is the same card.
   const bare = String(record.id || '').replace(/^(?:datasheet|unitrules)#/, '').replace(/~\d+$/, '');
   if (!bare) return null;
-  try { return buildUnitCard(bare, { corpora: o.corpora || {} }) || null; } catch (e) { return null; }
+  // task-10: don't hand the cache a fresh {} per record - no corpora is the
+  // shared no-corpora cache, an object is that object's own cache.
+  try { return buildUnitCard(bare, o.corpora ? { corpora: o.corpora } : undefined) || null; } catch (e) { return null; }
 }
 
 // --- the card ---------------------------------------------------------------
