@@ -60,21 +60,23 @@ ok('and closing it forgets it', /existing\.remove\(\); state\.openRec = null;/.t
 ok('a chapter interleaves its sections and rows by number', /function chapterItems\(/.test(surface) && /n\.lvl === 'chapter' && kids\.length/.test(surface) && /cmpKey\(x\.key, y\.key\) \|\| x\.ord - y\.ord/.test(surface));
 ok('and its own intro row sorts before the numbered list', /key = \[-1, 0, 0\]/.test(surface));
 
-// task-8: the one door (model C). A finding row opens the door the Quick / In the
-// book switch names; the switch is in the quick record's header and in the drawer
-// head, the choice is kept in localStorage, and the section path under a row
-// follows it. The drawer side reuses the record entry the tree already has.
+// task-8/20: the one door. A finding row opens the door the settings choose; the
+// switch left the record header and the drawer head for the settings sheet, the
+// choice is kept in localStorage ('mhq.rules.door', In the book by default), and
+// the section path under a row follows it. The drawer side reuses the entry the
+// tree already has.
 ok('a row tap asks the door, not the record directly', /ctx\.openDoor\(state, f\)/.test(surface) && !/ctx\.openRecord\(state, f\.id\)/.test(surface));
 ok('the section path is a button that follows the switch', /'fcrumbs fpath'/.test(surface) && /ctx\.doorMode\(state\) === 'book' \? ctx\.t\('doorBook'\) : ctx\.t\('doorQuick'\)/.test(surface));
 ok('the row carries one ... sheet button', /'fmore'/.test(surface) && /ctx\.findingSheet\(state, f\)/.test(surface));
 ok('the sheet keeps Put first, Ignore and the book door', /sheetAction\('first'/.test(page) && /sheetAction\('ignore'/.test(page) && /sheetAction\('wiki'/.test(page) && /t\('sheetWiki'\)/.test(page));
-ok('the quick record header carries the switch', /doorbar/.test(page) && /doorSeg\(doorMode\(\)/.test(page) && /t\('doorBook'\)/.test(page));
+ok('the record header carries no door switch any more', page.indexOf('doorbar') === -1 && page.indexOf('doorSeg(') === -1);
 ok('the choice is persisted under one key', page.indexOf("var DOOR_KEY = 'mhq.rules.door'") !== -1 && /localStorage\.setItem\(DOOR_KEY/.test(page));
-ok('a row remembers the door the switch names', /function doorMode\(\)/.test(page) && /localStorage\.getItem\(DOOR_KEY\) === 'book'/.test(page));
+ok('In the book is the default', /localStorage\.getItem\(DOOR_KEY\) === 'quick' \? 'quick' : 'book'/.test(page));
+ok('the settings sheet is where the choice is made', /id="findingsseg"/.test(page) && /data-door="book"/.test(page) && /data-door="quick"/.test(page) && /function setDoor\(mode\)/.test(page));
 ok('In the book opens the drawer through the surface entry', /function openBook\(state, f\)/.test(page) && /api\.openRecordInTree\(f\)/.test(page));
 ok('the drawer reveals the record in its chapter and inlines it', /function revealInTree\(f\)/.test(surface) && /function findOwner\(root, branch, id\)/.test(surface) && /toggleInline\(recordLike\(f\), row\.parentNode, row\.svSiblings\)/.test(surface));
 ok('a record with no tree row still opens at its chapter', /function findChapterKey\(root, branch, f\)/.test(surface) && /showInDrawer\(recordLike\(f\), true\)/.test(surface));
-ok('the drawer head carries the same switch', /function doorSwitch\(mode, onPick, labels\)/.test(surface) && /doorSwitch: doorSwitch/.test(surface) && /openRecordInTree: revealInTree/.test(surface));
+ok('the drawer head paints no switch', surface.indexOf('doorSwitch') === -1 && /openRecordInTree: revealInTree/.test(surface));
 
 // The bar must not bring back the duplicate title the row already prints.
 ok('the bar does not reintroduce the inline title', surface.indexOf('sv-inline-title') === -1 && surface.indexOf('sv-inline-meta') === -1);

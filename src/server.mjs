@@ -37,6 +37,7 @@ import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarni
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
 import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
+import { MAX_VOICE_BYTES, transcribeClip, voiceFormatOf } from './voice.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 // task-78: the asset route reads the corpus's asset tree; the import is its own line so
 // the long corpus import above stays untouched.
@@ -461,6 +462,21 @@ function send(res, status, body, type, opts) {
 }
 const json = (res, status, obj) => send(res, status, JSON.stringify(obj), undefined, { cache: 'no-store' });
 const fail = (res, status, message) => json(res, status, { error: message });
+
+// task-17: the voice route takes audio, not JSON, so the body is kept as bytes.
+function readBinaryBody(req, max) {
+  return new Promise((resolve, reject) => {
+    let n = 0;
+    const chunks = [];
+    req.on('data', c => {
+      n += c.length;
+      if (n > max) { reject(new Error('body too large')); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
 
 function readBody(req, max = MAX_BODY) {
   return new Promise((resolve, reject) => {
@@ -1030,6 +1046,29 @@ async function handleRulesFind(req, res, u) {
     .filter(r => r.slug);
   // The pre-filter count, so a capped list can say how many matched in all.
   return json(res, 200, { ok: true, q, total: out.total || rows.length, rows });
+}
+
+// task-17: the voice route. MediaRecorder audio in, one English question out.
+// Gemini 2.5 Flash on OpenRouter with the 40k glossary as the cached system
+// prefix; the client falls back to the browser recogniser if this fails.
+async function handleRulesVoice(req, res) {
+  const type = voiceFormatOf(req.headers['content-type']);
+  if (!type) return fail(res, 415, 'voice: expected an audio/wav upload');
+  const key = credential('OPENROUTER_API_KEY');
+  if (!key) return fail(res, 503, 'voice transcription is not configured');
+  let audio = null;
+  try { audio = await readBinaryBody(req, MAX_VOICE_BYTES); } catch (e) { return fail(res, 413, 'voice: ' + ((e && e.message) || e)); }
+  if (!audio || !audio.length) return fail(res, 400, 'voice: the clip was empty');
+  try {
+    const seconds = Number(req.headers['x-audio-seconds'] || 0) || 0;
+    const out = await transcribeClip(audio, key, { format: type, seconds: seconds || undefined });
+    const cached = out.usage && out.usage.prompt_tokens_details ? Number(out.usage.prompt_tokens_details.cached_tokens || 0) : 0;
+    console.log('voice: ' + out.model + ' ' + Math.round(audio.length / 1024) + 'kB/' + out.seconds + 's -> ' + out.text.length + ' chars in ' + out.ms + 'ms, ' + out.attempts + ' attempt(s)' + (out.retried ? ', guard retried' : '') + (out.thin ? ', still thin' : '') + (out.usage ? ' (prompt ' + out.usage.prompt_tokens + ', cached ' + cached + ', completion ' + out.usage.completion_tokens + (out.usage.cost != null ? ', $' + out.usage.cost : '') + ')' : ''));
+    return json(res, 200, { ok: true, text: out.text, model: out.model, usage: out.usage, ms: out.ms, seconds: out.seconds, attempts: out.attempts, retried: out.retried, thin: out.thin });
+  } catch (e) {
+    console.error('voice transcription failed: ' + ((e && e.message) || e));
+    return fail(res, 502, String((e && e.message) || e));
+  }
 }
 
 async function handleRulesAsk(req, res) {
@@ -1653,6 +1692,7 @@ const server = http.createServer(async (req, res) => {
   if ((req.method === 'GET' || req.method === 'HEAD') && u.pathname === '/rules/asset') return handleRulesAsset(req, res, u);
   if (req.method === 'GET' && u.pathname === '/rules/lookup') return handleRulesLookup(req, res, u);
   if (req.method === 'GET' && u.pathname === '/rules/find') return handleRulesFind(req, res, u);
+if (req.method === 'POST' && u.pathname === '/rules/voice') return handleRulesVoice(req, res);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 

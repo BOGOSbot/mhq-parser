@@ -304,7 +304,6 @@ details.secondv{display:block;margin-top:12px;padding-top:10px;border-top:1px da
 .fmore{margin-left:auto;min-width:44px;min-height:44px;padding:0 8px;border:1px solid transparent;
   border-radius:11px;background:none;color:var(--dim);font:600 17px var(--sans);cursor:pointer;align-self:center}
 .fmore:hover{background:var(--panel2);color:var(--txt)}
-.doorbar{display:flex;justify-content:center;padding:7px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
 .doorseg{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:999px;background:transparent}
 .doorseg button{min-height:34px;padding:0 13px;border:0;border-radius:999px;background:none;
   color:var(--dim);font:600 12.5px var(--sans);cursor:pointer}
@@ -329,6 +328,31 @@ details.secondv{display:block;margin-top:12px;padding-top:10px;border-top:1px da
 .sheetact.ign.on{color:var(--err)}
 .sheetact.ign.on .ico{color:var(--err)}
 .sheetfoot{color:var(--dim);font:10.5px/1.4 var(--sans);padding:10px 2px 2px;text-align:center}
+
+/* --- settings: one full-screen sheet in the drawer's pattern --------------- */
+.gearbtn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;
+  border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--txt);cursor:pointer}
+.gearbtn:hover{color:var(--acc);border-color:var(--acc)}
+body.sheetopen{overflow:hidden}
+.sheet{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;flex-direction:column;
+  transform:translateY(100%);transition:transform .2s cubic-bezier(.32,.72,0,1);overscroll-behavior:contain}
+.sheet.open{transform:translateY(0)}
+.sheet.hidden{display:none}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:calc(10px + env(safe-area-inset-top)) 16px 8px;min-height:54px}
+.sheet-head strong{font:600 19px/1.1 var(--serif);letter-spacing:-.01em}
+.sheet-close{border:1px solid var(--line);background:transparent;color:var(--dim);border-radius:999px;
+  padding:8px 14px;font:600 12px var(--sans);cursor:pointer}
+.sheet-close:hover{color:var(--txt);border-color:var(--acc)}
+.sheet-body{flex:1 1 auto;overflow-y:auto;padding:6px 16px calc(40px + env(safe-area-inset-bottom))}
+.sheetrow{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:16px 0;border-bottom:1px solid var(--line)}
+.sheetwhat{min-width:0;display:flex;flex-direction:column;gap:3px}
+.sheetlabel{font:600 15.5px var(--serif);color:var(--ink)}
+.sheethint{color:var(--dim);font:11.5px/1.4 var(--sans)}
+.sheetrow .doorseg{flex:0 0 auto}
+.sheetmeta{color:var(--dim);font:11.5px/1.5 var(--mono);margin:18px 0 0}
+@media (min-width:760px){.sheet-head,.sheet-body{width:100%;max-width:640px;margin:0 auto}}
 
 /* --- unit card: a datasheet, one-handed ------------------------------------ */
 .unitcard .uname{font:600 21px/1.2 var(--serif);color:var(--ink)}
@@ -470,6 +494,10 @@ details pre{background:var(--bg);border:1px solid var(--line);border-radius:10px
     <a class="nav" id="navparse" href="/">Parser</a>
     <a class="nav" id="wahalink" href="https://wahapedia.ru/" target="_blank" rel="noopener">Wahapedia</a>
     <span class="spacer"></span>
+    <!-- Settings is one sheet, not a second route: voice and findings live here. -->
+    <button type="button" id="settingsbtn" class="gearbtn" title="Settings" aria-label="Settings" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.86a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.14.63.62 1.13 1.25 1.28H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.03z"/></svg>
+    </button>
     <!-- The wiki is the whole rulebook: a drawer over this page, remembered. -->
     <button type="button" id="wikinav" aria-expanded="false">Wiki</button>
     <select id="lang" class="lang" title="Page and answer language">
@@ -517,6 +545,38 @@ details pre{background:var(--bg);border:1px solid var(--line);border-radius:10px
   <p class="note retention" id="retention"></p>
   <div id="result" class="hidden"></div>
 </main>
+
+<!-- Settings: one full-screen sheet in the drawer's pattern - voice and findings,
+     plus the corpus date and edition line the footer already prints. -->
+<div class="sheet hidden" id="gearsheet" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="geartitle">
+  <div class="sheet-head">
+    <strong id="geartitle">Settings</strong>
+    <button type="button" class="sheet-close" id="gearclose">Close</button>
+  </div>
+  <div class="sheet-body">
+    <div class="sheetrow">
+      <div class="sheetwhat">
+        <span class="sheetlabel" id="voiceSettingLabel">Voice</span>
+        <span class="sheethint" id="voiceSettingHint">Gemini transcribes with the 40k glossary; the browser recogniser is the free fallback.</span>
+      </div>
+      <span class="doorseg" role="tablist" aria-label="Voice" id="voiceseg">
+        <button type="button" data-voice="gemini">Gemini</button>
+        <button type="button" data-voice="browser">Browser</button>
+      </span>
+    </div>
+    <div class="sheetrow">
+      <div class="sheetwhat">
+        <span class="sheetlabel" id="findingsSettingLabel">Findings</span>
+        <span class="sheethint" id="findingsSettingHint">A row opens the drawer at the record's chapter.</span>
+      </div>
+      <span class="doorseg" role="tablist" aria-label="Findings" id="findingsseg">
+        <button type="button" data-door="book">In the book</button>
+        <button type="button" data-door="quick">Quick read</button>
+      </span>
+    </div>
+    <p class="sheetmeta" id="gearmeta"></p>
+  </div>
+</div>
 
 <div class="foot">
   <span class="footlinks">
@@ -566,6 +626,10 @@ var I18N = {
     voiceUnsupported: 'this browser has no speech recognition - type the question instead',
     stopListening: 'stop listening',
     voiceEnglish: 'Dictate the English text',
+    voiceSetting: 'Voice',
+    voiceRecording: 'recording - tap the microphone to stop',
+    voiceTranscribing: 'transcribing the clip...',
+    voiceFallback: 'server transcription failed - trying the browser recogniser',
     waitingFindings: 'waiting for the findings...',
     readingFindings: 'reading the findings...',
     writingAnswer: 'writing the answer...',
@@ -608,7 +672,13 @@ var I18N = {
   heroDevHide: 'hide the passage',
   doorQuick: 'Quick',
   doorBook: 'In the book',
-  doorSwitch: 'where a row opens',
+  settingsTitle: 'Settings',
+  settingsClose: 'Close',
+  voiceSetting: 'Voice',
+  voiceSettingHint: 'Gemini transcribes with the 40k glossary; the browser recogniser is the free fallback.',
+  findingsSettingLabel: 'Findings',
+  findingsBookHint: 'A row opens the drawer at the record\u2019s chapter, with the record inline.',
+  findingsQuickHint: 'A row opens the record on its own, full screen.',
   findingActions: 'actions for this finding',
   sheetFirst: 'Put first',
   sheetFirstOn: 'Remove from first',
@@ -752,6 +822,10 @@ var I18N = {
     voiceUnsupported: 'ce navigateur ne gère pas la reconnaissance vocale — tapez la question',
     stopListening: 'arrêter l\u2019écoute',
     voiceEnglish: 'Dicter le texte anglais',
+    voiceSetting: 'Voix',
+    voiceRecording: 'enregistrement - touchez le micro pour arrêter',
+    voiceTranscribing: 'transcription du clip...',
+    voiceFallback: 'échec de la transcription serveur - essai du reconnaisseur du navigateur',
     waitingFindings: 'en attente des constats...',
     readingFindings: 'lecture des constats...',
     writingAnswer: 'rédaction de la réponse...',
@@ -793,7 +867,13 @@ var I18N = {
   heroDevHide: 'masquer le passage',
   doorQuick: 'Rapide',
   doorBook: 'Dans le livre',
-  doorSwitch: 'où s\u2019ouvre une ligne',
+  settingsTitle: 'Réglages',
+  settingsClose: 'Fermer',
+  voiceSetting: 'Voix',
+  voiceSettingHint: 'Gemini transcrit avec le glossaire 40k ; le reconnaisseur du navigateur est le repli gratuit.',
+  findingsSettingLabel: 'Constats',
+  findingsBookHint: 'Une ligne ouvre le tiroir au chapitre de la fiche, avec la fiche dedans.',
+  findingsQuickHint: 'Une ligne ouvre la fiche seule, en plein écran.',
   findingActions: 'actions pour ce constat',
   sheetFirst: 'Mettre en premier',
   sheetFirstOn: 'Retirer du premier rang',
@@ -1078,6 +1158,7 @@ function applyLang() {
   var fg = $('#footgd'); if (fg) { fg.title = t('footGd'); fg.setAttribute('aria-label', t('footGd')); }
   renderBrowse();
   applyEdition();
+  paintSettings();
   // The placeholder wraps on a phone: a one-line box clips it. Size the box from
   // its own content whenever the text or the width changes.
   growQuestion();
@@ -1394,28 +1475,33 @@ function sendPick(state, by, none) {
 // task-80: the finding card is the surface's renderer, one implementation. This is
 // the page's only entry point into it; PAGE_CTX carries what the page still owns -
 // i18n, the record dialog, the reader's marks, the ask transport.
-// --- the one door (task-8) ---------------------------------------------------
-// The reader picks where a row opens once - the quick record, or the book at the
-// row's chapter with the record inline - and the page keeps that choice in
-// localStorage. The row renderer (src/wiki-surface.js) asks these helpers, so
-// there is one implementation of the decision and of the switch.
+// --- settings: the findings door and the voice (task-8, task-17, task-20) ----
+// One full-screen sheet, opened from the gear, holds both choices: how a finding
+// row opens, and which recogniser the microphone uses. Mandal's calls: In the
+// book is the DEFAULT (he much prefers reading in place) and Gemini is the DEFAULT
+// voice (the browser recogniser mangles rules and unit names). The switches left
+// the record header and the drawer head for this sheet - space, and one place.
+// The storage keys are the readers': 'mhq.rules.door' and 'mhq.rules.voice'.
 var DOOR_KEY = 'mhq.rules.door';
-var DOOR_CUR = null; // the finding whose door was last opened, for the drawer switch
+var VOICE_KEY = 'mhq.rules.voice';
+var DOOR_CUR = null; // the finding whose door was last opened
 function doorMode() {
-  try { return localStorage.getItem(DOOR_KEY) === 'book' ? 'book' : 'quick'; } catch (e) { return 'quick'; }
+  try { return localStorage.getItem(DOOR_KEY) === 'quick' ? 'quick' : 'book'; } catch (e) { return 'book'; }
 }
-function doorLabels() { return { quick: t('doorQuick'), book: t('doorBook'), label: t('doorSwitch') }; }
-function syncDoor() {
-  var api = window.WIKI_SURFACE_API;
-  if (api && api.doorSwitch) api.doorSwitch(doorMode(), onDoorPick, doorLabels());
+function voiceEngine() {
+  try { return localStorage.getItem(VOICE_KEY) === 'browser' ? 'browser' : 'gemini'; } catch (e) { return 'gemini'; }
+}
+function setVoiceEngine(engine) {
+  try { localStorage.setItem(VOICE_KEY, engine === 'browser' ? 'browser' : 'gemini'); } catch (e) { /* private mode */ }
+  paintSettings();
 }
 function setDoor(mode) {
-  try { localStorage.setItem(DOOR_KEY, mode === 'book' ? 'book' : 'quick'); } catch (e) { /* private mode */ }
-  // The rows' section path carries the choice ('· quick' / '· in the book'), so
+  try { localStorage.setItem(DOOR_KEY, mode === 'quick' ? 'quick' : 'book'); } catch (e) { /* private mode */ }
+  // The rows' section path carries the choice ('· In the book' / '· Quick'), so
   // the list is redrawn when it changes - the reader sees where the next tap goes.
   if (DOOR_CUR && DOOR_CUR.state) renderFindings(DOOR_CUR.state);
   if (RECORD_STATE && RECORD_STATE.recordId) renderRecord(RECORD_STATE);
-  syncDoor();
+  paintSettings();
 }
 function openDoor(state, f) {
   if (!state || !f) return;
@@ -1431,33 +1517,83 @@ function openBook(state, f) {
   if (RECORD_STATE && RECORD_STATE.recordId) closeRecord(RECORD_STATE);
   var api = window.WIKI_SURFACE_API;
   if (api && api.openRecordInTree) api.openRecordInTree(f);
-  if (api && api.doorSwitch) api.doorSwitch('book', onDoorPick, doorLabels());
 }
-// The drawer's switch coming back: the quick record of the same finding.
-function onDoorPick(mode) {
-  if (mode === 'book') { setDoor('book'); return; }
-  setDoor('quick');
-  var cur = DOOR_CUR;
-  if (cur && cur.state) {
-    var api = window.WIKI_SURFACE_API;
-    if (api && api.closeDrawer) api.closeDrawer();
-    openRecord(cur.state, cur.id);
-  }
-}
-function doorSeg(mode, onPick) {
-  var seg = el('span', 'doorseg');
-  seg.setAttribute('role', 'tablist');
-  seg.setAttribute('aria-label', t('doorSwitch'));
-  [['quick', t('doorQuick')], ['book', t('doorBook')]].forEach(function (pair) {
-    var b = el('button', mode === pair[0] ? 'on' : '', pair[1]);
-    b.type = 'button';
-    b.setAttribute('role', 'tab');
-    b.setAttribute('aria-selected', mode === pair[0] ? 'true' : 'false');
-    b.addEventListener('click', function () { onPick(pair[0]); });
-    seg.appendChild(b);
+// --- the settings sheet ------------------------------------------------------
+// The drawer's own pattern: a full-screen sheet that slides up, not a second
+// route. Voice and findings are each two buttons; the corpus line at the foot is
+// the same one the page footer prints.
+function gearSheet() { return document.getElementById('gearsheet'); }
+function paintSettings() {
+  var v = voiceEngine(), d = doorMode();
+  ['voiceseg', 'findingsseg'].forEach(function (id) {
+    var seg = document.getElementById(id);
+    if (!seg) return;
+    Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) {
+      var isVoice = b.hasAttribute('data-voice');
+      var key = isVoice ? b.getAttribute('data-voice') : b.getAttribute('data-door');
+      var sel = (isVoice ? v : d) === key;
+      b.classList.toggle('on', sel);
+      b.setAttribute('aria-pressed', sel ? 'true' : 'false');
+    });
   });
-  return seg;
+  var txt = function (id, value) { var n = document.getElementById(id); if (n) n.textContent = value; };
+  txt('geartitle', t('settingsTitle'));
+  txt('gearclose', t('settingsClose'));
+  txt('voiceSettingLabel', t('voiceSetting'));
+  txt('voiceSettingHint', t('voiceSettingHint'));
+  txt('findingsSettingLabel', t('findingsSettingLabel'));
+  txt('findingsSettingHint', d === 'book' ? t('findingsBookHint') : t('findingsQuickHint'));
+  var gm = document.getElementById('gearmeta');
+  var foot = document.getElementById('footdata');
+  if (gm) gm.textContent = foot ? foot.textContent : '';
+  var gb = document.getElementById('settingsbtn');
+  if (gb) { gb.title = t('settingsTitle'); gb.setAttribute('aria-label', t('settingsTitle')); }
 }
+function openSettings() {
+  var s = gearSheet();
+  if (!s) return;
+  paintSettings();
+  s.classList.remove('hidden');
+  requestAnimationFrame(function () { s.classList.add('open'); });
+  s.setAttribute('aria-hidden', 'false');
+  var b = document.getElementById('settingsbtn');
+  if (b) b.setAttribute('aria-expanded', 'true');
+  document.body.classList.add('sheetopen');
+  var c = document.getElementById('gearclose');
+  if (c) c.focus();
+}
+function closeSettings() {
+  var s = gearSheet();
+  if (!s) return;
+  s.classList.remove('open');
+  s.setAttribute('aria-hidden', 'true');
+  var b = document.getElementById('settingsbtn');
+  if (b) b.setAttribute('aria-expanded', 'false');
+  document.body.classList.remove('sheetopen');
+  setTimeout(function () { if (!s.classList.contains('open')) s.classList.add('hidden'); }, 220);
+}
+(function initSettings() {
+  var b = document.getElementById('settingsbtn');
+  if (b) b.addEventListener('click', function () {
+    var s = gearSheet();
+    if (s && s.classList.contains('open')) closeSettings(); else openSettings();
+  });
+  var x = document.getElementById('gearclose');
+  if (x) x.addEventListener('click', closeSettings);
+  var s = gearSheet();
+  if (s) s.addEventListener('click', function (ev) { if (ev.target === s) closeSettings(); });
+  var vs = document.getElementById('voiceseg');
+  if (vs) vs.addEventListener('click', function (ev) {
+    var b2 = ev.target && ev.target.closest ? ev.target.closest('[data-voice]') : null;
+    if (b2) setVoiceEngine(b2.getAttribute('data-voice'));
+  });
+  var fs = document.getElementById('findingsseg');
+  if (fs) fs.addEventListener('click', function (ev) {
+    var b2 = ev.target && ev.target.closest ? ev.target.closest('[data-door]') : null;
+    if (b2) setDoor(b2.getAttribute('data-door'));
+  });
+  paintSettings();
+})();
 // --- the finding sheet -------------------------------------------------------
 // One '...' per row, one sheet with the same three actions: ranking, ignoring
 // and the book door. It replaces the three glyphs, 132 px of chrome per row.
@@ -1509,10 +1645,10 @@ function openFindingSheet(state, f) {
   var firstOn = (state.positive || []).indexOf(f.id) !== -1;
   var ignOn = state.keep[f.id] === false;
   box.appendChild(sheetAction('first', firstOn ? t('sheetFirstOn') : t('sheetFirst'), firstOn ? t('heroTop') : t('heroCaret'), '^', firstOn ? ' on' : '', function () {
-    toggleFirst(state, f.id); closeFindingSheet(); syncDoor();
+    toggleFirst(state, f.id); closeFindingSheet();
   }));
   box.appendChild(sheetAction('ignore', ignOn ? t('sheetIgnoreOn') : t('sheetIgnore'), ignOn ? t('heroIgnored') : t('heroIgnore'), '\u00d7', ignOn ? ' ign on' : ' ign', function () {
-    toggleIgnore(state, f.id); closeFindingSheet(); syncDoor();
+    toggleIgnore(state, f.id); closeFindingSheet();
   }));
   box.appendChild(sheetAction('wiki', t('sheetWiki'), t('sheetWikiHint'), '\u2197', '', function () {
     closeFindingSheet(); openBook(state, f);
@@ -1807,17 +1943,9 @@ function renderRecord(state) {
   close.addEventListener('click', function () { closeRecord(state); });
   bar.appendChild(close);
   node.appendChild(bar);
-  // task-8: the quick record's header carries the Quick / In the book switch.
-  // In the book closes this dialog and opens the drawer at the finding's chapter
-  // with the record inline; the switch comes back to this record from there.
-  var doorbar = el('div', 'doorbar');
-  doorbar.appendChild(doorSeg(doorMode(), function (mode) {
-    if (mode === 'quick') { setDoor('quick'); return; }
-    setDoor('book');
-    closeRecord(state);
-    openBook(state, f);
-  }));
-  node.appendChild(doorbar);
+  // task-20: no door switch here - the header is one row shorter, and the choice
+  // lives in the settings sheet. In the book is the default; Quick read is picked
+  // there and takes effect on the next row tap.
   var body = el('div', 'recbody');
   var parts = data ? data.crumb : crumbs(f.heading).slice(0, -1);
   if (parts && parts.length) body.appendChild(el('div', 'reccrumb', parts.join(' \u203a ')));
@@ -2665,44 +2793,86 @@ function show(j) { showInto(startResult(j.lang), j); }
 })();
 
 // --- voice ------------------------------------------------------------------
-// The Web Speech API transcribes in the browser: no server, no key, no cost, and
-// nothing to host on Vercel. Two constraints shape the wiring.
+// Two recognisers, one microphone. The browser's Web Speech API is free and fine
+// in conversation, but it has no glossary - on rules and unit names it writes
+// whatever sounds closest (Tyrannofex -> Tyranofex, Archon -> arcon). The measured
+// route is server-side Gemini 2.5 Flash with the 40k glossary as a cached system
+// prefix: 78.9% terminology accuracy against 44.7% without, $0.0011 for an 8.7 s
+// clip once the prefix is cached. Mandal's call: Gemini is the default, the
+// browser recogniser stays as the setting and as the fallback path.
 //
-// It needs a secure context, so https or localhost - a LAN address such as
-// http://192.168.1.20:8787 offers no microphone at all. And only Chrome, Edge
-// and Safari implement it. The button used to be hidden in the browsers that do
-// not, which left a reader who knows the page has voice input wondering where it
-// went: it stays visible and says why it cannot work.
-//
-// The transcript is deliberately not submitted on its own. Speech recognition
-// mangles proper nouns - Wracks, Victrix, Fulgurite - and a rules question that
-// names the wrong unit retrieves the wrong rule, so the text is left in the box
-// to be corrected first.
+// MediaRecorder records the clip; the browser decodes it and re-encodes 16 kHz
+// mono WAV (the format every provider accepts), then posts it to /rules/voice.
+// The transcript is put in the box and NEVER submitted: recognition still mangles
+// names, so the reader corrects the text before asking. A server failure falls
+// back to the browser recogniser rather than leaving a dead microphone.
+// 16 kHz mono 16-bit WAV from whatever the recorder produced.
+function encodeWav16(samples, inRate) {
+  var outRate = 16000;
+  var n = Math.max(1, Math.round(samples.length * outRate / inRate));
+  var pcm = new Int16Array(n);
+  for (var i = 0; i < n; i++) {
+    var pos = i * inRate / outRate, i0 = Math.floor(pos), f = pos - i0;
+    var s = (samples[i0] || 0) * (1 - f) + (samples[i0 + 1] || samples[i0] || 0) * f;
+    s = Math.max(-1, Math.min(1, s));
+    pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  var buf = new ArrayBuffer(44 + pcm.length * 2), v = new DataView(buf);
+  function tag(off, s) { for (var k = 0; k < s.length; k++) v.setUint8(off + k, s.charCodeAt(k)); }
+  tag(0, 'RIFF'); v.setUint32(4, 36 + pcm.length * 2, true); tag(8, 'WAVE');
+  tag(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, outRate, true); v.setUint32(28, outRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  tag(36, 'data'); v.setUint32(40, pcm.length * 2, true);
+  for (var j = 0; j < pcm.length; j++) v.setInt16(44 + j * 2, pcm[j], true);
+  return new Blob([buf], { type: 'audio/wav' });
+}
+function blobToWav(blob) {
+  return blob.arrayBuffer().then(function (buf) {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    return new Ctx().decodeAudioData(buf);
+  }).then(function (audio) {
+    var ch = audio.numberOfChannels, len = audio.length, mono = new Float32Array(len);
+    for (var c = 0; c < ch; c++) { var d = audio.getChannelData(c); for (var i = 0; i < len; i++) mono[i] += d[i] / ch; }
+    return { wav: encodeWav16(mono, audio.sampleRate), seconds: audio.duration || (len / (audio.sampleRate || 1)) };
+  });
+}
+
 function wireVoice(mic, box, locale, grow) {
   if (!mic || !box) return;
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var rec = null;
-  var listening = false;
+  var rec = null, recorder = null, stream = null, chunks = [], timer = null;
+  var listening = false, recording = false;
   var base = '';
-
+  var MAX_RECORD_MS = 60000;
   // Each control restores its own name when it stops, so the translation's
   // microphone does not come back called "Ask by voice".
   var idleLabel = mic.getAttribute('aria-label') || t('voice');
 
   function setListening(on) {
     listening = on;
-    mic.classList.toggle('on', on);
-    mic.title = on ? t('stopListening') : idleLabel;
+    mic.classList.toggle('on', on || recording);
+    mic.title = on || recording ? t('stopListening') : idleLabel;
     if (on) setStatus(t('listening'), 'busy');
   }
-  function stop() {
-    if (rec) { try { rec.stop(); } catch (e) { /* already stopped */ } }
-    setListening(false);
+  function setRecording(on) {
+    recording = on;
+    mic.classList.toggle('on', on || listening);
+    mic.title = on || listening ? t('stopListening') : idleLabel;
+    if (on) setStatus(t('voiceRecording'), 'busy');
+  }
+  function putTranscript(text) {
+    var said = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!said) { setStatus(t('nothingHeard'), 'err'); return; }
+    base = box.value.trim();
+    box.value = (base ? base + ' ' : '') + said;
+    grow();
+    setStatus(t('heard'), '');
   }
 
-  mic.addEventListener('click', function () {
+  // The browser recogniser: the old path, kept as the fallback and as a setting.
+  function browserStart() {
     if (!SR) { setStatus(t('voiceUnsupported'), 'err'); return; }
-    if (listening) { stop(); return; }
+    if (listening) return;
     rec = new SR();
     rec.lang = locale();
     rec.interimResults = true;
@@ -2731,6 +2901,64 @@ function wireVoice(mic, box, locale, grow) {
     };
     try { rec.start(); setListening(true); }
     catch (e) { setStatus(t('voiceNoStart') + e.message, 'err'); }
+  }
+  function browserStop() {
+    if (rec) { try { rec.stop(); } catch (e) { /* already stopped */ } }
+    setListening(false);
+  }
+
+  // The server recogniser: record, encode, post, put the transcript in the box.
+  // A failure after the microphone opened lands on the browser path.
+  function fallbackBrowser() {
+    if (!SR) { setStatus(t('voiceUnsupported'), 'err'); return; }
+    setStatus(t('voiceFallback'), 'err');
+    browserStart();
+  }
+  function postVoice(wav, seconds) {
+    // The clip's length rides the request: the route's completeness guard needs
+    // it to know what "too few words" means for this audio.
+    return fetch('/rules/voice', { method: 'POST', headers: { 'Content-Type': 'audio/wav', 'X-Audio-Seconds': String(Math.max(0, Number(seconds) || 0).toFixed(1)) }, body: wav })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok || !j || !j.text) throw new Error((j && j.error) || ('HTTP ' + r.status));
+          return j;
+        });
+      })
+      .then(function (j) { putTranscript(j.text); })
+      .catch(function (e) { console.warn('voice route failed: ' + (e && e.message ? e.message : e)); fallbackBrowser(); });
+  }
+  function geminiStart() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) { fallbackBrowser(); return; }
+    navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } }).then(function (s) {
+      stream = s;
+      chunks = [];
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+      recorder.onstop = function () {
+        setRecording(false);
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (stream) { stream.getTracks().forEach(function (tr) { try { tr.stop(); } catch (e) { } }); stream = null; }
+        var blob = new Blob(chunks, { type: (recorder && recorder.mimeType) || 'audio/webm' });
+        if (!blob.size) { setStatus(t('nothingHeard'), 'err'); return; }
+        setStatus(t('voiceTranscribing'), 'busy');
+        blobToWav(blob).then(function (out) { return postVoice(out.wav, out.seconds); }).catch(function (e) { console.warn('voice clip decode failed: ' + e.message); fallbackBrowser(); });
+      };
+      recorder.start();
+      setRecording(true);
+      timer = setTimeout(function () { if (recording) { try { recorder.stop(); } catch (e) { } } }, MAX_RECORD_MS);
+    }).catch(function (e) {
+      setStatus(e && e.name === 'NotAllowedError' ? t('micRefused') : t('noMic'), 'err');
+    });
+  }
+  function stopRecording() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    try { recorder.stop(); } catch (e) { setRecording(false); }
+  }
+
+  mic.addEventListener('click', function () {
+    if (recording) { stopRecording(); return; }
+    if (listening) { browserStop(); return; }
+    if (voiceEngine() === 'gemini') geminiStart(); else browserStart();
   });
 }
 
@@ -2881,6 +3109,8 @@ $('#f').addEventListener('submit', function (e) { e.preventDefault(); ask(); });
 document.addEventListener('keydown', function (e) {
   var inRecord = !!(RECORD_STATE && RECORD_STATE.recordId);
   if (e.key === 'Escape') {
+    var gear = gearSheet();
+    if (gear && gear.classList.contains('open')) { closeSettings(); return; }
     if (FSHEET && !FSHEET.pop.classList.contains('hidden')) { closeFindingSheet(); return; }
     if (inRecord) { closeRecord(RECORD_STATE); return; }
     closePassage(); $('#q').blur();
@@ -2893,18 +3123,6 @@ document.addEventListener('keydown', function (e) {
   }
 });
 growQuestion();
-// task-8: paint the drawer's door switch as soon as the surface has mounted it.
-// The surface is a deferred script, so the drawer exists before DOMContentLoaded.
-(function initDoor() {
-  var tries = 0;
-  function go() {
-    var api = window.WIKI_SURFACE_API;
-    if (api && api.doorSwitch && document.getElementById('sv-drawer')) { api.doorSwitch(doorMode(), onDoorPick, doorLabels()); return; }
-    if (tries++ < 100) setTimeout(go, 80);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(go, 0); });
-  else go();
-})();
 // Desktop convenience only: focusing a textarea on a phone opens the keyboard
 // over the page before the reader has decided to ask anything.
 if (!window.matchMedia || !window.matchMedia('(pointer: coarse)').matches) $('#q').focus();

@@ -867,32 +867,6 @@
       else finish();
     }).catch(function () { showInDrawer(recordLike(f), true); });
   }
-  // The drawer head's door switch: the page owns the storage and the navigation,
-  // this only paints the control and hands the chosen mode back.
-  function doorSwitch(mode, onPick, labels) {
-    if (!DRAWER_MODE) return;
-    var d = $('sv-drawer');
-    var head = d && d.querySelector('.sv-drawer-head');
-    if (!head) return;
-    var lab = labels || {};
-    var seg = head.querySelector('.doorseg');
-    if (!seg) {
-      seg = el('div', 'doorseg');
-      seg.setAttribute('role', 'tablist');
-      seg.setAttribute('aria-label', lab.label || 'where a row opens');
-      var close = head.querySelector('.sv-close');
-      head.insertBefore(seg, close || null);
-    }
-    seg.textContent = '';
-    [['quick', lab.quick || 'Quick'], ['book', lab.book || 'In the book']].forEach(function (pair) {
-      var b = el('button', mode === pair[0] ? 'on' : '', pair[1]);
-      b.type = 'button';
-      b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', mode === pair[0] ? 'true' : 'false');
-      b.addEventListener('click', function () { if (typeof onPick === 'function') onPick(pair[0]); });
-      seg.appendChild(b);
-    });
-  }
 
   // --- the ask: the judged findings, the tail, the one icon --------------------
   function ask() {
@@ -1345,12 +1319,10 @@ function devPanel(f, state, ctx) {
     displayTitle: displayTitle,
     controls: function (state, f, ctx) { return findingControls(state, f, isFirsted(state, f), isIgnored(state, f), ctx); },
     meta: function (f, ctx) { return findingMeta(f, ctx); },
-    // task-8: the drawer side of the one door - reveal a finding's record in its
-    // chapter (or fall back to the drawer's record view), paint the head switch,
-    // and close the drawer when the page returns to the quick record.
+    // task-8/20: the drawer side of the one door - reveal a finding's record in
+    // its chapter (or fall back to the drawer's record view). The switch lives in
+    // the page's settings sheet now, so there is none to paint here.
     openRecordInTree: revealInTree,
-    doorSwitch: doorSwitch,
-    closeDrawer: function () { drawerOpen(false); },
   };
   window.WIKI_SURFACE_LOADED = true;
   }

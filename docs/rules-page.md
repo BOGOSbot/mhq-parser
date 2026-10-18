@@ -511,19 +511,41 @@ the retrieval.
   id and a negative - written into the question's own trace
   (`docs/question-traces.md`), and the manual rerun at the foot answers again on
   what is left, in the caret's order, through the task-21 override path.
-- **The one door (model C).** A row opens whichever door the Quick / In the book
-  switch names. The switch is in the quick record's header (and mirrored in the
-  drawer's head, so the way back is in the same place), and the choice is kept in
-  localStorage under `mhq.rules.door`, so the next page load and the section path
-  under every row follow it. *Quick* opens the full-screen record; *In the book*
-  opens the drawer at the finding's chapter and inlines the record with the tree's
-  own inline (the same `toggleInline` entry the drawer rows use), so switching
-  back to *Quick* returns to the record rather than to the top of the book.
-  A delivered record the fold keeps out of the tree rows (the section leads own
-  their nested rules) still opens the drawer at its chapter, with the record in
-  the drawer's record view and the chapter left expanded behind it. An unplaced
-  record falls back the same way. `#<slug>` deep links are unchanged: the hash
-  opens the record page in the drawer's overlay.
+- **The one door.** A finding row opens the drawer at the record's chapter with the
+  record inline (the tree's own `toggleInline` entry, not a second record view), or
+  - when Settings says so - the full-screen record. **In the book is the default**
+  (Mandal's call: he much prefers reading in place). The choice is kept in
+  localStorage under `mhq.rules.door`, so a reload and the section path under every
+  row follow it; the record header and the drawer head carry no switch, and the row
+  itself still says where the tap goes (`· In the book` / `· Quick`).
+  A record the drawer's tree does not carry (an attached annotation, an unplaced
+  front-matter record) opens the drawer at its chapter, with the record in the
+  drawer's record view and the chapter expanded behind it. `#<slug>` deep links are
+  unchanged: the hash opens the record page in the drawer's overlay.
+- **The settings sheet.** The gear in the header opens one full-screen sheet in the
+  drawer's pattern (not a second route): **Voice** (Gemini default, browser
+  recogniser) and **Findings** (In the book default, quick read), plus the corpus
+  date and edition line the footer already prints. Both choices persist - the keys
+  above and `mhq.rules.voice` - and take effect on the next tap.
+- **The microphone.** The browser's Web Speech API is free and fine in
+  conversation, but it has no glossary: on rules and unit names it writes whatever
+  sounds closest (`Archon` -> `arcon`, `Tyranofex`). The default is server-side
+  transcription through `POST /rules/voice`: MediaRecorder records, the page
+  decodes and re-encodes 16 kHz mono WAV, and the route calls
+  `google/gemini-2.5-flash` on OpenRouter with the **full 1,710-entry 40k
+  glossary as one cached system prefix** (an explicit cache breakpoint; the system
+  prefix is the only cached part and never varies). Measured: **$0.00733 cold,
+  then $0.0011 for an 8 s clip** (22.5k cached tokens), ~1.1-1.6 s. This is the
+  measured route for terminology - 78.9% against 44.7% without the glossary - and
+  the glossary stays full because the cached full prompt is cheaper than any
+  selection pass. The route caps the answer at 400 tokens (a benchmark runaway ran
+  to 4,096 repeating `Hmm.`) and runs BOGOS's completeness guard: a reading that is
+  empty, timestamps only, cut at the cap, or under 0.8 words per second of the clip
+  is re-asked **once** with a corrective prompt and the longer reading is kept.
+  The transcript lands in the question box and is **never auto-submitted** - the
+  reader corrects it first. A server failure (no key, timeout, bad response) falls
+  back to the browser recogniser instead of leaving a dead microphone, and the
+  setting keeps the browser path one tap away.
 - **A finding's links render from the payload, never from its text.** The record
   carries `links: [{ to, title, kind, anchor, url }]`; the server resolves each
   target against the corpus, drops one the corpus does not hold, and the page
