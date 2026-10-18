@@ -38,24 +38,24 @@ t('and stats.cuts agrees', tree.stats.cuts, 114);
 
 // Rules: a 0x header is a LABEL, not an entry. It is not cut and its children are
 // listed in its place (task-61); the books still do not cut, and the Rulings
-// chapter is still a waypoint.
+// chapter is still a waypoint. task-5: ONE rulebook - the appendix's rows are the
+// core chapters' rows now, so the entry count is the two sources' rows less the
+// copies attached to the rule they duplicate (179 + 113 - 3 visible duplicates;
+// the rest of the same-number pairs were rows the chapter already nested).
 ok('a 0x chapter is not a cut entry', kids('tree/rules/core-rules.js').filter(x => /^\d{2}\s/.test(x.n)).every(x => !x.cut));
-ok('and its children are the entries: 179 for Core Rules, 113 for the Appendix', (function () {
-  // task-106: a rules chapter may now carry one level of section nodes (the
-  // appendix's 0x.0x headers), so the count walks to the rows, not to the first
-  // level of kids. task-4: the appendix's five [ONE SHOT]-swallowed Universal
-  // Rules Updates rows left the book for the 00 chapter, so 118 becomes 113.
+ok('and its children are the entries: 289 under Core Rules', (function () {
   const entryCount = f => (f.kids || []).reduce((n, k) => n + entryCount(files[k.f] || { recs: [] }), (f.recs || []).length);
   const flat = b => (files[b].kids || []).reduce((n, k) => n + entryCount(files[k.f] || {}), 0);
-  return flat('tree/rules/core-rules.js') === 179 && flat('tree/rules/rules-appendix.js') === 113;
+  return flat('tree/rules/core-rules.js') === 289;
 })());
-ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut && !files['tree/rules/rules-appendix.js'].cut);
+ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut);
 ok('the two ruling books are waypoints, their chapters are the cutoffs', !files['tree/rulings/wtc.js'].cut && !files['tree/rulings/feq.js'].cut && kids('tree/rulings/wtc.js').every(x => x.cut) && kids('tree/rulings/feq.js').every(x => x.cut));
-ok('and the books are siblings of the rulebooks, not cut themselves', (function () {
+ok('and the books are siblings of the rulebook, not cut themselves', (function () {
   const books = kids('tree/rules.js').filter(x => x.lvl === 'book');
-  // task-101: the two rulebooks and the two ruling books - the faction abilities are not a
-  // book of their own, they live with the faction that owns them.
-  return books.length === 4 && books.every(x => !x.cut);
+  // task-101: the rulebook and the two ruling books - the faction abilities are not a
+  // book of their own, they live with the faction that owns them. task-5: the Rules
+  // Appendix is folded into Core Rules, so the rulebook is one.
+  return books.length === 3 && books.every(x => !x.cut);
 })());
 
 // Missions: all three parts cut - the '?' answered by symmetry with Events.

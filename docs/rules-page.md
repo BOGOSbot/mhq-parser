@@ -100,31 +100,38 @@ read is not read.
 
 ## Finding an entry
 
-The drawer is the whole rulebook: three books, then chapters, then - where the
-book prints one - the 0x.0x section, then the numbered rows. Rows are ordered by
-the rule's own number, never by the alphabet: a chapter reads 01.01, 01.02, ...
-and the chapter's lead row stays first. The Rules Appendix prints the same
-chapters one level deeper than Core Rules (its records are the 0x.0x.0x
-definitions and the 0x.0x section exists only as their heading's first segment),
-so the tree model builds those section nodes and numbers them from the records'
-ruleIds: *Rules Appendix > 01 Core Concepts > 01.02 Units and Models*.
-`sortChapterRows` and `ruleNumber` in `src/wiki-toc.mjs` are that rule.
+The drawer is the whole rulebook: one Rules book (Core Rules), then chapters,
+then the numbered rows. Rows are ordered by the rule's own number, never by the
+alphabet: a chapter reads 01.01, 01.02, ... and the chapter's lead row stays
+first. **The Rules Appendix is folded into Core Rules.** It is the same chapters
+one level deeper, so a reader saw two *01 Core Concepts*; its records are the
+0x.0x.0x definitions, and they are now rows of the core chapter, sorted directly
+under the 0x.0x rule their number names: *Core Rules > 01 Core Concepts > 01.02
+Units and Models*, then 01.02.01 Starting Strength and Half-Strength, ... The
+chapter list is one and the row order is the book's own. `sortChapterRows` and
+`ruleNumber` in `src/wiki-toc.mjs` are that order; `appendixOutline` places the
+records no number can (the Universal Rules Updates block).
 
-**An ability's section is its number, not the heading above it.** The appendix
-page prints the `[PRECISION]` (24.28) and `[TORRENT]` (24.37) clarifications as
-h3s under the `[ONE SHOT]` h2, so the heading path called all three one-shot and
-the drawer read *24.26 [ONE SHOT]*, *24.28 [ONE SHOT]* and an appendix-local
-*[ONE SHOT]* chapter holding the Universal Rules Updates topics. The rule number
-is the truth: one `[ONE SHOT]` section remains (24.26, with *Multiple [ONE SHOT]
-Weapons*), the precision clarification is its own 24.28 section titled by its own
-leaf, and the Universal Rules Updates topics - h3s under a block header on that
-page, not one ability's children - ride in the 00 chapter their own outline header
-opens, annotations included (74 records). `[EXTRA ATTACKS]` (24.11) is a different
-ability and keeps its own section. The first heading segment is a section name only
-while the record's leaf still names it: a bracketed tag shared by two rule numbers
-is the page's container, not the section. The appendix's own saved page
-(`appendixOutline` in `src/wiki-toc.mjs`) resolves the records no number can
-place; a numbered appendix record still takes the core chapter its ruleId names.
+**One rule, two sources, one row.** The core page and the appendix print the same
+definition for eight numbers, and the core page splits three more out as
+unnumbered children. Left alone they would read as two rows with one title. Where
+a core rule and an appendix definition share a title, the numbered definition
+stays the row - the appendix's own title when the core copy carries no number,
+the core's when both do - and the other copy is attached to it: still delivered,
+still found by its own slug, counted in the row's badge and in the chapter total.
+The 0x.0x rule and its definitions do not collide: one rulebook puts them in one
+number order.
+
+**An ability is named by its number, not the heading above it.** The appendix page
+prints the `[PRECISION]` (24.28) and `[TORRENT]` (24.37) clarifications as h3s
+under the `[ONE SHOT]` h2, so the heading path called all three one-shot. Folded
+by number, the Core Abilities chapter shows one `[ONE SHOT]` row (24.26.01
+*Multiple [ONE SHOT] Weapons*) and the precision clarification as 24.28.01
+*Precision and Devastating Wounds*; `[EXTRA ATTACKS]` (24.11.01) is a different
+ability and keeps its row. The Universal Rules Updates block - h3s under a block
+header on that page, not one ability's children - is the Core Rules book's last
+chapter, *00 Universal Rules Updates*: six rows and sixty-eight annotations (74
+records).
 
 A rule's number is sometimes left inside its heading by the corpus - the
 appendix's errata h3s carry `01.02.06 Splitting Units` and no ruleId - so the

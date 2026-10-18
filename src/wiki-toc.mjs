@@ -76,13 +76,14 @@ export const ALLIANCE_EXCEPTIONS = { 'Genestealer Cults': 'Xenos' };
 export const ALLIANCE_ORDER = ['Imperium', 'Chaos', 'Xenos'];
 export const ALLIANCE_KEYWORDS = ['Imperium', 'Chaos'];
 
-// The books of the Rules branch. The core-stratagems decision lives here and
-// nowhere else: the 54 records whose source is core-stratagems and whose url is
-// the-rules/core-rules/#Core-Stratagems are a SECTION of the Core Rules page,
-// not a third book, so their source is folded into this book's source list.
+// The books of the Rules branch. One rulebook: task-5 folds the Rules Appendix
+// into Core Rules, because it is the same chapters repeated one level deeper, and
+// a reader looking for 01.02 must not see two '01 Core Concepts'. The
+// core-stratagems decision lives here too: the 54 records whose source is
+// core-stratagems and whose url is the-rules/core-rules/#Core-Stratagems are a
+// SECTION of the Core Rules page, not a third book.
 export const TREE_BOOKS = [
-  { slug: 'core-rules', name: 'Core Rules', sources: ['core-rules', 'core-stratagems'] },
-  { slug: 'rules-appendix', name: 'Rules Appendix', sources: ['rules-appendix'] },
+  { slug: 'core-rules', name: 'Core Rules', sources: ['core-rules', 'core-stratagems', 'rules-appendix'] },
 ];
 
 // The Mission parts, measured on the event-companion page's 14 top-level parts.
@@ -391,10 +392,15 @@ export function tocTree(records, pageOf, opts) {
   // the synthetic one-page collections.
   const filteredIds = [], mergedIds = [], pages = [];
   const owned = new Map(), mergedOn = new Map();
-  const baseOf = id => String(String(id).split('#')[1] || '').split('~')[0];
+  // Two sources can share an anchor id - 'Hidden-and-the-First-Turn' exists on
+  // both the core page and the appendix - and that is one rule in two places, not
+  // parts of one record. task-5 merges the books, so the base carries the source;
+  // only the ids an importer split ('~2', or a repeated '#2' in one source) are
+  // one record.
+  const baseOf = r => String(r.source || '') + '|' + String(String(r.id).split('#')[1] || '').split('~')[0];
   const primaryOf = list => {
     const m = new Map();
-    for (const r of list) { const n = baseOf(r.id); if (!m.has(n)) m.set(n, []); m.get(n).push(r); }
+    for (const r of list) { const n = baseOf(r); if (!m.has(n)) m.set(n, []); m.get(n).push(r); }
     const out = [];
     for (const g of m.values()) {
       g.sort((a, b) => String(a.id).localeCompare(String(b.id)));
@@ -448,7 +454,7 @@ export function tocTree(records, pageOf, opts) {
     // appendix-local [ONE SHOT] chapter of 73 records. The page's own outline
     // header puts them where they belong (task-4). The heading segment remains the
     // last resort when the saved page is absent.
-    if (book && book.slug === 'rules-appendix') {
+    if (r.source === 'rules-appendix') {
       const ap = appendixOutlineDefault();
       const anchor = r.anchor || (/^[^#]*#(.+)$/.exec(String(r.url || '')) || [])[1];
       const ax = ap && anchor ? ap.byIdName(anchor) : null;
@@ -595,17 +601,61 @@ export function tocTree(records, pageOf, opts) {
       const slug = uniqueSlug(nodeSlug(ch.title), used);
       const file = 'tree/rules/' + book.slug + '/' + slug + '.js';
       const label = chapterLabel(ch.num, ch.title);
-      // task-106: the chapter's rows follow the rule's own number, not the alphabet
-      // (01 Core Concepts listed 01.03 before 01.01). The chapter's lead row stays first.
-      const rows = sortChapterRows(primaryOf(ch.recs), ch.title);
-      // A subsection is never a sibling of its own parent: within a chapter, a
-      // section whose heading extends another section's heading nests under it.
-      // The chapter's own LEAD row is not a container: every section's heading now
-      // extends the chapter name ('Core Concepts > Dice'), so nesting under the lead
-      // would hide the whole chapter behind one row - and the payload carries no
-      // nested rows, so those records left the drawer entirely (88 of them, measured
-      // 2026-10-18). Sections stay siblings of the lead, as they always were.
-      const lead = String(ch.title || '').trim();
+      // task-106: the chapter's rows follow the rule's own number, not the
+      // alphabet (the chapter's lead row stays first). task-5: Core Rules and the
+      // Rules Appendix are one book and one header list - the reader must not see
+      // two '01 Core Concepts' - so this chapter holds both sources' rows flat, and
+      // an appendix 0x.0x.0x definition sorts directly under the 0x.0x rule its
+      // number names.
+      const chapterTitle = String(ch.title || '').trim();
+      const allRows = sortChapterRows(primaryOf(ch.recs), ch.title);
+      // task-5: one rule, two sources. The core page and the appendix print the
+      // same definition for eight numbers (and the core page splits three more out
+      // as unnumbered children); left alone they would read as two rows with one
+      // title. The numbered copy stays the row - the appendix's own title when the
+      // core copy carries no number, the core's when both do - and the other copy
+      // is attached to it: still delivered, still found by its own slug, counted in
+      // the row's annotation badge.
+      const hidden = new Set();
+      const byTitle = new Map();
+      const titleOf = r => cleanTitle(leafTitle(r)).replace(/^\d{2}(?:\.\d{2}){1,2}\s*[-\u2013]?\s*/, '').toLowerCase();
+      for (const r of allRows) {
+        if (r.source !== 'core-rules' && r.source !== 'rules-appendix') continue;
+        const key = titleOf(r);
+        if (!byTitle.has(key)) byTitle.set(key, []);
+        byTitle.get(key).push(r);
+      }
+      for (const list of byTitle.values()) {
+        if (list.length < 2) continue;
+        if (!list.some(r => r.source === 'core-rules') || !list.some(r => r.source === 'rules-appendix')) continue;
+        let keep = list[0];
+        for (const r of list) {
+          const rn = ruleNumber(r), kn = ruleNumber(keep);
+          if (rn && !kn) keep = r;
+          else if (rn && kn && r.source === 'core-rules' && keep.source !== 'core-rules') keep = r;
+        }
+        for (const r of list.slice()) {
+          if (r.id === keep.id) continue;
+          if (!attach.has(keep.id)) attach.set(keep.id, []);
+          attach.get(keep.id).push(r);
+          attachTarget.set(r.id, keep.id);
+          hidden.add(r.id);
+          // A record the importer split rides its primary: hide the parts with it.
+          for (const t of (mergedOn.get(r.id) || [])) {
+            if (hidden.has(t)) continue;
+            attach.get(keep.id).push(byIdAll.get(t));
+            attachTarget.set(t, keep.id);
+            hidden.add(t);
+          }
+        }
+      }
+      const rows = allRows.filter(r => !hidden.has(r.id));
+      // A row whose heading extends another row's heading nests under it and is not
+      // listed twice - the payload carries no nested rows - which keeps the core
+      // page's copies of the CSV stratagems out of the drawer. The chapter's own
+      // LEAD row is not a container: every section's heading extends the chapter
+      // name, so nesting under the lead would hide the whole chapter behind one row.
+      const lead = chapterTitle;
       const parentOfSection = new Map(), nestedSection = new Set();
       for (const r of rows) {
         const h = String(r.heading || '');
@@ -622,7 +672,7 @@ export function tocTree(records, pageOf, opts) {
         const subs = rows.filter(x => parentOfSection.get(x.id) === r.id).map(x => x.id);
         if (subs.length) childrenOf.set(r.id, subs);
       }
-      let counted = ch.recs.reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
+      const counted = ch.recs.filter(r => !hidden.has(r.id)).reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
       const entryFor = r => {
         const q = (attach.get(r.id) || []).length;
         const e = ent(r);
@@ -631,73 +681,12 @@ export function tocTree(records, pageOf, opts) {
         if (subs.length) e.s = subs.map(entryFor);
         return e;
       };
-      // task-106: the level the drawer lost. The appendix prints each chapter one
-      // level deeper than Core Rules: its records are the 0x.0x.0x definitions and
-      // the section they belong to (0x.0x) exists only as their heading's first
-      // segment ('Units and Models', 'Dice'), never as a row. Core Rules names the
-      // section in the row itself, so its chapter is right; the appendix's chapter
-      // flattened into 32 rows with no 0x.0x headers at all. Rows that share a first
-      // segment get one nested node, numbered from their ruleIds and titled by the
-      // segment, so the branches read 01 Core Concepts > 01.02 Units and Models.
-      const chapterTitle = String(ch.title || '').trim();
-      const groups = new Map(), loose = [];
-      for (const r of rows) {
-        const segs = headingSegments(r);
-        const first = segs.length > 1 ? String(segs[0]).trim() : '';
-        const rn = ruleNumber(r);
-        const parts = rn.split('.');
-        // The prefix keeps the corpus's zero padding ('01.02', never '1.2'): the
-        // label is read as the book prints it.
-        if (first && first.toLowerCase() !== chapterTitle.toLowerCase() && parts.length >= 3) {
-          const key = parts.slice(0, 2).join('.') + '|' + first.toLowerCase();
-          if (!groups.has(key)) groups.set(key, { num: parts.slice(0, 2).join('.'), name: first, rows: [] });
-          groups.get(key).rows.push(r);
-        } else loose.push(r);
-      }
-      // task-4: an ability tag is not a section name unless the records say so.
-      // The Core Abilities page prints the [PRECISION] (24.28) and [TORRENT]
-      // (24.37) clarifications as h3s under the [ONE SHOT] h2, so their heading
-      // says [ONE SHOT] while their rule number says otherwise - which is how one
-      // ability became three sections. When a bracketed tag is shared by more than
-      // one rule number, a group whose own leaf does not name it is the page's
-      // container, and is titled by the leaf. The real one-shot record's leaf
-      // ('Multiple [ONE SHOT] Weapons') does name it, so [ONE SHOT] reads one
-      // section. A plain segment ('Move Units' over 09.02 and 09.05) is the
-      // appendix's section and is left alone.
-      const segOwners = new Map();
-      for (const [key, g] of groups) {
-        const seg = key.slice(key.indexOf('|') + 1);
-        if (!segOwners.has(seg)) segOwners.set(seg, new Set());
-        segOwners.get(seg).add(g.num);
-      }
-      for (const g of groups.values()) {
-        if (!/^\[[^\]]+\]$/.test(g.name)) continue;
-        const owners = segOwners.get(g.name.toLowerCase());
-        if (!owners || owners.size < 2) continue;
-        const leaf = cleanTitle(leafTitle(g.rows[0]));
-        if (leaf && leaf.toLowerCase().indexOf(g.name.toLowerCase()) === -1) g.name = leaf;
-      }
-      const sections = [], sectionOf = new Map();
-      for (const g of [...groups.values()].sort((x, y) => x.num.localeCompare(y.num))) {
-        // '02.01 1. Datasheet Name' would print the ordinal twice: the section's own
-        // number is the first one, the source's '1.' is its place in the chapter.
-        const glabel = g.num + ' ' + g.name.replace(/^\d+\.\s*/, '');
-        const gfile = file.replace(/\.js$/, '/' + nodeSlug(glabel) + '.js');
-        const grows = sortChapterRows(g.rows, '');
-        const gcount = grows.reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
-        files[gfile] = { n: glabel, lvl: 'section', c: gcount, recs: grows.map(entryFor) };
-        const ref = { n: glabel, lvl: 'section', f: gfile };
-        for (const r of grows) sectionOf.set(r.id, ref);
-        sections.push({ n: glabel, lvl: 'section', c: gcount, f: gfile });
-      }
-      const list = loose.filter(r => !nestedSection.has(r.id)).map(entryFor);
-      files[file] = sections.length
-        ? { n: label, lvl: 'chapter', c: counted, kids: sections, recs: list }
-        : { n: label, lvl: 'chapter', c: counted, recs: list };
+      const list = rows.filter(r => !nestedSection.has(r.id)).map(entryFor);
+      files[file] = { n: label, lvl: 'chapter', c: counted, recs: list };
       const chapterRef = { n: label, lvl: 'chapter', f: file };
       for (const r of ch.recs) {
+        if (hidden.has(r.id)) continue;
         const chain = [rulesRef, bookRef, chapterRef];
-        if (sectionOf.has(r.id)) chain.push(sectionOf.get(r.id));
         paths.set(r.id, chain);
         for (const a of (attach.get(r.id) || [])) paths.set(a.id, chain);
       }
@@ -729,11 +718,25 @@ export function tocTree(records, pageOf, opts) {
     });
     files[file] = { n: '00 Universal Rules Updates', lvl: 'chapter', c: counted, recs: recs };
     const uruRef = { n: '00 Universal Rules Updates', lvl: 'chapter', f: file };
+    // task-5: the chapter is inside the Core Rules book now, so its records' chain
+    // carries the book (the drawer's pre-walk and the search row's book label read it).
+    const coreBookRef = { n: 'Core Rules', lvl: 'book', f: 'tree/rules/' + TREE_BOOKS[0].slug + '.js' };
     for (const r of rows) {
-      paths.set(r.id, [rulesRef, uruRef]);
-      for (const a of (attach.get(r.id) || [])) paths.set(a.id, [rulesRef, uruRef]);
+      paths.set(r.id, [rulesRef, coreBookRef, uruRef]);
+      for (const a of (attach.get(r.id) || [])) paths.set(a.id, [rulesRef, coreBookRef, uruRef]);
     }
-    bookNodes.push({ n: '00 Universal Rules Updates', lvl: 'chapter', c: counted, f: file });
+    // task-5: the appendix is folded into Core Rules, so its Universal Rules
+    // Updates chapter is the book's last chapter (00 sorts after 25), not a
+    // sibling of the books: every former appendix record is under Core Rules.
+    const coreBook = bookNodes.find(b => b.n === 'Core Rules');
+    const coreFile = coreBook && files[coreBook.f];
+    if (coreFile && coreFile.kids) {
+      coreFile.kids.push({ n: '00 Universal Rules Updates', lvl: 'chapter', c: counted, f: file });
+      coreFile.c += counted;
+      coreBook.c += counted;
+    } else {
+      bookNodes.push({ n: '00 Universal Rules Updates', lvl: 'chapter', c: counted, f: file });
+    }
   }
   const rulesTotal = bookNodes.reduce((n, b) => n + b.c, 0);
   files['tree/rules.js'] = { n: 'Rules', lvl: 'branch', c: rulesTotal, kids: bookNodes };

@@ -63,7 +63,9 @@ let node = null;
 const recs = (node && node.recs) || [];
 const at = recs.findIndex(r => r.id === 'core-rules#2.-Profiles');
 ok('2. Profiles sits in a row list with both neighbours', at > 0 && at < recs.length - 1 && recs.length > 2);
-ok('its neighbours are the sections a player reads next', !!recs[at - 1] && recs[at - 1].title === '1. Datasheet Name' && !!recs[at + 1] && recs[at + 1].title === '3. Abilities');
+// task-5: the appendix is folded in, so a rule's neighbours are the definitions
+// that sit under it in number order: 02.01.01 before 02.02, 02.02.01 after it.
+ok('its neighbours are the definition before it and the one under it', !!recs[at - 1] && recs[at - 1].num === '02.01.01' && !!recs[at + 1] && recs[at + 1].title === 'Modifiers');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
