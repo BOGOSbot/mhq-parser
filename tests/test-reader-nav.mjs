@@ -33,6 +33,9 @@ ok('the open body de-indents to the tree edge', /function deIndent\(box\)/.test(
 
 // One record at a time: two open bodies were the 4,909 px tree.
 ok('opening a record closes the other one', /querySelectorAll\('\.sv-inline'\)/.test(surface));
+// A detachment's enhancements open INSIDE its own inline box; closing that ancestor
+// would append the child to a detached subtree and the tap would do nothing.
+ok('the inline that contains the row stays open', /if \(!n\.contains\(wrap\)\) n\.remove\(\)/.test(surface));
 
 // The bar must not bring back the duplicate title the row already prints.
 ok('the bar does not reintroduce the inline title', surface.indexOf('sv-inline-title') === -1 && surface.indexOf('sv-inline-meta') === -1);

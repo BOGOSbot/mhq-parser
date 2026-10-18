@@ -311,9 +311,11 @@
     var existing = wrap.querySelector('.sv-inline');
     if (existing) { existing.remove(); return; }
     // One record at a time: two open bodies made a 4,909 px tree with the first one
-    // 2,155 px above the viewport, and the bar removes the reason to keep two.
+    // 2,155 px above the viewport, and the bar removes the reason to keep two. An inline
+    // that CONTAINS this row stays: a detachment's enhancements open inside it, and
+    // removing the parent would append the child to a detached subtree (found 2026-10-18).
     var tree = treeEl();
-    if (tree) Array.prototype.forEach.call(tree.querySelectorAll('.sv-inline'), function (n) { n.remove(); });
+    if (tree) Array.prototype.forEach.call(tree.querySelectorAll('.sv-inline'), function (n) { if (!n.contains(wrap)) n.remove(); });
     var box = el('div', 'sv-inline');
     var list = siblings || [];
     var at = -1;
