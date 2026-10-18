@@ -130,6 +130,18 @@ ok('(5) the chapter lead row stays first', !coreCC.recs[0].num);
 // (a single-record section), and the chapter's own intro row carries none.
 ok('(14) the single-record 01.06 row keeps its number', (coreCC.recs || []).some(r => r.num === '01.06'));
 ok('(14) and the chapter intro row has none', (coreCC.recs || []).some(r => r.title === 'Core Concepts' && !r.num));
+// task-16: a section lead's nested records are rows under the section too, so a
+// rule is reachable by reading and not only by search. Reference case: the
+// core-rules FALL-BACK MOVE (09.07) sits under 09.05 NORMAL MOVE, beside the
+// 09.06 ADVANCE MOVE the same page nests there. The core page's copies of the
+// CSV stratagems (15.02..15.12) are the exception: the real row already reads
+// the same rule, so they stay attached rather than listed twice.
+const moving09 = findNode(coreBook, '09 Movement Phase');
+const normalMove = ((moving09 || {}).kids || []).find(k => /NORMAL MOVE$/.test(k.n));
+ok('(16) a section lead\'s nested records are rows under the section', !!normalMove && (normalMove.recs || []).some(r => r.num === '09.06') && (normalMove.recs || []).some(r => r.num === '09.07' && /fall-back move/i.test(r.title)));
+ok('(16) the nested rows follow the section lead in number order', asc(((normalMove || {}).recs || []).map(r => r.num || '').filter(Boolean).slice(1)));
+t('(16) the core book count is unchanged', coreBook.c, 627);
+t('(16) the rules branch count is unchanged', branch.c, 781);
 const splitting = ((unitsNode || {}).recs || []).filter(r => /Splitting Units/.test(r.title));
 t('(5) the rule and its errata are two rows under the same number', splitting.map(r => r.num).join(','), '01.02.06,01.02.06');
 ok('(5) the errata says so, so the pair does not read as a duplicate', /errata$/.test(splitting[1] && splitting[1].title));
@@ -148,6 +160,8 @@ collectRows(coreBook);
 const appendixIds = Object.keys(seen).filter(id => (byId.get(id) || {}).source === 'rules-appendix');
 const lost = appendixIds.filter(id => !coreRowIds.has(id) && !((rulesContent.records[id] || {}).at));
 t('(5) every former appendix record is reachable under Core Rules', lost, []);
+// task-16: the reference record is now one of those rows, not only a search hit.
+ok('(16) the reference record is a drawer row', coreRowIds.has('core-rules#Movement-Phase->-3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE'));
 
 // --- task-4: one [ONE SHOT], under Core Abilities -----------------------------
 const core24 = findNode(coreBook, '24 Core Abilities');

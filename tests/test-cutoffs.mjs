@@ -40,12 +40,14 @@ t('and stats.cuts agrees', tree.stats.cuts, 114);
 // listed in its place (task-61); the books still do not cut, and the Rulings
 // chapter is still a waypoint. task-5: ONE rulebook - the appendix's rows are the
 // core chapters' rows now and the 0x.0x section level walks to them, so the entry
-// count is every row a chapter or a section lists: 314.
+// count is every row a chapter or a section lists. task-16: a section lead's
+// nested records are rows too (the core page's copies of the CSV stratagems are
+// not - they duplicate a visible row), so the count is 344: 314 + 30.
 ok('a 0x chapter is not a cut entry', kids('tree/rules/core-rules.js').filter(x => /^\d{2}\s/.test(x.n)).every(x => !x.cut));
-ok('and its children are the entries: 314 under Core Rules', (function () {
+ok('and its children are the entries: 344 under Core Rules', (function () {
   const entryCount = f => (f.kids || []).reduce((n, k) => n + entryCount(files[k.f] || { recs: [] }), (f.recs || []).length);
   const flat = b => (files[b].kids || []).reduce((n, k) => n + entryCount(files[k.f] || {}), 0);
-  return flat('tree/rules/core-rules.js') === 314;
+  return flat('tree/rules/core-rules.js') === 344;
 })());
 ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut);
 ok('the two ruling books are waypoints, their chapters are the cutoffs', !files['tree/rulings/wtc.js'].cut && !files['tree/rulings/feq.js'].cut && kids('tree/rulings/wtc.js').every(x => x.cut) && kids('tree/rulings/feq.js').every(x => x.cut));

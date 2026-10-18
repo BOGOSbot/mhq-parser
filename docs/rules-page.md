@@ -119,6 +119,17 @@ instead of trailing after 01.07 - then the unnumbered rows in their own order.
 `chapterItems`/`numKey` in `src/wiki-surface.js` are that sort; the payload keeps
 sections and rows apart because their pages differ.
 
+**A section lead's nested records are rows.** The core page nests rules under a
+section lead - 09.05.01 More Than One Normal Move in a Phase holds 09.06 ADVANCE
+MOVE and 09.07 FALL-BACK MOVE - and the payload cannot nest a row inside a row, so
+those records used to be counted in the chapter but never listed: reachable by
+search only, and the drawer's *In the book* door had nothing to open there. They
+are rows of the section now, in number order, and the section badge counts them.
+The core page's copies of the CSV stratagems (15.02..15.12) are the exception:
+their number or title already names a visible row, so they stay attached rather
+than listed twice. The delivered count does not move (6,258) and neither do the
+book, branch or chapter counts.
+
 **One rule, two sources, one row.** The core page and the appendix print the same
 definition for eight numbers, and the core page splits three more out as
 unnumbered children. Left alone they would read as two rows with one title under

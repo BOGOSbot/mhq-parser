@@ -760,6 +760,41 @@ export function tocTree(records, pageOf, opts) {
         const subs = rows.filter(x => parentOfSection.get(x.id) === r.id).map(x => x.id);
         if (subs.length) childrenOf.set(r.id, subs);
       }
+      // task-16: a nested record is a drawer row too. The payload cannot nest a
+      // row inside a row, so every record whose heading extends another row's used
+      // to be counted in the chapter but never listed - reachable by search only.
+      // Each one now joins the container that owns its ancestor: the appendix's
+      // section when the chain ends in a section row ('09.05 NORMAL MOVE' keeps
+      // 09.06 ADVANCE MOVE and 09.07 FALL-BACK MOVE under it), the chapter's own
+      // list otherwise. The core page's copies of the CSV stratagems (15.02..
+      // 15.12) are not rows: their number or title already names a visible row,
+      // and the real row reads the same rule.
+      const visibleTitles = new Set(), visibleNums = new Set();
+      for (const r of rows) {
+        if (nestedSection.has(r.id)) continue;
+        visibleTitles.add(titleOf(r));
+        const rn = ruleNumber(r);
+        if (rn) visibleNums.add(rn);
+      }
+      const groupOf = new Map();
+      for (const g of groups.values()) for (const r of g.rows) groupOf.set(r.id, g);
+      // A nested row the unnumbered-extension pass above already placed in its
+      // section is already visible; only the ones that pass never covered (the
+      // numbered children, '09.07 FALL-BACK MOVE') are added here.
+      const placed = new Set(groupOf.keys());
+      for (const r of loose) if (!nestedSection.has(r.id)) placed.add(r.id);
+      const extraInto = new Map(); // a group object, or null for the chapter's own list
+      for (const r of rows) {
+        if (!nestedSection.has(r.id) || placed.has(r.id)) continue;
+        const rn = ruleNumber(r);
+        if (visibleTitles.has(titleOf(r)) || (rn && visibleNums.has(rn))) continue;
+        let p = parentOfSection.get(r.id), guard = 0;
+        while (p && !groupOf.has(p) && parentOfSection.has(p) && guard++ < 25) p = parentOfSection.get(p);
+        const g = p ? groupOf.get(p) || null : null;
+        if (!extraInto.has(g)) extraInto.set(g, []);
+        extraInto.get(g).push(r);
+      }
+      const chapterExtra = sortChapterRows(extraInto.get(null) || [], ch.title);
       const counted = ch.recs.filter(r => !hidden.has(r.id)).reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
       const entryFor = r => {
         const q = (attach.get(r.id) || []).length;
@@ -775,14 +810,16 @@ export function tocTree(records, pageOf, opts) {
         // number is the first one, the source's '1.' is its place in the chapter.
         const glabel = g.num + ' ' + g.name.replace(/^\d+\.\s*/, '');
         const gfile = file.replace(/\.js$/, '/' + nodeSlug(glabel) + '.js');
-        const grows = sortChapterRows(g.rows, '');
+        const grows = sortChapterRows(g.rows.concat(extraInto.get(g) || []), '');
+        // The badge counts the records under the node, so the rows task-16 added
+        // are counted here too; they were already in the chapter's own count.
         const gcount = grows.reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
         files[gfile] = { n: glabel, lvl: 'section', c: gcount, recs: grows.map(entryFor) };
         const ref = { n: glabel, lvl: 'section', f: gfile };
         for (const r of grows) sectionOf.set(r.id, ref);
         sections.push({ n: glabel, lvl: 'section', c: gcount, f: gfile });
       }
-      const list = loose.filter(r => !nestedSection.has(r.id)).map(entryFor);
+      const list = loose.filter(r => !nestedSection.has(r.id)).map(entryFor).concat(chapterExtra.map(entryFor));
       files[file] = sections.length
         ? { n: label, lvl: 'chapter', c: counted, kids: sections, recs: list }
         : { n: label, lvl: 'chapter', c: counted, recs: list };
