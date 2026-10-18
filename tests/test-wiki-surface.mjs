@@ -97,10 +97,10 @@ ok('(6) a new answer scrolls under the header, not behind it', js.body.indexOf('
 ok('(81-1) a page is matched by the faction in the node key, not by its name', /function pageFor\(n, key\)/.test(js.body) && /p\.area === area/.test(js.body) && /pageFor\(n, key\)/.test(js.body));
 // task-89: the drawer TREE row is the numbered title only. The findings/tail rows keep their
 // own meta and snippet - those are different components and different jobs.
-const recFn = js.body.slice(js.body.indexOf('function renderRec(r)'), js.body.indexOf('function toggleInline('));
+const recFn = js.body.slice(js.body.search(/function renderRec\(/), js.body.indexOf('function toggleInline('));
 ok('(81-2) the drawer row is the numbered title only - no book label, no preview', recFn.indexOf('sv-rec-title') !== -1 && recFn.indexOf('sv-rec-meta') === -1 && recFn.indexOf('sv-rec-snip') === -1);
 ok('(81-F) and the filter still reads the payload snippet', js.body.indexOf('matches(r.snippet)') !== -1);
-ok('(81-3) a page or owned id renders through the on-demand rows file', js.body.indexOf('function rowFromBranch(id)') !== -1 && js.body.indexOf("'-rows.json'") !== -1 && js.body.indexOf('renderRec(rowFromBranch(id))') !== -1);
+ok('(81-3) a page or owned id renders through the on-demand rows file', js.body.indexOf('function rowFromBranch(id)') !== -1 && js.body.indexOf("'-rows.json'") !== -1 && /p\.recs\.map\(function \(id\) \{ return rowFromBranch\(id\); \}\)/.test(js.body) && /r\.own\.map\(function \(id\) \{ return rowFromBranch\(id\); \}\)/.test(js.body));
 ok('(81-3b) the rows file is fetched once per branch and cached', js.body.indexOf('state.rowsLoading[b]') !== -1 && js.body.indexOf('state.rowsCache[b] =') !== -1);
 ok('(81-3) a detachment row lists what it owns', js.body.indexOf("'Its enhancements and stratagems ('") !== -1 && js.body.indexOf('sv-ownlist') !== -1);
 console.log(pass + ' passed, ' + fail + ' failed');
