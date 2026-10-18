@@ -1040,6 +1040,23 @@ export function buildFactionSections() {
       push('core-stratagem#' + s.id, 'core-stratagems', s.name, CORE_STRATAGEMS.url, lines);
       continue;
     }
+    // Mandal, 2026-10-18: a Stratagems.csv row with no Type and the detachment 'Army Rules'
+    // is a faction ARMY RULE, not a stratagem - 'FLITTING SHADOWS' is Aeldari's, and a
+    // stratagem lives in a detachment or in Core Rules > Stratagems. 6 rows, all Aeldari
+    // (ids under the Agile Manoeuvres ability 000009895), were labelled '<name> - Aeldari
+    // stratagem' and filed under the faction's stratagems. They join the Army rules group.
+    const armyRule = !/stratagem/i.test(clean(s.type)) && /^army rules$/i.test(clean(s.detachment));
+    if (armyRule) {
+      const ruleLines = [
+        s.name + ' - ' + faction + ' army rule',
+        'Type: ' + clean(s.type),
+        'Turn: ' + clean(s.turn) + '  Phase: ' + clean(s.phase),
+        clean(s.legend),
+        clean(s.description),
+      ];
+      push('faction-rule#' + s.id, 'factions-csv', s.name + ' - ' + faction + ' army rule', factionLink.get(s.faction_id) || '', ruleLines);
+      continue;
+    }
     const lines = [
       s.name + ' - ' + faction + ' stratagem',
       'Type: ' + clean(s.type),

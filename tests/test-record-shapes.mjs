@@ -14,7 +14,10 @@ const all = readAllCorpus();
 const fam = { stratagem: 0, ability: 0, other: 0 };
 const byKind = {};
 const abilities = [], stratagems = [];
-let identical = 0, changed = 0, skipped = 0, seeAlsoChanged = 0; const mismatches = [];
+let identical = 0, changed = 0, skipped = 0, seeAlsoChanged = 0, csvChanged = 0; const mismatches = [];
+// task-97: the CSV's own columns ('Type:', 'CP:', 'Turn: Phase: ...') are metadata, not the
+// book's words, and they leave the reader's prose now - a second intended class of change.
+const hasCsvCols = r => /^\s*(?:Type|CP)\s*:/m.test(String(r.text)) || /^\s*Turn:\s+Phase:/m.test(String(r.text));
 for (const r of all) {
   const text = stripBuiltBlock(r);
   const shape = recordShape(text);
@@ -39,6 +42,7 @@ for (const r of all) {
   const cardOrRuling = isCard;
   if (cardOrRuling) { skipped++; continue; }
   if (seeAlsoEntries(r).some(e => e.child)) seeAlsoChanged++;
+  if (hasCsvCols(r)) csvChanged++;
   if (now === old) { identical++; byKind[kind].identical++; } else { changed++; byKind[kind].changed++; if (mismatches.length < 5) mismatches.push(r.id); }
 }
 console.log('records ' + all.length + ' | stratagem ' + fam.stratagem + ' | ability ' + fam.ability + ' | other ' + fam.other);
@@ -66,7 +70,7 @@ t('every stratagem keeps its CP badge', stratagems.filter(r => { const s = recor
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 // task-91: a record with a SEE ALSO CHILD entry now renders it as a container under the
 // body, so those records change by design. Everything else stays byte-identical.
-t('only the SEE ALSO container records changed outside the two families', changed - fam.stratagem - fam.ability, seeAlsoChanged);
+t('only the SEE ALSO containers and the CSV-column strips changed outside the two families', changed - fam.stratagem - fam.ability, seeAlsoChanged + csvChanged);
 // The rule that files a record with no Type: it must carry the rows at line starts.
 // An empty Type with nothing to show is never an ability (the 6 Aeldari today).
 t('an ability either carries a Type line or carries the rows',

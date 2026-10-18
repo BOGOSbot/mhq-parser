@@ -30,6 +30,10 @@ import { linkify, esc } from './wikilinks.mjs';
 // (task-87).
 import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries } from './wiki-plan.mjs';
 
+// task-97: the CSV export's own columns. Only a record from a CSV source carries them, so only
+// there do they leave the prose - a rule whose text happens to say 'Type:' is not ours to cut.
+const CSV_SOURCES = ['stratagems', 'core-stratagems', 'factions-csv', 'abilities', 'ability-defs'];
+
 // The two kinds whose text is a flat transcription of the CSV card. Every other
 // kind (stratagem, enhancement, detachment, rule, ability, index) has no card
 // and keeps the text block exactly as it was.
@@ -508,8 +512,11 @@ function stripCsvColumns(text) {
   return String(text == null ? '' : text).split(/\r?\n/).filter(function (l) { return !/^\s*(?:Type|CP)\s*:/.test(l); }).join('\n');
 }
 function stripTurnPhase(text) {
+  // task-97: the line is 'Turn:   Phase: Movement or Charge phase' on a faction army rule
+  // and 'Turn:   Phase: Ability "Shoot"' on a core ability - both are CSV columns, so the
+  // whole line goes.
   return String(text == null ? '' : text)
-    .replace(/Turn:\s+Phase:\s+Ability\s+"[^"]*"/g, '')
+    .replace(/^\s*Turn:\s+Phase:.*$/gm, '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/ *\n */g, '\n')
     .trim();
@@ -526,8 +533,11 @@ function capsHtml(html) {
   }).join('');
 }
 function shapeHtml(text, opts) {
+  const csv = !!opts && CSV_SOURCES.indexOf(String(opts.csvSource || '')) !== -1;
   const shape = recordShape(text, opts && opts.selfHeading);
-  if (!shape) return proseHtml(text, opts);
+  // task-97: the CSV's own columns are metadata, not the book's words. The shape detection
+  // above still reads them (they are how a card is classified); the rendered prose does not.
+  if (!shape) return proseHtml(csv ? stripTurnPhase(stripCsvColumns(text)) : text, opts);
   // task-89: the plain fallback - no head, no table, the CSV fragment gone, ALL CAPS styled.
   if (shape.family === 'ability-plain') return capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(text)), opts));
   const head = shape.family === 'stratagem'
@@ -553,7 +563,7 @@ function shapeHtml(text, opts) {
   }).filter(function (l) { return l !== ''; }).join('\n');
   // The 'Turn:   Phase: Ability "Move"' fragment is CSV navigation, not the book's words:
   // stripped on this path too (task-89 stripped it only in the plain fallback).
-  return head + table + proseHtml(stripTurnPhase(rest), opts);
+  return head + table + proseHtml(csv ? stripTurnPhase(stripCsvColumns(rest)) : stripTurnPhase(rest), opts);
 }
 // task-91/94: the SEE ALSO block's CHILD entries become containers of their own, with the
 // child record's content inside - Mandal's '02.05.01 Using Keywords & Mixed Keywords in
@@ -650,7 +660,7 @@ export function recordBody(record, opts) {
   // Mandal's point is that it is not a stratagem, so the layout wins over the card.
   // Only records the classifier claims are affected; every other card is untouched.
   if (recordShape(text, record && record.heading)) {
-    return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading }) + tail;
+    return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading, csvSource: record && record.source }) + tail;
   }
   const card = cardFor(record, o);
   if (card) return banner + cardHtml(card, o) + tail;
@@ -659,7 +669,7 @@ export function recordBody(record, opts) {
   const cap = record && record.kind === 'index' ? 0 : 40;
   // task-78 B: the two labelled families get their own layout; every other record
   // takes the same proseHtml call, with the same options, as before - byte-identical.
-  return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading }) + tail;
+  return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading, csvSource: record && record.source }) + tail;
 }
 
 export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, proseHtml, recordBody, rulingBody, recordShape };
