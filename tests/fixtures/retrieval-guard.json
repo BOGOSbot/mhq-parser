@@ -1,0 +1,122 @@
+{
+  "recordedAt": "2026-10-18T19:18:07.620Z",
+  "questions": [
+    "Can a unit shoot after it Fell Back?",
+    "How does Devastating Wounds interact with Anti-?",
+    "When does a unit become Battle-shocked?",
+    "What does Oath of Moment do for Space Marines?",
+    "Does the Tyrannofex have the FRAME keyword?"
+  ],
+  "plan": {
+    "rules": 5,
+    "factions": 5
+  },
+  "orders": [
+    {
+      "q": "Can a unit shoot after it Fell Back?",
+      "rules": [
+        "rules-appendix#[ONE-SHOT]->-FAQ->-Q:-If-a-unit-makes-any-disembark-move-in-a-turn-(i.e.-Disembark-move,-Emergency-Disembark-move-etc.)-has-it-disembarked-that-turn?->-CLOSE-QUARTERS-SHOOTING",
+        "core-stratagem#000010850002",
+        "rules-appendix#[ONE-SHOT]->-FAQ->-Q:-When-my-unit-shoots-at-another-unit,-how-does-it-work-if-some-models-in-the-target-unit-are-fully-visible-to-some-models-in-my-unit,-while-others-are-within-a-terrain-area-/not-fully-visible?->-INDIRECT-SHOOTING",
+        "core-rules#Shooting-Phase->-3.-End-of-Shooting-Phase->-INDIRECT-SHOOTING",
+        "core-rules#2.-Shoot",
+        "core-rules#Shooting-Phase",
+        "core-rules#1.-Start-of-Shooting-Phase",
+        "core-rules#Shooting-Phase->-2.-Shoot->-Can-I-select-a-unit-to-shoot-or-fight-if-it-doesn’t-have-melee-or-ranged-weapons?",
+        "core-rules#3.-End-of-Shooting-Phase"
+      ],
+      "factions": [
+        "faction-rule#000009895007",
+        "detachment#000001133~2",
+        "datasheet#000004053",
+        "datasheet#000001604",
+        "unitrules#000000164~2",
+        "detachment#000001224"
+      ],
+      "vector": 7
+    },
+    {
+      "q": "How does Devastating Wounds interact with Anti-?",
+      "rules": [
+        "ability-def#devastating-wounds",
+        "rules-appendix#Precision-and-Devastating-Wounds",
+        "core-rules#Core-Abilities->-Duplicated-Abilities->-24.28.01-Precision-and-Devastating-Wounds",
+        "core-rules#Core-Abilities->-Duplicated-Abilities->-24.28.01-Precision-and-Devastating-Wounds->-SUPER-HEAVY-WALKER",
+        "core-rules#Core-Abilities->-Duplicated-Abilities->-DEEP-STRIKE",
+        "core-rules#Core-Abilities->-Duplicated-Abilities->-24.28.01-Precision-and-Devastating-Wounds->-SCOUTS"
+      ],
+      "factions": [
+        "unitrules#000001156~1",
+        "stratagem#000010861004",
+        "unitrules#000002077",
+        "stratagem#000010194007",
+        "unitrules#000000314~1"
+      ],
+      "vector": 8
+    },
+    {
+      "q": "When does a unit become Battle-shocked?",
+      "rules": [
+        "core-rules#Muster-Armies->-Fill-Your-Army-Roster->-FAQ->-If-a-unit-becomes-battle-shocked-after-starting-an-action-does-it-stop-performing-that-action?",
+        "rules-appendix#[ONE-SHOT]->-FAQ->-Q:-If-a-unit-becomes-battle-shocked-after-starting-an-action-does-it-stop-performing-that-action?",
+        "core-rules#Core-Concepts->-Battle-shock-Rolls->-If-a-unit-becomes-battle-shocked-after-starting-an-action-does-it-stop-performing-that-action?",
+        "core-rules#Actions->-Performing-Actions->-If-a-unit-becomes-battle-shocked-after-starting-an-action-does-it-stop-performing-that-action?",
+        "core-rules#Core-Concepts->-Battle-shock-Rolls->-Q:-If-a-unit-has-a-rule-that-allows-it-to-start-an-action-when-it-is-battle-shocked-can-it-also-continue-doing-that-action-if-it-becomes-battle-shocked-after-starting-an-action?",
+        "rules-appendix#Battlefield-Morale",
+        "rules-appendix#Battle-shock-Test",
+        "core-rules#Muster-Armies->-Fill-Your-Army-Roster->-FAQ->-If-a-unit-becomes-battle-shocked-after-starting-an-action-does-it-stop-performing-that-action?->-NORMAL-SHOOTING",
+        "rules-appendix#[ONE-SHOT]->-FAQ->-Q:-If-a-unit-becomes-battle-shocked-after-starting-an-action-does-it-stop-performing-that-action?->-LEADER"
+      ],
+      "factions": [
+        "unitrules#000002765~2",
+        "unitrules#000000292~2",
+        "detachment#000000870",
+        "unitrules#000000004~2",
+        "unitrules#000001556~2",
+        "datasheet#000000039",
+        "faction-rule#000009894"
+      ],
+      "vector": 11
+    },
+    {
+      "q": "What does Oath of Moment do for Space Marines?",
+      "rules": [
+        "event-companion#Primary-Mission-deck->-consecrate",
+        "core-stratagem#000010251002",
+        "rules-appendix#[ONE-SHOT]->-FAQ->-Q:-When-a-move-says-that-a-model-or-unit-must-move-in-a-way-if-it-is-able,-can-that-requirement-force-the-unit-to-end-their-move-not-in-coherency?->-LEADER-24.22-/-SUPPORT#2",
+        "core-rules#Core-Abilities->-Duplicated-Abilities->-INFILTRATORS",
+        "core-rules#Starting-an-Action"
+      ],
+      "factions": [
+        "enhancement#000010633004",
+        "enhancement#000011176003",
+        "stratagem#000011181006",
+        "stratagem#000009836004",
+        "stratagem#000011177004",
+        "stratagem#000010880004",
+        "stratagem#000010503004"
+      ],
+      "vector": 8
+    },
+    {
+      "q": "Does the Tyrannofex have the FRAME keyword?",
+      "rules": [
+        "core-rules#Frame",
+        "rules-appendix#[ONE-SHOT]->-Errata->-13.09---Change-to-First-Bullet-Point",
+        "core-rules#Muster-Armies->-Fill-Your-Army-Roster->-FAQ->-Can-I-group-or-allocate-a-wound-to-a-destroyed-model?->-CHARGE-MOVE#3",
+        "core-rules#Muster-Armies->-Fill-Your-Army-Roster->-Errata->-Change-to:-‘That-model-has-the-INFANTRY/BEASTS/SWARM-keyword-and-is-within-a-terrain-area-that-contains-one-or-more-light/dense-terrain-features-.’-13.10-Obscuring-Terrain-areas-containing-one-or-more-light-or-dense-terrain-features-are-obscuring-terrain-areas.->-HEROIC-INTERVENTION#2",
+        "rules-appendix#Using-Keywords-Mixed-Keywords-in-Units",
+        "core-rules#Monsters-and-Vehicles->-Frame->-Q:-Are-models-that-are-within-the-boundary-of-a-terrain-area,-but-not-on-the-ground-floor-of-a-terrain-area-(e.g."
+      ],
+      "factions": [
+        "unitrules#000000496",
+        "datasheet#000000496",
+        "datasheet#000000490",
+        "faction-index#faction-tyr::3",
+        "unitrules#000000490"
+      ],
+      "vector": 10
+    }
+  ],
+  "fingerprint": "0cb99bbda7a9ea38c2f82e513ccbdb92427ab202152cae090f717c93c2e273b9"
+}

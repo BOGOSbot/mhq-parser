@@ -687,6 +687,15 @@ answer the same question differently.
   corpus does not name is reported, and resolved through the corpus's own id
   function when the same heading still exists, instead of being scored as a
   silent miss.
+- `node tests/guard-order.mjs` - the retrieval guard, re-specified (task-9). It
+  fingerprints the **unjudged** retrieval order for a fixed five-question set
+  (both halves' ordered findings, rerank skipped, no judge, no model, no billed
+  spend) against `tests/fixtures/retrieval-guard.json`: exit 0 match, exit 1
+  changed with the first moved id named, exit 2 when the vector leg answered
+  nothing (an index failure, not an order change). `--record` re-records a
+  deliberate change. Finding **counts** are not a guard: the judge's first pass
+  decides whether the search widens, and the old five-question count guard
+  returned 15/12/15/35/13 and 15/34/34/35/13 minutes apart on the same build.
 - `node tests/eval-retrieval.mjs --retriever dual --per-side 10 --net 60` - the
   page's own path, and the arm every chunking decision is measured on. It grades
   every question twice: **exact id** (the fixture as written) and **rule
