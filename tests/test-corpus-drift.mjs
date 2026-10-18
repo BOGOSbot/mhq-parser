@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  SOURCES, EDITION, assignIds, corpusDir, extractSections, isBoardingActionsPageSection, parseMarker, stripChrome, writeCorpus, buildFactionCorpus, buildAbilitiesCorpus,
+  SOURCES, EDITION, assignIds, corpusDir, extractSections, isBoardingActionsPageSection, parseMarker, stripChrome, writeCorpus, buildFactionCorpus,
 } from '../src/rules-corpus.mjs';
 import { readPlanInput } from '../src/wiki-plan.mjs';
 import { writeWikiCorpus } from '../src/wiki-build.mjs';
@@ -49,19 +49,16 @@ const BASELINE = {
   // under '01.07 Battle-shock Rolls'. The heading's own dotted number is now the depth
   // ('02' = 1, '01.07' = 2), tag level the fallback; 138 headings and 76 parents change
   // and the core-rules text carries the corrected paths (+5,180 characters).
-  // task-86: the wound/hit-roll dice are text now. Wahapedia draws them as .cruD1..6
-  // sprite divs; htmlToText substitutes '$1+' for the '+N' modifier and '$1' for a bare
-  // face, so core-rules gains 30 characters (the five wound values plus the hit 1 and 6)
-  // and the CSV path gains 252 bytes (the same markup in a few CSV cells). Sections and
-  // records are unchanged: 374.
-  // task-86 pass 2: the abilities builder is covered here too. It emits one record per
-  // distinct CSV ability name that has no record of its own (71 distinct, 14 already
-  // covered by a core-rules heading, 57 built). A change in that count is a parser change.
+  // task-86: the wound/hit-roll dice are text now - htmlToText substitutes '$1+' for the
+  // '+N' modifier and '$1' for a bare face, so core-rules gains 30 characters and the CSV
+  // path gains 252 bytes. task-94: 19 numbered sections the length floor was dropping came
+  // back (382 core-rules, 191 appendix). task-101: the faction abilities are no longer a
+  // source of their own - they are the factions' own army rules - so the CSV half carries
+  // 2 more records (Devastator Doctrine, Sons of Russ) and the rules half 62 fewer.
   scrape: { sections: 382, chars: 289486 },
   shape: {
     'core-rules': { sections: 382, chars: 289486 },
-    'factions-csv': { sections: 6396, bytes: 10092687 },
-    abilities: { sections: 62 },
+    'factions-csv': { sections: 6398, bytes: 10093906 },
   },
 };
 
@@ -100,7 +97,6 @@ for (const s of SOURCES) {
 // After the scrape, so the core-rules headings exist for the exclusion: 14 CSV ability
 // names already have a record, 57 are built, and 5 descriptions exceed MAX_CHARS so the
 // shape splits them into a ~2 part - 62 sections is the pipeline's number.
-buildAbilitiesCorpus();
 writeWikiCorpus(root, null, { blockInText: true });
 
 const core = scrape['core-rules'] || [];
@@ -144,7 +140,7 @@ t('(drift) the CSV path reproduces factions-csv.json', {
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
   added: csvAdded,
   missing: csvMissing,
-}, { sections: 6396, bytes: 10092687, added: 0, missing: 0 });
+}, { sections: 6398, bytes: 10093906, added: 0, missing: 0 });
 
 const rebuiltPool = fs.readdirSync(root).filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')))

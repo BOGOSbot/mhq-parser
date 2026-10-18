@@ -265,7 +265,10 @@ export function planWiki(data, opts) {
   for (const a of abilities) {
     if (!a || !a.id || !a.faction_id) continue;
     const text = clean(trimAbilityTail(clean(a.description)));
-    if (chars(text) < 80) continue;
+    // task-101: no 80-character floor. A faction army rule is a rule however short - 'This
+    // unit's ranged attacks have [ASSAULT].' is Devastator Doctrine, 42 characters - and the
+    // floor was leaving exactly 2 of the 71 export abilities with no faction rule at all.
+    if (chars(text) < 20) continue;
     const id = 'faction-rule#' + a.id;
     if (known.has(id)) continue;
     known.add(id);

@@ -28,7 +28,7 @@ const index = read('index.json');
 // (a) the three shapes at paths mirroring the URLs -----------------------------
 t('(a) index.json is exactly the branches with name, count and key', Object.keys(index), ['branches']);
 t('(a) the three branch keys are rules, missions and factions', index.branches.map(b => b.b), ['rules', 'missions', 'factions']);
-t('(a) the branch names and counts are the tree index', index.branches.map(b => b.n + ':' + b.c), ['Rules:843', 'Missions:115', 'Factions:5185']);
+t('(a) the branch names and counts are the tree index', index.branches.map(b => b.n + ':' + b.c), ['Rules:781', 'Missions:115', 'Factions:5187']);
 for (const b of index.branches) {
   const p = read('index/' + b.b + '.json');
   t('(a) index/' + b.b + '.json carries n, lvl, c, kids, recs, pages', ['n', 'lvl', 'c', 'kids', 'recs', 'pages'].every(k => k in p) && p.n === b.n && p.lvl === 'branch', true);
@@ -47,7 +47,7 @@ for (const book of books) {
   for (const [id, rec] of Object.entries(c.records)) { if (seen.has(id)) { console.log('DUPLICATE ' + id + ' in ' + seen.get(id) + ' and ' + book); } seen.set(id, book); slugBook.set(id, rec.slug.split('--')[0]); }
 }
 t('(b) every delivered record appears exactly once', seen.size, stats.delivered);
-t('(b) the delivered count is the render rule: pageNamer minus tree.filtered', stats.delivered, 6318);
+t('(b) the delivered count is the render rule: pageNamer minus tree.filtered', stats.delivered, 6258);
 // task-77: map.json is deleted. The witness is the corpus's own delivery rule
 // (rules-corpus isDelivered), computed here without the payload builder.
 const modelDelivered = readAllCorpus().filter(isDelivered).length;
@@ -114,7 +114,7 @@ const facPayload = read('index/factions.json');
 ok('(81-3b) the branch payload carries no rows map', facPayload.rows === undefined);
 const rowsFile = read('index/factions-rows.json');
 const rowMapIds = Object.keys(rowsFile.rows || {});
-t('(81-3) the rows file carries the page and owned ids', rowMapIds.length, 2082);
+t('(81-3) the rows file carries the page and owned ids', rowMapIds.length, 2084);
 ok('(81-3b) and the branch file is small again', fs.statSync(path.join(ROOT, 'workspace', 'wiki-data', 'index', 'factions.json')).size < 420000);
 let ownRows = 0, ownIds = new Set(), biggestOwn = 0;
 const walkOwn = n => { for (const r of (n.recs || [])) { if (r.own && r.own.length) { ownRows++; biggestOwn = Math.max(biggestOwn, r.own.length); for (const id of r.own) ownIds.add(id); } } for (const k of (n.kids || [])) walkOwn(k); };

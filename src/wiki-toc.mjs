@@ -83,8 +83,6 @@ export const ALLIANCE_KEYWORDS = ['Imperium', 'Chaos'];
 export const TREE_BOOKS = [
   { slug: 'core-rules', name: 'Core Rules', sources: ['core-rules', 'core-stratagems'] },
   { slug: 'rules-appendix', name: 'Rules Appendix', sources: ['rules-appendix'] },
-  // task-86: the faction abilities, each its own record under one book.
-  { slug: 'abilities', name: 'Abilities', sources: ['abilities'] },
 ];
 
 // The Mission parts, measured on the event-companion page's 14 top-level parts.
@@ -350,10 +348,6 @@ export function tocTree(records, pageOf, opts) {
   const resolveChapter = (r, book) => {
     const ch = resolveRaw(r);
     if (ch) return ch;
-    // task-86: the faction abilities are a book of their own. One chapter for the
-    // book - never the Core Abilities chapter (that is the universal abilities), and
-    // never one chapter per name.
-    if (book && book.slug === 'abilities') return { key: 'local:Abilities', name: 'Abilities', num: '', order: 1000 };
     // The 18 ability records carry no page anchor at all: they are the Core
     // Abilities content, so they join that chapter by kind rather than vanish.
     if (r.kind === 'ability') { const a = outline && outline.byText('Core Abilities'); if (a) return a; }

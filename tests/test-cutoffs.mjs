@@ -27,12 +27,12 @@ const files = tree.files;
 const kids = k => (files[k].kids || []);
 const cutKids = k => kids(k).filter(x => x.cut);
 
-t('the measured cutoff inventory: 65 unnumbered chapters, 3 parts, 48 groups', (function () {
+t('the measured cutoff inventory: 64 unnumbered chapters, 3 parts, 48 groups', (function () {
   const by = {};
   for (const n of Object.values(files)) if (n.cut) by[n.lvl] = (by[n.lvl] || 0) + 1;
   return by;
-})(), { chapter: 65, part: 3, group: 48 });
-t('and stats.cuts agrees', tree.stats.cuts, 116);
+})(), { chapter: 64, part: 3, group: 48 });
+t('and stats.cuts agrees', tree.stats.cuts, 115);
 
 // Rules: a 0x header is a LABEL, not an entry. It is not cut and its children are
 // listed in its place (task-61); the books still do not cut, and the Rulings
@@ -46,8 +46,9 @@ ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut && !files[
 ok('the two ruling books are waypoints, their chapters are the cutoffs', !files['tree/rulings/wtc.js'].cut && !files['tree/rulings/feq.js'].cut && kids('tree/rulings/wtc.js').every(x => x.cut) && kids('tree/rulings/feq.js').every(x => x.cut));
 ok('and the books are siblings of the rulebooks, not cut themselves', (function () {
   const books = kids('tree/rules.js').filter(x => x.lvl === 'book');
-  // task-86: the Abilities book joins the two rulebooks and the two ruling books.
-  return books.length === 5 && books.every(x => !x.cut);
+  // task-101: the two rulebooks and the two ruling books - the faction abilities are not a
+  // book of their own, they live with the faction that owns them.
+  return books.length === 4 && books.every(x => !x.cut);
 })());
 
 // Missions: all three parts cut - the '?' answered by symmetry with Events.

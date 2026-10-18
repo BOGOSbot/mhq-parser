@@ -148,11 +148,8 @@ export const RULINGS = { name: 'rulings', set: 'rulings', url: '', built: true }
 // The universal ability definitions, re-read from the core-rules page already on
 // disk (never fetched again, never written by hand): see buildAbilityDefsCorpus.
 export const ABILITY_DEFS = { name: 'ability-defs', set: 'rules', url: '', built: true };
-// task-86: the faction ability table (Abilities.csv), one record per distinct name
-// that no existing record already covers.
-export const ABILITIES = { name: 'abilities', set: 'rules', url: '', built: true };
 
-export const ALL_SOURCES = SOURCES.concat([FACTIONS_CSV, CORE_STRATAGEMS, RULINGS, ABILITY_DEFS, ABILITIES]);
+export const ALL_SOURCES = SOURCES.concat([FACTIONS_CSV, CORE_STRATAGEMS, RULINGS, ABILITY_DEFS]);
 
 export function sourcesFor(setName) {
   if (!setName || setName === 'all') return ALL_SOURCES;
@@ -1202,75 +1199,6 @@ export function buildFactionCorpus() {
 // would otherwise render as a card and surface in a findings list as content.
 export const RULING_DROP_IDS = new Set(['wtc11-did-you-know-057']);
 
-// --- the faction abilities ----------------------------------------------------
-// Abilities.csv is the faction half's ability table. Its description column carries RAW
-// HTML, unquoted, over several physical lines, so the file is NOT one row per line: a
-// row STARTS at a line matching /^\d{6,9}\|/, continuation lines fold into the row
-// they follow, and only then is the row split on '|'. That is exactly 95 rows and 71
-// distinct names (the repo's csvQuotedRows swallows the HTML newlines and finds 45).
-// 14 of the 71 names are already the Core Rules 'Duplicated Abilities' records, and one
-// record per ability name means they stay where they are: they are excluded here, and
-// the excluded list is returned so the build can say it.
-function slugOf(name) { return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
-export function buildAbilitiesCorpus() {
-  const raw = fs.readFileSync(path.join(csvDir(), 'Abilities.csv'), 'utf8').replace(/^\uFEFF/, '');
-  const rows = [];
-  let cur = null;
-  for (const line of raw.split(/\r?\n/)) {
-    if (/^\d{6,9}\|/.test(line)) { if (cur) rows.push(cur); cur = line; }
-    else if (cur) cur += '\n' + line;
-  }
-  if (cur) rows.push(cur);
-  const flat = t => htmlToText(String(t == null ? '' : t)).replace(/\s+/g, ' ').trim();
-  const byName = new Map();
-  let dropped = 0;
-  for (const row of rows) {
-    const f = row.split('|');
-    const name = String(f[1] == null ? '' : f[1]).trim();
-    if (!name) continue;
-    const id = String(f[0] == null ? '' : f[0]).trim();
-    const legend = flat(f[2]);
-    const faction = String(f[3] == null ? '' : f[3]).trim();
-    const description = flat(f[4]);
-    const cur2 = byName.get(name);
-    if (!cur2) { byName.set(name, { id: id, name: name, legend: legend, factions: new Set(faction ? [faction] : []), description: description }); continue; }
-    dropped++;
-    if (description.length > cur2.description.length) { cur2.description = description; cur2.id = id; }
-    if (!cur2.legend && legend) cur2.legend = legend;
-    if (faction) cur2.factions.add(faction);
-  }
-  // The names an existing rules record already carries (its heading's last segment).
-  const existing = new Set();
-  try {
-    for (const r of readAllCorpus('rules')) {
-      if (r.source !== 'core-rules') continue;
-      const segs = String(r.heading || '').split(' > ');
-      existing.add(segs[segs.length - 1].trim().toLowerCase());
-    }
-  } catch (e) {}
-  const kept = [...byName.values()].filter(function (a) { return !existing.has(a.name.toLowerCase()); });
-  const excluded = [...byName.values()].filter(function (a) { return existing.has(a.name.toLowerCase()); }).map(function (a) { return a.name; }).sort();
-  const sections = kept.map(function (a) {
-    // The name is the record's first line: the embedding and the citation carry the
-    // label, and the description alone would answer without saying what it answers.
-    const text = a.name + '\n' + a.description;
-    const facs = [...a.factions].sort();
-    return {
-      id: 'ability#' + slugOf(a.name), source: ABILITIES.name, set: 'rules', kind: 'ability',
-      heading: a.name, ruleId: '', anchor: '', hasAnchor: false, url: '',
-      legend: a.legend, factions: facs,
-      text: text, chars: text.length, hash: textHash(text),
-      provenance: { file: 'csv/Abilities.csv', id: a.id, name: a.name, factions: facs },
-    };
-  }).sort(function (x, y) { return x.heading.localeCompare(y.heading); });
-  const payload = {
-    source: ABILITIES.name, set: 'rules', url: '', edition: EDITION,
-    marker: { kind: 'Abilities.csv', edition: EDITION, version: '', lastUpdate: '', retrieved_at: '' },
-    scrapedAt: new Date().toISOString(), count: sections.length, anchored: 0, sections: sections,
-  };
-  writeCorpus(ABILITIES.name, payload);
-  return { count: sections.length, names: byName.size, dropped: dropped, excluded: excluded };
-}
 export function buildRulingsCorpus() {
   const manifest = JSON.parse(fs.readFileSync(path.join(rulingsDir(), 'sources.json'), 'utf8'));
   const bySource = new Map((manifest.sources || []).map(s => [s.source_id, s]));
@@ -3989,16 +3917,6 @@ async function main() {
       console.log('  ' + 'ability definitions'.padEnd(24) + String(built.count).padStart(5) + '  -> ' + corpusPath(ABILITY_DEFS.name));
       for (const n of built.names) console.log('      ' + n);
       if (built.skipped.length) console.log('  left out (the page defines no such ability): ' + built.skipped.join(', '));
-      console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 / 0');
-      return;
-    }
-    if (set === 'abilities') {
-      // Not a scrape: Abilities.csv is already on disk. See buildAbilitiesCorpus for
-      // the row fold and for why 14 of the 71 names are excluded.
-      const built = buildAbilitiesCorpus();
-      console.log('  ' + 'ability records'.padEnd(24) + String(built.count).padStart(5) + '  -> ' + corpusPath(ABILITIES.name));
-      console.log('  ' + 'distinct names'.padEnd(24) + String(built.names).padStart(5) + '  (' + built.dropped + ' duplicate rows folded, longest description kept)');
-      if (built.excluded.length) console.log('  ' + 'already covered'.padEnd(24) + String(built.excluded.length).padStart(5) + '  ' + built.excluded.join(', '));
       console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 / 0');
       return;
     }

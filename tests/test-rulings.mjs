@@ -90,7 +90,7 @@ ok('every ruling sits under Rules, in one of the two books', rulings.every(r => 
 ok('and every ruling is provenance-labelled', rulings.every(r => { const p = r.provenance || {}; return p.publisher && p.document && p.url && p.language; }));
 ok('with a third-party banner in its own record fragment', recordBody(rulings[0], {}).indexOf('Third-party ruling') !== -1 && recordBody(rulings[0], {}).indexOf('Not Games Workshop rules text.') !== -1);
 ok('ruling rows live in the ruling chapter files, never among the rulebook chapters', rulings.every(r => { const last = (tree.paths.get(r.id) || []).slice(-1)[0]; return last && String(last.f).indexOf('tree/rulings/') === 0; }));
-t('and both are siblings of the rulebooks under Rules', tree.files['tree/rules.js'].kids.filter(k => k.lvl === 'book').map(k => k.n), ['Core Rules', 'Rules Appendix', 'Abilities', 'WTC 11th Edition FAQ', 'FEQ 40K FAQ']);
+t('and both are siblings of the rulebooks under Rules', tree.files['tree/rules.js'].kids.filter(k => k.lvl === 'book').map(k => k.n), ['Core Rules', 'Rules Appendix', 'WTC 11th Edition FAQ', 'FEQ 40K FAQ']);
 t('WTC groups by topic, and the game rules topic is a chapter', tree.files['tree/rulings/wtc.js'].kids.some(k => k.n === 'core-rules' && k.c === 26), true);
 t('then by facet inside it', tree.files['tree/rulings/wtc/core-rules.js'].kids.some(k => k.n === 'Stratagems'), true);
 const wtcTopics = tree.files['tree/rulings/wtc.js'].kids.map(k => k.n);

@@ -20,8 +20,8 @@ t('an edition-11 datasheet is', isDelivered({ id: 'datasheet#000000882', edition
 t('an index stub is delivered (counted navigation, not filtered content)', isDelivered({ id: 'faction-index#faction-ae', edition: '11' }), true);
 t('an empty record is not delivered', isDelivered(null), false);
 // task-85 rebuilt the corpus from source: 7,283 records, 6,245 delivered, 1,038 filtered.
-t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7356, 7356]);
-t('delivered is 6,318 (154 rulings + 19 ability definitions + 43 mission cards + 62 faction ability records + 19 recovered numbered sections) and filtered is 1,038', [delivered.length, filtered.length], [6318, 1038]);
+t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7296, 7296]);
+t('delivered is 6,258 (154 rulings + 19 ability definitions + 43 mission cards + 62 faction ability records + 19 recovered numbered sections) and filtered is 1,038', [delivered.length, filtered.length], [6258, 1038]);
 
 // --- the query path cannot return what the product does not deliver -----------
 const ids = deliveredIds();
@@ -37,7 +37,7 @@ const dry = await ingest(null, { set: 'factions', dryRun: true });
 t('a dry-run faction ingest filtered exactly the 1,038', dry.filtered, 1038);
 const row = dry.sources.find(s => s.source === 'factions-csv');
 ok('and the source row reports its delivered sections, not the corpus count', !!row && row.sections + row.filtered > row.sections);
-ok('the source row reports its delivered and filtered counts', row.sections === 5358 && row.filtered === 1038);
+ok('the source row reports its delivered and filtered counts', row.sections === 5360 && row.filtered === 1038);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
