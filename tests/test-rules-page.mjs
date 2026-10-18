@@ -342,8 +342,11 @@ ok('an example chip grows the box', code.indexOf("$('#q').value = text; $('#q').
 ok('the translation re-ask grows the box', /growQuestion\(\);\s*\n\s*ask\(\{ question: text, english: true \}\)/.test(code));
 
 const headerHtml = PAGE.slice(PAGE.indexOf('<header>'), PAGE.indexOf('</header>'));
-ok('the translation box sits under the question in the header',
-  headerHtml.indexOf('id="trslot"') !== -1 && headerHtml.indexOf('id="trslot"') > headerHtml.indexOf('id="q"'));
+// The ask moved from the sticky header into the page body: the question is the page.
+const askHtml = PAGE.slice(PAGE.indexOf('<main>'), PAGE.indexOf('</main>'));
+ok('the translation box sits under the question',
+  askHtml.indexOf('id="trslot"') !== -1 && askHtml.indexOf('id="trslot"') > askHtml.indexOf('id="q"')
+  && askHtml.indexOf('id="trslot"') < askHtml.indexOf('id="result"'));
 ok('the translation event fills that box', /state\.translation = ev;[\s\S]{0,60}renderTranslation\(state\)/.test(code));
 ok('the box is the server text through the same card', /slot\.appendChild\(translationCard\(tr\)\)/.test(code));
 ok('it is no longer a results card', code.indexOf('state.rest.appendChild(translationCard') === -1);
@@ -381,8 +384,8 @@ ok('the mark in front is a mark, not a control',
   /el\('span', 'trmark'\)/.test(trBlock) && /mark\.setAttribute\('aria-hidden', 'true'\)/.test(trBlock)
   && /\.trmark\{[^}]*color:var\(--dim\)/.test(PAGE) && /\.trmark svg\{[^}]*rotate\(45deg\)/.test(PAGE)
   && trBlock.indexOf("el('button', 'trmark')") === -1 && PAGE.indexOf('transsend') === -1);
-ok('the row is the ask row shape', /\.trrow\{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap\}/.test(PAGE));
-ok('the box keeps the question box min width so the row wraps instead of squeezing', /textarea#q, textarea\.trbox\{[^}]*min-width:260px/.test(PAGE));
+ok('the row is the ask row shape', /\.trrow\{display:flex[^}]*flex-wrap:wrap/.test(PAGE));
+ok('the box can shrink, so the icons never push the page sideways', /textarea#q, textarea\.trbox\{[^}]*min-width:0[;}]/.test(PAGE));
 ok('the box starts at one row, like the question box', /ta\.rows = 1;/.test(trBlock));
 
 // Slice 1c: no heading, and the ask and the correction are one send control whose
@@ -426,7 +429,7 @@ ok('the question microphone types into the question box in the page language',
   /wireVoice\(document\.getElementById\('mic'\), document\.getElementById\('q'\), function \(\) \{\s*\n\s*return LANG === 'fr' \? 'fr-FR' : 'en-GB';/.test(code)
   && code.indexOf('speechLocale') === -1);
 ok('the language switch sits in the top bar, not under the question',
-  headerHtml.indexOf('id="lang"') !== -1 && headerHtml.indexOf('id="lang"') < headerHtml.indexOf('<form id="f">'));
+  headerHtml.indexOf('id="lang"') !== -1 && PAGE.indexOf('id="lang"') < PAGE.indexOf('<form id="f">'));
 ok('the wiki box reaches the ask pipeline', /function askFromQuery\(\)/.test(code) && /\[\?&\]q=\(\[\^&\]\*\)/.test(code) && /box\.value = text;\s*\n\s*growQuestion\(\);\s*\n\s*ask\(\);/.test(code));
 // task-22 brought the control back, for the judge's reasoning only: it must
 // exist, default to fast, and state what it moves (test-ask-toggle.mjs pins the

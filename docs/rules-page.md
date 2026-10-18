@@ -29,6 +29,12 @@ functionality document for that page; the army-list parser has its own in
   `{ found, tier, record, wiki }`, or on a miss `{ found: false, reason }` with
   `not-a-lookup`, `no-heading`, `only-mentions` or `ambiguous`. The page opens
   the record full screen on a hit and runs the normal ask untouched on a miss.
+- `GET /rules/find?q=...` is the wiki drawer's search: the same heading
+  projection the lookup router reads, returned as a ranked list instead of one
+  answer (`searchHeadings` in `src/header-index.mjs`, cap 40). Each row carries
+  the payload slug so a tap opens the record, and a row the payload has no page
+  for is dropped. No model, no embedding, no payload download - a phone asks and
+  gets rows.
 - `GET /health` publishes `corpus` (sections per half, build date, edition),
   the edition, and both inference routes. The page no longer prints the key
   state: which models a deployment uses is not the reader's business, and a
@@ -66,6 +72,40 @@ phrasing whose content words are French (`cherche les règles de mouvement`) fal
 through by design: there is no mechanical French rule-name lexicon, and the
 normal pipeline translates it.
 
+## The page
+
+One column, paper and ink, the rulebook's own serif for what is read and a
+grotesque for what is used. The sticky bar carries identity, the two links, the
+Wiki control and the language switch - one row at any width, because the page is
+a tool you put away. Below it the page is the question: a bordered composer with
+the send control inside it and the microphone beside it, the judge dial and the
+run status on a quiet line under it.
+
+What follows the composer is a footnote, not a landing page: the example
+questions, then one line listing the wiki's three books (**Browse the
+rulebook** - Rules, Missions, Factions), then **How this works** as a collapsed
+`details`. The three books open the drawer on that branch, so finding an entry
+does not require knowing that the Wiki control is the door. The retention line
+sits under that block and outside it, so a run hides the intro but never the
+note about what the page keeps.
+
+## Finding an entry
+
+The drawer is the whole rulebook: three books, then chapters, then the numbered
+rows, one record open at a time with its own prev/next bar. Above the tree there
+is one field, and it does not filter the open branch - it searches every book.
+`GET /rules/find` greps the heading projection and ranks the same three tiers
+the lookup router uses (the last heading segment is the phrase, then contains it,
+then carries it), then by kind and by length. A leading verb is not part of the
+name, so `find fuegan` and `trouve fuegan` search like `fuegan`, through the
+same mechanical French tables. A mention - a heading that is a sentence, a
+question or an FAQ entry - is never a result: the drawer offers names, not
+sentences. The tree keeps filtering under the request, and a stale answer cannot
+overwrite a newer query. A row carries its kind and book (`Datasheet · Aeldari`)
+and opens the record over the tree on the same back stack a body link uses. An
+empty list says so and offers the other act: *Ask it instead*, which closes the
+drawer and puts the words in the question box.
+
 ## Asking the question
 
 The question box is a textarea, not a one-line input: it grows with what is
@@ -77,7 +117,7 @@ Voice transcription, an example chip and the translation's re-ask all fill the
 same box and grow it. The translation box under the question is the same widget
 and grows the same way.
 
-**The translation has its own box under the question, in the header, with a send
+**The translation has its own box under the question, in the ask block, with a send
 button at its right.** There is no heading line: the card is the box and the
 button. The server already sends the text: the stream's `translation` event
 carries `detected` and `translated`, and a reply that is not streamed carries the
@@ -103,8 +143,8 @@ button stays `type="submit"` and keeps its icon while it is disabled during a
 run; the correction keeps its too-short-to-search guard. The Voice button is not
 one of these: it keeps its mic and its visible label.
 
-The retention line is at the top of the body, not in the header. A run hides the
-intro block; the retention line is not inside it, so the note about what the
+The retention line is under the intro in the body, not in the bar. A run hides
+the intro block; the retention line is not inside it, so the note about what the
 page keeps stays on screen while the question runs and after it.
 
 ## The corpus
@@ -210,6 +250,13 @@ those.
    the page draws no answer. `RULES_WRITER=1`, or `writer: true` in the request,
    turns it back on - the path is kept because its format is going into the
    judge.
+
+**The verdict is a strip, not a card of prose.** The judge's answer is one
+sentence with its confidence and the numbered passages it rests on, each a link;
+the model's reasoning sits behind a `why` toggle and the second judge is a
+collapsed row of its own. This is what keeps the findings above the fold on a
+390px phone: before it, two judges' reasoning pushed the first finding two
+screens down, on a page whose product is the findings.
 
 ## Two judges, one answer
 
@@ -345,14 +392,19 @@ ceiling is what keeps that from eating the evidence.
 
 ## Showing the findings
 
-The findings are the product, so the page draws them as findings: each carries
-the leg that produced it, the rank that leg gave it, and - when the lexical leg
-matched - the words it matched.
+The findings are the product, so the page draws them as findings and puts
+nothing else in front of them: a verdict strip above (one sentence, the
+confidence, the passages it rests on), then the rows. Each row is its number on
+the page, its title in the rulebook face, the section it sits in, and one line of
+the record with the heading chain cut from the front (the crumbs already say
+where it is). The instrumentation - which leg found it, its rank, its score, the
+words the lexical leg matched - moves into the `<>` panel where it belongs; the
+row at rest is the rule, not the retrieval.
 
 - `retrieveWide` records provenance as it searches: `vectorRank` beside the
   vector's similarity, `lexicalRank` beside the term score. Every finding comes
   back with a `leg` (`both`, `vector`, `lexical`, `anchored`, `child`) and its
-  position in the half. Both return paths decorate: the ranker is optional, and
+  position in the half; the row shows it in the `<>` panel, not at rest. Both return paths decorate: the ranker is optional, and
   a page whose findings have no leg cannot say where they came from.
 - The display sorts each half by that rank - ranks are per-half positions, so
   interleaving two halves would invent an order - shows the top five overall

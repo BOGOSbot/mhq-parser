@@ -8,7 +8,9 @@ const ok = (name, cond) => { if (cond) { pass++; } else { fail++; console.log('F
 const surface = fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.js'), 'utf8');
 const payload = fs.readFileSync(path.join(ROOT, 'src', 'wiki-payload.mjs'), 'utf8');
 ok('the inline box no longer prints a duplicate title', surface.indexOf('sv-inline-title') === -1 && surface.indexOf('sv-inline-meta') === -1);
-ok('the row prints the number before the title when it has one', /r\.num \? r\.num \+ ' '/.test(surface));
+ok('the row prints the number in its own margin slot, before the title',
+  /if \(r\.num\) b\.appendChild\(el\('span', 'sv-rec-num', r\.num\)\)/.test(surface)
+  && surface.indexOf("'sv-rec-num'") < surface.indexOf("'sv-rec-title'"));
 ok('the payload row carries the rule number, and never the chapter\'s own', /if \(raw\.ruleId && raw\.ruleId !== chNum\) out\.num = raw\.ruleId/.test(payload) && !/num: raw\.ruleId \|\| ''/.test(payload));
 // The corpus records the number: Dice is 01.05, its children 01.05.01 and 01.05.02.
 const core = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'rules-corpus', 'core-rules.json'), 'utf8'));

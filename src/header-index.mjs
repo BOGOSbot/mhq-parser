@@ -209,6 +209,48 @@ function rankCmp(a, b) {
     || String(a.id).localeCompare(String(b.id));
 }
 
+// The search. The lookup router answers ONE question with ONE record; a reader
+// looking something up in the drawer needs the list - every record whose heading
+// names the words, ranked by how the words sit in the last heading segment (the
+// same three tiers the lookup uses), then by the same kind and length order. It
+// is the same in-memory projection, so a search costs no payload, no model and
+// no embedding: on a phone it is a keypress and a round trip to our own server.
+// A mention (a sentence or FAQ heading) never appears: only canonical entries.
+export function searchHeadings(query, opts) {
+  const o = opts || {};
+  const limit = Math.min(Math.max(Number(o.limit) || 40, 1), 100);
+  const raw = String(query == null ? '' : query).trim();
+  if (raw.length < 2) return { words: [], rows: [], total: 0 };
+  // The same intent the lookup router reads: a leading verb ('find', 'cherche')
+  // names nothing, so 'find fuegan' and 'trouve fuegan' search like 'fuegan',
+  // through the same mechanical French tables. A bare name skips the verb step;
+  // a phrase the tables do not hold stays as typed.
+  const intent = lookupIntent(raw);
+  const words = (intent.lookup && intent.words && intent.words.length)
+    ? intent.words
+    : contentWords(translateLookupWords(foldWords(raw)).join(' '));
+  if (!words.length) return { words: [], rows: [], total: 0 };
+  const phrase = words.join(' ');
+  const index = o.index || headerIndex();
+  const scored = [];
+  for (const e of index) {
+    if (!e.canonical) continue;
+    if (!words.every(w => termPresent(e.heading.toLowerCase(), w))) continue;
+    scored.push({ e, tier: e.last === phrase ? 1 : (words.every(w => termPresent(e.last, w)) ? 2 : 3) });
+  }
+  scored.sort((a, b) => (a.tier - b.tier) || rankCmp(a.e, b.e));
+  const rows = scored.slice(0, limit).map(x => ({
+    id: x.e.id,
+    tier: x.tier,
+    // The name, not the path: the last segment is what the record is called. The
+    // split/twin markers are not part of a name (see cleanMarker).
+    title: cleanMarker(x.e.segments.length ? x.e.segments[x.e.segments.length - 1] : x.e.heading),
+    crumbs: x.e.segments.slice(0, -1),
+    kind: x.e.kind,
+  }));
+  return { words, rows, total: scored.length };
+}
+
 // The match. Returns { found: true, id, tier, candidates } or
 // { found: false, reason, candidates } with reason one of 'not-a-lookup',
 // 'no-heading', 'only-mentions', 'ambiguous'.

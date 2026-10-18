@@ -12,10 +12,14 @@
   var ASK = CFG.ask || '/rules/ask';
   var VOTE = CFG.vote || '/rules/vote';
   var ANSWERED = CFG.answered || '/rules/answered';
+  // The drawer's search: the server greps its own heading index, so a name typed
+  // in the drawer reaches all 6,000+ records without a payload download.
+  var FIND = CFG.find || '/rules/find';
   var DRAWER_KEY = 'wikiDrawer';
   var ROW_CAP = 500;
   var state = {
     branches: null, branch: null, cache: {}, open: {}, rows: {}, rowsCache: {}, rowsLoading: {}, filter: '',
+    hits: null, searchQ: '', searchTimer: null,
     mode: 'none', record: null, from: '', answer: null, icons: {},
   };
   
@@ -54,8 +58,10 @@
       head.appendChild(close);
       aside.appendChild(head);
       var filter = el('input', 'sv-filter');
-      filter.id = 'sv-filter'; filter.type = 'search'; filter.placeholder = 'Filter the tree';
-      filter.setAttribute('aria-label', 'Filter the tree');
+      filter.id = 'sv-filter'; filter.type = 'search';
+      filter.placeholder = 'Find a rule, unit or stratagem';
+      filter.setAttribute('aria-label', 'Find a rule, unit or stratagem');
+      filter.setAttribute('autocomplete', 'off');
       aside.appendChild(filter);
       var tree = el('div', 'sv-tree'); tree.id = 'sv-tree'; tree.setAttribute('role', 'tree');
       aside.appendChild(tree);
@@ -91,6 +97,14 @@
     return b;
   }
   function kindLabel(k) { var s = String(k || '').replace(/-/g, ' '); return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+  // The corpus keeps the source's ALL-CAPS emphasis ('FALL-BACK MOVE', 239 mission
+  // records): a name is a name, so a title that is entirely upper case is set in
+  // title case for display. The data keeps the source; only the screen changes.
+  function displayTitle(t) {
+    var s = String(t == null ? '' : t).replace(/^\[(.*)\]$/, '$1').trim();
+    if (!s || !/[A-Z]/.test(s) || s !== s.toUpperCase()) return s;
+    return s.toLowerCase().replace(/(^|[\s\-\/(\u2019'])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); });
+  }
   // A snippet cut at the cap gets a marker: 'MAXIMU' with nothing after it reads
   // as the rule's own typo rather than as an excerpt.
   function cut(text, n) {
@@ -124,7 +138,7 @@
     document.body.classList.toggle('sv-drawer-open', !!want);
     if (t) t.setAttribute('aria-expanded', want ? 'true' : 'false');
     try { localStorage.setItem(DRAWER_KEY, want ? '1' : '0'); } catch (e) {}
-    if (want) openIndex();
+    if (want) { openIndex(); searchLater(); }
     else hideDrawerRecord();
   }
   function drawerWanted() { try { return localStorage.getItem(DRAWER_KEY) === '1'; } catch (e) { return false; } }
@@ -170,6 +184,84 @@
     });
     if (!box.childNodes.length) box.appendChild(el('div', 'sv-empty', 'No matching branches.'));
   }
+  // --- finding an entry: the whole rulebook, one field -----------------------
+  // The tree asks the reader to know where a rule lives; the field asks only for
+  // its name. The server answers from the same heading index the ask page's lookup
+  // uses, so a name typed here reaches every book without a payload download, and
+  // each row is one tap from its record. The tree keeps filtering under it while
+  // the round trip is in flight, so typing never blocks on the network.
+  function searchLater() {
+    var box = $('sv-filter');
+    var q = box ? String(box.value || '').trim() : '';
+    if (state.searchTimer) { clearTimeout(state.searchTimer); state.searchTimer = null; }
+    if (q.length < 2) {
+      if (state.searchQ) { state.searchQ = ''; state.hits = null; renderTree(); }
+      return;
+    }
+    state.searchTimer = setTimeout(function () { runSearch(q); }, 180);
+  }
+  function runSearch(q) {
+    state.searchQ = q;
+    fetch(FIND + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+      .then(function (j) { if (state.searchQ !== q) return; state.hits = j; renderHits(q); })
+      .catch(function () { if (state.searchQ !== q) return; state.hits = { rows: [], failed: true }; renderHits(q); });
+  }
+  function renderHits(q) {
+    var box = treeEl();
+    if (!box) return;
+    box.textContent = '';
+    var rows = (state.hits && state.hits.rows) || [];
+    var head = el('div', 'sv-hits-head');
+    if (rows.length) {
+      head.appendChild(el('b', null, String(rows.length)));
+      head.appendChild(el('span', null, rows.length === 1 ? ' match' : ' matches'));
+      if (state.hits && state.hits.total > rows.length) head.appendChild(el('span', null, ' \u00b7 ' + state.hits.total + ' found'));
+    } else if (state.hits && state.hits.failed) {
+      head.appendChild(el('b', null, 'Search failed'));
+      head.appendChild(el('span', null, ' \u2014 the tree below still works.'));
+    } else {
+      head.appendChild(el('b', null, 'Nothing'));
+      head.appendChild(el('span', null, ' in the index names that.'));
+    }
+    box.appendChild(head);
+    rows.forEach(function (r) {
+      var b = el('button', 'sv-hit');
+      b.type = 'button';
+      b.appendChild(el('span', 'sv-hit-t', displayTitle(r.title)));
+      var meta = el('span', 'sv-hit-m');
+      var kind = r.kind === 'rule' ? '' : kindLabel(r.kind);
+      if (kind) meta.appendChild(el('span', null, kind));
+      var book = bookLabel(r.slug);
+      if (book) {
+        if (kind) meta.appendChild(el('span', null, ' \u00b7 '));
+        meta.appendChild(el('span', 'sv-hit-book', book));
+      }
+      if (r.crumbs && r.crumbs.length) meta.appendChild(el('span', null, ' \u2014 ' + r.crumbs.slice(-2).join(' \u203a ')));
+      b.appendChild(meta);
+      // A row opens the record it names, over the tree, with the same back stack
+      // a link inside a record uses: finding a rule and reading it are one tap.
+      b.addEventListener('click', function () {
+        recordBySlug(r.slug).then(function (rec) { if (rec) showInDrawer(rec, true); });
+      });
+      box.appendChild(b);
+    });
+    if (!rows.length && !(state.hits && state.hits.failed)) {
+      var empty = el('div', 'sv-hits-empty', 'Try the name alone \u2014 \u201cTyrannofex\u201d, \u201cRapid Ingress\u201d \u2014 or ask it as a question.');
+      var ask = el('a', 'sv-hits-ask', 'Ask it instead');
+      ask.href = '#';
+      ask.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        drawerOpen(false);
+        var q2 = $('q');
+        if (q2) { q2.value = q; q2.focus(); }
+      });
+      empty.appendChild(document.createElement('br'));
+      empty.appendChild(ask);
+      box.appendChild(empty);
+    }
+  }
+
   // task-81: every faction's page is named 'Army rules', so matching on the name
   // alone gave the FIRST one (Adepta Sororitas) to all 24 factions. The node's own
   // key carries its faction ('branch/alliance/faction/node'): that identifies the
@@ -260,7 +352,8 @@
     // row has a num when the corpus record has a ruleId. task-89: the row is the title
     // only - the book label and the 100-character preview are gone, they repeat the
     // chapter above and cut the text mid-sentence (Mandal, 2026-10-17).
-    b.appendChild(el('span', 'sv-rec-title', (r.num ? r.num + ' ' : '') + (r.title || leafOfId(r.id))));
+    if (r.num) b.appendChild(el('span', 'sv-rec-num', r.num));
+    b.appendChild(el('span', 'sv-rec-title', displayTitle(r.title || leafOfId(r.id))));
     b.addEventListener('click', function (ev) { ev.preventDefault(); toggleInline(r, wrap, siblings); });
     wrap.appendChild(b);
     return wrap;
@@ -402,7 +495,7 @@
     back.type = 'button';
     back.addEventListener('click', function () { cold ? drawerOpen(true) : closePage(); });
     v.appendChild(back);
-    v.appendChild(el('h1', 'sv-page-title', titleOf(record)));
+    v.appendChild(el('h1', 'sv-page-title', displayTitle(titleOf(record))));
     var meta = [kindLabel(record.kind), bookLabel(record.slug)].filter(Boolean).join(' \u00b7 ');
     if (meta) v.appendChild(el('p', 'sv-page-meta', meta));
     var body = el('div', 'sv-page-body');
@@ -488,7 +581,7 @@
     back.textContent = '\u2190 ' + (stack.length > 1 ? titleOf(stack[stack.length - 2]) : 'Wiki');
     back.addEventListener('click', function (ev) { ev.preventDefault(); drawerBack(); });
     panel.appendChild(back);
-    panel.appendChild(el('h2', 'sv-drawer-title', titleOf(record)));
+    panel.appendChild(el('h2', 'sv-drawer-title', displayTitle(titleOf(record))));
     var meta = [kindLabel(record.kind), bookLabel(record.slug)].filter(Boolean).join(' \u00b7 ');
     if (meta) panel.appendChild(el('p', 'sv-drawer-meta', meta));
     var body = el('div', 'sv-inline-body');
@@ -618,6 +711,24 @@
   // (3) Every finding carries the same shape: Kind \u00b7 Book. The book is the slug's
   // prefix, else the faction's display name, else the source's own name - never a
   // bare kind with the book silently missing.
+  // A record's stored text begins with its own heading chain (the corpus writes it
+  // in front of the body so the vector carries its context). The finding already
+  // prints that chain as crumbs, so the excerpt cuts exactly the longest prefix of
+  // it: 'Movement Phase > 3. End of Movement Phase > 09.05.01 More Than One...'
+  // becomes the sentence a reader came for. Nothing else in the text is touched.
+  function stripHeadingPrefix(text, heading) {
+    var segs = String(heading || '').split(' > ').filter(Boolean);
+    var t = String(text == null ? '' : text);
+    for (var i = segs.length; i > 0; i--) {
+      var pre = segs.slice(0, i).join(' > ');
+      if (pre && t.indexOf(pre) === 0) {
+        var rest = t.slice(pre.length).replace(/^\s*>\s*/, '').trim();
+        if (rest) return rest;
+        break;
+      }
+    }
+    return t;
+  }
   function sourceLine(f) {
     var kind = f.set === 'factions' ? 'Faction' : (f.set === 'rules' ? 'Rule' : kindLabel(f.set));
     var book = bookLabel(f.slug) || String(f.faction || '') || bookFromSource(f.source) || 'Rules';
@@ -701,7 +812,7 @@
     if (toggle) toggle.addEventListener('click', function (ev) { if (ev && ev.preventDefault) ev.preventDefault(); var d = $('sv-drawer'); drawerOpen(!(d && d.classList.contains('sv-open'))); });
     if (close) close.addEventListener('click', function () { drawerOpen(false); });
     if (form) form.addEventListener('submit', function (ev) { ev.preventDefault(); ask(); });
-    if (filter) filter.addEventListener('input', function () { state.filter = String(filter.value || '').trim().toLowerCase(); renderTree(); });
+    if (filter) filter.addEventListener('input', function () { state.filter = String(filter.value || '').trim().toLowerCase(); renderTree(); searchLater(); });
     window.addEventListener('popstate', function () { if (!fromHash()) closePage(); });
     window.addEventListener('hashchange', function () { fromHash(); });
     drawerOpen(drawerWanted());
@@ -857,7 +968,7 @@ function findingItem(f, prominent, cited, state, ctx) {
   if (first) head.appendChild(el('span', 'leg badgetop', ctx.t('heroTop')));
   if (ignored) head.appendChild(el('span', 'leg badgeign', ctx.t('heroIgnored')));
   var parts = ctx.crumbs(f.heading);
-  var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + (parts.length ? parts[parts.length - 1] : f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
+  var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + displayTitle(parts.length ? parts[parts.length - 1] : f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
   a.href = f.href || f.url; a.target = '_blank'; a.rel = 'noopener';
   // The title opens the record, not the source page: the source is one tap
   // further in, inside the record, where the reader is already looking.
@@ -876,7 +987,7 @@ function findingItem(f, prominent, cited, state, ctx) {
   // One line at rest: the card says what the passage is, and the dev toggle opens
   // the whole record instead of a wall of prose above the answer.
   var p = el('p', 'ftext heroline');
-  p.appendChild(ctx.markTerms(f.excerpt || '', (f.leg === 'lexical' || f.leg === 'both') ? f.matchedTerms : []));
+  p.appendChild(ctx.markTerms(stripHeadingPrefix(f.excerpt || '', f.heading), (f.leg === 'lexical' || f.leg === 'both') ? f.matchedTerms : []));
   li.appendChild(p);
   var chips = ctx.linkChips(f);
   if (chips) li.appendChild(chips);
@@ -958,6 +1069,7 @@ function devPanel(f, state, ctx) {
       host.appendChild(findingsCard(state.findings, state.counts, state.cited, state, ctx));
     },
     findingOrder: function (findings, cited, state, ctx) { return heroOrder(findings, cited, state, ctx); },
+    displayTitle: displayTitle,
     controls: function (state, f, ctx) { return findingControls(state, f, isFirsted(state, f), isIgnored(state, f), ctx); },
     meta: function (f, ctx) { return findingMeta(f, ctx); },
   };

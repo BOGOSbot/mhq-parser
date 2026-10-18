@@ -55,8 +55,11 @@ export const CARD_CSS = [
   '.svl-cp { display:inline-block; min-width:34px; text-align:center; padding:4px 8px; border-radius:6px; background:#7a1f1f; color:#fff; font-weight:700; }',
   '.svl-type { font-size:.85em; letter-spacing:.04em; text-transform:uppercase; opacity:.75; }',
   '.svl-rows { width:100%; border-collapse:collapse; margin:0 0 12px; }',
-  '.svl-rows th { text-align:left; vertical-align:top; white-space:nowrap; padding:6px 10px 6px 0; font-size:.8em; letter-spacing:.04em; text-transform:uppercase; opacity:.7; border-top:1px solid rgba(255,255,255,.12); }',
-  '.svl-rows td { padding:6px 0; border-top:1px solid rgba(255,255,255,.12); vertical-align:top; }',
+  '.svl-rows th { text-align:left; vertical-align:top; white-space:nowrap; padding:8px 12px 8px 0; font-size:.78em; letter-spacing:.04em; text-transform:uppercase; opacity:.7; border-top:1px solid var(--line); }',
+  '.svl-rows td { padding:8px 0; border-top:1px solid var(--line); vertical-align:top; }',
+  // task-105: on a phone the label column ate half the line and left the rule as a
+  // 190 px strip. Below 600 px a row stacks: the label, then its text full width.
+  '@media (max-width:600px){.svl-rows,.svl-rows tbody,.svl-rows tr{display:block;width:auto}.svl-rows tr{border-top:1px solid var(--line);padding:9px 0 2px}.svl-rows th{display:block;border-top:0;padding:0 0 3px}.svl-rows td{display:block;border-top:0;padding:0 0 8px}}',
   // task-89: the ALL-CAPS structure in the plain ability fallback.
   '.wcaps { font-weight:700; color:var(--dim, #98a2b3); }',
   // The datasheet's flavour is its own column in the export; it reads as flavour
@@ -66,13 +69,13 @@ export const CARD_CSS = [
   '.wcard { margin:0 0 1.2rem; }',
   // The rule body as prose (mhq task-74). The stored text is a flat transcription, so
   // the reading has to be put back: paragraphs, bullets, and monospace only where the
-  // text is really a table. Colours are literal rgba rather than a variable: card.css is
-  // loaded by both surfaces and they do not name their palette the same way.
+  // text is really a table. task-105: the two surfaces name their palette the same way
+  // now (the shell defines --line and --chip), so the table reads on paper and at night.
   '.wprose { margin:.2rem 0 0; }',
   '.wprose p { margin:0 0 .85rem; }',
   '.wprose .wlist { margin:0 0 .85rem; padding-left:1.15rem; }',
   '.wprose .wlist li { margin:0 0 .3rem; }',
-  '.wprose .wtable { margin:0 0 .85rem; padding:.55rem .6rem; overflow-x:auto; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.10); border-radius:8px; font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre; }',
+  '.wprose .wtable { margin:0 0 .85rem; padding:.6rem .7rem; overflow-x:auto; background:var(--chip, rgba(128,128,128,.08)); border:1px solid var(--line, rgba(128,128,128,.2)); border-radius:10px; font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre; }',
   // The rulings' provenance banner: it rides in the fragment (recordBody), so
   // the page and the ask dialog share it. Loud enough to not be mistaken for GW
   // text, quiet enough not to shout on every card.

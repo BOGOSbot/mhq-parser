@@ -43,7 +43,7 @@ import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceS
 import { corpusDir } from './rules-corpus.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
-import { lookupRecord } from './header-index.mjs';
+import { lookupRecord, searchHeadings } from './header-index.mjs';
 import { devHtml, devState } from './dev-report.mjs';
 // Slice 2, additive: the dev route and the surface's static files. The flip in
 // slice 4 wires the surface into rules.html; nothing here touches it.
@@ -1013,6 +1013,25 @@ async function handleRulesLookup(req, res, u) {
   });
 }
 
+// GET /rules/find?q= - the drawer's search. Every record whose heading names the
+// words, ranked, as one small JSON list: the server already holds the heading
+// projection in memory for the lookup router, so a search is a grep and a round
+// trip - no payload fetch, no model, nothing for a phone to download beyond the
+// rows it shows. A row carries the payload slug, which is the only address the
+// drawer can open a record by.
+async function handleRulesFind(req, res, u) {
+  const q = String((u && u.searchParams.get('q')) || '').trim();
+  let out;
+  try { out = searchHeadings(q, { limit: 40 }); }
+  catch (e) { return fail(res, 500, 'search failed: ' + String((e && e.message) || e)); }
+  const slugs = surfaceSlugMap();
+  const rows = (out.rows || [])
+    .map(r => ({ slug: slugs.get(r.id) || '', title: r.title, kind: r.kind, tier: r.tier, crumbs: r.crumbs }))
+    .filter(r => r.slug);
+  // The pre-filter count, so a capped list can say how many matched in all.
+  return json(res, 200, { ok: true, q, total: out.total || rows.length, rows });
+}
+
 async function handleRulesAsk(req, res) {
   let body;
   try { body = JSON.parse((await readBody(req, 128 * 1024)) || '{}'); }
@@ -1633,6 +1652,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && u.pathname === '/rules/record') return handleRulesRecord(req, res, u);
   if ((req.method === 'GET' || req.method === 'HEAD') && u.pathname === '/rules/asset') return handleRulesAsset(req, res, u);
   if (req.method === 'GET' && u.pathname === '/rules/lookup') return handleRulesLookup(req, res, u);
+  if (req.method === 'GET' && u.pathname === '/rules/find') return handleRulesFind(req, res, u);
   return fail(res, 404, 'not found: ' + u.pathname);
 });
 
