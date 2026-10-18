@@ -47,7 +47,7 @@ import { lookupRecord } from './header-index.mjs';
 import { devHtml, devState } from './dev-report.mjs';
 // Slice 2, additive: the dev route and the surface's static files. The flip in
 // slice 4 wires the surface into rules.html; nothing here touches it.
-import { dataDir as surfaceDataDir, surfaceAsset, surfacePage, surfaceSlugMap } from './wiki-surface.mjs';
+import { assetStamp, dataDir as surfaceDataDir, surfaceAsset, surfacePage, surfaceSlugMap } from './wiki-surface.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // The process's own birth time, published by /dev: a src/ file newer than this is
@@ -1533,7 +1533,16 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, ICON_180 || ICON_32 || ICON, 'image/png', { maxAge: 'public, max-age=604800' });
   }
   if (req.method === 'GET' && u.pathname === '/rules') {
-    try { return send(res, 200, readRules(), 'text/html; charset=utf-8'); }
+    // task-95: the two client assets are named with a content stamp, so a page load can
+    // never run a client older than the server that served it. A stale tab cost Mandal
+    // three reports of a defect already fixed here.
+    try {
+      const v = assetStamp();
+      const html = readRules()
+        .replace('/rules/surface.css"', '/rules/surface.css?v=' + v + '"')
+        .replace('/rules/surface.js"', '/rules/surface.js?v=' + v + '"');
+      return send(res, 200, html, 'text/html; charset=utf-8');
+    }
     catch (e) { return fail(res, 500, 'rules.html could not be read: ' + String((e && e.message) || e)); }
   }
   // The slice-2 dev route: the new surface beside the old one. It reads the baked

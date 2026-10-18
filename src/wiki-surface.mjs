@@ -9,6 +9,7 @@
  * because a regex written into a template literal once lost its backslashes and
  * killed the whole shell with an error node --check could not see.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +22,17 @@ const ASSETS = {
   'surface.js': { file: 'wiki-surface.js', type: 'text/javascript; charset=utf-8' },
   'surface.css': { file: 'wiki-surface.css', type: 'text/css; charset=utf-8' },
 };
+
+// task-95: the shell names the two assets with a content stamp, so a browser can never run
+// yesterday's client against today's server. A stale tab cost Mandal three reports of a
+// defect that was already fixed on the server: his page had the old bundle in memory and
+// nothing asked for the new one. The stamp is a hash of the two files, read per render -
+// they are read to serve them anyway.
+export function assetStamp() {
+  const h = crypto.createHash('sha1');
+  for (const name of Object.keys(ASSETS).sort()) h.update(fs.readFileSync(path.join(SURFACE_DIR, ASSETS[name].file)));
+  return h.digest('hex').slice(0, 10);
+}
 
 export function surfaceAsset(name) {
   const a = ASSETS[String(name || '').replace(/^.*\//, '')];
@@ -66,7 +78,7 @@ export function surfacePage(opts) {
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
     '<title>' + title + '</title>',
-    '<link rel="stylesheet" href="/rules/surface.css">',
+    '<link rel="stylesheet" href="/rules/surface.css?v=' + assetStamp() + '">',
     '</head>',
     '<body>',
     '<header class="sv-top">',
@@ -91,7 +103,7 @@ export function surfacePage(opts) {
     '  <div id="sv-tree" class="sv-tree" role="tree"></div>',
     '</aside>',
     '<script>window.WIKI_SURFACE = { data: ' + JSON.stringify(o.dataBase || '/rules/data') + ', record: ' + JSON.stringify(o.recordBase || '/rules/record') + ' };</script>',
-    '<script src="/rules/surface.js"></script>',
+    '<script src="/rules/surface.js?v=' + assetStamp() + '"></script>',
     '</body>',
     '</html>',
   ].join('\n');
