@@ -125,6 +125,7 @@
     if (t) t.setAttribute('aria-expanded', want ? 'true' : 'false');
     try { localStorage.setItem(DRAWER_KEY, want ? '1' : '0'); } catch (e) {}
     if (want) openIndex();
+    else hideDrawerRecord();
   }
   function drawerWanted() { try { return localStorage.getItem(DRAWER_KEY) === '1'; } catch (e) { return false; } }
 
@@ -443,6 +444,105 @@
     return false;
   }
 
+  // --- the drawer's own record view (task-104) ---------------------------------
+  // A link inside a record body is a slug ('#ignore-modifiers-...'). It used to set the
+  // hash, and fromHash() turned it into a PAGE under the drawer: the reader lost the tree
+  // and the back button said 'Open the wiki'. A link now stays in the drawer and opens the
+  // record it points at, on a stack, so a chain of links reads like a path.
+  function drawerStack() { if (!state.dstack) state.dstack = []; return state.dstack; }
+  function drawerPanel() {
+    var d = $('sv-drawer');
+    if (!d) return null;
+    var p = $('sv-drawer-record');
+    if (!p) {
+      p = el('div', 'sv-drawer-record');
+      p.id = 'sv-drawer-record';
+      p.setAttribute('hidden', '');
+      p.setAttribute('aria-label', 'Record');
+      d.appendChild(p);
+    }
+    return p;
+  }
+  function recordBySlug(slug) {
+    var book = bookOf(slug);
+    if (!book) return Promise.resolve(null);
+    return getJson(DATA + '/content/' + book + '.json').then(function (j) {
+      var recs = (j && j.records) || {}, hit = null;
+      Object.keys(recs).forEach(function (id) { if (recs[id] && recs[id].slug === slug) hit = recs[id]; });
+      return hit;
+    }).catch(function () { return null; });
+  }
+  function showInDrawer(record, push) {
+    var d = $('sv-drawer'), panel = drawerPanel(), tree = treeEl();
+    if (!d || !panel || !record) return;
+    var stack = drawerStack();
+    if (push !== false) stack.push(record);
+    // Save the tree's place only while it is still visible: a hidden tree reports 0, so
+    // saving on every step of a chain would overwrite the place the reader left.
+    if (tree && push !== false && !d.classList.contains('sv-reading')) state.treeScroll = tree.scrollTop;
+    d.classList.add('sv-reading');
+    panel.removeAttribute('hidden');
+    panel.textContent = '';
+    var back = el('button', 'sv-back sv-drawer-back');
+    back.type = 'button';
+    back.textContent = '\u2190 ' + (stack.length > 1 ? titleOf(stack[stack.length - 2]) : 'Wiki');
+    back.addEventListener('click', function (ev) { ev.preventDefault(); drawerBack(); });
+    panel.appendChild(back);
+    panel.appendChild(el('h2', 'sv-drawer-title', titleOf(record)));
+    var meta = [kindLabel(record.kind), bookLabel(record.slug)].filter(Boolean).join(' \u00b7 ');
+    if (meta) panel.appendChild(el('p', 'sv-drawer-meta', meta));
+    var body = el('div', 'sv-inline-body');
+    body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
+    panel.appendChild(body);
+    panel.scrollTop = 0;
+    if (state.rows[record.id]) { body.innerHTML = faceHtml(record.id) + state.rows[record.id]; wireFaces(body); return; }
+    fetch(REC + '?id=' + encodeURIComponent(record.id) + '&format=html', { credentials: 'same-origin' })
+      .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
+      .then(function (html) {
+        state.rows[record.id] = html;
+        loadFaces().then(function () {
+          if (!panel.contains(body)) return;
+          body.innerHTML = faceHtml(record.id) + html;
+          wireFaces(body);
+        });
+      })
+      .catch(function () { body.textContent = 'The record could not be loaded.'; });
+  }
+  function drawerBack() {
+    var stack = drawerStack();
+    stack.pop();
+    if (!stack.length) { hideDrawerRecord(); return; }
+    showInDrawer(stack[stack.length - 1], false);
+  }
+  function hideDrawerRecord() {
+    var d = $('sv-drawer'), panel = $('sv-drawer-record'), tree = treeEl();
+    if (state.dstack) state.dstack.length = 0;
+    if (d) d.classList.remove('sv-reading');
+    if (panel) { panel.setAttribute('hidden', ''); panel.textContent = ''; }
+    // The tree lost its layout while hidden, so its scroll height reads 0 until a reflow:
+    // reading it first is what makes the restored offset stick.
+    if (tree && state.treeScroll != null) { void tree.scrollHeight; tree.scrollTop = state.treeScroll; }
+  }
+  // One delegated handler, so every body rendered in the drawer is covered - including
+  // the ones fetched after the handler is wired.
+  function wireDrawerLinks() {
+    var d = $('sv-drawer');
+    if (!d || d.svLinksWired) return;
+    d.svLinksWired = true;
+    d.addEventListener('click', function (ev) {
+      var node = ev.target, a = null;
+      while (node && node !== d) {
+        if (node.tagName === 'A' && node.classList && node.classList.contains('wlink')) { a = node; break; }
+        node = node.parentNode;
+      }
+      if (!a) return;
+      var slug = String(a.getAttribute('href') || '').replace(/^#/, '');
+      if (slug.indexOf('--') === -1) return;
+      ev.preventDefault();
+      recordBySlug(slug).then(function (rec) { if (rec) showInDrawer(rec, true); });
+    });
+  }
+
   // --- the ask: the judged findings, the tail, the one icon --------------------
   function ask() {
     drawerOpen(false);
@@ -596,6 +696,7 @@
 
   function boot() {
     ensureChrome();
+    wireDrawerLinks();
     var form = $('sv-ask'), toggle = toggleEl(), close = $('sv-drawer-close'), filter = $('sv-filter');
     if (toggle) toggle.addEventListener('click', function (ev) { if (ev && ev.preventDefault) ev.preventDefault(); var d = $('sv-drawer'); drawerOpen(!(d && d.classList.contains('sv-open'))); });
     if (close) close.addEventListener('click', function () { drawerOpen(false); });

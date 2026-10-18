@@ -20,6 +20,16 @@ body{background:var(--sv-bg);color:var(--sv-ink);font:16px/1.5 system-ui,-apple-
 .sv-drawer.sv-open{transform:translateY(0)}
 .sv-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--sv-line)}
 .sv-filter{margin:10px 12px;padding:10px 12px;border:1px solid var(--sv-line);background:var(--sv-bg);color:var(--sv-ink);border-radius:10px;font:inherit}
+/* task-104: a link inside a record stays in the drawer. The record it points at opens
+   over the tree, with a back stack, so following a chain of links is a path and not a
+   page load. The tree keeps its own scroll while the panel covers it. */
+.sv-drawer.sv-reading .sv-filter,.sv-drawer.sv-reading .sv-tree{display:none}
+.sv-drawer-record{flex:1;overflow-y:auto;padding:0 12px 24px}
+.sv-drawer-record[hidden]{display:none}
+.sv-drawer-record .wcard,.sv-drawer-record .text{max-width:100%}
+.sv-drawer-back{border:0;background:none;color:var(--sv-acc);font:inherit;padding:12px 0 6px;text-align:left;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv-drawer-title{margin:.1rem 0 .2rem;font-size:1.15rem;font-weight:650;letter-spacing:0;text-transform:none;color:var(--sv-ink)}
+.sv-drawer-meta{color:var(--sv-dim);font-size:.85em;margin:0 0 .8rem}
 .sv-tree{flex:1;overflow-y:auto;padding:0 12px 24px}
 .sv-node{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--sv-line);background:none;color:var(--sv-ink);padding:11px 4px;font:inherit}
 .sv-node .sv-c{color:var(--sv-dim);font-size:.85em;margin-left:6px}
