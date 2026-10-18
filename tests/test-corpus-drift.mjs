@@ -60,7 +60,7 @@ const BASELINE = {
   scrape: { sections: 382, chars: 289486 },
   shape: {
     'core-rules': { sections: 382, chars: 289486 },
-    'factions-csv': { sections: 6396, bytes: 10011519 },
+    'factions-csv': { sections: 6396, bytes: 10092687 },
     abilities: { sections: 62 },
   },
 };
@@ -144,7 +144,7 @@ t('(drift) the CSV path reproduces factions-csv.json', {
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
   added: csvAdded,
   missing: csvMissing,
-}, { sections: 6396, bytes: 10011519, added: 0, missing: 0 });
+}, { sections: 6396, bytes: 10092687, added: 0, missing: 0 });
 
 const rebuiltPool = fs.readdirSync(root).filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')))

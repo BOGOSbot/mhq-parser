@@ -356,10 +356,8 @@
   {
    "q": "seer council",
    "lang": "en",
-   "kind": "bare",
-   "expect": [
-    "detachment#000001023"
-   ]
+   "kind": "ambiguous",
+   "expect": []
   },
   {
    "q": "Asurmen",

@@ -1111,7 +1111,11 @@ export function buildFactionSections() {
       clean(e.legend),
       clean(e.description),
     ];
-    push('enhancement#' + e.id, 'enhancements', e.name + ' (' + faction + ')', factionLink.get(e.faction_id) || '', lines);
+    // Mandal, 2026-10-18: the heading names the KIND and where the enhancement lives -
+    // 'Spirit Stone of Raelyth (Enhancement - Aeldari, Armoured Warhost)' - so a reader sees
+    // what it is and which detachment it belongs to without opening it.
+    const heading = e.name + ' (Enhancement - ' + faction + (clean(e.detachment) ? ', ' + clean(e.detachment) : '') + ')';
+    push('enhancement#' + e.id, 'enhancements', heading, factionLink.get(e.faction_id) || '', lines);
   }
 
   return { lastUpdate, sections: out, boarding: outOfScope };

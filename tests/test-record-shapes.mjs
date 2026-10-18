@@ -21,7 +21,7 @@ const hasCsvCols = r => /^\s*(?:Type|CP)\s*:/m.test(String(r.text)) || /^\s*Turn
   // task-99: the builder's own label line ('NAME - Aeldari stratagem') is an echo the card
   // already carries, and the export's legend/Detachment lines move or leave. A CSV record
   // with none of the Type/CP/Turn columns still renders differently.
-  /^[^\n]*\s-\s[^\n]*(?:stratagem|ability|army rule)\s*$/i.test(String(r.text).split('\n')[0] || '');
+  /^[^\n]*\s-\s[^\n]*(?:stratagem|ability|army rule|enhancement|detachment)\s*$/i.test(String(r.text).split('\n')[0] || '');
 for (const r of all) {
   const text = stripBuiltBlock(r);
   const shape = recordShape(text);

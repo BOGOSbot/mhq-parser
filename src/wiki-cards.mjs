@@ -32,7 +32,7 @@ import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries } from './wiki-plan.mjs';
 
 // task-97: the CSV export's own columns. Only a record from a CSV source carries them, so only
 // there do they leave the prose - a rule whose text happens to say 'Type:' is not ours to cut.
-const CSV_SOURCES = ['stratagems', 'core-stratagems', 'factions-csv', 'abilities', 'ability-defs'];
+const CSV_SOURCES = ['stratagems', 'core-stratagems', 'enhancements', 'detachments', 'factions-csv', 'abilities', 'ability-defs'];
 
 // The two kinds whose text is a flat transcription of the CSV card. Every other
 // kind (stratagem, enhancement, detachment, rule, ability, index) has no card
@@ -549,17 +549,21 @@ function capsHtml(html) {
 // task-99: the export's flavour line - the one the builder writes between the metadata and
 // the rule itself ('Analysing their targets' weaknesses ... the Aeldari fire for lethal
 // effect.'). It is flavour, so it renders as flavour (italic), not as a rule line.
-function legendOf(text, heading) {
+function legendOf(text, heading, kind) {
   const lines = String(text == null ? '' : text).split(/\r?\n/);
   const name = String(heading || '').trim().toLowerCase();
   for (let i = 0; i < lines.length - 1; i++) {
     const cur = lines[i].trim(), nxt = lines[i + 1].trim();
-    if (!cur || /^(?:Type|CP|Turn|Detachment)\s*:/.test(cur)) continue;
+    if (!cur || /^(?:Type|CP|Turn|Detachment|Cost)\s*:/.test(cur)) continue;
     // The record's own name line is the heading echo, not flavour.
     if (i === 0 && name && cur.toLowerCase() === name) continue;
     // A rule label carries its colon ('WHEN: ...'); a sentence that merely starts with
     // 'When' does not - the abilities' own text opens 'When this unit is selected ...'.
     if (/^(?:WHEN|TARGET|EFFECT|TRIGGER|RESTRICTIONS|MAXIMUM DISTANCE|ELIGIBLE IF|BEFORE MOVING|AFTER MOVING|WHILE SHOOTING|WHILE MOVING)\s*:/.test(nxt)) return cur;
+    // task-100: an enhancement has no labelled fields. The builder writes label, Cost,
+    // Detachment, legend, rule - and 934 of the 936 export rows carry a legend - so the
+    // line after the metadata is the flavour.
+    if (kind === 'enhancement' && i > 0 && /^(?:Cost|Detachment)\s*:/.test(lines[i - 1].trim())) return cur;
   }
   return '';
 }
@@ -568,20 +572,29 @@ function shapeHtml(text, opts) {
   const shape = recordShape(text, opts && opts.selfHeading);
   // The builder's own label line ('NAME - Aeldari stratagem') is the heading the card
   // already carries: an echo (Mandal, 2026-10-18). Dropped for display only.
-  const label = /^[^\n]*\s-\s[^\n]*(?:stratagem|ability|army rule)\s*$/i;
+  const label = /^[^\n]*\s-\s[^\n]*(?:stratagem|ability|army rule|enhancement|detachment)\s*$/i;
   let src = String(text == null ? '' : text);
   if (csv) {
     const first = src.split(/\r?\n/);
     if (first.length && label.test(first[0])) src = first.slice(1).join('\n');
   }
-  const legend = csv ? legendOf(src, opts && opts.selfHeading) : '';
-  if (legend) src = src.split(/\r?\n/).filter(function (l) { return l.trim() !== legend; }).join('\n');
-  const legendHtml = legend ? '<p class="wcard-legend">' + esc(legend) + '</p>' : '';
+  const legend = csv ? legendOf(src, opts && opts.selfHeading, opts && opts.csvKind) : '';
+  // task-100: marked 'data-type="lore"' so the flavour can be dropped by a rule later
+  // without touching the rule text (Mandal, 2026-10-18).
+  const legendHtml = legend ? '<p class="wcard-legend" data-type="lore">' + esc(legend) + '</p>' : '';
+  // task-100: the legend keeps its place in the source - between the metadata ('Cost: 20 pts')
+  // and the rule - so the prose is rendered in two parts around it.
+  const srcLines = src.split(/\r?\n/);
+  const legendAt = legend ? srcLines.findIndex(function (l) { return l.trim() === legend; }) : -1;
+  const srcBefore = (legendAt === -1 ? srcLines : srcLines.slice(0, legendAt)).join('\n');
+  const srcAfter = legendAt === -1 ? '' : srcLines.slice(legendAt + 1).join('\n');
+  if (legendAt !== -1) src = srcBefore + '\n' + srcAfter;
+
   // task-97: the CSV's own columns are metadata, not the book's words. The shape detection
   // above still reads them (they are how a card is classified); the rendered prose does not.
-  if (!shape) return legendHtml + proseHtml(csv ? stripTurnPhase(stripCsvColumns(src)) : src, opts);
+  if (!shape) return proseHtml(csv ? stripTurnPhase(stripCsvColumns(srcBefore)) : srcBefore, opts) + legendHtml + (srcAfter ? proseHtml(csv ? stripTurnPhase(stripCsvColumns(srcAfter)) : srcAfter, opts) : '');
   // task-89: the plain fallback - no head, no table, the CSV fragment gone, ALL CAPS styled.
-  if (shape.family === 'ability-plain') return legendHtml + capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(src)), opts));
+  if (shape.family === 'ability-plain') return capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(srcBefore)), opts)) + legendHtml + (srcAfter ? capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(srcAfter)), opts)) : '');
   const head = shape.family === 'stratagem'
     ? '<div class="svl-head svl-strat"><span class="svl-cp">' + esc(shape.cp) + '</span><span class="svl-type">' + esc(shape.type) + '</span></div>'
     : '<div class="svl-head svl-ability">' + (shape.type ? '<span class="svl-type">' + esc(shape.type) + '</span>' : '') + '</div>';
@@ -705,7 +718,7 @@ export function recordBody(record, opts) {
   // Mandal's point is that it is not a stratagem, so the layout wins over the card.
   // Only records the classifier claims are affected; every other card is untouched.
   if (recordShape(text, record && record.heading)) {
-    return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading, csvSource: record && record.source }) + tail;
+    return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading, csvSource: record && record.source, csvKind: record && record.kind }) + tail;
   }
   const card = cardFor(record, o);
   if (card) return banner + cardHtml(card, o) + tail;
@@ -714,7 +727,7 @@ export function recordBody(record, opts) {
   const cap = record && record.kind === 'index' ? 0 : 40;
   // task-78 B: the two labelled families get their own layout; every other record
   // takes the same proseHtml call, with the same options, as before - byte-identical.
-  return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading, csvSource: record && record.source }) + tail;
+  return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading, csvSource: record && record.source, csvKind: record && record.kind }) + tail;
 }
 
 export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, proseHtml, recordBody, rulingBody, recordShape };
