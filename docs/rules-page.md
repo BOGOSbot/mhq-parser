@@ -39,6 +39,17 @@ functionality document for that page; the army-list parser has its own in
   the payload slug so a tap opens the record, and a row the payload has no page
   for is dropped. No model, no embedding, no payload download - a phone asks and
   gets rows.
+- **The phonetic leg (task-18).** A transcript that spells a name wrong kills the
+  literal search, because every word must be in the heading. `src/phonetic.mjs`
+  keys every word on both sides with the note's English-leaning phonetic spelling
+  (vowels kept, `ch`→`k`, `ph`→`f`, `qu`/`gu`→`k`, silent finals dropped, doubles
+  collapsed), indexes the words INSIDE names (`Agamatus` lives only inside
+  `Agamatus Custodians`), and scores key overlap with a normalised Levenshtein
+  distance - so `arcon` reaches `Archon` at distance 0 and `cobalites` reaches
+  `Kabalite` at 0.17. Aliases the corpus cannot derive are hand-written
+  (`Eldar`→`Aeldari`, `dark eldar`→`Drukhari`). The rows the literal pass did not
+  name are appended, marked `phonetic: true` with the heard spelling, and the
+  literal rows keep their order. Model-free, like the rest of the search.
 - `GET /health` publishes `corpus` (sections per half, build date, edition),
   the edition, and both inference routes. The page no longer prints the key
   state: which models a deployment uses is not the reader's business, and a

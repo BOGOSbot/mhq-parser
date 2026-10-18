@@ -1,0 +1,345 @@
+{
+  "model": "google/gemini-2.5-flash",
+  "glossary": false,
+  "prompt": "You are the speech recogniser inside a Warhammer 40,000 rules app. You have NO glossary and NO knowledge of the game.\nA player speaks each question below out loud, in English, with a strong French accent, at speed.\nWrite what you actually hear, as a transcription: keep the ordinary words and the sentence shape, and write unfamiliar names (units, factions, weapons, stratagems) the way a French ear would spell them in English letters. Do not translate, do not correct, do not explain, do not add punctuation beyond the question mark.\nReturn only the transcription.",
+  "generated": "2026-10-18T23:22:50.455Z",
+  "questions": [
+    {
+      "q": "What is a Desperate Escape test?",
+      "mangled": "What is a Desperate Escape test?",
+      "kind": "literal",
+      "expect": [
+        [
+          "core-rules#Desperate-Escape-Test",
+          "core-rules#Desperate-Escape"
+        ]
+      ]
+    },
+    {
+      "q": "How does Battle-shock work?",
+      "mangled": "Ow does Batel-shock work?",
+      "kind": "literal",
+      "expect": [
+        "core-rules#Battle-shock-Rolls",
+        "core-rules#3.-Battle-shock-Step"
+      ]
+    },
+    {
+      "q": "What are the shooting types a unit can make?",
+      "mangled": "What are ze shooting type a uneet can make?",
+      "kind": "literal",
+      "expect": [
+        "core-rules#2.-Shoot"
+      ]
+    },
+    {
+      "q": "What is Engagement?",
+      "mangled": "What is Engagement?",
+      "kind": "literal",
+      "expect": [
+        [
+          "core-rules#Engagement",
+          "rules-appendix#What-Is-Engagement"
+        ]
+      ]
+    },
+    {
+      "q": "How does Benefit of Cover work?",
+      "mangled": "How does Benefit of Cover work?",
+      "kind": "literal",
+      "expect": [
+        "core-rules#Benefit-of-Cover"
+      ]
+    },
+    {
+      "q": "What is a Hazard Roll?",
+      "mangled": "What is a Azard Roll?",
+      "kind": "literal",
+      "expect": [
+        "core-rules#Hazard-Rolls"
+      ]
+    },
+    {
+      "q": "How does a Surge Move work?",
+      "mangled": "How does a Serge Moove work?",
+      "kind": "literal",
+      "expect": [
+        "core-rules#Surge-Moves"
+      ]
+    },
+    {
+      "q": "What is Transport Capacity?",
+      "mangled": "What is Transport Capacity?",
+      "kind": "literal",
+      "expect": [
+        "core-rules#Transport-Capacity"
+      ]
+    },
+    {
+      "q": "When is a unit counted as being in coherency?",
+      "mangled": "When is a unit counted as being in coherency?",
+      "kind": "paraphrase",
+      "expect": [
+        [
+          "core-rules#What-Is-Coherency",
+          "core-rules#Coherency"
+        ]
+      ]
+    },
+    {
+      "q": "What happens when a charge fails?",
+      "mangled": "What happens when a charge fails?",
+      "kind": "paraphrase",
+      "expect": [
+        "rules-appendix#Failed-Charges"
+      ]
+    },
+    {
+      "q": "How do I put a unit inside a transport?",
+      "mangled": "How do I put a unit inside a transport?",
+      "kind": "paraphrase",
+      "expect": [
+        [
+          "core-rules#Embarking",
+          "core-rules#Able-To-Embark"
+        ]
+      ]
+    },
+    {
+      "q": "What is the order of the steps in the Fight phase?",
+      "mangled": "What is the order of the steps in the Fight phase?",
+      "kind": "paraphrase",
+      "expect": [
+        "core-rules#Fight-Phase"
+      ]
+    },
+    {
+      "q": "What does it take to secure an objective?",
+      "mangled": "What does it take to secure an objective?",
+      "kind": "paraphrase",
+      "expect": [
+        "core-rules#Secured-Objectives",
+        "core-rules#Objectives"
+      ]
+    },
+    {
+      "q": "How do models see each other across the board?",
+      "mangled": "How do models see each ozzer across ze board?",
+      "kind": "paraphrase",
+      "expect": [
+        "core-rules#Visibility"
+      ]
+    },
+    {
+      "q": "How does a unit arrive from reserves?",
+      "mangled": "How does a unit arrive from reserve",
+      "kind": "paraphrase",
+      "expect": [
+        "core-rules#Arriving-from-Strategic-Reserves"
+      ]
+    },
+    {
+      "q": "What are the rules for a unit that can fly?",
+      "mangled": "What are ze rools for a unit zat can fly?",
+      "kind": "paraphrase",
+      "expect": [
+        "core-rules#Flying-Models"
+      ]
+    },
+    {
+      "q": "Can a monster or vehicle shoot while it is stuck in combat?",
+      "mangled": "Can a monstere or vehicule shoot while it is stuck in combat?",
+      "kind": "player",
+      "expect": [
+        [
+          "core-rules#Shooting-at-Engaged-Monsters-and-Vehicles",
+          "rules-appendix#Shooting-While-Engaged-With-Monsters-Vehicles"
+        ]
+      ]
+    },
+    {
+      "q": "My unit is battle-shocked, what does that stop it doing?",
+      "mangled": "My unit is battle-shocked, what does zat stop it doing?",
+      "kind": "player",
+      "expect": [
+        "core-rules#Battle-shock-Rolls",
+        "core-rules#3.-Battle-shock-Step"
+      ]
+    },
+    {
+      "q": "How close do my models have to stay to each other?",
+      "mangled": "How close do my models have to stay to each other?",
+      "kind": "player",
+      "expect": [
+        [
+          "core-rules#Coherency",
+          "core-rules#What-Is-Coherency"
+        ]
+      ]
+    },
+    {
+      "q": "Can I shoot into a melee that my own unit is in?",
+      "mangled": "Can I shoot into a melee that my own unit is in?",
+      "kind": "player",
+      "expect": [
+        "core-rules#Engagement",
+        "core-rules#Shooting-at-Engaged-Monsters-and-Vehicles"
+      ]
+    },
+    {
+      "q": "What happens to my models when a transport blows up?",
+      "mangled": "What happens to my models when a transport blows up?",
+      "kind": "player",
+      "expect": [
+        "core-rules#Disembarking",
+        "rules-appendix#Rapid-Disembark-And-Limitations"
+      ]
+    },
+    {
+      "q": "How do I score points at the end of a battle round?",
+      "mangled": "How do I score point at ze end of a battle round?",
+      "kind": "player",
+      "expect": [
+        "core-rules#Secured-Objectives",
+        "core-rules#Objectives",
+        "event-companion#Warhammer-Event-Mission-Sequence"
+      ]
+    },
+    {
+      "q": "What does the Advance move do?",
+      "mangled": "What does ze Advance moove do?",
+      "kind": "player",
+      "expect": [
+        "core-rules#3.-End-of-Movement-Phase",
+        "rules-appendix#Selecting-Modes"
+      ]
+    },
+    {
+      "q": "How are command points generated for an event?",
+      "mangled": "How are coman poince generated for an event?",
+      "kind": "cross-source",
+      "expect": [
+        "event-companion#Generating-Command-Points",
+        "rules-appendix#Command-Points"
+      ]
+    },
+    {
+      "q": "How do I pick my secondary missions?",
+      "mangled": "How do I pick my secondary missions?",
+      "kind": "cross-source",
+      "expect": [
+        "event-companion#Select-Secondary-Missions"
+      ]
+    },
+    {
+      "q": "What happens to units left in strategic reserves when the battle ends?",
+      "mangled": "What happen to unit left in strategic reserve when ze battle end?",
+      "kind": "cross-source",
+      "expect": [
+        [
+          "core-rules#Strategic-Reserves-at-the-End-of-the-Battle",
+          "rules-appendix#Strategic-Reserves-at-the-End-of-the-Battle"
+        ]
+      ]
+    },
+    {
+      "q": "What does Rapid Disembark let a unit do?",
+      "mangled": "What does Rapid Disembark let a unit do?",
+      "kind": "cross-source",
+      "expect": [
+        "rules-appendix#Rapid-Disembark-And-Limitations"
+      ]
+    },
+    {
+      "q": "How does a hazard roll relate to a Desperate Escape test?",
+      "mangled": "How does a hazard roll relate to a Desperate Escape test?",
+      "kind": "multi-hop",
+      "expect": [
+        "core-rules#Hazard-Rolls",
+        "core-rules#Desperate-Escape-Test"
+      ]
+    },
+    {
+      "q": "What is the sequence for making an attack, from hit roll to damage?",
+      "mangled": "What is ze secwence for making an attack from hit roll to dammage",
+      "kind": "multi-hop",
+      "expect": [
+        "core-rules#1.-Hit-Roll",
+        "core-rules#2.-Wound-Roll",
+        "core-rules#3.-Save-Rolls",
+        "core-rules#4.-Inflict-Damage"
+      ]
+    },
+    {
+      "q": "How many points does a Space Marine Captain cost?",
+      "mangled": "How many point does a Space Marine Capitan cost?",
+      "kind": "out-of-corpus",
+      "expect": []
+    },
+    {
+      "q": "What does the Oath of Moment ability do?",
+      "mangled": "What does ze Oaf of Moment ability do?",
+      "kind": "out-of-corpus",
+      "expect": []
+    },
+    {
+      "q": "Which detachments can Space Marines take?",
+      "mangled": "Which detachments can Space Marines take?",
+      "kind": "out-of-corpus",
+      "expect": []
+    },
+    {
+      "q": "What is the best paint scheme for Ultramarines?",
+      "mangled": "What is the best paint scheme for Ultramarines?",
+      "kind": "out-of-corpus",
+      "expect": []
+    },
+    {
+      "q": "Can a unit shoot after it Fell Back?",
+      "mangled": "Can a unit shoot after it Fell Back?",
+      "kind": "player",
+      "expect": [
+        "core-rules#Movement-Phase->-3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
+      ]
+    },
+    {
+      "q": "Can dragons with fuegan arrive from reserves in melta range ?",
+      "mangled": "Can drag-ons wiz fuegan arrive from reserves in melta range",
+      "kind": "player",
+      "expect": [
+        "core-rules#Strategic-Reserves->-Arriving-from-Strategic-Reserves->-INGRESS-MOVE",
+        "unitrules#000000574"
+      ]
+    },
+    {
+      "q": "Does armour of contempt work on a 2+ save in 11th edition? Or is it still the rule where you cannot keep a 2+?",
+      "mangled": "Does armour of contempt work on a two plus save in eleven's edition or is it still the rule where you cannot keep a two plus?",
+      "kind": "cross-source",
+      "expect": [
+        "stratagem#000011205002"
+      ]
+    },
+    {
+      "q": "How many VP does a datasheet cost?",
+      "mangled": "How many Veepee does a datasheet cost?",
+      "kind": "out-of-corpus",
+      "expect": []
+    },
+    {
+      "q": "What are the football rules in Warhammer 40,000?",
+      "mangled": "What are ze footbale roules in Warhamer 40,000?",
+      "kind": "out-of-corpus",
+      "expect": []
+    },
+    {
+      "q": "I played against a Harlequin that secured an objective in the movement phase with a stratagem, then re-embarked into a Starweaver at the end of the turn. Is that legal?",
+      "mangled": "I played against a Arlekin that secured an objective in the movement phase with a strategem then re-embarked into a Starweaver at the end of the turn is that legal",
+      "kind": "player",
+      "expect": [
+        "unitrules#000002541",
+        "core-rules#Objectives->-Secured-Objectives->-Q:-If-my-unit-has-taken-control-of-an-objective-at-the-end-of-my-movement-phase-and-that-unit-has-as-an-ability-that-secures-an-objective-they-control,-can-they-secure-that-objective?"
+      ]
+    }
+  ],
+  "spend": 0.0028
+}

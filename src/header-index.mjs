@@ -40,6 +40,7 @@
  */
 import { readAllCorpus, termPresent } from './rules-corpus.mjs';
 import { KEYWORDS, glossaryIndex } from './translate-fr-en.mjs';
+import { buildPhoneticIndex, phoneticMatches } from './phonetic.mjs';
 
 // The verbs a lookup opens with. Both languages: the reader types 'cherche' or
 // 'find' and means the same thing.
@@ -192,7 +193,43 @@ export function headerIndex(records) {
   if (!INDEX) INDEX = buildHeaderIndex(readAllCorpus());
   return INDEX;
 }
-export function resetHeaderIndex() { INDEX = null; }
+export function resetHeaderIndex() { INDEX = null; PHONETIC = null; VOCAB = null; }
+
+// task-18: the phonetic leg's map. Built from the SAME projection the literal
+// search reads, so the two legs can never disagree about what a record is called:
+// every word of every heading SEGMENT is indexed, not the whole name - a player
+// says 'Agamatus' and the book writes 'Agamatus Custodians'. Canonical entries
+// only: a mention is not a name.
+let PHONETIC = null;
+let VOCAB = null;
+// Every word any heading carries, folded: the test for "this word is not in the
+// corpus's vocabulary at all", which is what a misheard name looks like. Built
+// once with the same projection.
+function headingVocab(index) {
+  if (!VOCAB) {
+    VOCAB = new Set();
+    for (const e of index) {
+      for (const w of foldWords(e.heading)) if (w.length >= 3) VOCAB.add(w);
+    }
+  }
+  return VOCAB;
+}
+function nameWords(e) {
+  const out = [];
+  for (const seg of e.segments) {
+    for (const w of String(seg).split(/[^A-Za-z0-9']+/)) {
+      if (w.length >= 3) out.push(w);
+    }
+  }
+  return out;
+}
+export function phoneticIndex(entries) {
+  const index = entries || headerIndex();
+  if (!PHONETIC) {
+    PHONETIC = buildPhoneticIndex(index.filter(e => e.canonical).map(e => ({ id: e.id, words: nameWords(e) })));
+  }
+  return PHONETIC;
+}
 
 // Which kind answers first when several carry the same name. A rule beats the
 // ability card that repeats it; a stratagem beats nothing else here (an index
@@ -248,7 +285,39 @@ export function searchHeadings(query, opts) {
     crumbs: x.e.segments.slice(0, -1),
     kind: x.e.kind,
   }));
-  return { words, rows, total: scored.length };
+  // task-18: the phonetic leg. The literal search requires EVERY word to be in
+  // the heading, so one misheard name kills the whole lookup - which is exactly
+  // the transcript the voice route produces ('arcon' for Archon). Key the words
+  // and score key overlap, and append what the literal pass did not already name.
+  // It is a leg, not a rewriter: the literal rows keep their order and tier.
+  // It is a rescue leg, not a parallel ranking: it fires only when the literal
+  // pass found NOTHING and at least one word is absent from the corpus's whole
+  // vocabulary. 'arcon' is nowhere in the book (only 'Archon' is), so the leg
+  // runs; 'oath of moment' is a mention the corpus knows, and a query whose words
+  // are all in the vocabulary is left alone - a wrong suggestion is worse than an
+  // empty list the reader can ask from.
+  let phonetic = 0;
+  const unknown = rows.length === 0 && words.some(w => !headingVocab(index).has(w));
+  if (o.phonetic !== false && rows.length < limit && unknown) {
+    const byId = o.byId || new Map(index.map(e => [e.id, e]));
+    const have = new Set(rows.map(r => r.id));
+    for (const m of phoneticMatches(raw, phoneticIndex(index), { limit: limit - rows.length })) {
+      const e = byId.get(m.id);
+      if (!e || have.has(m.id)) continue;
+      rows.push({
+        id: e.id,
+        tier: 4,
+        phonetic: true,
+        heard: m.heard,
+        title: cleanMarker(e.segments.length ? e.segments[e.segments.length - 1] : e.heading),
+        crumbs: e.segments.slice(0, -1),
+        kind: e.kind,
+      });
+      have.add(m.id);
+      phonetic++;
+    }
+  }
+  return { words, rows, total: scored.length, phonetic };
 }
 
 // The match. Returns { found: true, id, tier, candidates } or

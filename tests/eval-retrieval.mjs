@@ -30,6 +30,7 @@ import { anchorFor, credential, fastCredential, jevKeyName } from '../src/rules.
 import { makeFeatures, rerankWith, train, trainingExamples, loadTraces, FEATURE_NAMES } from './learned-rerank.mjs';
 import { expectGroups, missingGroupLine, missingGroups, partialHeadline, satisfiedGroups } from './expectation-groups.mjs';
 import { resolveExpectation as resolveOne } from './expectations.mjs';
+import { buildPhoneticIndex, phoneticMatches } from '../src/phonetic.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const QUESTIONS = path.join(__dirname, 'fixtures', 'rules-questions.json');
@@ -53,13 +54,27 @@ const VERBOSE = flag('--verbose');
 //              the same path as dual, minus the half the question did not use.
 //              Reports its routing against the expectation and what a wrong
 //              route costs.
+// dense         the vector index alone, BOTH namespaces merged by score - the
+//               dense leg with no oracle choosing its half
+// dense+phonetic the same dense list fused by rank with the phonetic leg
+//               (src/phonetic.mjs, task-18), the arm the vocal-search bet asks for
 const RETRIEVER = value('--retriever') || 'vector';
+// task-18: --questions points the fixture somewhere else, so the same harness can
+// run the mangled set (tests/fixtures/rules-questions-mangled.json). A fixture
+// whose items carry 'mangled' is run on the mangled text and reports it: the
+// comparison the note asks for is never on clean text.
+const QUESTIONS_PATH = value('--questions') ? path.resolve(value('--questions')) : QUESTIONS;
 const NET = parseInt(value('--net') || '40', 10);
 // The index holds one namespace per half. Queries used to go to the default
 // namespace, which is empty - so 'vector' was measuring nothing at all.
 // --namespace auto asks the half the question's expected section lives in.
 const NAMESPACE = value('--namespace') || '';
 const FUSION = value('--fusion');
+// task-18: how the phonetic leg is combined with the dense one. 'rrf' fuses the
+// two rankings (equal or weighted); 'rescue' keeps the dense order and appends
+// what only the phonetic leg found, so the head is untouched.
+const PHONETIC_MODE = value('--phonetic-mode') || 'rrf';
+const PHONETIC_WEIGHT = parseFloat(value('--phonetic-weight') || '1');
 const QUERY_MODE = value('--query-mode');
 const WEIGHTING = value('--weighting');
 const VECTOR_WEIGHT = parseFloat(value('--vector-weight') || '1');
@@ -180,6 +195,51 @@ function namespaceFor(item) {
 let lastGate = null;
 let gateVocab = null;
 
+// The dense leg on its own, both namespaces merged by score, no gate and no
+// oracle: this is what 'dense alone' means in the task-18 comparison.
+async function denseSearch(question) {
+  const out = [];
+  for (const ns of [RULES_NS, FACTIONS_NS]) {
+    try {
+      const list = await queryIndex(question, { topK: TOPK, namespace: ns, fusionAlgorithm: FUSION, queryMode: QUERY_MODE, weightingStrategy: WEIGHTING });
+      for (const s of list) out.push(s);
+    } catch (e) { if (VERBOSE) console.log('dense ' + ns + ' failed: ' + e.message); }
+  }
+  const seen = new Set();
+  return out.filter(s => s && s.id && !seen.has(s.id) && seen.add(s.id)).sort((a, b) => (b.score || 0) - (a.score || 0));
+}
+let PH_CORPUS_INDEX = null;
+function phoneticCorpusIndex() {
+  if (!PH_CORPUS_INDEX) {
+    PH_CORPUS_INDEX = buildPhoneticIndex(readAllCorpus().map(s => ({
+      id: s.id,
+      words: String(s.heading || '').split(/[^A-Za-z0-9']+/).filter(w => w.length >= 3),
+    })));
+  }
+  return PH_CORPUS_INDEX;
+}
+// Reciprocal rank fusion, the shape a two-leg merge uses: neither leg's raw score
+// is comparable, both rankings are.
+function rrf(lists, k, weights) {
+  const score = new Map();
+  const order = [];
+  lists.forEach((list, li) => {
+    const w = weights ? (weights[li] || 0) : 1;
+    list.forEach((id, i) => {
+      if (!score.has(id)) { score.set(id, 0); order.push(id); }
+      score.set(id, score.get(id) + w / (k + i + 1));
+    });
+  });
+  return order.sort((a, b) => score.get(b) - score.get(a));
+}
+// The rescue merge: the dense ranking first, in its own order, then the rows only
+// the phonetic leg names. A leg that found a name the dense leg lost is a gain at
+// the tail; it must not push a dense top row down.
+function rescue(denseIds, phoneticIds) {
+  const seen = new Set(denseIds);
+  return denseIds.concat(phoneticIds.filter(id => !seen.has(id) && seen.add(id)));
+}
+
 async function retrieve(question, item) {
   if (RETRIEVER === 'vector') {
     return queryIndex(question, { topK: TOPK, namespace: namespaceFor(item), fusionAlgorithm: FUSION, queryMode: QUERY_MODE, weightingStrategy: WEIGHTING });
@@ -224,6 +284,17 @@ async function retrieve(question, item) {
     });
     return asHits(wide);
   }
+  if (RETRIEVER === 'dense' || RETRIEVER === 'dense+phonetic') {
+    const dense = await denseSearch(question);
+    if (RETRIEVER === 'dense') return asHits(dense);
+    const ph = phoneticMatches(question, phoneticCorpusIndex(), { limit: 20 });
+    const byId = new Map(readAllCorpus().map(s => [s.id, s]));
+    const denseIds = dense.map(s => s.id), phIds = ph.map(m => m.id);
+    const order = PHONETIC_MODE === 'rescue' ? rescue(denseIds, phIds) : rrf([denseIds, phIds], 60, [1, PHONETIC_WEIGHT]);
+    const fused = order.slice(0, TOPK).map(id => byId.get(id)).filter(Boolean);
+    if (VERBOSE) console.log('  dense ' + dense.length + '  phonetic ' + ph.length + '  fused ' + fused.length + '  mode ' + PHONETIC_MODE + ' w ' + PHONETIC_WEIGHT);
+    return asHits(fused);
+  }
   if (RETRIEVER === 'grep') return asHits(grepCorpus(question, CORPUS, NET).slice(0, TOPK));
   if (RETRIEVER === 'grep+jev') return asHits(await jevRank(question, grepCorpus(question, CORPUS, NET), JEV_KEY, { max: NET })).slice(0, TOPK);
   if (RETRIEVER === 'grep+expand') {
@@ -237,7 +308,11 @@ async function retrieve(question, item) {
   return asHits(await retrieveWide(question, { corpus: CORPUS, jevKey: NO_KEY ? '' : JEV_KEY, jevSkip: RERANK_OFF, terms, grepNet: NET, jevMax: NET, topK: TOPK }));
 }
 
-const bank = JSON.parse(fs.readFileSync(QUESTIONS, 'utf8'));
+const bank = JSON.parse(fs.readFileSync(QUESTIONS_PATH, 'utf8'));
+const MANGLED = bank.questions.some(q => q && q.mangled);
+for (const q of bank.questions) {
+  if (q && q.mangled) { q.qClean = q.q; q.q = q.mangled; }
+}
 const questions = bank.questions.filter(q => !ONLY_KIND || q.kind === ONLY_KIND);
 // An expectation is a list of groups (tests/expectation-groups.mjs): a plain list
 // is one group per id, a list of lists is the groups as written. Each member is
@@ -325,8 +400,10 @@ function pct(n, d) { return d ? Math.round((n / d) * 1000) / 10 : 0; }
 function at(k) { return graded.filter(r => r.rank !== null && r.rank <= k).length; }
 
 console.log('');
-console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (graded ' + graded.length + ', out-of-corpus ' + declined.length + ')  topK ' + TOPK + (RETRIEVER === 'vector' ? '  ns ' + (NAMESPACE || '(default)') + [FUSION, QUERY_MODE, WEIGHTING].filter(Boolean).map(v => ' ' + v).join('') : '  net ' + NET) + (SPLIT_HALVES ? '  per-side ' + PER_SIDE + '  w ' + VECTOR_WEIGHT + '  protect ' + PROTECT_VECTOR + (QUERY_MODE ? '  ' + QUERY_MODE : '') : '')
+console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (graded ' + graded.length + ', out-of-corpus ' + declined.length + ')  topK ' + TOPK
+  + (MANGLED ? '  |  MANGLED text (' + path.basename(QUESTIONS_PATH) + ', ' + (bank.model || 'unknown model') + ', no glossary)' : '') + (RETRIEVER === 'vector' ? '  ns ' + (NAMESPACE || '(default)') + [FUSION, QUERY_MODE, WEIGHTING].filter(Boolean).map(v => ' ' + v).join('') : '  net ' + NET) + (SPLIT_HALVES ? '  per-side ' + PER_SIDE + '  w ' + VECTOR_WEIGHT + '  protect ' + PROTECT_VECTOR + (QUERY_MODE ? '  ' + QUERY_MODE : '') : '')
   + (RETRIEVER === 'gate' ? '  gate ' + GATE + (GATE === 'lexical' ? ' margin ' + GATE_MARGIN : '') : '')
+  + (RETRIEVER === 'dense+phonetic' ? '  phonetic ' + PHONETIC_MODE + ' w ' + PHONETIC_WEIGHT : '')
   + (RERANK_OFF ? '  rerank off' : '  rerank ' + rerankArm()) + (NO_KEY ? '  no key' : '')
   + (RULES_NS !== 'rules' || FACTIONS_NS !== 'factions' ? '  ns ' + RULES_NS + '/' + FACTIONS_NS : ''));
 if (resolveNotes.length) {

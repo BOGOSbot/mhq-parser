@@ -1042,10 +1042,17 @@ async function handleRulesFind(req, res, u) {
   catch (e) { return fail(res, 500, 'search failed: ' + String((e && e.message) || e)); }
   const slugs = surfaceSlugMap();
   const rows = (out.rows || [])
-    .map(r => ({ slug: slugs.get(r.id) || '', title: r.title, kind: r.kind, tier: r.tier, crumbs: r.crumbs }))
+    .map(r => ({
+      slug: slugs.get(r.id) || '', title: r.title, kind: r.kind, tier: r.tier, crumbs: r.crumbs,
+      // task-18: a row the phonetic leg found carries how it was heard. The
+      // drawer renders it like any other row; the flag is there for the reader
+      // (and for the test) to see that a misheard name, not a literal match,
+      // is what answered.
+      phonetic: r.phonetic === true, heard: r.heard || [],
+    }))
     .filter(r => r.slug);
   // The pre-filter count, so a capped list can say how many matched in all.
-  return json(res, 200, { ok: true, q, total: out.total || rows.length, rows });
+  return json(res, 200, { ok: true, q, total: (out.total || 0) + (out.phonetic || 0) || rows.length, rows });
 }
 
 // task-17: the voice route. MediaRecorder audio in, one English question out.
