@@ -27,24 +27,27 @@ const files = tree.files;
 const kids = k => (files[k].kids || []);
 const cutKids = k => kids(k).filter(x => x.cut);
 
-t('the measured cutoff inventory: 64 unnumbered chapters, 3 parts, 48 groups', (function () {
+// task-4 removed the appendix's local [ONE SHOT] chapter: its five rows moved to
+// the 00 chapter, outside either book, so the inventory loses one cut chapter.
+t('the measured cutoff inventory: 63 unnumbered chapters, 3 parts, 48 groups', (function () {
   const by = {};
   for (const n of Object.values(files)) if (n.cut) by[n.lvl] = (by[n.lvl] || 0) + 1;
   return by;
-})(), { chapter: 64, part: 3, group: 48 });
-t('and stats.cuts agrees', tree.stats.cuts, 115);
+})(), { chapter: 63, part: 3, group: 48 });
+t('and stats.cuts agrees', tree.stats.cuts, 114);
 
 // Rules: a 0x header is a LABEL, not an entry. It is not cut and its children are
 // listed in its place (task-61); the books still do not cut, and the Rulings
 // chapter is still a waypoint.
 ok('a 0x chapter is not a cut entry', kids('tree/rules/core-rules.js').filter(x => /^\d{2}\s/.test(x.n)).every(x => !x.cut));
-ok('and its children are the entries: 179 for Core Rules, 118 for the Appendix', (function () {
+ok('and its children are the entries: 179 for Core Rules, 113 for the Appendix', (function () {
   // task-106: a rules chapter may now carry one level of section nodes (the
   // appendix's 0x.0x headers), so the count walks to the rows, not to the first
-  // level of kids.
+  // level of kids. task-4: the appendix's five [ONE SHOT]-swallowed Universal
+  // Rules Updates rows left the book for the 00 chapter, so 118 becomes 113.
   const entryCount = f => (f.kids || []).reduce((n, k) => n + entryCount(files[k.f] || { recs: [] }), (f.recs || []).length);
   const flat = b => (files[b].kids || []).reduce((n, k) => n + entryCount(files[k.f] || {}), 0);
-  return flat('tree/rules/core-rules.js') === 179 && flat('tree/rules/rules-appendix.js') === 118;
+  return flat('tree/rules/core-rules.js') === 179 && flat('tree/rules/rules-appendix.js') === 113;
 })());
 ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut && !files['tree/rules/rules-appendix.js'].cut);
 ok('the two ruling books are waypoints, their chapters are the cutoffs', !files['tree/rulings/wtc.js'].cut && !files['tree/rulings/feq.js'].cut && kids('tree/rulings/wtc.js').every(x => x.cut) && kids('tree/rulings/feq.js').every(x => x.cut));

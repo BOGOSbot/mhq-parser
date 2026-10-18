@@ -128,6 +128,31 @@ t('(106) the rule and its errata are two rows under the same number', splitting.
 ok('(106) the errata says so, so the pair does not read as a duplicate', /errata$/.test(splitting[1] && splitting[1].title));
 t('(106) no row prints its rule number inside the title', rows.filter(r => /^\d{2}\.\d{2}/.test(r.title)).length, 0);
 
+// --- task-4: one [ONE SHOT], under Core Abilities -----------------------------
+// The appendix page nests the [PRECISION] (24.28) and [TORRENT] (24.37)
+// clarifications under the [ONE SHOT] h2, so the heading path drew three
+// [ONE SHOT] sections; the rule number is the truth. The same h2 swallowed the
+// Universal Rules Updates block, which had become an appendix-local [ONE SHOT]
+// chapter; its own outline header opens the 00 chapter, and its topics and
+// annotations ride there.
+const appx24 = findNode(appxBook, '24 Core Abilities');
+const oneShot = (appx24.kids || []).filter(k => String(k.n).indexOf('[ONE SHOT]') !== -1);
+t('(4) one [ONE SHOT] section, under Core Abilities', oneShot.map(k => k.n), ['24.26 [ONE SHOT]']);
+t('(4) no [ONE SHOT] chapter survives anywhere', [branch.kids, appxBook.kids].flat().filter(k => String(k.n).indexOf('[ONE SHOT]') !== -1), []);
+ok('(4) [EXTRA ATTACKS] is a different ability and keeps its own section', (appx24.kids || []).some(k => k.n === '24.11 [EXTRA ATTACKS]'));
+ok('(4) the precision clarification is not labelled one-shot', (appx24.kids || []).some(k => k.n === '24.28 Precision and Devastating Wounds'));
+ok('(4) and it keeps its annotations', ((appx24.kids || []).find(k => String(k.n).indexOf('24.28 ') === 0) || {}).c === 3);
+t('(4) no row is titled [ONE SHOT]', rows.filter(r => r.title === '[ONE SHOT]').length, 0);
+const uru = findNode(branch, '00 Universal Rules Updates');
+t('(4) the Universal Rules Updates block carries its six rows', ((uru || {}).recs || []).length, 6);
+ok('(4) and leads with its own header row', (((uru || {}).recs || [])[0] || {}).title === 'Universal Rules Updates');
+t('(4) its annotations ride with it', (uru || {}).c, 74);
+const uruIds = ((uru || {}).recs || []).map(r => r.id);
+t('(4) the five topics the old local chapter held are rows there',
+  ['Modifying-a-Stratagem-s-CP-Cost', 'Stratagems-That-Can-Be-Used-More-Than-Once-Per-Phase-Turn',
+    'Stratagems-That-Prevent-Units-From-Being-Targeted', 'Stratagems-That-Add-New-Units-To-Your-Army',
+    'Move-Types-For-Disembarking-Units'].filter(s => !uruIds.some(id => id.indexOf(s) !== -1)), []);
+
 // Carry-over (b): 'at' is the annotation target, exactly what productPage's
 // WIKI_HERE carries - 261 of the 270 annotations have one.
 const annotated = [...seen.keys()].filter(id => { const c = read('content/' + seen.get(id) + '.json'); return c.records[id] && c.records[id].at; });

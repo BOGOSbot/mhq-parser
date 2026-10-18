@@ -91,8 +91,8 @@ wiki's three books (**Browse the rulebook** - Rules, Missions, Factions), then
 that branch, so finding an entry does not require knowing that the Wiki control
 is the door. There are no worked examples on the page: the question box is the
 only door, and a chip that filled it was one more thing between the reader and
-the ask. The retention line
-sits under that block and outside it, so a run hides the intro but never the
+the ask. The retention line sits under that block and outside it, so a run hides
+the intro but never the
 note about what the page keeps. **It is one sentence** - *Questions are kept
 anonymously to improve this page* - with no list of what is stored and no
 reassurance about what is not: a disclaimer that needs a second sentence to be
@@ -109,6 +109,22 @@ definitions and the 0x.0x section exists only as their heading's first segment),
 so the tree model builds those section nodes and numbers them from the records'
 ruleIds: *Rules Appendix > 01 Core Concepts > 01.02 Units and Models*.
 `sortChapterRows` and `ruleNumber` in `src/wiki-toc.mjs` are that rule.
+
+**An ability's section is its number, not the heading above it.** The appendix
+page prints the `[PRECISION]` (24.28) and `[TORRENT]` (24.37) clarifications as
+h3s under the `[ONE SHOT]` h2, so the heading path called all three one-shot and
+the drawer read *24.26 [ONE SHOT]*, *24.28 [ONE SHOT]* and an appendix-local
+*[ONE SHOT]* chapter holding the Universal Rules Updates topics. The rule number
+is the truth: one `[ONE SHOT]` section remains (24.26, with *Multiple [ONE SHOT]
+Weapons*), the precision clarification is its own 24.28 section titled by its own
+leaf, and the Universal Rules Updates topics - h3s under a block header on that
+page, not one ability's children - ride in the 00 chapter their own outline header
+opens, annotations included (74 records). `[EXTRA ATTACKS]` (24.11) is a different
+ability and keeps its own section. The first heading segment is a section name only
+while the record's leaf still names it: a bracketed tag shared by two rule numbers
+is the page's container, not the section. The appendix's own saved page
+(`appendixOutline` in `src/wiki-toc.mjs`) resolves the records no number can
+place; a numbered appendix record still takes the core chapter its ruleId names.
 
 A rule's number is sometimes left inside its heading by the corpus - the
 appendix's errata h3s carry `01.02.06 Splitting Units` and no ruleId - so the

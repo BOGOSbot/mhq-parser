@@ -286,17 +286,13 @@ function uniqueSlug(base, used) {
 }
 
 // --- the saved page outline, the authority for the Rules chapters ------------
-// workspace/rules-corpus/core-rules.html is the scraped page, and its own TOC
-// (the .mw2 list) is the true tree: an i10 entry is a rulebook chapter, an i30
-// one of its sections. The page body repeats the same headings in document
-// order, so the chapter a record belongs to is the chapter heading in force at
-// the record's anchor. The BASIC RULES / ADVANCED RULES / REFERENCE super
-// headers are parts, not chapters, and are skipped.
-export function coreOutline(file) {
-  const at = file || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'workspace', 'rules-corpus', 'core-rules.html');
+// The scraped pages are the outline of record, so both Rules books read them the
+// same way: the headings in document order, each with the anchor a record can be
+// resolved against. The chapter rule differs per page and is the only difference.
+function outlineHeadings(file) {
   let html = '';
-  try { html = fs.readFileSync(at, 'utf8'); } catch (e) { return null; }
-  const re = /<h([1-4])([^>]*)>([\s\S]*?)<\/h\1>/g;
+  try { html = fs.readFileSync(file, 'utf8'); } catch (e) { return null; }
+  const re = /<h([1-6])([^>]*)>([\s\S]*?)<\/h\1>/g;
   const clean = s => s.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
   const headings = [];
   let m;
@@ -308,6 +304,19 @@ export function coreOutline(file) {
     const name = num ? text.slice(0, num.index).trim() : text;
     headings.push({ lvl: +m[1], id: id ? id[1] : '', cls: cls ? cls[1] : '', text: text, num: num ? num[1] : '', name: name });
   }
+  return headings;
+}
+
+// workspace/rules-corpus/core-rules.html is the scraped page, and its own TOC
+// (the .mw2 list) is the true tree: an i10 entry is a rulebook chapter, an i30
+// one of its sections. The page body repeats the same headings in document
+// order, so the chapter a record belongs to is the chapter heading in force at
+// the record's anchor. The BASIC RULES / ADVANCED RULES / REFERENCE super
+// headers are parts, not chapters, and are skipped.
+export function coreOutline(file) {
+  const at = file || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'workspace', 'rules-corpus', 'core-rules.html');
+  const headings = outlineHeadings(at);
+  if (!headings) return null;
   const chaptersOf = new Array(headings.length).fill(null);
   let cur = null;
   for (let i = 0; i < headings.length; i++) {
@@ -333,6 +342,38 @@ export function coreOutline(file) {
   };
   const chapterCount = chaptersOf.filter((c, i) => c && c.order === i).length;
   return { headings: headings, byAnchor: byAnchor, byNum: byNum, byName: byName, chapterAt: chapterAt, byNumber: byNumber, byIdName: a => chapterAt(byAnchor.get(String(a))), byText: t => chapterAt(byName.get(String(t).trim())), chapterCount: chapterCount };
+}
+
+// The Rules Appendix's own saved page. Its outline marks a chapter with the
+// `outline_header` class (Core Concepts, ..., Core Abilities, Universal Rules
+// Updates) and a part with `outline_header_book` (Books); the levels are h3s, not
+// the core page's h2. A record is placed by its anchor: the outline header in
+// force at that heading is its chapter. This is the fallback the numbered appendix
+// records never need - their ruleId carries the core chapter - and the one their
+// heading cannot give: the page nests the Universal Rules Updates h3s under the
+// [ONE SHOT] h2, so the heading path calls them one-shot (task-4).
+export function appendixOutline(file) {
+  const at = file || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'workspace', 'rules-corpus', 'rules-appendix.html');
+  const headings = outlineHeadings(at);
+  if (!headings) return null;
+  const chapterOf = new Array(headings.length).fill(null);
+  let cur = null;
+  for (let i = 0; i < headings.length; i++) {
+    const h = headings[i];
+    if (/outline_header/.test(h.cls) && !/outline_header_book/.test(h.cls)) cur = { key: h.id || h.text, name: h.text, num: h.num || '', order: i };
+    chapterOf[i] = cur;
+  }
+  const byAnchor = new Map();
+  for (let i = 0; i < headings.length; i++) if (headings[i].id && !byAnchor.has(headings[i].id)) byAnchor.set(headings[i].id, i);
+  const chapterAt = i => (i == null || i < 0) ? null : chapterOf[i];
+  return { headings: headings, byAnchor: byAnchor, chapterAt: chapterAt, byIdName: a => chapterAt(byAnchor.get(String(a))) };
+}
+// Read once per process: the page is 363 KB and every tocTree call wants the same
+// outline.
+let appendixDefault;
+function appendixOutlineDefault() {
+  if (appendixDefault === undefined) appendixDefault = appendixOutline();
+  return appendixDefault;
 }
 
 // The tree itself, pure: it takes the records, their page names and the faction
@@ -400,10 +441,18 @@ export function tocTree(records, pageOf, opts) {
     // The 18 ability records carry no page anchor at all: they are the Core
     // Abilities content, so they join that chapter by kind rather than vanish.
     if (r.kind === 'ability') { const a = outline && outline.byText('Core Abilities'); if (a) return a; }
-    // The appendix has no saved page; a record whose parent, ruleId, anchor and
-    // ancestor name all miss still names its own group in its heading (the
-    // [ONE SHOT] block), so that first segment becomes an appendix-local chapter.
+    // The appendix has a saved page of its own, and its outline is the authority
+    // for the records the number cannot place: the page's heading path files the
+    // Universal Rules Updates topics under whichever h2 happens to enclose them
+    // ('[ONE SHOT] > Modifying a Stratagem's CP Cost'), which used to become an
+    // appendix-local [ONE SHOT] chapter of 73 records. The page's own outline
+    // header puts them where they belong (task-4). The heading segment remains the
+    // last resort when the saved page is absent.
     if (book && book.slug === 'rules-appendix') {
+      const ap = appendixOutlineDefault();
+      const anchor = r.anchor || (/^[^#]*#(.+)$/.exec(String(r.url || '')) || [])[1];
+      const ax = ap && anchor ? ap.byIdName(anchor) : null;
+      if (ax) return ax;
       const seg = String(r.heading || '').split(' > ').filter(Boolean)[0];
       if (seg) return { key: 'local:' + seg, name: seg, order: 1000 };
     }
@@ -488,6 +537,9 @@ export function tocTree(records, pageOf, opts) {
   const unattachedBooks = {};
   const dropped = [];
   let uruRecord = null;
+  // task-4: the Universal Rules Updates block's own topics; they travel with the
+  // 00 chapter the block's outline header opens, outside either book.
+  let uruExtra = [];
   // A chapter's number is the leading integer of its records' ruleIds (the page
   // outline's own number agrees); 00 sorts after 25, an unnumbered chapter - the
   // appendix's local [ONE SHOT] - after that.
@@ -510,6 +562,22 @@ export function tocTree(records, pageOf, opts) {
     // Universal Rules Updates is the 00 chapter at the end of the Rules branch.
     const u = folded.sections.findIndex(r => r.id.indexOf('Universal-Rules-Updates') !== -1);
     if (u >= 0) uruRecord = folded.sections.splice(u, 1)[0];
+    // task-4: the block's topics are h3s inside it on the saved page, and the
+    // heading path files them under the h2 that happens to enclose it ('[ONE SHOT]
+    // > Modifying a Stratagem's CP Cost'). The appendix outline places them in the
+    // block's own chapter; they leave the book and join the 00 chapter below with
+    // their annotations, so the drawer no longer invents an appendix-local [ONE
+    // SHOT] chapter of 73 records.
+    if (u >= 0) {
+      uruExtra = folded.sections.filter(r => {
+        const ch = resolveChapter(r, book);
+        return ch && ch.key === 'Universal-Rules-Updates';
+      });
+      if (uruExtra.length) {
+        const keep = new Set(uruExtra.map(r => r.id));
+        folded.sections = folded.sections.filter(r => !keep.has(r.id));
+      }
+    }
     const chapters = new Map();
     for (const r of folded.sections) {
       const forced = forcedChapter.has(r.id) ? (outline && outline.byNumber(forcedChapter.get(r.id))) : null;
@@ -586,6 +654,29 @@ export function tocTree(records, pageOf, opts) {
           groups.get(key).rows.push(r);
         } else loose.push(r);
       }
+      // task-4: an ability tag is not a section name unless the records say so.
+      // The Core Abilities page prints the [PRECISION] (24.28) and [TORRENT]
+      // (24.37) clarifications as h3s under the [ONE SHOT] h2, so their heading
+      // says [ONE SHOT] while their rule number says otherwise - which is how one
+      // ability became three sections. When a bracketed tag is shared by more than
+      // one rule number, a group whose own leaf does not name it is the page's
+      // container, and is titled by the leaf. The real one-shot record's leaf
+      // ('Multiple [ONE SHOT] Weapons') does name it, so [ONE SHOT] reads one
+      // section. A plain segment ('Move Units' over 09.02 and 09.05) is the
+      // appendix's section and is left alone.
+      const segOwners = new Map();
+      for (const [key, g] of groups) {
+        const seg = key.slice(key.indexOf('|') + 1);
+        if (!segOwners.has(seg)) segOwners.set(seg, new Set());
+        segOwners.get(seg).add(g.num);
+      }
+      for (const g of groups.values()) {
+        if (!/^\[[^\]]+\]$/.test(g.name)) continue;
+        const owners = segOwners.get(g.name.toLowerCase());
+        if (!owners || owners.size < 2) continue;
+        const leaf = cleanTitle(leafTitle(g.rows[0]));
+        if (leaf && leaf.toLowerCase().indexOf(g.name.toLowerCase()) === -1) g.name = leaf;
+      }
       const sections = [], sectionOf = new Map();
       for (const g of [...groups.values()].sort((x, y) => x.num.localeCompare(y.num))) {
         // '02.01 1. Datasheet Name' would print the ordinal twice: the section's own
@@ -612,22 +703,36 @@ export function tocTree(records, pageOf, opts) {
       }
       kids.push({ n: label, lvl: 'chapter', c: counted, f: file });
     }
-    const bookC = bookRecs.length - (unattached.length - before) - (dropped.length - beforeDropped) - (u >= 0 ? 1 : 0);
+    // The URU block and its topics left this book for the 00 chapter below, with
+    // their annotations: subtract them or the Rules total counts them twice.
+    const bookC = bookRecs.length - (unattached.length - before) - (dropped.length - beforeDropped) - (u >= 0 ? 1 : 0)
+      - uruExtra.reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
     const file = 'tree/rules/' + book.slug + '.js';
     files[file] = { n: book.name, lvl: 'book', c: bookC, kids: kids };
     bookNodes.push({ n: book.name, lvl: 'book', c: bookC, f: file });
   }
-  // The 00 chapter, at the Rules level after the two books.
+  // The 00 chapter, at the Rules level after the two books. task-4: its block's
+  // topics ride with it as rows - the saved page makes them h3s of the Universal
+  // Rules Updates outline header - and their annotations ride as their counts.
   if (uruRecord) {
-    const q = (attach.get(uruRecord.id) || []).length;
-    const counted = 1 + q;
     const file = 'tree/rules/universal-rules-updates.js';
-    const e = ent(uruRecord);
-    if (q) e.q = q;
-    files[file] = { n: '00 Universal Rules Updates', lvl: 'chapter', c: counted, recs: [e] };
+    const family = [uruRecord].concat(uruExtra);
+    const rows = primaryOf(family);
+    // A merged twin has no row but is a delivered record, and its attachments are
+    // delivered with it: count the family, not the rows.
+    const counted = family.reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
+    const recs = rows.map(r => {
+      const q = (attach.get(r.id) || []).length;
+      const e = ent(r);
+      if (q) e.q = q;
+      return e;
+    });
+    files[file] = { n: '00 Universal Rules Updates', lvl: 'chapter', c: counted, recs: recs };
     const uruRef = { n: '00 Universal Rules Updates', lvl: 'chapter', f: file };
-    paths.set(uruRecord.id, [rulesRef, uruRef]);
-    for (const a of (attach.get(uruRecord.id) || [])) paths.set(a.id, [rulesRef, uruRef]);
+    for (const r of rows) {
+      paths.set(r.id, [rulesRef, uruRef]);
+      for (const a of (attach.get(r.id) || [])) paths.set(a.id, [rulesRef, uruRef]);
+    }
     bookNodes.push({ n: '00 Universal Rules Updates', lvl: 'chapter', c: counted, f: file });
   }
   const rulesTotal = bookNodes.reduce((n, b) => n + b.c, 0);

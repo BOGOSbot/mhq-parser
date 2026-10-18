@@ -57,7 +57,13 @@ function row(rec, slugOf, byId, chapter) {
   const chName = String(chapter || '').replace(/^\d{2}(?:\.\d+)?\s*/, '').trim();
   const chNum = (String(chapter || '').match(/^(\d{2})/) || [])[1] || '';
   const segs = String(raw.heading || '').split(' > ').map(s => s.trim()).filter(Boolean);
-  const own = chName && segs.length && segs[segs.length - 1].toLowerCase() === chName.toLowerCase() ? segs.slice(0, -1).join(' > ') : '';
+  // task-4: the appendix's ability tag is a container, not a parent - the page
+  // headings the Universal Rules Updates block '[ONE SHOT] > Universal Rules
+  // Updates', and task-88's lead-row rule would print that row as '[ONE SHOT]'
+  // under the 00 chapter, the very heading this task removed. A remaining path
+  // that is only a bracketed tag falls back to the record's own leaf.
+  const parent = chName && segs.length && segs[segs.length - 1].toLowerCase() === chName.toLowerCase() ? segs.slice(0, -1).join(' > ') : '';
+  const own = /^\[[^\]]+\]$/.test(parent) ? '' : parent;
   // task-106: a rule's number is sometimes still inside its heading - the appendix's
   // errata h3s carry '01.02.06 Splitting Units' and no ruleId - so the number moves
   // into the row's own slot and the title loses it. A record whose text is an errata
