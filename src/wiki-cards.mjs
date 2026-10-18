@@ -479,6 +479,20 @@ function phaseLabel(heading) {
   const m = /\b(Movement|Shooting|Charge|Fight)\b/i.exec(String(heading || ''));
   return m ? m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() : '';
 }
+// task-98: the export's Turn and Phase columns are CARD fields, not prose (Mandal,
+// 2026-10-18). They are read off the 'Turn: X  Phase: Y' line, which then leaves the
+// reader's text (stripTurnPhase). An empty turn ('Turn:   Phase: Ability "Move"') yields
+// the phase alone.
+function turnPhaseRows(t) {
+  const m = /(?:^|\n)\s*Turn:\s*([^\n]*?)\s{2,}Phase:\s*([^\n]*)/.exec(String(t));
+  if (!m) return [];
+  const out = [];
+  const turn = m[1].trim(), phase = m[2].trim();
+  if (turn) out.push(['Turn', turn]);
+  if (phase) out.push(['Phase', phase]);
+  return out;
+}
+
 export function recordShape(text, heading) {
   const t = String(text == null ? '' : text);
   const type = shapeGrab(t, 'Type');
@@ -488,7 +502,7 @@ export function recordShape(text, heading) {
   // The empty-Type candidate needs its rows at line starts: datasheet prose carries
   // label-shaped words inline, and that rule would swallow 115 unit cards.
   const strictRows = SHAPE_ROWS.some(function (L) { return shapeGrab(t, L, false); });
-  if (/stratagem/i.test(type) && cp !== '') return { family: 'stratagem', type: type, cp: cp, rows: rows };
+  if (/stratagem/i.test(type) && cp !== '') return { family: 'stratagem', type: type, cp: cp, rows: turnPhaseRows(t).concat(rows) };
   // A move/shoot ability is the Type line and the empty CP, rows or no rows (the 22).
   // task-89: an ability takes the table only when its rows start a line. A mid-line
   // grab is a collapsed CSV table (every label after 'Turn: Phase: ... ' on one line)
@@ -516,7 +530,7 @@ function stripTurnPhase(text) {
   // and 'Turn:   Phase: Ability "Shoot"' on a core ability - both are CSV columns, so the
   // whole line goes.
   return String(text == null ? '' : text)
-    .replace(/^\s*Turn:\s+Phase:.*$/gm, '')
+    .replace(/^\s*Turn:.*Phase:.*$/gm, '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/ *\n */g, '\n')
     .trim();

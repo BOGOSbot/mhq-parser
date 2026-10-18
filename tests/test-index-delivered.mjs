@@ -20,8 +20,8 @@ t('an edition-11 datasheet is', isDelivered({ id: 'datasheet#000000882', edition
 t('an index stub is delivered (counted navigation, not filtered content)', isDelivered({ id: 'faction-index#faction-ae', edition: '11' }), true);
 t('an empty record is not delivered', isDelivered(null), false);
 // task-85 rebuilt the corpus from source: 7,283 records, 6,245 delivered, 1,038 filtered.
-t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7364, 7364]);
-t('delivered is 6,326 (154 rulings + 19 ability definitions + 43 mission cards + 62 faction ability records + 19 recovered numbered sections) and filtered is 1,038', [delivered.length, filtered.length], [6326, 1038]);
+t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7356, 7356]);
+t('delivered is 6,318 (154 rulings + 19 ability definitions + 43 mission cards + 62 faction ability records + 19 recovered numbered sections) and filtered is 1,038', [delivered.length, filtered.length], [6318, 1038]);
 
 // --- the query path cannot return what the product does not deliver -----------
 const ids = deliveredIds();

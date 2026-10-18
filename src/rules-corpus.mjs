@@ -1012,6 +1012,11 @@ export function buildFactionSections() {
     push('unitrules#' + d.id, source, d.name + ' - keywords and abilities', url, rules);
   }
 
+  // task-98: the export carries two rows for 8 core stratagems - the 11th-ed set (Type
+  // 'Core - Battle Tactic Stratagem', the current WHEN/TARGET wording) and an older set with
+  // the generic Type 'Core Stratagem'. Both are faction-less, so both were emitted and the
+  // drawer listed each stratagem twice. One per name, decided after the loop.
+  const corePending = [];
   for (const s of read('Stratagems.csv')) {
     // Boarding Actions is a different game with its own stratagems, and it rides
     // in this file with no faction id like the core ones. The corpus is 11th
@@ -1037,7 +1042,7 @@ export function buildFactionSections() {
         clean(s.legend),
         clean(s.description),
       ];
-      push('core-stratagem#' + s.id, 'core-stratagems', s.name, CORE_STRATAGEMS.url, lines);
+      corePending.push({ id: 'core-stratagem#' + s.id, name: clean(s.name), type: type, cp: String(s.cp_cost || ''), lines: lines });
       continue;
     }
     // Mandal, 2026-10-18: a Stratagems.csv row with no Type and the detachment 'Army Rules'
@@ -1067,6 +1072,16 @@ export function buildFactionSections() {
       clean(s.description),
     ];
     push('stratagem#' + s.id, 'stratagems', s.name + ' (' + faction + ')', factionLink.get(s.faction_id) || '', lines);
+  }
+
+  // One core stratagem per name: the row whose Type names its category ('Core - Battle
+  // Tactic Stratagem') wins over the generic 'Core Stratagem' export, and between two of
+  // a kind the fuller text wins. 8 names had two rows; the older wording was the duplicate.
+  {
+    const score = c => (/^core\s*[-\u2013]\s*/i.test(c.type) ? 100000 : 0) + c.lines.join('\n').length;
+    const best = new Map();
+    for (const c of corePending) { const prev = best.get(c.name); if (!prev || score(c) > score(prev)) best.set(c.name, c); }
+    for (const c of corePending) if (best.get(c.name) === c) push(c.id, 'core-stratagems', c.name, CORE_STRATAGEMS.url, c.lines);
   }
 
   const detachmentAbilities = new Map();
