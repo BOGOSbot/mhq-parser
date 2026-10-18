@@ -132,12 +132,7 @@ button::after{transition:none}
 .status.busy{color:var(--acc)}
 .status.ok{color:var(--ok)}
 
-/* --- the example questions ------------------------------------------------ */
-.examples{display:flex;gap:7px;flex-wrap:wrap;margin:16px 0 2px}
-.ex{font:12.5px/1.35 var(--sans);color:var(--dim);background:var(--panel);border:1px solid var(--line);
-  border-radius:999px;padding:8px 13px;cursor:pointer;text-align:left;max-width:100%}
-.ex:hover{color:var(--txt);border-color:var(--acc)}
-/* The book's three doors, one quiet line under the examples. */
+/* The book's three doors, one quiet line under the question. */
 .browse{display:flex;gap:4px;flex-wrap:wrap;align-items:baseline;margin:14px 0 0;
   color:var(--dim);font:12px/1.6 var(--sans)}
 .browselink{border:0;background:none;color:var(--acc);font:600 12px/1.6 var(--sans);
@@ -473,7 +468,6 @@ details pre{background:var(--bg);border:1px solid var(--line);border-radius:10px
     <div id="progress" class="progress hidden"><div class="psegs" id="psegs"></div><span id="pelapsed" class="pelapsed"></span></div>
   </section>
   <div id="intro">
-    <div class="examples" id="examples"></div>
     <!-- Finding a rule by name is one act; browsing the whole book is the other.
          The three books are one tap away, not hidden behind the drawer button. -->
     <div class="browse" id="browse"></div>
@@ -680,13 +674,6 @@ var I18N = {
     corpusCountsA: ' core + ',
     corpusCountsB: ' faction records',
     stages: { translate: 'translate', retrieve: 'retrieve', judge: 'judge', answer: 'answer', widen: 'widen', datasheet: 'datasheet' },
-    examples: [
-      'Can a unit shoot after it Fell Back?',
-      'How does Devastating Wounds interact with Anti-?',
-      'When does a unit become Battle-shocked?',
-      'What does Oath of Moment do for Space Marines?',
-      'Does the Tyrannofex have the FRAME keyword?'
-    ],
     intro: '<p>The question is searched against an indexed copy of the <span id="edlabel">current-edition</span> rules, not answered from memory. Both halves are searched — core rules, and faction datasheets, stratagems, detachments and enhancements:</p><ol><li><b>translate</b> — a question in another language is translated in full into English first, because the corpus is English, and the translation is shown so you can correct it;</li><li><b>retrieve</b> — each half is searched separately, then <b>jev</b> reranks the union. Jev decides; it does not write;</li><li><b>judge + answer</b> — the findings below are the product; a small model judges whether they answer the question. <b>The model-written answer is off</b>: what you see — the findings, the verdict and the citations — is the page.</li><li><b>voice</b> is optional: the <b>Voice</b> button transcribes in your browser and needs https or localhost. The text is left in the box to correct — speech recognition mangles unit names, and the wrong unit retrieves the wrong rule.</li></ol><p>Every citation below links to the section it came from — <code>.../core-rules/#1.-Hit-Roll</code> or a datasheet page. The anchor is derived by the server from the heading, never written by the model, so a citation cannot point at a source that was not indexed.</p>',
     answerFailed: 'The prose could not be written this time - the findings above are what was retrieved.',
     requestFailed: 'The request failed. Try again.',
@@ -860,13 +847,6 @@ var I18N = {
     corpusCountsA: ' règles de base + ',
     corpusCountsB: ' fiches de faction',
     stages: { translate: 'traduction', retrieve: 'recherche', judge: 'juge', answer: 'réponse', widen: 'élargissement', datasheet: 'fiche' },
-    examples: [
-      'Une unité peut-elle tirer après avoir battu en retraite ?',
-      'Comment les Blessures Dévastatrices interagissent-elles avec Anti- ?',
-      'Quand une unité devient-elle Commotionnée (Battle-shocked) ?',
-      'Que fait Serment du Moment pour les Space Marines ?',
-      'Le Tyrannofex a-t-il le mot-clé FRAME ?'
-    ],
     intro: '<p>La question est cherchée dans une copie indexée des règles <span id="edlabel">de l\u2019édition en cours</span>, jamais répondue de mémoire. Les deux moitiés sont cherchées — règles de base, et fiches techniques, stratagèmes, détachements et optimisations de faction :</p><ol><li><b>traduction</b> — une question dans une autre langue est d\u2019abord traduite en entier en anglais, car le corpus est anglais, et la traduction est affichée pour être corrigée ;</li><li><b>recherche</b> — chaque moitié est cherchée séparément, puis <b>jev</b> reclasse l\u2019union. Jev décide ; il n\u2019écrit pas ;</li><li><b>juge + réponse</b> — les constats ci-dessous sont le produit ; un petit modèle juge s\u2019ils répondent à la question. <b>La rédaction par le modèle est désactivée</b> : ce que vous voyez — les constats, le verdict et les citations — est la page.</li><li><b>voix</b> est optionnel : le bouton <b>Voix</b> transcrit dans votre navigateur et exige https ou localhost. Le texte reste dans le champ pour être corrigé — la reconnaissance vocale abîme les noms d\u2019unités, et la mauvaise unité fait chercher la mauvaise règle.</li></ol><p>Chaque citation renvoie à la section d\u2019où elle vient — <code>.../core-rules/#1.-Hit-Roll</code> ou une page de fiche technique. L\u2019ancre est dérivée par le serveur à partir du titre, jamais écrite par le modèle : une citation ne peut pas pointer vers une source non indexée.</p>',
     answerFailed: 'La réponse n\u2019a pas pu être rédigée cette fois — les constats ci-dessus sont ce qui a été trouvé.',
     requestFailed: 'La requête a échoué. Réessayez.',
@@ -909,23 +889,6 @@ $('#q').addEventListener('keydown', function (e) {
 });
 $('#q').addEventListener('input', growQuestion);
 window.addEventListener('resize', function () { growQuestion(); });
-
-function renderExamples() {
-  var host = $('#examples');
-  if (!host) return;
-  host.textContent = '';
-  var list = (I18N[LANG] || I18N.en).examples || [];
-  for (var i = 0; i < list.length; i++) {
-    (function (text) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'ex';
-      b.textContent = text;
-      b.addEventListener('click', function () { $('#q').value = text; $('#q').focus(); growQuestion(); });
-      host.appendChild(b);
-    })(list[i]);
-  }
-}
 
 // The three books of the wiki, one tap from the landing page. It opens the
 // drawer and then the branch inside it, so 'find an entry' does not require
@@ -1054,7 +1017,6 @@ function applyLang() {
   var fb = $('#footbug'); if (fb) { fb.title = t('footBug'); fb.setAttribute('aria-label', t('footBug')); }
   var fw = $('#footwaha'); if (fw) { fw.title = t('footWaha'); fw.setAttribute('aria-label', t('footWaha')); }
   var fg = $('#footgd'); if (fg) { fg.title = t('footGd'); fg.setAttribute('aria-label', t('footGd')); }
-  renderExamples();
   renderBrowse();
   applyEdition();
   // The placeholder wraps on a phone: a one-line box clips it. Size the box from

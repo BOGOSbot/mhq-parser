@@ -321,7 +321,7 @@ const formHtml = PAGE.slice(PAGE.indexOf('<form id="f">'), PAGE.indexOf('</form>
 ok('the question box is a textarea, not a one-line input',
   formHtml.indexOf('<textarea id="q"') !== -1 && formHtml.indexOf('<input id="q"') === -1);
 const growHelper = code.slice(code.indexOf('function growBox'), code.indexOf('function growQuestion'));
-const growBlock = code.slice(code.indexOf('function growQuestion'), code.indexOf('function renderExamples'));
+const growBlock = code.slice(code.indexOf('function growQuestion'), code.indexOf('function openWikiBranch'));
 ok('one helper grows both boxes',
   code.indexOf('function growBox(box, cap)') !== -1
   && /function growQuestion\(\) \{ growBox\(\$\('#q'\), QCAPPX\); \}/.test(code)
@@ -344,7 +344,11 @@ ok('Enter asks and Shift+Enter adds a line',
 const voiceBlock = code.slice(code.indexOf('rec.onresult'), code.indexOf('rec.onerror'));
 ok('the voice transcript grows the box it types into',
   /box\.value = \(base \? base \+ ' ' : ''\) \+ text\.trim\(\);/.test(voiceBlock) && voiceBlock.indexOf('grow();') !== -1);
-ok('an example chip grows the box', code.indexOf("$('#q').value = text; $('#q').focus(); growQuestion();") !== -1);
+// task-2: the landing page carries no example-question chips. Three separate
+// shapes of the same return - markup, CSS and the i18n arrays - plus the renderer.
+t('(2) no example chips in the markup or the styles', [PAGE.indexOf('id="examples"'), PAGE.indexOf('.examples{')].filter(x => x !== -1), []);
+t('(2) no example prompts in either language table', [I18N.en.examples, I18N.fr.examples].filter(x => x !== undefined), []);
+t('(2) the chip renderer is gone', [code.indexOf('renderExamples')].filter(x => x !== -1), []);
 ok('the translation re-ask grows the box', /growQuestion\(\);\s*\n\s*ask\(\{ question: text, english: true \}\)/.test(code));
 
 const headerHtml = PAGE.slice(PAGE.indexOf('<header>'), PAGE.indexOf('</header>'));

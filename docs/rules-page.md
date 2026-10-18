@@ -85,11 +85,13 @@ a tool you put away. Below it the page is the question: a bordered composer with
 the send control inside it and the microphone beside it, the judge dial and the
 run status on a quiet line under it.
 
-What follows the composer is a footnote, not a landing page: the example
-questions, then one line listing the wiki's three books (**Browse the
-rulebook** - Rules, Missions, Factions), then **How this works** as a collapsed
-`details`. The three books open the drawer on that branch, so finding an entry
-does not require knowing that the Wiki control is the door. The retention line
+What follows the composer is a footnote, not a landing page: one line listing the
+wiki's three books (**Browse the rulebook** - Rules, Missions, Factions), then
+**How this works** as a collapsed `details`. The three books open the drawer on
+that branch, so finding an entry does not require knowing that the Wiki control
+is the door. There are no worked examples on the page: the question box is the
+only door, and a chip that filled it was one more thing between the reader and
+the ask. The retention line
 sits under that block and outside it, so a run hides the intro but never the
 note about what the page keeps.
 
@@ -152,8 +154,8 @@ typed, up to about seven lines, and then scrolls, and the form's controls sit at
 its top rather than centred on it. **Enter asks; Shift+Enter adds a line** - a
 textarea does not submit its form on Enter, so the key is handled on the field
 itself. The Ask control is an up-arrow send button rather than a word (below).
-Voice transcription, an example chip and the translation's re-ask all fill the
-same box and grow it. The translation box under the question is the same widget
+Voice transcription and the translation's re-ask both fill the same box and grow
+it. The translation box under the question is the same widget
 and grows the same way.
 
 **The translation has its own box under the question, in the ask block, with a send
