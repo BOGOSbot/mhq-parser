@@ -828,7 +828,10 @@ let corpusCache = null;
 function corpora() {
   // Parsed once, not per request: the grep leg reads them whole and they are
   // thousands of records.
-  if (!corpusCache) corpusCache = { rules: readAllCorpus('rules'), factions: readAllCorpus('factions') };
+  // task-102: the rulings half is part of the corpus. Without it here, every WTC/FEQ record
+  // 404s from the record endpoint while the drawer lists it - Mandal's 'The record could not
+  // be loaded.' on FEQ Army Rule.
+  if (!corpusCache) corpusCache = { rules: readAllCorpus('rules'), factions: readAllCorpus('factions'), rulings: readAllCorpus('rulings') };
   return corpusCache;
 }
 
@@ -840,7 +843,7 @@ let byIdCache = null;
 function corpusById() {
   if (!byIdCache) {
     byIdCache = new Map();
-    for (const half of ['rules', 'factions']) for (const sec of corpora()[half] || []) byIdCache.set(sec.id, sec);
+    for (const half of ['rules', 'factions', 'rulings']) for (const sec of corpora()[half] || []) byIdCache.set(sec.id, sec);
   }
   return byIdCache;
 }
@@ -1205,7 +1208,7 @@ async function handleRulesAsk(req, res) {
     let outcome;
     if (override) {
       const byId = new Map();
-      for (const half of ['rules', 'factions']) for (const sec of corpora()[half] || []) byId.set(sec.id, sec);
+      for (const half of ['rules', 'factions', 'rulings']) for (const sec of corpora()[half] || []) byId.set(sec.id, sec);
       const chosen = keepIds.map(id => byId.get(id)).filter(Boolean).map((sec, i) => findingFor(sec, i + 1));
       if (!chosen.length) throw new RulesError(400, 'none of those passages is in the corpus');
       findings = chosen;

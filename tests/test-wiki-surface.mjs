@@ -59,6 +59,12 @@ ok('(E2) the client never calls recordBody itself', (js.body.match(/recordBody\(
 
 // (3) the ask, the tail, the icon and the copy - the slice-3 targets.
 const srv = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
+
+// task-102: the record endpoint looks a record up in corpora(), so every set the drawer lists
+// must be in it. The rulings half was missing and every WTC/FEQ record answered 404 - 'The
+// record could not be loaded.' - while the drawer listed it. This is the cheap guard for it.
+ok('(E3) the server reads all three corpus sets', /corpusCache = \{ rules: readAllCorpus\('rules'\), factions: readAllCorpus\('factions'\), rulings: readAllCorpus\('rulings'\) \}/.test(srv));
+ok('(E4) and every id lookup covers them', (srv.match(/for \(const half of \['rules', 'factions', 'rulings'\]\)/g) || []).length === 2);
 ok('(3) the client asks the same endpoint the old page uses', js.body.indexOf("CFG.ask || '/rules/ask'") !== -1);
 ok('(3) the icon writes BOTH channels through the existing endpoints', js.body.indexOf("CFG.vote || '/rules/vote'") !== -1 && js.body.indexOf("CFG.answered || '/rules/answered'") !== -1 && js.body.indexOf("postJson(VOTE, { id: id, vote: 'up' })") !== -1 && js.body.indexOf("postJson(ANSWERED, { id: id, by: f.id })") !== -1 && js.body.indexOf("postJson(VOTE, { id: id, vote: 'down' })") !== -1 && js.body.indexOf("postJson(ANSWERED, { id: id, none: true })") !== -1);
 ok('(3) the tail renders under a heading that says it is unjudged', js.body.indexOf("Also matched, not judged") !== -1);
