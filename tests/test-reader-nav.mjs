@@ -61,11 +61,11 @@ const index = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-data
 let node = null;
 (function walk(n) { if ((n.recs || []).some(r => r.id === 'core-rules#2.-Profiles')) node = n; (n.kids || []).forEach(walk); })(index);
 const recs = (node && node.recs) || [];
-const at = recs.findIndex(r => r.id === 'core-rules#2.-Profiles');
-ok('2. Profiles sits in a row list with both neighbours', at > 0 && at < recs.length - 1 && recs.length > 2);
-// task-5: the appendix is folded in, so a rule's neighbours are the definitions
-// that sit under it in number order: 02.01.01 before 02.02, 02.02.01 after it.
-ok('its neighbours are the definition before it and the one under it', !!recs[at - 1] && recs[at - 1].num === '02.01.01' && !!recs[at + 1] && recs[at + 1].title === 'Modifiers');
+const at = recs.findIndex(r => r.id === 'rules-appendix#Modifiers');
+ok('2. Profiles and its definitions sit in one row list', recs.length > 2 && recs[0].id === 'core-rules#2.-Profiles' && at > 0 && at < recs.length - 1);
+// task-5: the appendix's definitions follow the rule in number order under the
+// 0x.0x section, so the section's lead row and the first definition are neighbours.
+ok('its neighbours are the rule and the next definition', recs[at - 1].title === '2. Profiles' && recs[at + 1].title === 'Ignore Modifiers');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

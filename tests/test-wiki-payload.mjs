@@ -105,10 +105,9 @@ if (rows.length) {
 }
 // --- task-5: one rulebook - the appendix folded into Core Rules ----------------
 // The appendix is the same chapters one level deeper, so the drawer read two
-// '01 Core Concepts' and two chapter lists. It is ONE book now: its 0x.0x.0x
-// definitions are rows of the core chapter, ordered by the rule's own number, and
-// the reader sees one chapter list. task-4 rides here too: the flat number order
-// is what turns the page's three [ONE SHOT] headings into one row.
+// '01 Core Concepts' and two chapter lists. There is ONE book now, and its 0x.0x
+// SECTION level survives: the appendix's definitions nest under the section their
+// number names, and the core's own 0x.0x record is that section's lead row.
 const atBook = (root, name) => (root.kids || []).find(k => k.n === name) || {};
 const findNode = (n, name) => { if (!n) return null; if ((n.n || '') === name) return n; for (const k of (n.kids || [])) { const hit = findNode(k, name); if (hit) return hit; } return null; };
 const coreBook = atBook(branch, 'Core Rules');
@@ -116,11 +115,18 @@ t('(5) the Rules branch has no Rules Appendix book', (branch.kids || []).map(k =
 const coreCC = findNode(coreBook, '01 Core Concepts');
 const numsOf = n => (n.recs || []).map(r => r.num || '').filter(Boolean);
 const asc = list => list.every((x, i) => i === 0 || list[i - 1] <= list[i]);
-ok('(5) the chapter lists one header level, in the rulebook order', asc(numsOf(coreCC)));
-t('(5) and it holds both sources', [numsOf(coreCC)[0], numsOf(coreCC).slice(-1)[0]], ['01.01', '01.07.02']);
+ok('(5) the core chapter keeps its one section level', (coreCC.kids || []).length >= 6 && (coreCC.kids || []).every(k => /^\d{2}\.\d{2} /.test(k.n)));
+ok('(5) and the sections are in number order', asc((coreCC.kids || []).map(k => k.n)));
+const unitsNode = (coreCC.kids || []).find(k => / Units and Models$/.test(k.n));
+ok('(5) the section holds the rule and its appendix definitions', !!unitsNode && (unitsNode.recs || []).length >= 12);
+const unitsNums = ((unitsNode || {}).recs || []).map(r => r.num || '');
+// The section's lead row is the core 0x.0x record; its own number is suppressed
+// because the section header already prints it (01.02 Units and Models).
+t('(5) the core 0x.0x record leads the section', (((unitsNode || {}).recs || [])[0] || {}).id, 'core-rules#Units-and-Models');
+t('(5) then its appendix definitions in number order', unitsNums.filter(Boolean).slice(0, 3), ['01.02.01', '01.02.02', '01.02.03']);
+ok('(5) and the rows are in number order', asc(unitsNums.filter(Boolean)));
 ok('(5) the chapter lead row stays first', !coreCC.recs[0].num);
-ok('(5) the appendix definitions are rows under their own number', (coreCC.recs || []).some(r => r.title === 'Starting Strength and Half-Strength' && r.num === '01.02.01'));
-const splitting = (coreCC.recs || []).filter(r => /Splitting Units/.test(r.title));
+const splitting = ((unitsNode || {}).recs || []).filter(r => /Splitting Units/.test(r.title));
 t('(5) the rule and its errata are two rows under the same number', splitting.map(r => r.num).join(','), '01.02.06,01.02.06');
 ok('(5) the errata says so, so the pair does not read as a duplicate', /errata$/.test(splitting[1] && splitting[1].title));
 t('(5) no row prints its rule number inside the title', rows.filter(r => /^\d{2}\.\d{2}/.test(r.title)).length, 0);
@@ -128,8 +134,9 @@ const chapterNames = (n, acc) => { for (const k of (n.kids || [])) { if (k.lvl =
 t('(5) no chapter header appears twice', chapterNames(coreBook, []).filter((n, i, a) => a.indexOf(n) !== i), []);
 t('(5) the branch count is the sum of its books', (branch.kids || []).reduce((n, k) => n + k.c, 0), branch.c);
 t('(5) and the book count is the sum of its chapters', (coreBook.kids || []).reduce((n, k) => n + k.c, 0), coreBook.c);
-// Every former appendix record is reachable: a row of the book, or an annotation
-// attached to one (the duplicate copies of a rule stay delivered, findable by slug).
+// Every former appendix record is reachable: a row of the book (in a chapter or a
+// section), or an annotation attached to one (the duplicate copies of a rule stay
+// delivered, findable by their own slug, counted once).
 const rulesContent = read('content/rules.json');
 const coreRowIds = new Set();
 const collectRows = n => { for (const r of (n.recs || [])) coreRowIds.add(r.id); for (const k of (n.kids || [])) collectRows(k); };
@@ -140,10 +147,13 @@ t('(5) every former appendix record is reachable under Core Rules', lost, []);
 
 // --- task-4: one [ONE SHOT], under Core Abilities -----------------------------
 const core24 = findNode(coreBook, '24 Core Abilities');
-t('(4) no [ONE SHOT] header survives anywhere', (core24.kids || []).filter(k => String(k.n).indexOf('[ONE SHOT]') !== -1), []);
-t('(4) one [ONE SHOT] row, under Core Abilities', (core24.recs || []).filter(r => String(r.title).indexOf('[ONE SHOT]') !== -1).map(r => r.num + ' ' + r.title), ['24.26.01 Multiple [ONE SHOT] Weapons']);
-ok('(4) [EXTRA ATTACKS] is a different ability and keeps its row', (core24.recs || []).some(r => r.num === '24.11.01' && r.title === 'Only [EXTRA ATTACKS] weapons'));
-ok('(4) the precision clarification is not labelled one-shot', (core24.recs || []).some(r => r.num === '24.28.01' && r.title === 'Precision and Devastating Wounds'));
+const oneShot = (core24.kids || []).filter(k => String(k.n).indexOf('[ONE SHOT]') !== -1);
+t('(4) one [ONE SHOT] section, under Core Abilities', oneShot.map(k => k.n), ['24.26 [ONE SHOT]']);
+ok('(4) no [ONE SHOT] chapter survives anywhere', [branch.kids, coreBook.kids].flat().filter(k => String(k.n).indexOf('[ONE SHOT]') !== -1), []);
+t('(4) one [ONE SHOT] row in it', ((oneShot[0] || {}).recs || []).map(r => r.num + ' ' + r.title), ['24.26.01 Multiple [ONE SHOT] Weapons']);
+ok('(4) [EXTRA ATTACKS] is a different ability and keeps its own section', (core24.kids || []).some(k => k.n === '24.11 [EXTRA ATTACKS]'));
+ok('(4) the precision clarification is its own section, not one-shot', (core24.kids || []).some(k => k.n === '24.28 [PRECISION]'));
+ok('(4) and it keeps its annotations', ((core24.kids || []).find(k => String(k.n).indexOf('24.28 ') === 0) || {}).c === 4);
 const uru = findNode(coreBook, '00 Universal Rules Updates');
 ok('(4) the Universal Rules Updates block is the book last chapter', !!uru);
 t('(4) and carries its six rows', ((uru || {}).recs || []).length, 6);

@@ -33,7 +33,10 @@ const intro05 = byId.get('core-rules#Attack-Sequence');
 ok('the 05 lead block is the chapter own record', !!intro05 && intro05.title === 'Attack Sequence' && /05 Attack Sequence/.test(String(intro05.chapter || '')));
 ok('and it carries no chapter number of its own', !!intro05 && intro05.num === undefined);
 const diceRow = byId.get('core-rules#Dice');
-ok('Dice still carries its own 01.05', !!diceRow && diceRow.num === '01.05' && diceRow.title === 'Dice');
+// task-5: Dice is the 01.05 SECTION's lead row, and the section header already
+// prints '01.05 Dice' - the row keeps its title and drops the number, like a
+// chapter's lead row.
+ok('Dice leads its 01.05 section without repeating its number', !!diceRow && diceRow.num === undefined && diceRow.title === 'Dice' && diceRow.chapter === '01.05 Dice');
 const rerolls = byId.get('rules-appendix#Re-rolls');
 ok('Re-rolls still carries 01.05.02', !!rerolls && rerolls.num === '01.05.02');
 const dupes = rows.filter(r => r.num && String(r.chapter || '').match(/^(\d{2})/) && r.num === /^(\d{2})/.exec(String(r.chapter))[1]);

@@ -604,22 +604,105 @@ export function tocTree(records, pageOf, opts) {
       // task-106: the chapter's rows follow the rule's own number, not the
       // alphabet (the chapter's lead row stays first). task-5: Core Rules and the
       // Rules Appendix are one book and one header list - the reader must not see
-      // two '01 Core Concepts' - so this chapter holds both sources' rows flat, and
-      // an appendix 0x.0x.0x definition sorts directly under the 0x.0x rule its
-      // number names.
+      // two '01 Core Concepts' - and the appendix's 0x.0x SECTION level survives:
+      // its definitions nest under the section their number names, and the core's
+      // own 0x.0x record is that section's lead row. task-4 rides here: 24 Core
+      // Abilities keeps exactly one [ONE SHOT] section (24.26).
       const chapterTitle = String(ch.title || '').trim();
       const allRows = sortChapterRows(primaryOf(ch.recs), ch.title);
+      // The section each appendix definition names: its number's first two parts.
+      // Only the appendix names a section; the core's own 3-part rows are the book's
+      // sub-rules and keep the home they had.
+      const groups = new Map(), loose = [];
+      for (const r of allRows) {
+        if (leafTitle(r).toLowerCase() === chapterTitle.toLowerCase()) { loose.push(r); continue; }
+        const parts = ruleNumber(r).split('.');
+        if (parts.length >= 3 && r.source === 'rules-appendix') {
+          const key = parts.slice(0, 2).join('.');
+          const segs = headingSegments(r);
+          const first = segs.length > 1 ? String(segs[0]).trim() : '';
+          if (!groups.has(key)) groups.set(key, { num: key, name: first, seg: first.toLowerCase(), rows: [] });
+          groups.get(key).rows.push(r);
+        } else loose.push(r);
+      }
+      // A core row the number places in one of those sections joins it: the
+      // appendix's section 01.02 and the core's own 01.02 row are one level.
+      for (const r of loose.slice()) {
+        const rn = ruleNumber(r);
+        if (rn.split('.').length < 3) continue;
+        const g = groups.get(rn.split('.').slice(0, 2).join('.'));
+        if (!g) continue;
+        g.rows.push(r);
+        loose.splice(loose.indexOf(r), 1);
+      }
+      // The core's 0x.0x record heads the section its number names; a numbered row
+      // with no section under it (the 15.02..15.12 stratagems, the 24.08 duplicated
+      // abilities) stays a row of the chapter, where it was.
+      for (const r of loose.slice()) {
+        const rn = ruleNumber(r);
+        if (rn.split('.').length !== 2) continue;
+        const g = groups.get(rn);
+        if (!g) continue;
+        g.rows.push(r);
+        g.name = cleanTitle(leafTitle(r));
+        g.seg = '';
+        loose.splice(loose.indexOf(r), 1);
+      }
+      // An unnumbered row whose heading extends a section row's heading is that
+      // section's row: the split inline rules ('3. Resolve Attacks > Identical
+      // Attacks').
+      for (const r of loose.slice()) {
+        if (ruleNumber(r)) continue;
+        const h = String(r.heading || '');
+        let bestKey = null, bestLen = -1;
+        for (const [key, g] of groups) {
+          for (const o of g.rows) {
+            const oh = String(o.heading || '');
+            if (oh && h.indexOf(oh + ' > ') === 0 && oh.length > bestLen) { bestKey = key; bestLen = oh.length; }
+          }
+        }
+        if (!bestKey) continue;
+        groups.get(bestKey).rows.push(r);
+        loose.splice(loose.indexOf(r), 1);
+      }
+      // task-4: an ability tag is not a section name unless the records say so.
+      // The Core Abilities page prints the [PRECISION] (24.28) and [TORRENT]
+      // (24.37) clarifications as h3s under the [ONE SHOT] h2, so their heading
+      // says [ONE SHOT] while their rule number says otherwise - which is how one
+      // ability became three sections. When a bracketed tag is shared by more than
+      // one rule number, a group whose own leaf does not name it is the page's
+      // container, and is titled by the leaf. The real one-shot record's leaf
+      // ('Multiple [ONE SHOT] Weapons') does name it, so [ONE SHOT] reads one
+      // section. A plain segment ('Move Units' over 09.02 and 09.05) is the
+      // appendix's section and is left alone.
+      const segOwners = new Map();
+      for (const g of groups.values()) {
+        if (!g.seg) continue;
+        if (!segOwners.has(g.seg)) segOwners.set(g.seg, new Set());
+        segOwners.get(g.seg).add(g.num);
+      }
+      for (const g of groups.values()) {
+        if (!/^\[[^\]]+\]$/.test(g.name)) continue;
+        const owners = segOwners.get(g.name.toLowerCase());
+        if (!owners || owners.size < 2) continue;
+        const leaf = cleanTitle(leafTitle(g.rows[0]));
+        if (leaf && leaf.toLowerCase().indexOf(g.name.toLowerCase()) === -1) g.name = leaf;
+      }
       // task-5: one rule, two sources. The core page and the appendix print the
       // same definition for eight numbers (and the core page splits three more out
       // as unnumbered children); left alone they would read as two rows with one
       // title. The numbered copy stays the row - the appendix's own title when the
       // core copy carries no number, the core's when both do - and the other copy
       // is attached to it: still delivered, still found by its own slug, counted in
-      // the row's annotation badge.
+      // the section's annotation badge. The groups are read first, so a hidden
+      // appendix row still opened its section.
       const hidden = new Set();
       const byTitle = new Map();
       const titleOf = r => cleanTitle(leafTitle(r)).replace(/^\d{2}(?:\.\d{2}){1,2}\s*[-\u2013]?\s*/, '').toLowerCase();
-      for (const r of allRows) {
+      const visible = [];
+      for (const g of groups.values()) visible.push(...g.rows);
+      visible.push(...loose);
+      for (const r of visible) {
         if (r.source !== 'core-rules' && r.source !== 'rules-appendix') continue;
         const key = titleOf(r);
         if (!byTitle.has(key)) byTitle.set(key, []);
@@ -649,12 +732,17 @@ export function tocTree(records, pageOf, opts) {
           }
         }
       }
+      for (const g of groups.values()) g.rows = g.rows.filter(r => !hidden.has(r.id));
+      const keptLoose = loose.filter(r => !hidden.has(r.id));
+      loose.length = 0;
+      loose.push(...keptLoose);
       const rows = allRows.filter(r => !hidden.has(r.id));
-      // A row whose heading extends another row's heading nests under it and is not
-      // listed twice - the payload carries no nested rows - which keeps the core
-      // page's copies of the CSV stratagems out of the drawer. The chapter's own
-      // LEAD row is not a container: every section's heading extends the chapter
-      // name, so nesting under the lead would hide the whole chapter behind one row.
+      // A subsection is never a sibling of its own parent: a row whose heading
+      // extends another row's heading nests under it. The chapter's own LEAD row is
+      // not a container (every section's heading extends the chapter name), and a
+      // nested row is not listed twice: the payload carries no nested rows, so this
+      // is the rule that keeps the core page's copies of the CSV stratagems out of
+      // the drawer. Sections keep every row they group.
       const lead = chapterTitle;
       const parentOfSection = new Map(), nestedSection = new Set();
       for (const r of rows) {
@@ -681,12 +769,28 @@ export function tocTree(records, pageOf, opts) {
         if (subs.length) e.s = subs.map(entryFor);
         return e;
       };
-      const list = rows.filter(r => !nestedSection.has(r.id)).map(entryFor);
-      files[file] = { n: label, lvl: 'chapter', c: counted, recs: list };
+      const sections = [], sectionOf = new Map();
+      for (const g of [...groups.values()].sort((x, y) => x.num.localeCompare(y.num))) {
+        // '02.01 1. Datasheet Name' would print the ordinal twice: the section's own
+        // number is the first one, the source's '1.' is its place in the chapter.
+        const glabel = g.num + ' ' + g.name.replace(/^\d+\.\s*/, '');
+        const gfile = file.replace(/\.js$/, '/' + nodeSlug(glabel) + '.js');
+        const grows = sortChapterRows(g.rows, '');
+        const gcount = grows.reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
+        files[gfile] = { n: glabel, lvl: 'section', c: gcount, recs: grows.map(entryFor) };
+        const ref = { n: glabel, lvl: 'section', f: gfile };
+        for (const r of grows) sectionOf.set(r.id, ref);
+        sections.push({ n: glabel, lvl: 'section', c: gcount, f: gfile });
+      }
+      const list = loose.filter(r => !nestedSection.has(r.id)).map(entryFor);
+      files[file] = sections.length
+        ? { n: label, lvl: 'chapter', c: counted, kids: sections, recs: list }
+        : { n: label, lvl: 'chapter', c: counted, recs: list };
       const chapterRef = { n: label, lvl: 'chapter', f: file };
       for (const r of ch.recs) {
         if (hidden.has(r.id)) continue;
         const chain = [rulesRef, bookRef, chapterRef];
+        if (sectionOf.has(r.id)) chain.push(sectionOf.get(r.id));
         paths.set(r.id, chain);
         for (const a of (attach.get(r.id) || [])) paths.set(a.id, chain);
       }
