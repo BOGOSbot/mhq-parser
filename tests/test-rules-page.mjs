@@ -244,6 +244,12 @@ ok('the record card resolves them through the same function', /links: resolveRec
 ok('the page asks the header index first', /if \(!o\.keep && !o\.english && await lookupAnswer\(question\)\) return;/.test(code));
 ok('a lookup opens the record without a model', /openRecord\(state, out\.record\.id\);/.test(code) && /setStatus\(t\('lookupFound'\), 'ok'\)/.test(code));
 ok('and hides the marks there is no question to label', /state\.selectable = false;/.test(code) && /state\.findings = \[out\.record\];/.test(code));
+// task-110: the lookup waits for Ask. task-67 also fired it from an input
+// listener with a 250 ms debounce, so a bare name drew its card while the reader
+// was still typing it. The call site is the ask path and nothing else; these two
+// assertions fail if a keystroke path comes back.
+t('(110) the lookup has one call site, the ask path', (code.match(/lookupAnswer\(/g) || []).length, 2);
+ok('(110) no keystroke listener survives for it', code.indexOf('lookupTimer') === -1 && code.indexOf('lastLookup') === -1);
 ok('the server exposes the lookup route', server.indexOf("'/rules/lookup'") !== -1 && server.indexOf('handleRulesLookup') !== -1 && /lookupRecord\(q\)/.test(server));
 // The route counters: the free route returns empty bodies under load, so /health
 // publishes what the model route actually did - calls, empties, retries, recovered.

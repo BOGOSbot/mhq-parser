@@ -29,6 +29,10 @@ functionality document for that page; the army-list parser has its own in
   `{ found, tier, record, wiki }`, or on a miss `{ found: false, reason }` with
   `not-a-lookup`, `no-heading`, `only-mentions` or `ambiguous`. The page opens
   the record full screen on a hit and runs the normal ask untouched on a miss.
+  **The lookup fires on Ask, never on a keystroke.** It is answered before the
+  pipeline when the reader submits - Enter or the send button - and nothing is
+  fetched while they type: a card that opened mid-word would answer a question
+  nobody has finished asking.
 - `GET /rules/find?q=...` is the wiki drawer's search: the same heading
   projection the lookup router reads, returned as a ranked list instead of one
   answer (`searchHeadings` in `src/header-index.mjs`, cap 40). Each row carries
