@@ -57,9 +57,9 @@ const BASELINE = {
   // task-86 pass 2: the abilities builder is covered here too. It emits one record per
   // distinct CSV ability name that has no record of its own (71 distinct, 14 already
   // covered by a core-rules heading, 57 built). A change in that count is a parser change.
-  scrape: { sections: 374, chars: 288696 },
+  scrape: { sections: 382, chars: 289486 },
   shape: {
-    'core-rules': { sections: 374, chars: 288696 },
+    'core-rules': { sections: 382, chars: 289486 },
     'factions-csv': { sections: 6396, bytes: 10013445 },
     abilities: { sections: 62 },
   },

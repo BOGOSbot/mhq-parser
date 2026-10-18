@@ -452,8 +452,12 @@ export function extractSections(html, source) {
       title = deriveTitle(body) || title;
     }
     stack.push({ level, title });
-    // A heading with no body is a label in a card, not a section.
-    if (body.length < MIN_CHARS) continue;
+    // A heading with no body is a label in a card, not a section. A NUMBERED heading is a
+    // rule whatever its length, though: the appendix defines some in one line ('The term
+    // Battle-shock test is the same as battle-shock roll.', 57 chars, 01.07.02), and the
+    // 80-char floor was dropping 11 of its numbered sections - the empty containers Mandal
+    // saw under a SEE ALSO entry (2026-10-18).
+    if (body.length < MIN_CHARS && !ruleId) continue;
     // A table of contents is navigation, not a rule. The core rules page carries
     // one under "Books", and its only content is the list of pages.
     if (/^(books|contents)$/i.test(title) && body.length < 400) continue;

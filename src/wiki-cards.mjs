@@ -559,22 +559,50 @@ function shapeHtml(text, opts) {
 // child record's content inside - Mandal's '02.05.01 Using Keywords & Mixed Keywords in
 // Units' + its text. An entry whose number does not extend the record's own number is a
 // cross-reference and is dropped outright (see seeAlsoEntries).
-function seeAlsoHtml(record, o) {
-  if (!record) return '';
-  const entries = seeAlsoEntries(record).filter(function (e) { return e.child; });
-  if (!entries.length) return '';
+function seeAlsoKids(record, o) {
+  if (!record) return [];
   const pool = [].concat((o.corpora && o.corpora.rules) || [], (o.corpora && o.corpora.factions) || []);
-  const parts = entries.map(function (e) {
-    const label = e.num + ' ' + e.title;
+  return seeAlsoEntries(record).filter(function (e) { return e.child; }).map(function (e) {
     const kid = pool.find(function (r) { return String(r.ruleId || '') === e.num; });
-    if (!kid) return '<p class="wseealso-miss">' + esc(label) + '</p>';
-    const kidText = stripSeeAlso({ text: stripBuiltBlock(kid), links: kid.links });
-    const body = proseHtml(kidText, { selfId: o.selfId, href: o.href, cap: 40, selfHeading: kid.heading });
+    const full = kid ? stripSeeAlso({ text: stripBuiltBlock(kid), links: kid.links }) : '';
+    const heading = kid ? String(kid.heading || '') : '';
+    const lines = String(full).split('\n');
+    const body = (heading && lines[0] && heading.indexOf(lines[0].trim()) === 0 ? lines.slice(1) : lines).join('\n').trim();
+    return { num: e.num, title: e.title, kid: kid, full: full, body: body };
+  });
+}
+
+// task-94: a child the record's own body already quotes is an echo - the appendix repeats
+// the section it belongs to ('BATTLEFIELD MORALE' + the paragraph, then the same paragraph
+// again inside the 01.07.01 container). The container shows it, so the copy inside the body
+// goes, with the ALL-CAPS label that introduced it.
+function dropChildEchoes(text, kids) {
+  let out = String(text == null ? '' : text);
+  kids.forEach(function (k) {
+    if (!k.body || k.body.length < 40) return;
+    const at = out.indexOf(k.body);
+    if (at === -1) return;
+    let head = out.slice(0, at);
+    const label = String(k.title || '').toUpperCase().trim();
+    if (label) {
+      const rx = new RegExp('\\n\\s*' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$');
+      head = head.replace(rx, '\n');
+    }
+    out = (head + out.slice(at + k.body.length)).replace(/\n{3,}/g, '\n\n');
+  });
+  return out.trim();
+}
+
+function seeAlsoHtml(kids, o) {
+  if (!kids.length) return '';
+  const parts = kids.map(function (k) {
+    const label = k.num + ' ' + k.title;
+    if (!k.kid) return '<p class="wseealso-miss">' + esc(label) + '</p>';
+    const body = proseHtml(k.full, { selfId: o.selfId, href: o.href, cap: 40, selfHeading: k.kid.heading });
     return '<details class="wseealso" open><summary>' + esc(label) + '</summary>' + body + '</details>';
   });
   return parts.length ? '<div class="wseealso-list">' + parts.join('') + '</div>' : '';
 }
-
 export function recordBody(record, opts) {
   const o = opts || {};
   // The card prose gets the same links as the prose path, and the record's own id
@@ -582,9 +610,11 @@ export function recordBody(record, opts) {
   if (record && !o.selfId) o.selfId = record.id;
   // task-87: the two display-only strips happen once, here. The stored text keeps both
   // blocks; the vector sees them and the corpus is unchanged.
-  const text = stripSeeAlso({ text: stripBuiltBlock(record), links: record && record.links });
+  const kids = seeAlsoKids(record, o);
+  // task-94: the child's copy inside the body goes before anything renders it.
+  const text = dropChildEchoes(stripSeeAlso({ text: stripBuiltBlock(record), links: record && record.links }), kids);
   const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
-  const tail = seeAlsoHtml(record, o);
+  const tail = seeAlsoHtml(kids, o);
   if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang, o) + tail;
   // task-78 B: the labelled families come before the card. FALL-BACK MOVE is kind
   // 'stratagem' and had a stratagem card; its Type line says Movement Ability, and
