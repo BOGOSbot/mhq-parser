@@ -13,7 +13,8 @@ one host in the current stack that runs it unchanged.
 |---|---|
 | Box | `optimum-imp-60273`, runtime node, size small, network `allow-all` |
 | App | `/workspace/home/mhq-parser`, started by the box's init command |
-| URL | `https://optimum-imp-60273-3000.preview.box.upstash.com` (basic auth) |
+| URL | `https://optimum-imp-60273-3000.preview.box.upstash.com` - **no auth during the mobile test**; `box public-url 3000 --basic-auth` puts it back (it overwrites the URL's credentials) |
+| Short link | `https://tinyurl.com/2y7uju8c` -> `/rules` (a tinyurl redirect; the Box URL is the real one) |
 | Keys | `/home/boxuser/.dsh/.credentials.yaml`, five keys: Upstash Vector URL +
   token, `OPENCODE_GO_API_KEY` (Jev free gateway), `SENSENOVA_API_KEY` (judge and
   fast model), `TINYFISH_API_KEY` |
@@ -66,7 +67,7 @@ costs money even paused, so delete it when the test is over.
 
 ## Known limits of this deployment
 
-- **Basic auth** is what keeps the URL private; it is not an account system.
+- **The test URL is open** (no auth) because basic auth was friction on a phone. The host is an unguessable box id, not a secret; republish with `--basic-auth` for anything longer-lived.
 - **Cold wake** can exceed a phone's default timeout: the proxy holds the request
   while the box resumes and waits up to 30 s more for the port, then 503 with
   `Retry-After: 5`.
