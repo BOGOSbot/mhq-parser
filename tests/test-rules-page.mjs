@@ -269,8 +269,8 @@ t('it is bilingual', new Set(lookupFixture.lookups.map(l => l.lang)).size, 2);
 // categories, with the same controls, a swipe through the findings, and the
 // static wiki wired in on the same origin. Each is one edit from being undone
 // and none is visible to an i18n check, so each is asserted structurally.
-ok('a card tap opens the record', /ctx.openRecord\(state, f\.id\)/.test(SURFACE));
-ok('the controls do not open it', SURFACE.indexOf(".closest('.fctl, .fdev, .flinks, .pickbtn, .ftitle')") !== -1);
+ok('a card tap opens the door the switch names', /ctx.openDoor\(state, f\)/.test(SURFACE));
+ok('the sheet and the path do not re-open it themselves', SURFACE.indexOf(".closest('.fmore, .fpath, .fdev, .flinks, .pickbtn, .ftitle')") !== -1);
 ok('the whole card is the tap target', /\.fitem\.hero\{cursor:pointer\}/.test(PAGE));
 ok('the record is a full-screen dialog', /el\('div', 'record hidden'\)/.test(code) && /setAttribute\('role', 'dialog'\)/.test(code));
 ok('the record draws one shape for every category', /function renderRecord\(state\)/.test(code) && /recordKindLabel\(/.test(code));

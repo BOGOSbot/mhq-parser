@@ -674,7 +674,7 @@
     panel.textContent = '';
     var back = el('button', 'sv-back sv-drawer-back');
     back.type = 'button';
-    back.textContent = '\u2190 ' + (stack.length > 1 ? titleOf(stack[stack.length - 2]) : 'Wiki');
+    back.textContent = '\u2190 ' + (stack.length > 1 ? titleOf(stack[stack.length - 2]) : (state.doorChapter || 'Wiki'));
     back.addEventListener('click', function (ev) { ev.preventDefault(); drawerBack(); });
     panel.appendChild(back);
     panel.appendChild(el('h2', 'sv-drawer-title', displayTitle(titleOf(record))));
@@ -706,6 +706,7 @@
   function hideDrawerRecord() {
     var d = $('sv-drawer'), panel = $('sv-drawer-record'), tree = treeEl();
     if (state.dstack) state.dstack.length = 0;
+    state.doorChapter = '';
     if (d) d.classList.remove('sv-reading');
     if (panel) { panel.setAttribute('hidden', ''); panel.textContent = ''; }
     // The tree lost its layout while hidden, so its scroll height reads 0 until a reflow:
@@ -729,6 +730,167 @@
       if (slug.indexOf('--') === -1) return;
       ev.preventDefault();
       recordBySlug(slug).then(function (rec) { if (rec) showInDrawer(rec, true); });
+    });
+  }
+
+  // --- the page's door into the book (task-8) ---------------------------------
+  // A finding row tap with 'In the book' selected opens the drawer at the record's
+  // chapter with the record inline, the same entry the tree uses (toggleInline),
+  // not a second record view. The branch, the chain of nodes and, for a faction
+  // page, the page's rows are all in the payload; the reveal walks them.
+  function branchForRecord(f) {
+    var book = bookOf(f && f.slug);
+    if (book.indexOf('faction-') === 0) return 'factions';
+    if (book === 'event-companion' || (f && f.source === 'event-companion')) return 'missions';
+    return f && f.set === 'factions' ? 'factions' : 'rules';
+  }
+  function ensureBranch(key) {
+    if (state.cache[key]) { state.branch = key; return Promise.resolve(state.cache[key]); }
+    return getJson(DATA + '/index/' + key + '.json').then(function (j) {
+      state.cache[key] = j; state.branch = key; return j;
+    });
+  }
+  // The node that owns the record: its recs (a row in the tree) or, in the
+  // factions half, a page's rec ids. Returns the chain of node names and keys.
+  function findOwner(root, branch, id) {
+    var pages = (state.cache[branch] && state.cache[branch].pages) || [];
+    function pageFor2(n, key) {
+      var parts = String(key || '').split('/');
+      var area = parts.length >= 2 ? parts[parts.length - 2] : '';
+      for (var i = 0; i < pages.length; i++) {
+        var p = pages[i];
+        if (!p || p.n !== n || !p.recs) continue;
+        if (p.recs.indexOf(id) === -1) continue;
+        if (p.area && area && p.area !== area) continue;
+        return p;
+      }
+      return null;
+    }
+    // The keys of the whole chain are returned, not just the target's: a nested
+    // node only renders when every ancestor is open.
+    function walk(node, chain, key, keys) {
+      var path = keys.concat([key]);
+      var recs = node.recs || [];
+      for (var i = 0; i < recs.length; i++) if (recs[i] && recs[i].id === id) return { chain: chain, keys: path, page: null };
+      var p = pageFor2(node.n, key);
+      if (p) return { chain: chain, keys: path, page: p };
+      var kids = node.kids || [];
+      for (var j = 0; j < kids.length; j++) {
+        var k = kids[j];
+        var found = walk(k, chain.concat([k.n]), key + '/' + k.n, path);
+        if (found) return found;
+      }
+      return null;
+    }
+    // The branch payload's own root is the branch node ('Rules'), whose kids are
+    // the books; renderTree gives each child the key branch + '/' + n.
+    var kids = root.kids || [];
+    for (var i = 0; i < kids.length; i++) {
+      var found = walk(kids[i], [root.n, kids[i].n], branch + '/' + kids[i].n, []);
+      if (found) return found;
+    }
+    return null;
+  }
+  function recordLike(f) {
+    return { id: f.id, title: titleOf(f), slug: f.slug || '', snippet: f.excerpt || '' };
+  }
+  // Not every delivered record is a tree row: the fold hides duplicates and the
+  // section leads own their nested rules, so a finding can name a record the tree
+  // does not carry. The drawer still opens AT the record's chapter - the chapter
+  // is expanded and the drawer's record view is the read - rather than landing on
+  // the root of the book.
+  function findChapterKey(root, branch, f) {
+    var segs = String(f.heading || '').split(' > ').filter(Boolean);
+    if (!segs.length) return null;
+    var want = segs[0].replace(/^\d{1,2}(\.\d{1,2})?\s+/, '').toLowerCase();
+    if (!want) return null;
+    function walk(node, key, keys) {
+      var path = keys.concat([key]);
+      var name = String(node.n || '');
+      var bare = name.replace(/^\d{1,2}(\.\d{1,2})?\s+/, '').toLowerCase();
+      if (bare === want || name.toLowerCase().indexOf(want) !== -1) return { keys: path, label: name };
+      var kids = node.kids || [];
+      for (var i = 0; i < kids.length; i++) {
+        var found = walk(kids[i], key + '/' + kids[i].n, path);
+        if (found) return found;
+      }
+      return null;
+    }
+    var kids = root.kids || [];
+    for (var i = 0; i < kids.length; i++) {
+      var b = kids[i];
+      var bKey = branch + '/' + b.n;
+      var bName = String(b.n || '').replace(/^\d{1,2}\s+/, '').toLowerCase();
+      if (nameMatch(want, bName)) return { keys: [bKey], label: b.n };
+      var chapters = b.kids || [];
+      for (var j = 0; j < chapters.length; j++) {
+        var c = chapters[j];
+        var found = walk(c, bKey + '/' + c.n, [bKey]);
+        if (found) return found;
+      }
+    }
+    return null;
+    function nameMatch(a, b) { return a === b || (b && b.indexOf(a) !== -1); }
+  }
+  function revealInTree(f) {
+    if (!f || !f.id) return;
+    drawerOpen(true);
+    // A search filter in the field would hide the row the reader asked for.
+    state.filter = '';
+    var box = $('sv-filter'); if (box) box.value = '';
+    var branch = branchForRecord(f);
+    ensureBranch(branch).then(function (root) {
+      var hit = findOwner(root, branch, f.id);
+      if (!hit) {
+        var chap = findChapterKey(root, branch, f);
+        if (chap) chap.keys.forEach(function (k) { state.open[k] = true; });
+        state.doorChapter = chap ? chap.label : '';
+        renderTree();
+        showInDrawer(recordLike(f), true);
+        return;
+      }
+      state.doorChapter = '';
+      hit.keys.forEach(function (k) { state.open[k] = true; });
+      renderTree();
+      var finish = function () {
+        var row = rowFor(f.id);
+        if (row && row.parentNode) {
+          toggleInline(recordLike(f), row.parentNode, row.svSiblings);
+          if (row.scrollIntoView) row.scrollIntoView({ block: 'start' });
+        } else {
+          // Not a tree row (an unplaced front-matter record, or a page that did
+          // not load): the drawer's record view is the honest fallback.
+          showInDrawer(recordLike(f), true);
+        }
+      };
+      if (hit.page && !state.rowsCache[branch]) loadRows().then(function () { renderTree(); setTimeout(finish, 0); });
+      else finish();
+    }).catch(function () { showInDrawer(recordLike(f), true); });
+  }
+  // The drawer head's door switch: the page owns the storage and the navigation,
+  // this only paints the control and hands the chosen mode back.
+  function doorSwitch(mode, onPick, labels) {
+    if (!DRAWER_MODE) return;
+    var d = $('sv-drawer');
+    var head = d && d.querySelector('.sv-drawer-head');
+    if (!head) return;
+    var lab = labels || {};
+    var seg = head.querySelector('.doorseg');
+    if (!seg) {
+      seg = el('div', 'doorseg');
+      seg.setAttribute('role', 'tablist');
+      seg.setAttribute('aria-label', lab.label || 'where a row opens');
+      var close = head.querySelector('.sv-close');
+      head.insertBefore(seg, close || null);
+    }
+    seg.textContent = '';
+    [['quick', lab.quick || 'Quick'], ['book', lab.book || 'In the book']].forEach(function (pair) {
+      var b = el('button', mode === pair[0] ? 'on' : '', pair[1]);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', mode === pair[0] ? 'true' : 'false');
+      b.addEventListener('click', function () { if (typeof onPick === 'function') onPick(pair[0]); });
+      seg.appendChild(b);
     });
   }
 
@@ -1066,20 +1228,35 @@ function findingItem(f, prominent, cited, state, ctx) {
   var parts = ctx.crumbs(f.heading);
   var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + displayTitle(parts.length ? parts[parts.length - 1] : f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
   a.href = f.href || f.url; a.target = '_blank'; a.rel = 'noopener';
-  // The title opens the record, not the source page: the source is one tap
-  // further in, inside the record, where the reader is already looking.
+  // task-8: the title opens the door the switch names - the quick record, or the
+  // drawer at this chapter with the record inline (ctx.openDoor owns the choice).
   a.setAttribute('aria-label', ctx.t('recordOpen') + ': ' + a.textContent);
-  a.addEventListener('click', function (ev) { ev.preventDefault(); ctx.openRecord(state, f.id); });
+  a.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); ctx.openDoor(state, f); });
   head.appendChild(a);
-  if (selectable) head.appendChild(findingControls(state, f, first, ignored, ctx));
+  // The '...' sheet carries the same three actions on every row; the row is the door.
+  var more = el('button', 'fmore', String.fromCharCode(8943));
+  more.type = 'button';
+  more.setAttribute('aria-label', ctx.t('findingActions'));
+  more.title = ctx.t('findingActions');
+  more.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); ctx.findingSheet(state, f); });
+  head.appendChild(more);
   li.appendChild(head);
-  // The whole card is the tap target; the controls are not, so a caret or an x
-  // is never swallowed by the navigation.
+  // The whole card is the tap target; the sheet and the links are not.
   li.addEventListener('click', function (ev) {
-    if (ev.target && ev.target.closest && ev.target.closest('.fctl, .fdev, .flinks, .pickbtn, .ftitle')) return;
-    ctx.openRecord(state, f.id);
+    if (ev.target && ev.target.closest && ev.target.closest('.fmore, .fpath, .fdev, .flinks, .pickbtn, .ftitle')) return;
+    ctx.openDoor(state, f);
   });
-  if (parts.length > 1) li.appendChild(el('div', 'fcrumbs', parts.slice(0, -1).join(' \u203a ')));
+  // The section path follows the switch too: '\u00b7 quick' opens the record,
+  // '\u00b7 in the book' opens the chapter with the record inline.
+  if (parts.length > 1) {
+    var path = el('button', 'fcrumbs fpath');
+    path.type = 'button';
+    path.appendChild(el('span', null, parts.slice(0, -1).join(' \u203a ')));
+    path.appendChild(el('span', 'door', ' \u00b7 ' + (ctx.doorMode(state) === 'book' ? ctx.t('doorBook') : ctx.t('doorQuick'))));
+    path.setAttribute('aria-label', (ctx.doorMode(state) === 'book' ? ctx.t('doorBook') : ctx.t('doorQuick')) + ': ' + parts.slice(0, -1).join(' \u203a '));
+    path.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); ctx.openDoor(state, f); });
+    li.appendChild(path);
+  }
   // One line at rest: the card says what the passage is, and the dev toggle opens
   // the whole record instead of a wall of prose above the answer.
   var p = el('p', 'ftext heroline');
@@ -1168,6 +1345,12 @@ function devPanel(f, state, ctx) {
     displayTitle: displayTitle,
     controls: function (state, f, ctx) { return findingControls(state, f, isFirsted(state, f), isIgnored(state, f), ctx); },
     meta: function (f, ctx) { return findingMeta(f, ctx); },
+    // task-8: the drawer side of the one door - reveal a finding's record in its
+    // chapter (or fall back to the drawer's record view), paint the head switch,
+    // and close the drawer when the page returns to the quick record.
+    openRecordInTree: revealInTree,
+    doorSwitch: doorSwitch,
+    closeDrawer: function () { drawerOpen(false); },
   };
   window.WIKI_SURFACE_LOADED = true;
   }

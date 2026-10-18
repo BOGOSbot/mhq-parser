@@ -470,11 +470,12 @@ ceiling is what keeps that from eating the evidence.
 The findings are the product, so the page draws them as findings and puts
 nothing else in front of them: a verdict strip above (one sentence, the
 confidence, the passages it rests on), then the rows. Each row is its number on
-the page, its title in the rulebook face, the section it sits in, and one line of
-the record with the heading chain cut from the front (the crumbs already say
-where it is). The instrumentation - which leg found it, its rank, its score, the
-words the lexical leg matched - moves into the `<>` panel where it belongs; the
-row at rest is the rule, not the retrieval.
+the page, its title in the rulebook face, the section it sits in **plus the door
+it follows** (`· Quick` or `· In the book`), and one line of the record with
+the heading chain cut from the front (the crumbs already say where it is). The
+instrumentation - which leg found it, its rank, its score, the words the lexical
+leg matched - lives in the record's `<>` panel; the row at rest is the rule, not
+the retrieval.
 
 - `retrieveWide` records provenance as it searches: `vectorRank` beside the
   vector's similarity, `lexicalRank` beside the term score. Every finding comes
@@ -484,11 +485,13 @@ row at rest is the rule, not the retrieval.
 - The display sorts each half by that rank - ranks are per-half positions, so
   interleaving two halves would invent an order - shows the top five overall
   whole above the prose, and puts the rest behind *more findings*.
-- **The findings are hero cards, and the reader reranks them.** Each card is the
-  record's title and one line of it, with three controls: a green caret that puts
-  the record first, an `x` that ignores it, and a `<>` that opens the whole chunk
-  with the provenance behind it - the leg that found it, its rank, its rank score
-  and the words the lexical leg matched. The judge's cited passages and the
+- **The findings are rows, and the reader reranks them.** Each row is the
+  record's title and one line of it; one `⋯` opens a sheet with the same three
+  actions on every row - **Put first** (a green caret), **Ignore** (an `x`), and
+  **Show in the wiki** - in place of the three 44 px glyphs that used to sit on
+  every row. The record keeps the same caret, `x` and `<>` controls inside it,
+  including the provenance panel (the leg that found it, its rank, its rank score
+  and the words the lexical leg matched). The judge's cited passages and the
   reader's carets both resort the list, and the reader wins: the careted records
   first (newest first), then the cited ones, then rank order. An ignored record
   sinks to the end and is dimmed but never leaves the page, because the evidence
@@ -497,13 +500,27 @@ row at rest is the rule, not the retrieval.
   id and a negative - written into the question's own trace
   (`docs/question-traces.md`), and the manual rerun at the foot answers again on
   what is left, in the caret's order, through the task-21 override path.
+- **The one door (model C).** A row opens whichever door the Quick / In the book
+  switch names. The switch is in the quick record's header (and mirrored in the
+  drawer's head, so the way back is in the same place), and the choice is kept in
+  localStorage under `mhq.rules.door`, so the next page load and the section path
+  under every row follow it. *Quick* opens the full-screen record; *In the book*
+  opens the drawer at the finding's chapter and inlines the record with the tree's
+  own inline (the same `toggleInline` entry the drawer rows use), so switching
+  back to *Quick* returns to the record rather than to the top of the book.
+  A delivered record the fold keeps out of the tree rows (the section leads own
+  their nested rules) still opens the drawer at its chapter, with the record in
+  the drawer's record view and the chapter left expanded behind it. An unplaced
+  record falls back the same way. `#<slug>` deep links are unchanged: the hash
+  opens the record page in the drawer's overlay.
 - **A finding's links render from the payload, never from its text.** The record
   carries `links: [{ to, title, kind, anchor, url }]`; the server resolves each
   target against the corpus, drops one the corpus does not hold, and the page
   draws a chip per link whose hover or focus preview is built from that target's
   own title and url. The `- section: X` lines the wiki build writes into the text
   are never parsed: one source, or the two drift.
-- **A card tap opens the record full screen.** The record is one shape for the
+- **A card tap opens the door the switch names.** *Quick* shows the record full
+  screen, *In the book* the drawer (above); the record itself is one shape for the
   four categories - unit, faction, detachment, rules section - built by
   `recordCard(id)` in `src/unit-card.mjs`: the CSV unit card for a datasheet or
   its keywords half, and the record with its resolved links for every other

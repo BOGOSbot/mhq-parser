@@ -293,6 +293,43 @@ details.secondv{display:block;margin-top:12px;padding-top:10px;border-top:1px da
 .linkchip{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   vertical-align:bottom;display:inline-block}
 
+/* --- the one door (task-8) ------------------------------------------------
+   A finding row opens the door the Quick / In the book switch names, and the
+   section path under it follows. The same switch rides in the quick record's
+   header and in the drawer's head, so one control is taught once and kept. */
+.fpath{display:block;width:100%;text-align:left;background:none;border:0;padding:0;
+  font:inherit;color:inherit;cursor:pointer}
+.fpath:hover{color:var(--txt)}
+.fpath .door{color:var(--acc);font-weight:600;white-space:nowrap;margin-left:1px}
+.fmore{margin-left:auto;min-width:44px;min-height:44px;padding:0 8px;border:1px solid transparent;
+  border-radius:11px;background:none;color:var(--dim);font:600 17px var(--sans);cursor:pointer;align-self:center}
+.fmore:hover{background:var(--panel2);color:var(--txt)}
+.doorbar{display:flex;justify-content:center;padding:7px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
+.doorseg{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:999px;background:transparent}
+.doorseg button{min-height:34px;padding:0 13px;border:0;border-radius:999px;background:none;
+  color:var(--dim);font:600 12.5px var(--sans);cursor:pointer}
+.doorseg button:hover{color:var(--txt)}
+.doorseg button.on{background:var(--panel2);color:var(--txt);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.sv-drawer-head .doorseg{margin-left:auto}
+.sv-drawer-head .doorseg button{min-height:34px;padding:0 10px;font-size:11px}
+.fsheet .sheethead{display:flex;gap:10px;align-items:flex-start;margin-bottom:4px}
+.fsheet .sheetx{margin-left:auto;background:var(--panel2);color:var(--dim);border:1px solid var(--line);
+  border-radius:9px;padding:6px 11px;font:16px var(--sans);line-height:1;cursor:pointer}
+.fsheet .sheettitle{font:600 17px/1.25 var(--serif);color:var(--ink)}
+.fsheet .sheetcrumb{color:var(--dim);font:11.5px var(--mono);margin-top:3px;overflow-wrap:anywhere}
+.sheetact{display:flex;align-items:center;gap:10px;width:100%;min-height:54px;border:0;
+  border-bottom:1px solid var(--line);background:none;text-align:left;padding:9px 2px;
+  color:var(--txt);font:600 14.5px var(--sans);cursor:pointer}
+.sheetact:last-child{border-bottom:0}
+.sheetact:hover{color:var(--acc)}
+.sheetact .ico{flex:0 0 auto;width:22px;text-align:center;color:var(--dim);font:600 14px var(--sans)}
+.sheetact .hint{margin-left:auto;color:var(--dim);font:10.5px/1.3 var(--sans);text-align:right;max-width:44%}
+.sheetact.on{color:var(--ok)}
+.sheetact.on .ico{color:var(--ok)}
+.sheetact.ign.on{color:var(--err)}
+.sheetact.ign.on .ico{color:var(--err)}
+.sheetfoot{color:var(--dim);font:10.5px/1.4 var(--sans);padding:10px 2px 2px;text-align:center}
+
 /* --- unit card: a datasheet, one-handed ------------------------------------ */
 .unitcard .uname{font:600 21px/1.2 var(--serif);color:var(--ink)}
 .unitcard h3{font:600 11px/1.3 var(--sans);letter-spacing:.04em;text-transform:uppercase;
@@ -569,6 +606,17 @@ var I18N = {
   heroIgnored: 'ignored',
   heroDev: 'show the whole passage and where it came from',
   heroDevHide: 'hide the passage',
+  doorQuick: 'Quick',
+  doorBook: 'In the book',
+  doorSwitch: 'where a row opens',
+  findingActions: 'actions for this finding',
+  sheetFirst: 'Put first',
+  sheetFirstOn: 'Remove from first',
+  sheetIgnore: 'Ignore',
+  sheetIgnoreOn: 'Stop ignoring',
+  sheetWiki: 'Show in the wiki',
+  sheetWikiHint: 'open the book at this chapter',
+  sheetFoot: 'The same three actions on every row.',
   heroLinks: 'Inside this passage',
   foundBy: 'found by ',
   legUnknown: 'no provenance',
@@ -743,6 +791,17 @@ var I18N = {
   heroIgnored: 'écarté',
   heroDev: 'afficher tout le passage et sa provenance',
   heroDevHide: 'masquer le passage',
+  doorQuick: 'Rapide',
+  doorBook: 'Dans le livre',
+  doorSwitch: 'où s\u2019ouvre une ligne',
+  findingActions: 'actions pour ce constat',
+  sheetFirst: 'Mettre en premier',
+  sheetFirstOn: 'Retirer du premier rang',
+  sheetIgnore: 'Écarter',
+  sheetIgnoreOn: 'Ne plus écarter',
+  sheetWiki: 'Montrer dans le wiki',
+  sheetWikiHint: 'ouvrir le livre à ce chapitre',
+  sheetFoot: 'Les trois mêmes actions sur chaque ligne.',
   heroLinks: 'À l\u2019intérieur de ce passage',
   foundBy: 'trouvé par ',
   legUnknown: 'sans provenance',
@@ -1335,11 +1394,139 @@ function sendPick(state, by, none) {
 // task-80: the finding card is the surface's renderer, one implementation. This is
 // the page's only entry point into it; PAGE_CTX carries what the page still owns -
 // i18n, the record dialog, the reader's marks, the ask transport.
+// --- the one door (task-8) ---------------------------------------------------
+// The reader picks where a row opens once - the quick record, or the book at the
+// row's chapter with the record inline - and the page keeps that choice in
+// localStorage. The row renderer (src/wiki-surface.js) asks these helpers, so
+// there is one implementation of the decision and of the switch.
+var DOOR_KEY = 'mhq.rules.door';
+var DOOR_CUR = null; // the finding whose door was last opened, for the drawer switch
+function doorMode() {
+  try { return localStorage.getItem(DOOR_KEY) === 'book' ? 'book' : 'quick'; } catch (e) { return 'quick'; }
+}
+function doorLabels() { return { quick: t('doorQuick'), book: t('doorBook'), label: t('doorSwitch') }; }
+function syncDoor() {
+  var api = window.WIKI_SURFACE_API;
+  if (api && api.doorSwitch) api.doorSwitch(doorMode(), onDoorPick, doorLabels());
+}
+function setDoor(mode) {
+  try { localStorage.setItem(DOOR_KEY, mode === 'book' ? 'book' : 'quick'); } catch (e) { /* private mode */ }
+  // The rows' section path carries the choice ('· quick' / '· in the book'), so
+  // the list is redrawn when it changes - the reader sees where the next tap goes.
+  if (DOOR_CUR && DOOR_CUR.state) renderFindings(DOOR_CUR.state);
+  if (RECORD_STATE && RECORD_STATE.recordId) renderRecord(RECORD_STATE);
+  syncDoor();
+}
+function openDoor(state, f) {
+  if (!state || !f) return;
+  DOOR_CUR = { state: state, id: f.id };
+  if (doorMode() === 'book') openBook(state, f);
+  else openRecord(state, f.id);
+}
+// The book door: the drawer at the record's chapter, the record inline. The
+// surface owns the tree and the inline record; the page only says where to go.
+function openBook(state, f) {
+  if (!state || !f) return;
+  DOOR_CUR = { state: state, id: f.id };
+  if (RECORD_STATE && RECORD_STATE.recordId) closeRecord(RECORD_STATE);
+  var api = window.WIKI_SURFACE_API;
+  if (api && api.openRecordInTree) api.openRecordInTree(f);
+  if (api && api.doorSwitch) api.doorSwitch('book', onDoorPick, doorLabels());
+}
+// The drawer's switch coming back: the quick record of the same finding.
+function onDoorPick(mode) {
+  if (mode === 'book') { setDoor('book'); return; }
+  setDoor('quick');
+  var cur = DOOR_CUR;
+  if (cur && cur.state) {
+    var api = window.WIKI_SURFACE_API;
+    if (api && api.closeDrawer) api.closeDrawer();
+    openRecord(cur.state, cur.id);
+  }
+}
+function doorSeg(mode, onPick) {
+  var seg = el('span', 'doorseg');
+  seg.setAttribute('role', 'tablist');
+  seg.setAttribute('aria-label', t('doorSwitch'));
+  [['quick', t('doorQuick')], ['book', t('doorBook')]].forEach(function (pair) {
+    var b = el('button', mode === pair[0] ? 'on' : '', pair[1]);
+    b.type = 'button';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', mode === pair[0] ? 'true' : 'false');
+    b.addEventListener('click', function () { onPick(pair[0]); });
+    seg.appendChild(b);
+  });
+  return seg;
+}
+// --- the finding sheet -------------------------------------------------------
+// One '...' per row, one sheet with the same three actions: ranking, ignoring
+// and the book door. It replaces the three glyphs, 132 px of chrome per row.
+var FSHEET = null;
+function findingSheetNode() {
+  if (FSHEET) return FSHEET;
+  var pop = el('div', 'pop hidden');
+  pop.id = 'fsheet';
+  var sheet = el('div', 'popsheet fsheet');
+  pop.appendChild(sheet);
+  pop.addEventListener('click', function (ev) { if (ev.target === pop) closeFindingSheet(); });
+  document.body.appendChild(pop);
+  FSHEET = { pop: pop, sheet: sheet };
+  return FSHEET;
+}
+function closeFindingSheet() { if (FSHEET) FSHEET.pop.classList.add('hidden'); }
+function sheetAction(kind, label, hint, icon, cls, run) {
+  var b = el('button', 'sheetact ' + kind + cls);
+  b.type = 'button';
+  b.appendChild(el('span', 'ico', icon));
+  b.appendChild(el('span', null, label));
+  b.appendChild(el('span', 'hint', hint));
+  b.addEventListener('click', function () { run(); });
+  return b;
+}
+function findingTitle(f) {
+  var api = window.WIKI_SURFACE_API;
+  var parts = crumbs(f.heading);
+  var leaf = parts.length ? parts[parts.length - 1] : (f.heading || f.id);
+  return (api && api.displayTitle) ? api.displayTitle(leaf) : leaf;
+}
+function openFindingSheet(state, f) {
+  if (!state || !f) return;
+  var box = findingSheetNode().sheet;
+  box.textContent = '';
+  var head = el('div', 'sheethead');
+  head.appendChild(el('span', 'num' + ((state.cited || []).indexOf(f.n) !== -1 ? ' cite' : ''), '[' + f.n + ']'));
+  var tb = el('div');
+  tb.appendChild(el('div', 'sheettitle', findingTitle(f)));
+  var path = crumbs(f.heading).slice(0, -1);
+  if (path.length) tb.appendChild(el('div', 'sheetcrumb', path.join(' \u203a ')));
+  head.appendChild(tb);
+  var x = el('button', 'sheetx', '\u00d7');
+  x.type = 'button';
+  x.setAttribute('aria-label', t('recordClose'));
+  x.addEventListener('click', closeFindingSheet);
+  head.appendChild(x);
+  box.appendChild(head);
+  var firstOn = (state.positive || []).indexOf(f.id) !== -1;
+  var ignOn = state.keep[f.id] === false;
+  box.appendChild(sheetAction('first', firstOn ? t('sheetFirstOn') : t('sheetFirst'), firstOn ? t('heroTop') : t('heroCaret'), '^', firstOn ? ' on' : '', function () {
+    toggleFirst(state, f.id); closeFindingSheet(); syncDoor();
+  }));
+  box.appendChild(sheetAction('ignore', ignOn ? t('sheetIgnoreOn') : t('sheetIgnore'), ignOn ? t('heroIgnored') : t('heroIgnore'), '\u00d7', ignOn ? ' ign on' : ' ign', function () {
+    toggleIgnore(state, f.id); closeFindingSheet(); syncDoor();
+  }));
+  box.appendChild(sheetAction('wiki', t('sheetWiki'), t('sheetWikiHint'), '\u2197', '', function () {
+    closeFindingSheet(); openBook(state, f);
+  }));
+  box.appendChild(el('div', 'sheetfoot', t('sheetFoot')));
+  FSHEET.pop.classList.remove('hidden');
+}
+
 var PAGE_CTX = {
   t: t, sectionCard: sectionCard, openRecord: openRecord, markTerms: markTerms,
   linkChips: linkChips, passageBody: passageBody, legClass: legClass, legLabel: legLabel,
   crumbs: crumbs, fmtScore: fmtScore, toggleFirst: toggleFirst, toggleIgnore: toggleIgnore,
   toggleDev: toggleDev, sendPick: sendPick,
+  doorMode: doorMode, openDoor: openDoor, findingSheet: openFindingSheet,
   rerank: function (o) { ask(o); },
   questionValue: function (state) { return state.question || $('#q').value; },
 };
@@ -1620,6 +1807,17 @@ function renderRecord(state) {
   close.addEventListener('click', function () { closeRecord(state); });
   bar.appendChild(close);
   node.appendChild(bar);
+  // task-8: the quick record's header carries the Quick / In the book switch.
+  // In the book closes this dialog and opens the drawer at the finding's chapter
+  // with the record inline; the switch comes back to this record from there.
+  var doorbar = el('div', 'doorbar');
+  doorbar.appendChild(doorSeg(doorMode(), function (mode) {
+    if (mode === 'quick') { setDoor('quick'); return; }
+    setDoor('book');
+    closeRecord(state);
+    openBook(state, f);
+  }));
+  node.appendChild(doorbar);
   var body = el('div', 'recbody');
   var parts = data ? data.crumb : crumbs(f.heading).slice(0, -1);
   if (parts && parts.length) body.appendChild(el('div', 'reccrumb', parts.join(' \u203a ')));
@@ -2683,6 +2881,7 @@ $('#f').addEventListener('submit', function (e) { e.preventDefault(); ask(); });
 document.addEventListener('keydown', function (e) {
   var inRecord = !!(RECORD_STATE && RECORD_STATE.recordId);
   if (e.key === 'Escape') {
+    if (FSHEET && !FSHEET.pop.classList.contains('hidden')) { closeFindingSheet(); return; }
     if (inRecord) { closeRecord(RECORD_STATE); return; }
     closePassage(); $('#q').blur();
     return;
@@ -2694,6 +2893,18 @@ document.addEventListener('keydown', function (e) {
   }
 });
 growQuestion();
+// task-8: paint the drawer's door switch as soon as the surface has mounted it.
+// The surface is a deferred script, so the drawer exists before DOMContentLoaded.
+(function initDoor() {
+  var tries = 0;
+  function go() {
+    var api = window.WIKI_SURFACE_API;
+    if (api && api.doorSwitch && document.getElementById('sv-drawer')) { api.doorSwitch(doorMode(), onDoorPick, doorLabels()); return; }
+    if (tries++ < 100) setTimeout(go, 80);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(go, 0); });
+  else go();
+})();
 // Desktop convenience only: focusing a textarea on a phone opens the keyboard
 // over the page before the reader has decided to ask anything.
 if (!window.matchMedia || !window.matchMedia('(pointer: coarse)').matches) $('#q').focus();

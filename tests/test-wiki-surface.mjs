@@ -78,9 +78,10 @@ ok('(b) the dead empty-expression snippet line is gone', js.body.indexOf("r.snip
 ok('(c) a cold page says Open the wiki, a warm one says Back', js.body.indexOf("cold ? 'Open the wiki'") !== -1 && js.body.indexOf("'sv-back'") !== -1);
 ok('(d) the row cap has head-room and a visible overrun line', js.body.indexOf('var ROW_CAP = 500;') !== -1 && js.body.indexOf('more not shown.') !== -1);
 
-// (H) the old surface is untouched by this slice.
+// (H) the old surface is untouched by this slice. task-8 mounts it on the page by
+// name, so the check is the mount contract, not the absence of the string.
 const rulesHtml = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
-ok('(H) rules.html does not reference the surface', rulesHtml.indexOf('wiki-surface') === -1 && rulesHtml.indexOf('/rules/dev') === -1);
+ok('(H) rules.html mounts the surface it owns', rulesHtml.indexOf('window.WIKI_SURFACE') !== -1 && rulesHtml.indexOf('/rules/surface.js') !== -1);
 const server = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
 ok('(A) the server has the dev route and the payload route', server.indexOf("u.pathname === '/rules/dev'") !== -1 && server.indexOf('handleSurfaceData') !== -1 && server.indexOf("'/rules/data/'") !== -1);
 ok('(H) the /wiki route is deleted from the server', fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8').indexOf("u.pathname.indexOf('/wiki/')") === -1);
