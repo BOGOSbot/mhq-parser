@@ -628,6 +628,7 @@ var I18N = {
     voiceEnglish: 'Dictate the English text',
     voiceSetting: 'Voice',
     voiceRecording: 'recording - tap the microphone to stop',
+  voiceRecordingSec: 'recording - {n}s - tap the microphone to stop (stops at 20s)',
     voiceTranscribing: 'transcribing the clip...',
     voiceFallback: 'server transcription failed - trying the browser recogniser',
     waitingFindings: 'waiting for the findings...',
@@ -824,6 +825,7 @@ var I18N = {
     voiceEnglish: 'Dicter le texte anglais',
     voiceSetting: 'Voix',
     voiceRecording: 'enregistrement - touchez le micro pour arrêter',
+  voiceRecordingSec: 'enregistrement - {n}s - touchez le micro pour arrêter (arrêt à 20s)',
     voiceTranscribing: 'transcription du clip...',
     voiceFallback: 'échec de la transcription serveur - essai du reconnaisseur du navigateur',
     waitingFindings: 'en attente des constats...',
@@ -2840,10 +2842,13 @@ function blobToWav(blob) {
 function wireVoice(mic, box, locale, grow) {
   if (!mic || !box) return;
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var rec = null, recorder = null, stream = null, chunks = [], timer = null;
+  var rec = null, recorder = null, stream = null, chunks = [], timer = null, ticker = null;
   var listening = false, recording = false;
+  var recordAt = 0;
   var base = '';
-  var MAX_RECORD_MS = 60000;
+  // Clips are one or two sentences, not conversations: the mic stops itself at
+  // 20 s, and the status counts up so the reader can see it coming.
+  var MAX_RECORD_MS = 20000;
   // Each control restores its own name when it stops, so the translation's
   // microphone does not come back called "Ask by voice".
   var idleLabel = mic.getAttribute('aria-label') || t('voice');
@@ -2858,7 +2863,16 @@ function wireVoice(mic, box, locale, grow) {
     recording = on;
     mic.classList.toggle('on', on || listening);
     mic.title = on || listening ? t('stopListening') : idleLabel;
-    if (on) setStatus(t('voiceRecording'), 'busy');
+    if (ticker) { clearInterval(ticker); ticker = null; }
+    if (on) {
+      recordAt = Date.now();
+      var counter = function () {
+        var secs = Math.floor((Date.now() - recordAt) / 1000);
+        setStatus(t('voiceRecordingSec').replace('{n}', String(secs)), 'busy');
+      };
+      counter();
+      ticker = setInterval(counter, 500);
+    }
   }
   function putTranscript(text) {
     var said = String(text || '').replace(/\s+/g, ' ').trim();
@@ -2937,6 +2951,7 @@ function wireVoice(mic, box, locale, grow) {
       recorder.onstop = function () {
         setRecording(false);
         if (timer) { clearTimeout(timer); timer = null; }
+        if (ticker) { clearInterval(ticker); ticker = null; }
         if (stream) { stream.getTracks().forEach(function (tr) { try { tr.stop(); } catch (e) { } }); stream = null; }
         var blob = new Blob(chunks, { type: (recorder && recorder.mimeType) || 'audio/webm' });
         if (!blob.size) { setStatus(t('nothingHeard'), 'err'); return; }

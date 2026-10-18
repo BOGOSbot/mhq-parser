@@ -69,6 +69,8 @@ ok('the output cap is 400 tokens, not 4,096', VOICE_MAX_TOKENS === 400 && voiceR
 ok('the density floor is 0.8 wps', VOICE_MIN_WPS === 0.8);
 ok('the route passes the clip length to the guard and reports the retry', /x-audio-seconds/.test(server) && /attempts: out\.attempts, retried: out\.retried, thin: out\.thin/.test(server));
 ok('the page sends the clip length with the clip', /'X-Audio-Seconds'/.test(page) && /return \{ wav: encodeWav16\(mono, audio.sampleRate\), seconds:/.test(page));
+ok('the microphone stops itself at 20 s', /var MAX_RECORD_MS = 20000;/.test(page) && page.indexOf('var MAX_RECORD_MS = 60000;') === -1);
+ok('the status counts the seconds while it records', /voiceRecordingSec'\)\.replace\('\{n\}'/.test(page) && /setInterval\(counter, 500\)/.test(page));
 
 // --- the settings (task-20) --------------------------------------------------
 ok('the voice key is kept', page.indexOf("var VOICE_KEY = 'mhq.rules.voice'") !== -1);

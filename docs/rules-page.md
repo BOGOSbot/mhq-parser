@@ -538,10 +538,14 @@ the retrieval.
   then $0.0011 for an 8 s clip** (22.5k cached tokens), ~1.1-1.6 s. This is the
   measured route for terminology - 78.9% against 44.7% without the glossary - and
   the glossary stays full because the cached full prompt is cheaper than any
-  selection pass. The route caps the answer at 400 tokens (a benchmark runaway ran
-  to 4,096 repeating `Hmm.`) and runs BOGOS's completeness guard: a reading that is
-  empty, timestamps only, cut at the cap, or under 0.8 words per second of the clip
-  is re-asked **once** with a corrective prompt and the longer reading is kept.
+  selection pass. The microphone itself is capped: it stops at **20 s** and the
+  status counts the seconds, because a rules question is one or two sentences, not
+  a conversation. The output cap (`max_tokens` 400) is a one-line formality; the
+  guard that matters on audio this short is BOGOS's completeness check - a reading
+  that is empty, timestamps only, or under **0.8 words per second** of the clip is
+  re-asked **once** with a corrective prompt and the longer reading is kept (a
+  24.4 s recording came back as `Ok.`, and the lite tier answered six tokens with
+  `finish_reason: stop`).
   The transcript lands in the question box and is **never auto-submitted** - the
   reader corrects it first. A server failure (no key, timeout, bad response) falls
   back to the browser recogniser instead of leaving a dead microphone, and the
