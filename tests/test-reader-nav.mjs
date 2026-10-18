@@ -44,6 +44,15 @@ ok('the tapped row is measured before the other body closes', /var anchor = tree
 ok('and the tree gives back the scroll that closing it took', /var drift = wrap\.getBoundingClientRect\(\)\.top - anchor;/.test(surface) && /tree\.scrollTop \+= drift/.test(surface));
 ok('a row the clamp left above the scrollport is pinned to the top', /if \(wrap\.getBoundingClientRect\(\)\.top < view\.top \+ 2\) wrap\.scrollIntoView\(\{ block: 'start' \}\)/.test(surface));
 
+// task-108: opening a CHAPTER rebuilt the tree, threw the open record away and moved
+// the scroll (measured: 08.05 open, tap 19, tapped header at 453 landed at -72).
+// The tapped node anchors the render, and the open record is restored after it.
+ok('the render is anchored to the tapped node', /function renderTree\(anchor\)/.test(surface) && /var a0 = anchor \? findByAttr\(box, anchor\.attr, anchor\.val\) : null;/.test(surface));
+ok('and the tapped node is put back after the rebuild', /var a1 = findByAttr\(box, anchor\.attr, anchor\.val\);/.test(surface) && /box\.scrollTop \+= drift/.test(surface));
+ok('a node carries its own key as the anchor', /renderTree\(\{ attr: 'data-node', val: key \}\)/.test(surface) && /renderTree\(anchor\)/.test(surface) && /openBranch\(b\.b, \{ attr: 'data-branch', val: b\.b \}\)/.test(surface));
+ok('the open record survives a re-render', /state\.openRec = r;/.test(surface) && /function restoreInline\(\)/.test(surface) && /toggleInline\(r, row\.parentNode, row\.svSiblings\)/.test(surface));
+ok('and closing it forgets it', /existing\.remove\(\); state\.openRec = null;/.test(surface));
+
 // The bar must not bring back the duplicate title the row already prints.
 ok('the bar does not reintroduce the inline title', surface.indexOf('sv-inline-title') === -1 && surface.indexOf('sv-inline-meta') === -1);
 

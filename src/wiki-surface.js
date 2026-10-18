@@ -149,10 +149,10 @@
     return getJson(DATA + '/index.json').then(function (j) { state.branches = j.branches || []; renderTree(); })
       .catch(function () { renderTree(); });
   }
-  function openBranch(key) {
-    if (state.branch === key) { state.branch = null; renderTree(); return; }
-    if (state.cache[key]) { state.branch = key; renderTree(); return; }
-    getJson(DATA + '/index/' + key + '.json').then(function (j) { state.cache[key] = j; state.branch = key; renderTree(); });
+  function openBranch(key, anchor) {
+    if (state.branch === key) { state.branch = null; renderTree(anchor); return; }
+    if (state.cache[key]) { state.branch = key; renderTree(anchor); return; }
+    getJson(DATA + '/index/' + key + '.json').then(function (j) { state.cache[key] = j; state.branch = key; renderTree(anchor); });
   }
   function matches(text) { return !state.filter || String(text || '').toLowerCase().indexOf(state.filter) !== -1; }
   function nodeOpen(key) { return state.open[key] === true; }
@@ -162,9 +162,21 @@
     if ((n.recs || []).some(function (r) { return matches(r.title) || matches(r.snippet) || matches(bookLabel(r.slug)); })) return true;
     return (n.kids || []).some(function (k) { return nodeMatches(k, key + '/' + k.n); });
   }
-  function renderTree() {
+  // The tapped element, found by an attribute value rather than a selector: node keys
+  // are heading text and may carry quotes.
+  function findByAttr(root, attr, val) {
+    var list = root.querySelectorAll('[' + attr + ']');
+    for (var i = 0; i < list.length; i++) { if (list[i].getAttribute(attr) === val) return list[i]; }
+    return null;
+  }
+  function renderTree(anchor) {
     var box = $('sv-tree');
     if (!box) return;
+    // task-108: the rebuild moves the scroll even when the content above is restored
+    // (measured: scrollTop 1725 -> 2250 through one node open). When the caller names
+    // the element it acted on, that element is put back where it was.
+    var a0 = anchor ? findByAttr(box, anchor.attr, anchor.val) : null;
+    var top0 = a0 ? a0.getBoundingClientRect().top : 0;
     box.textContent = '';
     if (!state.branches) { box.appendChild(el('div', 'sv-loading', 'Loading the wiki...')); return; }
     state.branches.forEach(function (b) {
@@ -174,7 +186,7 @@
       btn.appendChild(el('span', 'sv-t', b.n));
       btn.appendChild(el('span', 'sv-c', String(b.c)));
       btn.setAttribute('aria-expanded', state.branch === b.b ? 'true' : 'false');
-      btn.addEventListener('click', function () { openBranch(b.b); });
+      btn.addEventListener('click', function () { openBranch(b.b, { attr: 'data-branch', val: b.b }); });
       box.appendChild(btn);
       if (state.branch === b.b && state.cache[b.b]) {
         var tree = el('div', 'sv-branch');
@@ -183,6 +195,31 @@
       }
     });
     if (!box.childNodes.length) box.appendChild(el('div', 'sv-empty', 'No matching branches.'));
+    // task-108: a re-render (opening a chapter, loading rows, filtering) rebuilt the
+    // tree and threw the open record away. Expanding a chapter while a record was open
+    // therefore closed the body above the tapped header and pulled it out of the screen
+    // (reported on 08.05 then 19). The open record is put back in place, so the rebuild
+    // leaves the tree's height above the tapped row unchanged.
+    restoreInline();
+    if (a0) {
+      var a1 = findByAttr(box, anchor.attr, anchor.val);
+      if (a1) {
+        var drift = a1.getBoundingClientRect().top - top0;
+        if (drift) box.scrollTop += drift;
+        var view = box.getBoundingClientRect();
+        if (a1.getBoundingClientRect().top < view.top + 2) a1.scrollIntoView({ block: 'start' });
+      }
+    }
+  }
+  function restoreInline() {
+    var r = state.openRec;
+    if (!r) return;
+    var tree = treeEl();
+    if (!tree) return;
+    var rows = tree.querySelectorAll('.sv-rec'), row = null;
+    for (var i = 0; i < rows.length; i++) { if (rows[i].getAttribute('data-rec') === r.id) { row = rows[i]; break; } }
+    if (!row || !row.parentNode) { state.openRec = null; return; }
+    toggleInline(r, row.parentNode, row.svSiblings);
   }
   // --- finding an entry: the whole rulebook, one field -----------------------
   // The tree asks the reader to know where a rule lives; the field asks only for
@@ -312,7 +349,7 @@
     if (n.c != null) btn.appendChild(el('span', 'sv-c', String(n.c)));
     var open = state.filter ? true : nodeOpen(key);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.addEventListener('click', function () { state.open[key] = !open; renderTree(); });
+    btn.addEventListener('click', function () { state.open[key] = !open; renderTree({ attr: 'data-node', val: key }); });
     wrap.appendChild(btn);
     if (!open) return wrap;
     var body = el('div', 'sv-recs');
@@ -403,7 +440,7 @@
   }
   function toggleInline(r, wrap, siblings) {
     var existing = wrap.querySelector('.sv-inline');
-    if (existing) { existing.remove(); return; }
+    if (existing) { existing.remove(); state.openRec = null; return; }
     // One record at a time: two open bodies made a 4,909 px tree with the first one
     // 2,155 px above the viewport, and the bar removes the reason to keep two. An inline
     // that CONTAINS this row stays: a detachment's enhancements open inside it, and
@@ -419,11 +456,13 @@
     if (tree) Array.prototype.forEach.call(tree.querySelectorAll('.sv-inline'), function (n) { if (!n.contains(wrap)) n.remove(); });
     if (tree) {
       var drift = wrap.getBoundingClientRect().top - anchor;
-      if (drift) tree.scrollTop += drift;
-      // Only when the clamp left the row above the scrollport: then it is pinned to the
-      // top (where the bar sits) rather than left under the drawer head.
-      var view = tree.getBoundingClientRect();
-      if (wrap.getBoundingClientRect().top < view.top + 2) wrap.scrollIntoView({ block: 'start' });
+      if (drift) {
+        tree.scrollTop += drift;
+        // Only when the clamp left the row above the scrollport: then it is pinned to
+        // the top (where the bar sits) rather than left under the drawer head.
+        var view = tree.getBoundingClientRect();
+        if (wrap.getBoundingClientRect().top < view.top + 2) wrap.scrollIntoView({ block: 'start' });
+      }
     }
     var box = el('div', 'sv-inline');
     var list = siblings || [];
@@ -459,6 +498,7 @@
       box.appendChild(ownBox);
     }
     wrap.appendChild(box);
+    state.openRec = r;
     deIndent(box);
     if (state.rows[r.id]) { body.innerHTML = faceHtml(r.id) + state.rows[r.id]; wireFaces(body); return; }
     fetch(REC + '?id=' + encodeURIComponent(r.id) + '&format=html', { credentials: 'same-origin' })

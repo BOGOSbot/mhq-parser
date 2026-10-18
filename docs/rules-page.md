@@ -119,6 +119,14 @@ than left hidden behind the drawer head. It stays one-open: two bodies made a
 4,909 px tree, and the pinned prev/next bar already carries the reader between
 sections.
 
+**Opening a chapter is not a jump either.** A tap on a branch or a chapter rebuilds
+the tree, which used to throw the open record away and move the scroll with it
+(measured on the reported 08.05 then 19: the tapped header sat at 453 and landed
+at -72). The rebuild is anchored like the record tap: the tapped node's viewport
+position is measured before the teardown and restored after the rebuild, and the
+open record is re-created in place - expanding a chapter no longer closes the body
+the reader is in. Same measurement after: 453 -> 453.
+
 Above the tree there is one field, and it does not filter the open branch - it
 searches every book.
 `GET /rules/find` greps the heading projection and ranks the same three tiers
