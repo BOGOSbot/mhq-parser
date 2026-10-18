@@ -75,7 +75,11 @@ t('the ladder accounts for every trace', rep.tiers.vote + rep.tiers.title + rep.
 t('the ladder accounts for every distinct question', rep.distinct.vote + rep.distinct.title + rep.distinct.judge + rep.distinct.generated + rep.distinct.none, rep.asks.questions);
 ok('distinct questions are fewer than traces here (the duplicates are real)', rep.asks.questions < rep.total && rep.asks.duplicated > 0);
 t('every trace is inside a distinct question group', rep.asks.questions + rep.asks.extraTraces, rep.total);
-t('no harvested trace is labelled by the reader yet', rep.tiers.vote, 0);
+// The live page writes reader labels now, so this is a count, not a fixed zero:
+// every trace the reader has labelled must be the vote tier (labelVote reads a
+// positive label, never a thumbs rating), and no other trace may claim it.
+const readerLabelled = traces.filter(t => t.labels && Array.isArray(t.labels.positive) && t.labels.positive.filter(Boolean).length).length;
+t('the reader-labelled traces are the vote tier, and only they', rep.tiers.vote, readerLabelled);
 ok('the title tier is the one that scales offline', rep.tiers.title > rep.tiers.vote && rep.tiers.title > 0);
 ok('the distinct-level title count is not the trace-level one', rep.distinct.title !== rep.tiers.title);
 
