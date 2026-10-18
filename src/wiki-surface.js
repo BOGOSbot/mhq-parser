@@ -408,8 +408,23 @@
     // 2,155 px above the viewport, and the bar removes the reason to keep two. An inline
     // that CONTAINS this row stays: a detachment's enhancements open inside it, and
     // removing the parent would append the child to a detached subtree (found 2026-10-18).
+    // task-107: closing the body ABOVE the row just tapped used to drag that row out of
+    // the screen (measured: tapped at y=233, landed at y=-105 - 338 px of body removed
+    // above it). The tapped row is the reader's place, so it is the anchor: remove the
+    // others, then give back exactly the scroll they took. Where the container has no
+    // room left to give (the row was near the top), the row is pinned to the top of the
+    // scrollport instead of being left under the head.
     var tree = treeEl();
+    var anchor = tree ? wrap.getBoundingClientRect().top : 0;
     if (tree) Array.prototype.forEach.call(tree.querySelectorAll('.sv-inline'), function (n) { if (!n.contains(wrap)) n.remove(); });
+    if (tree) {
+      var drift = wrap.getBoundingClientRect().top - anchor;
+      if (drift) tree.scrollTop += drift;
+      // Only when the clamp left the row above the scrollport: then it is pinned to the
+      // top (where the bar sits) rather than left under the drawer head.
+      var view = tree.getBoundingClientRect();
+      if (wrap.getBoundingClientRect().top < view.top + 2) wrap.scrollIntoView({ block: 'start' });
+    }
     var box = el('div', 'sv-inline');
     var list = siblings || [];
     var at = -1;

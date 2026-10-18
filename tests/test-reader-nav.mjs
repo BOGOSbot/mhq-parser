@@ -37,6 +37,13 @@ ok('opening a record closes the other one', /querySelectorAll\('\.sv-inline'\)/.
 // would append the child to a detached subtree and the tap would do nothing.
 ok('the inline that contains the row stays open', /if \(!n\.contains\(wrap\)\) n\.remove\(\)/.test(surface));
 
+// task-107: closing the body above the row just tapped dragged that row off the
+// screen (measured: tapped at y=233, landed at y=-105). The tapped row is the
+// anchor, and the tree gives back exactly the scroll the closed body took.
+ok('the tapped row is measured before the other body closes', /var anchor = tree \? wrap\.getBoundingClientRect\(\)\.top : 0;/.test(surface));
+ok('and the tree gives back the scroll that closing it took', /var drift = wrap\.getBoundingClientRect\(\)\.top - anchor;/.test(surface) && /tree\.scrollTop \+= drift/.test(surface));
+ok('a row the clamp left above the scrollport is pinned to the top', /if \(wrap\.getBoundingClientRect\(\)\.top < view\.top \+ 2\) wrap\.scrollIntoView\(\{ block: 'start' \}\)/.test(surface));
+
 // The bar must not bring back the duplicate title the row already prints.
 ok('the bar does not reintroduce the inline title', surface.indexOf('sv-inline-title') === -1 && surface.indexOf('sv-inline-meta') === -1);
 

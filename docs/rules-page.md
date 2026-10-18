@@ -107,6 +107,18 @@ payload row moves the number into the row's own slot and marks the record
 `— errata` when its body opens with an errata verb. Two rows then read as the
 rule and its erratum rather than as a duplicate.
 
+**One record is open at a time, and the tapped row does not move.** Opening a
+row closes the body above it, which shrinks the tree - and used to drag the row
+just tapped out of the screen (measured: tapped at y=233, landed at y=-105, a
+338 px body removed above it). The tapped row is the anchor: the tree measures its
+viewport position before the other body closes and returns exactly that much
+scroll after, so the row stays where the finger left it (0 px of drift on the same
+measurement). Where the scrollport has no room left to give - the row was near the
+top - the row is pinned to the top instead, under the sticky reader bar, rather
+than left hidden behind the drawer head. It stays one-open: two bodies made a
+4,909 px tree, and the pinned prev/next bar already carries the reader between
+sections.
+
 Above the tree there is one field, and it does not filter the open branch - it
 searches every book.
 `GET /rules/find` greps the heading projection and ranks the same three tiers
