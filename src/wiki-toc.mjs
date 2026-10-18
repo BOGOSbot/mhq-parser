@@ -200,12 +200,20 @@ export function cleanTitle(t) {
 // "?" (the corpus truncates them with "...") - but where it exists it is the
 // only signal left. Non-rule records are never annotations (a stratagem named
 // "WHERE D'YA FINK YOU'RE GOING?" is a name).
+//
+// task-96: a SHORT question with no 'Q:' label is a section TITLE, not a question
+// someone asked. The appendix titles 02.02.01's own subsections that way ('What are
+// Modifiers?', 19 characters) and the annotation rule was filing it as an answer to
+// something, so it never appeared as a row and 02.02.01 rendered empty. Measured over
+// the 61 question-leaf records with no FAQ ancestor: one is 19 characters, one is 29 and
+// starts with 'Q:', the other 59 run past 40.
 export function headingSegments(r) { return String(r.heading || '').split(' > ').filter(Boolean); }
 export function isAnnotation(r) {
   if (r.kind !== 'rule') return false;
   for (const seg of headingSegments(r)) {
     const x = String(seg).trim();
-    if (/^FAQ$/i.test(x) || /^Errata$/i.test(x) || /^Duplicated Abilities$/i.test(x) || /^\[TORRENT\]$/i.test(x) || /^Q:/i.test(x) || /\?\s*$/.test(x)) return true;
+    const question = /\?\s*$/.test(x) && (/^Q:/i.test(x) || x.length > 40);
+    if (/^FAQ$/i.test(x) || /^Errata$/i.test(x) || /^Duplicated Abilities$/i.test(x) || /^\[TORRENT\]$/i.test(x) || /^Q:/i.test(x) || question) return true;
   }
   return false;
 }

@@ -38,9 +38,9 @@ t('and stats.cuts agrees', tree.stats.cuts, 116);
 // listed in its place (task-61); the books still do not cut, and the Rulings
 // chapter is still a waypoint.
 ok('a 0x chapter is not a cut entry', kids('tree/rules/core-rules.js').filter(x => /^\d{2}\s/.test(x.n)).every(x => !x.cut));
-ok('and its children are the entries: 187 for Core Rules, 117 for the Appendix', (function () {
+ok('and its children are the entries: 187 for Core Rules, 118 for the Appendix', (function () {
   const flat = b => (files[b].kids || []).reduce((n, k) => { const f = files[k.f]; return n + (f ? (f.kids || []).length + (f.recs || []).length : 1); }, 0);
-  return flat('tree/rules/core-rules.js') === 187 && flat('tree/rules/rules-appendix.js') === 117;
+  return flat('tree/rules/core-rules.js') === 187 && flat('tree/rules/rules-appendix.js') === 118;
 })());
 ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut && !files['tree/rules/rules-appendix.js'].cut);
 ok('the two ruling books are waypoints, their chapters are the cutoffs', !files['tree/rulings/wtc.js'].cut && !files['tree/rulings/feq.js'].cut && kids('tree/rulings/wtc.js').every(x => x.cut) && kids('tree/rulings/feq.js').every(x => x.cut));

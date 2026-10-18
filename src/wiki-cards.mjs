@@ -593,10 +593,36 @@ function dropChildEchoes(text, kids) {
   return out.trim();
 }
 
+// task-96: a numbered GROUP whose own body is empty ('02.02.01 Modifiers', 24 characters of
+// heading echo) keeps its content in the unnumbered sub-headings that follow it in the
+// appendix ('What are Modifiers?', 'Applying Modifiers'). The card shows those as containers,
+// in corpus order, up to the next numbered heading. Without this the group opens empty while
+// its text sits next door as anonymous rows - Mandal's '02.02.01 Modifiers is empty'.
+function emptyBodyKids(record, o) {
+  if (!record || !o.corpora || !o.corpora.rules) return [];
+  const pool = o.corpora.rules;
+  const at = pool.findIndex(function (r) { return r.id === record.id; });
+  if (at === -1) return [];
+  const first = String(record.heading || '').split(' > ')[0];
+  const out = [];
+  for (let i = at + 1; i < pool.length; i++) {
+    const r = pool[i];
+    if (String(r.heading || '').split(' > ')[0] !== first) break;
+    if (String(r.ruleId || '')) break;
+    const title = String(r.heading || '').split(' > ').pop();
+    const full = stripSeeAlso({ text: stripBuiltBlock(r), links: r.links });
+    // The appendix carries one sub-heading twice ('When Modifying Characteristics', split
+    // over two records): the container is one per title, and the text joins.
+    const found = out.find(function (k) { return k.title === title; });
+    if (found) { found.full = found.full + '\n\n' + full; continue; }
+    out.push({ num: '', title: title, kid: r, full: full, body: '' });
+  }
+  return out;
+}
 function seeAlsoHtml(kids, o) {
   if (!kids.length) return '';
   const parts = kids.map(function (k) {
-    const label = k.num + ' ' + k.title;
+    const label = (k.num ? k.num + ' ' : '') + k.title;
     if (!k.kid) return '<p class="wseealso-miss">' + esc(label) + '</p>';
     const body = proseHtml(k.full, { selfId: o.selfId, href: o.href, cap: 40, selfHeading: k.kid.heading });
     return '<details class="wseealso" open><summary>' + esc(label) + '</summary>' + body + '</details>';
@@ -614,7 +640,10 @@ export function recordBody(record, opts) {
   // task-94: the child's copy inside the body goes before anything renders it.
   const text = dropChildEchoes(stripSeeAlso({ text: stripBuiltBlock(record), links: record && record.links }), kids);
   const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
-  const tail = seeAlsoHtml(kids, o);
+  // task-96: a numbered group whose own body is empty ('02.02.01 Modifiers') hands the
+  // content to the unnumbered sub-headings that follow it.
+  const bodyOnly = String(text).split('\n').slice(1).join('\n').trim();
+  const tail = seeAlsoHtml(bodyOnly ? kids : kids.concat(emptyBodyKids(record, o)), o);
   if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang, o) + tail;
   // task-78 B: the labelled families come before the card. FALL-BACK MOVE is kind
   // 'stratagem' and had a stratagem card; its Type line says Movement Ability, and
