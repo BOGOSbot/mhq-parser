@@ -338,6 +338,35 @@
     var r = m[id];
     return r ? { id: r.id, slug: r.slug, title: r.title, source: r.source, snippet: r.snippet } : { id: id, title: leafOfId(id), slug: '', snippet: '' };
   }
+  // task-14: the number a section or a row sorts by, as [chapter, section, rule].
+  // A label that carries no number has no key.
+  function numKey(s) {
+    var m = /^(\d{2})(?:\.(\d{2}))?(?:\.(\d{2}))?/.exec(String(s == null ? '' : s));
+    if (!m) return null;
+    return [parseInt(m[1], 10), m[2] ? parseInt(m[2], 10) : 0, m[3] ? parseInt(m[3], 10) : 0];
+  }
+  function cmpKey(a, b) {
+    if (!a && !b) return 0;
+    if (!a) return 1;
+    if (!b) return -1;
+    for (var i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] - b[i];
+    return 0;
+  }
+  // One chapter's children as one numbered list: its intro row first, then the
+  // sections and its own numbered rows together, then the unnumbered rows in the
+  // order the payload lists them.
+  function chapterItems(n, kids, rows) {
+    var intro = String(n.n == null ? '' : n.n).replace(/^\d{2}(?:\.\d{2})?\s*/, '').trim();
+    var items = [];
+    kids.forEach(function (k, i) { items.push({ kid: k, key: numKey(k.n), ord: i }); });
+    rows.forEach(function (r, i) {
+      var key = r.num ? numKey(r.num) : null;
+      if (!key && String(r.title || '') === intro) key = [-1, 0, 0];
+      items.push({ rec: r, key: key, ord: kids.length + i });
+    });
+    items.sort(function (x, y) { return cmpKey(x.key, y.key) || x.ord - y.ord; });
+    return items;
+  }
   function renderNode(n, key) {
     if (!nodeMatches(n, key)) return null;
     var wrap = el('div', 'sv-nodewrap');
@@ -353,7 +382,6 @@
     wrap.appendChild(btn);
     if (!open) return wrap;
     var body = el('div', 'sv-recs');
-    kids.forEach(function (k) { var child = renderNode(k, key + '/' + k.n); if (child) body.appendChild(child); });
     var shown = recs.filter(function (r) { return matches(r.title) || matches(r.snippet) || matches(bookLabel(r.slug)); });
     // task-103: the rows of one container are the sibling list the reader's bar walks,
     // so they are collected first and handed to every row of that container.
@@ -369,7 +397,20 @@
         }
       }
     }
-    rows.forEach(function (r) { body.appendChild(renderRec(r, rows)); });
+    // task-14: a chapter's sections and its own rows are two payload arrays but one
+    // list, and the chapter reads top to bottom in number order: the intro row (the
+    // one named after the chapter) first, then sections and numbered rows together
+    // by number, then the unnumbered rows in their own order. A single-record
+    // section such as 01.06 keeps its place instead of trailing after 01.07.
+    if (n.lvl === 'chapter' && kids.length) {
+      chapterItems(n, kids, rows).forEach(function (it) {
+        if (it.kid) { var child = renderNode(it.kid, key + '/' + it.kid.n); if (child) body.appendChild(child); }
+        else body.appendChild(renderRec(it.rec, rows));
+      });
+    } else {
+      kids.forEach(function (k) { var child = renderNode(k, key + '/' + k.n); if (child) body.appendChild(child); });
+      rows.forEach(function (r) { body.appendChild(renderRec(r, rows)); });
+    }
     // Never silently: the corpus maximum is 162 rows in one node, so the cap is
     // head-room, not a cut - and if a future payload passes it, the reader is told.
     if (shown.length > ROW_CAP) body.appendChild(el('div', 'sv-empty', (shown.length - ROW_CAP) + ' more not shown.'));

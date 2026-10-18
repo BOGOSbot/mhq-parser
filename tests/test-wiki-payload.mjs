@@ -126,6 +126,10 @@ t('(5) the core 0x.0x record leads the section', (((unitsNode || {}).recs || [])
 t('(5) then its appendix definitions in number order', unitsNums.filter(Boolean).slice(0, 3), ['01.02.01', '01.02.02', '01.02.03']);
 ok('(5) and the rows are in number order', asc(unitsNums.filter(Boolean)));
 ok('(5) the chapter lead row stays first', !coreCC.recs[0].num);
+// task-14: the parts the drawer interleaves: 01.06 is a row carrying its number
+// (a single-record section), and the chapter's own intro row carries none.
+ok('(14) the single-record 01.06 row keeps its number', (coreCC.recs || []).some(r => r.num === '01.06'));
+ok('(14) and the chapter intro row has none', (coreCC.recs || []).some(r => r.title === 'Core Concepts' && !r.num));
 const splitting = ((unitsNode || {}).recs || []).filter(r => /Splitting Units/.test(r.title));
 t('(5) the rule and its errata are two rows under the same number', splitting.map(r => r.num).join(','), '01.02.06,01.02.06');
 ok('(5) the errata says so, so the pair does not read as a duplicate', /errata$/.test(splitting[1] && splitting[1].title));

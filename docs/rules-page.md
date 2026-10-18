@@ -111,10 +111,13 @@ section's lead row: *Core Rules > 01 Core Concepts > 01.02 Units and Models*, th
 01.02.01 Starting Strength and Half-Strength, ... There is one chapter list and one
 section level. `sortChapterRows` and `ruleNumber` in `src/wiki-toc.mjs` are that
 order; `appendixOutline` places the records no number can (the Universal Rules
-Updates block). A chapter's sections render first and the rows the number leaves
-outside a section follow them: the appendix's section level is the priority, and
-those loose rows are the core's top-level rules (15.02..15.12 stratagems, 24.03..
-abilities).
+Updates block). **A chapter reads in number order top to bottom.** Its sections
+and its own rows are two payload arrays but one list in the drawer: the chapter's
+own intro row first, then the 0x.0x sections and numbered rows together by number
+- so a single-record section such as 01.06 *Leadership Rolls* keeps its place
+instead of trailing after 01.07 - then the unnumbered rows in their own order.
+`chapterItems`/`numKey` in `src/wiki-surface.js` are that sort; the payload keeps
+sections and rows apart because their pages differ.
 
 **One rule, two sources, one row.** The core page and the appendix print the same
 definition for eight numbers, and the core page splits three more out as
@@ -609,6 +612,16 @@ usual `findings`/`judge`/`answer` follow it; the bar is the pipeline's, unchange
 The layout is one column at every width - the statline wraps into chips and the
 weapons table is fixed-layout so its seven columns fit a 360px phone - because the
 page is mostly read on a phone.
+
+**What the card route costs the judge (measured 2026-10-18).** The card is built
+from the CSV export before anything is searched: 4,806 bytes for Fuegan, **0
+judge calls**, and the same bytes with or without the judge. The route around it
+is additive, so the prose answer beside the card still costs one judge call per
+pass - measured 1 call, 21 findings, 8.8 s end to end on the free gateway against
+1.0 s with the judge stubbed - and each widening adds a call. A card-only phone
+path (the card, no prose) is therefore 8.8x faster and renders the identical
+card; if that is wanted it belongs behind the existing `RULES_UNIT_CARD` route,
+not as a judge removal from the full route, which the melta bug showed is needed.
 
 ## The two settings
 

@@ -53,6 +53,12 @@ ok('a node carries its own key as the anchor', /renderTree\(\{ attr: 'data-node'
 ok('the open record survives a re-render', /state\.openRec = r;/.test(surface) && /function restoreInline\(\)/.test(surface) && /toggleInline\(r, row\.parentNode, row\.svSiblings\)/.test(surface));
 ok('and closing it forgets it', /existing\.remove\(\); state\.openRec = null;/.test(surface));
 
+// task-14: a chapter's sections and its own rows are one numbered list in the
+// drawer - intro row first, then 0x.0x sections and numbered rows by number, so a
+// single-record section (01.06) keeps its place.
+ok('a chapter interleaves its sections and rows by number', /function chapterItems\(/.test(surface) && /n\.lvl === 'chapter' && kids\.length/.test(surface) && /cmpKey\(x\.key, y\.key\) \|\| x\.ord - y\.ord/.test(surface));
+ok('and its own intro row sorts before the numbered list', /key = \[-1, 0, 0\]/.test(surface));
+
 // The bar must not bring back the duplicate title the row already prints.
 ok('the bar does not reintroduce the inline title', surface.indexOf('sv-inline-title') === -1 && surface.indexOf('sv-inline-meta') === -1);
 
