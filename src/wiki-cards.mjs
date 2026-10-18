@@ -523,7 +523,7 @@ export function recordShape(text, heading) {
 // task-90: the CSV's own columns ('Type: Movement Ability', 'CP:') are not the book's
   // words, so they leave the display in this path too; the corpus keeps them.
 function stripCsvColumns(text) {
-  return String(text == null ? '' : text).split(/\r?\n/).filter(function (l) { return !/^\s*(?:Type|CP)\s*:/.test(l); }).join('\n');
+  return String(text == null ? '' : text).split(/\r?\n/).filter(function (l) { return !/^\s*(?:Type|CP|Detachment)\s*:/.test(l); }).join('\n');
 }
 function stripTurnPhase(text) {
   // task-97: the line is 'Turn:   Phase: Movement or Charge phase' on a faction army rule
@@ -546,39 +546,70 @@ function capsHtml(html) {
     });
   }).join('');
 }
+// task-99: the export's flavour line - the one the builder writes between the metadata and
+// the rule itself ('Analysing their targets' weaknesses ... the Aeldari fire for lethal
+// effect.'). It is flavour, so it renders as flavour (italic), not as a rule line.
+function legendOf(text, heading) {
+  const lines = String(text == null ? '' : text).split(/\r?\n/);
+  const name = String(heading || '').trim().toLowerCase();
+  for (let i = 0; i < lines.length - 1; i++) {
+    const cur = lines[i].trim(), nxt = lines[i + 1].trim();
+    if (!cur || /^(?:Type|CP|Turn|Detachment)\s*:/.test(cur)) continue;
+    // The record's own name line is the heading echo, not flavour.
+    if (i === 0 && name && cur.toLowerCase() === name) continue;
+    // A rule label carries its colon ('WHEN: ...'); a sentence that merely starts with
+    // 'When' does not - the abilities' own text opens 'When this unit is selected ...'.
+    if (/^(?:WHEN|TARGET|EFFECT|TRIGGER|RESTRICTIONS|MAXIMUM DISTANCE|ELIGIBLE IF|BEFORE MOVING|AFTER MOVING|WHILE SHOOTING|WHILE MOVING)\s*:/.test(nxt)) return cur;
+  }
+  return '';
+}
 function shapeHtml(text, opts) {
   const csv = !!opts && CSV_SOURCES.indexOf(String(opts.csvSource || '')) !== -1;
   const shape = recordShape(text, opts && opts.selfHeading);
+  // The builder's own label line ('NAME - Aeldari stratagem') is the heading the card
+  // already carries: an echo (Mandal, 2026-10-18). Dropped for display only.
+  const label = /^[^\n]*\s-\s[^\n]*(?:stratagem|ability|army rule)\s*$/i;
+  let src = String(text == null ? '' : text);
+  if (csv) {
+    const first = src.split(/\r?\n/);
+    if (first.length && label.test(first[0])) src = first.slice(1).join('\n');
+  }
+  const legend = csv ? legendOf(src, opts && opts.selfHeading) : '';
+  if (legend) src = src.split(/\r?\n/).filter(function (l) { return l.trim() !== legend; }).join('\n');
+  const legendHtml = legend ? '<p class="wcard-legend">' + esc(legend) + '</p>' : '';
   // task-97: the CSV's own columns are metadata, not the book's words. The shape detection
   // above still reads them (they are how a card is classified); the rendered prose does not.
-  if (!shape) return proseHtml(csv ? stripTurnPhase(stripCsvColumns(text)) : text, opts);
+  if (!shape) return legendHtml + proseHtml(csv ? stripTurnPhase(stripCsvColumns(src)) : src, opts);
   // task-89: the plain fallback - no head, no table, the CSV fragment gone, ALL CAPS styled.
-  if (shape.family === 'ability-plain') return capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(text)), opts));
+  if (shape.family === 'ability-plain') return legendHtml + capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(src)), opts));
   const head = shape.family === 'stratagem'
     ? '<div class="svl-head svl-strat"><span class="svl-cp">' + esc(shape.cp) + '</span><span class="svl-type">' + esc(shape.type) + '</span></div>'
     : '<div class="svl-head svl-ability">' + (shape.type ? '<span class="svl-type">' + esc(shape.type) + '</span>' : '') + '</div>';
-  const body = shape.rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('');
-  const table = body ? '<table class="svl-rows">' + body + '</table>' : '';
   // task-92: the table takes the labels it models, and only those fragments leave the
-  // prose. The CSV transcription puts a whole move on ONE line ('MAXIMUM DISTANCE: ...
-  // ELIGIBLE IF: ... EFFECT: ... BEFORE MOVING: ...'), so filtering the line out because
-  // it starts with a modelled label silently dropped ELIGIBLE IF, BEFORE MOVING and
-  // AFTER MOVING - Mandal's 'missing data'. Type: and CP: are the head's own fields, so
-  // those lines still go.
+  // prose. task-99: a remainder left on a line the table took CONTINUES the row it followed
+  // ('... during this usage of this Stratagem: [IGNORES COVER], ...' continues EFFECT) - the
+  // CSV cuts the value at the next label-shaped word, so the tail used to sit in the prose
+  // away from the field it belongs to.
+  const rows = shape.rows.map(function (r) { return [r[0], r[1]]; });
   const rx = function (s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
-  const rest = String(text == null ? '' : text).split(/\r?\n/).map(function (line) {
-    if (/^\s*(?:Type|CP)\s*:/.test(line)) return '';
+  let leftover = '';
+  const rest = src.split(/\r?\n/).map(function (line) {
+    if (/^\s*(?:Type|CP|Detachment)\s*:/.test(line)) return '';
     if (!SHAPE_ROW_LINE.test(line)) return line;
     let out = line;
-    shape.rows.forEach(function (r) {
+    rows.forEach(function (r) {
       out = out.replace(new RegExp('(?:^|[^A-Za-z])' + rx(r[0]) + '\\s*:\\s*' + rx(r[1]), 'i'), ' ');
     });
-    return out.replace(/\s+/g, ' ').trim();
+    out = out.replace(/\s+/g, ' ').trim();
+    if (out) leftover = leftover ? leftover + ' ' + out : out;
+    return '';
   }).filter(function (l) { return l !== ''; }).join('\n');
-  // The 'Turn:   Phase: Ability "Move"' fragment is CSV navigation, not the book's words:
-  // stripped on this path too (task-89 stripped it only in the plain fallback).
-  return head + table + proseHtml(csv ? stripTurnPhase(stripCsvColumns(rest)) : stripTurnPhase(rest), opts);
+  if (leftover && rows.length) rows[rows.length - 1][1] = (rows[rows.length - 1][1] + ' ' + leftover).replace(/\s+/g, ' ').trim();
+  const body = rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('');
+  const table = body ? '<table class="svl-rows">' + body + '</table>' : '';
+  return head + table + legendHtml + proseHtml(csv ? stripTurnPhase(stripCsvColumns(rest)) : stripTurnPhase(rest), opts);
 }
+
 // task-91/94: the SEE ALSO block's CHILD entries become containers of their own, with the
 // child record's content inside - Mandal's '02.05.01 Using Keywords & Mixed Keywords in
 // Units' + its text. An entry whose number does not extend the record's own number is a

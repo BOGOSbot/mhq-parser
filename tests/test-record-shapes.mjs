@@ -17,7 +17,11 @@ const abilities = [], stratagems = [];
 let identical = 0, changed = 0, skipped = 0, seeAlsoChanged = 0, csvChanged = 0; const mismatches = [];
 // task-97: the CSV's own columns ('Type:', 'CP:', 'Turn: Phase: ...') are metadata, not the
 // book's words, and they leave the reader's prose now - a second intended class of change.
-const hasCsvCols = r => /^\s*(?:Type|CP)\s*:/m.test(String(r.text)) || /^\s*Turn:\s+Phase:/m.test(String(r.text));
+const hasCsvCols = r => /^\s*(?:Type|CP)\s*:/m.test(String(r.text)) || /^\s*Turn:\s+Phase:/m.test(String(r.text)) ||
+  // task-99: the builder's own label line ('NAME - Aeldari stratagem') is an echo the card
+  // already carries, and the export's legend/Detachment lines move or leave. A CSV record
+  // with none of the Type/CP/Turn columns still renders differently.
+  /^[^\n]*\s-\s[^\n]*(?:stratagem|ability|army rule)\s*$/i.test(String(r.text).split('\n')[0] || '');
 for (const r of all) {
   const text = stripBuiltBlock(r);
   const shape = recordShape(text);
