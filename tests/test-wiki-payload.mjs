@@ -103,6 +103,31 @@ if (rows.length) {
   t('(h) every snippet is at most 100 characters', rows.filter(r => r.snippet.length > 100).length, 0);
   ok('(h) and every row has a slug and a title', rows.every(r => r.slug && (r.title || r.id)));
 }
+// --- task-106: the book's order, and the level the appendix prints ------------
+// The drawer's order was the alphabet's (01 Core Concepts read 01.03 before 01.01)
+// and the appendix flattened its 0x.0x sections away: its chapter listed the
+// 0x.0x.0x definitions with no headers. The numbers are the rulebook's own, so they
+// order the rows, and a section that exists only as a heading prefix becomes a node.
+const atBook = (root, name) => (root.kids || []).find(k => k.n === name) || {};
+const findNode = (n, name) => { if (!n) return null; if ((n.n || '') === name) return n; for (const k of (n.kids || [])) { const hit = findNode(k, name); if (hit) return hit; } return null; };
+const coreBook = atBook(branch, 'Core Rules');
+const appxBook = atBook(branch, 'Rules Appendix');
+const coreCC = findNode(coreBook, '01 Core Concepts');
+const appxCC = findNode(appxBook, '01 Core Concepts');
+const numsOf = n => (n.recs || []).map(r => r.num || '').filter(Boolean);
+const asc = list => list.every((x, i) => i === 0 || list[i - 1] <= x);
+t('(106) the core chapter lists its sections in the book order', numsOf(coreCC).join(','), '01.01,01.02,01.03,01.04,01.05,01.06,01.07');
+ok('(106) and the chapter lead row stays first', !coreCC.recs[0].num);
+ok('(106) the appendix chapter keeps its 0x.0x sections', (appxCC.kids || []).length >= 6 && (appxCC.kids || []).every(k => /^\d{2}\.\d{2} /.test(k.n)));
+ok('(106) and they are in number order', asc((appxCC.kids || []).map(k => k.n)));
+const unitsNode = findNode(appxCC, ((appxCC.kids || []).find(k => / Units and Models$/.test(k.n)) || {}).n || '');
+ok('(106) the sections carry their 0x.0x.0x definitions', !!unitsNode && numsOf(unitsNode).length >= 10);
+ok('(106) each section lists its rows in number order', asc(numsOf(unitsNode || {})));
+const splitting = (unitsNode && unitsNode.recs || []).filter(r => /Splitting Units/.test(r.title));
+t('(106) the rule and its errata are two rows under the same number', splitting.map(r => r.num).join(','), '01.02.06,01.02.06');
+ok('(106) the errata says so, so the pair does not read as a duplicate', /errata$/.test(splitting[1] && splitting[1].title));
+t('(106) no row prints its rule number inside the title', rows.filter(r => /^\d{2}\.\d{2}/.test(r.title)).length, 0);
+
 // Carry-over (b): 'at' is the annotation target, exactly what productPage's
 // WIKI_HERE carries - 261 of the 270 annotations have one.
 const annotated = [...seen.keys()].filter(id => { const c = read('content/' + seen.get(id) + '.json'); return c.records[id] && c.records[id].at; });

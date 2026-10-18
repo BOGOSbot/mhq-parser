@@ -58,10 +58,27 @@ function row(rec, slugOf, byId, chapter) {
   const chNum = (String(chapter || '').match(/^(\d{2})/) || [])[1] || '';
   const segs = String(raw.heading || '').split(' > ').map(s => s.trim()).filter(Boolean);
   const own = chName && segs.length && segs[segs.length - 1].toLowerCase() === chName.toLowerCase() ? segs.slice(0, -1).join(' > ') : '';
+  // task-106: a rule's number is sometimes still inside its heading - the appendix's
+  // errata h3s carry '01.02.06 Splitting Units' and no ruleId - so the number moves
+  // into the row's own slot and the title loses it. A record whose text is an errata
+  // ('Add: ...', 'Change: ...') says so: two rows named 'Splitting Units' read as a
+  // duplicate otherwise, and one of them is the errata to the other.
+  const leaf = String(raw.heading || '').split(' > ').pop().trim();
+  // The stored text carries its heading in front (the corpus writes it there so the
+  // vector sees the context), so the errata verb is read after that echo.
+  const body = plain.indexOf(String(raw.heading || '')) === 0 ? plain.slice(String(raw.heading || '').length).trim() : plain;
+  const glued = !raw.ruleId ? /^(\d{2}(?:\.\d{2}){1,2})\b\s*[-\u2013]?\s*/.exec(leaf) : null;
+  const num = raw.ruleId || (glued ? glued[1] : '');
+  let title = own || rec.t || '';
+  if (glued) {
+    const stripped = String(title).replace(/^\d{2}(?:\.\d{2}){1,2}\s*[-\u2013]?\s*/, '').trim();
+    if (stripped && stripped !== title) title = stripped;
+    if (/^(?:add|change|replace|remove|delete|amend)\s*:/i.test(body)) title += ' \u2014 errata';
+  }
   // task-87: the rule's own number ('01.05'); the row renders 'num title' when set. Omitted
   // when empty (the factions branch's 5,185 rows) and when it is only the chapter's number.
-  const out = { id: rec.i, slug: slugOf(rec.i), title: own || rec.t || '', source: raw.source || '', snippet: plain.slice(0, 100) };
-  if (raw.ruleId && raw.ruleId !== chNum) out.num = raw.ruleId;
+  const out = { id: rec.i, slug: slugOf(rec.i), title: title, source: raw.source || '', snippet: plain.slice(0, 100) };
+  if (num && num !== chNum) out.num = num;
   return out;
 }
 

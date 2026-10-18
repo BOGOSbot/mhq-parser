@@ -39,7 +39,11 @@ t('and stats.cuts agrees', tree.stats.cuts, 115);
 // chapter is still a waypoint.
 ok('a 0x chapter is not a cut entry', kids('tree/rules/core-rules.js').filter(x => /^\d{2}\s/.test(x.n)).every(x => !x.cut));
 ok('and its children are the entries: 179 for Core Rules, 118 for the Appendix', (function () {
-  const flat = b => (files[b].kids || []).reduce((n, k) => { const f = files[k.f]; return n + (f ? (f.kids || []).length + (f.recs || []).length : 1); }, 0);
+  // task-106: a rules chapter may now carry one level of section nodes (the
+  // appendix's 0x.0x headers), so the count walks to the rows, not to the first
+  // level of kids.
+  const entryCount = f => (f.kids || []).reduce((n, k) => n + entryCount(files[k.f] || { recs: [] }), (f.recs || []).length);
+  const flat = b => (files[b].kids || []).reduce((n, k) => n + entryCount(files[k.f] || {}), 0);
   return flat('tree/rules/core-rules.js') === 179 && flat('tree/rules/rules-appendix.js') === 118;
 })());
 ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut && !files['tree/rules/rules-appendix.js'].cut);

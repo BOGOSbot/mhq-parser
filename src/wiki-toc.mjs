@@ -190,6 +190,55 @@ export function cleanTitle(t) {
   return String(t).replace(/\s*\(\d+\/\d+\)$/, '').replace(/\s*-\s*keywords and abilities(\s*\(\d+\/\d+\))?$/i, '');
 }
 
+// --- the rule's number, and the order the book prints it in ------------------
+// A rule's own number is its place in the book: 01.05 < 01.05.01 < 01.06. The
+// corpus does not always extract it - an appendix errata h3 carries the number
+// inside the heading ('01.02.06 Splitting Units') and its ruleId is empty - so
+// the number is read from the leaf too, and that is what the drawer files the
+// row under. A record with neither keeps its heading for the alphabetical tie.
+export function ruleNumber(r) {
+  const own = String((r && r.ruleId) || '');
+  if (/^\d{2}(?:\.\d{2}){1,2}$/.test(own)) return own;
+  const leaf = String(headingSegments(r || {}).slice(-1)[0] || '').trim();
+  const m = /^(\d{2}(?:\.\d{2}){1,2})\b/.exec(leaf);
+  return m ? m[1] : '';
+}
+function numberParts(n) {
+  const s = String(n || '');
+  return s ? s.split('.').map(x => parseInt(x, 10) || 0) : [];
+}
+// An errata h3 names a rule and starts its body with the change ('Add: ...'): it
+// sorts after the rule it updates, never before it.
+function errataText(r) {
+  const t = String((r && r.text) || ''), h = String((r && r.heading) || '');
+  const body = h && t.indexOf(h) === 0 ? t.slice(h.length) : t;
+  return /^(?:add|change|replace|remove|delete|amend)\s*:/i.test(body.trim());
+}
+export function compareRuleNumber(a, b) {
+  const x = numberParts(ruleNumber(a)), y = numberParts(ruleNumber(b));
+  if (!x.length && !y.length) return 0;
+  if (!x.length) return -1;
+  if (!y.length) return 1;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] === undefined ? -1 : x[i]) - (y[i] === undefined ? -1 : y[i]);
+    if (d) return d;
+  }
+  return 0;
+}
+// The chapter's own lead row first (its leaf names the chapter), then the rows by
+// their number, then the unnumbered ones by heading. The drawer's order is the
+// book's order, not the alphabet's.
+export function sortChapterRows(rows, chapterTitle) {
+  const t = String(chapterTitle || '').trim().toLowerCase();
+  const rank = r => (t && leafTitle(r).toLowerCase() === t) ? 0 : (ruleNumber(r) ? 1 : 2);
+  return rows.slice().sort((a, b) =>
+    rank(a) - rank(b) ||
+    compareRuleNumber(a, b) ||
+    (errataText(a) ? 1 : 0) - (errataText(b) ? 1 : 0) ||
+    String(a.heading || '').localeCompare(String(b.heading || '')) ||
+    String(a.id).localeCompare(String(b.id)));
+}
+
 // One rule for what an annotation is, in one place: a kind-rule record whose
 // heading names a FAQ, Errata, Duplicated Abilities or [TORRENT] block, or whose
 // heading carries a question. A question segment is one ending in "?", one
@@ -478,7 +527,9 @@ export function tocTree(records, pageOf, opts) {
       const slug = uniqueSlug(nodeSlug(ch.title), used);
       const file = 'tree/rules/' + book.slug + '/' + slug + '.js';
       const label = chapterLabel(ch.num, ch.title);
-      const rows = primaryOf(ch.recs).sort((a, b) => String(a.heading || '').localeCompare(String(b.heading || '')));
+      // task-106: the chapter's rows follow the rule's own number, not the alphabet
+      // (01 Core Concepts listed 01.03 before 01.01). The chapter's lead row stays first.
+      const rows = sortChapterRows(primaryOf(ch.recs), ch.title);
       // A subsection is never a sibling of its own parent: within a chapter, a
       // section whose heading extends another section's heading nests under it.
       // The chapter's own LEAD row is not a container: every section's heading now
@@ -512,12 +563,52 @@ export function tocTree(records, pageOf, opts) {
         if (subs.length) e.s = subs.map(entryFor);
         return e;
       };
-      const list = rows.filter(r => !nestedSection.has(r.id)).map(entryFor);
-      files[file] = { n: label, lvl: 'chapter', c: counted, recs: list };
+      // task-106: the level the drawer lost. The appendix prints each chapter one
+      // level deeper than Core Rules: its records are the 0x.0x.0x definitions and
+      // the section they belong to (0x.0x) exists only as their heading's first
+      // segment ('Units and Models', 'Dice'), never as a row. Core Rules names the
+      // section in the row itself, so its chapter is right; the appendix's chapter
+      // flattened into 32 rows with no 0x.0x headers at all. Rows that share a first
+      // segment get one nested node, numbered from their ruleIds and titled by the
+      // segment, so the branches read 01 Core Concepts > 01.02 Units and Models.
+      const chapterTitle = String(ch.title || '').trim();
+      const groups = new Map(), loose = [];
+      for (const r of rows) {
+        const segs = headingSegments(r);
+        const first = segs.length > 1 ? String(segs[0]).trim() : '';
+        const rn = ruleNumber(r);
+        const parts = rn.split('.');
+        // The prefix keeps the corpus's zero padding ('01.02', never '1.2'): the
+        // label is read as the book prints it.
+        if (first && first.toLowerCase() !== chapterTitle.toLowerCase() && parts.length >= 3) {
+          const key = parts.slice(0, 2).join('.') + '|' + first.toLowerCase();
+          if (!groups.has(key)) groups.set(key, { num: parts.slice(0, 2).join('.'), name: first, rows: [] });
+          groups.get(key).rows.push(r);
+        } else loose.push(r);
+      }
+      const sections = [], sectionOf = new Map();
+      for (const g of [...groups.values()].sort((x, y) => x.num.localeCompare(y.num))) {
+        // '02.01 1. Datasheet Name' would print the ordinal twice: the section's own
+        // number is the first one, the source's '1.' is its place in the chapter.
+        const glabel = g.num + ' ' + g.name.replace(/^\d+\.\s*/, '');
+        const gfile = file.replace(/\.js$/, '/' + nodeSlug(glabel) + '.js');
+        const grows = sortChapterRows(g.rows, '');
+        const gcount = grows.reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
+        files[gfile] = { n: glabel, lvl: 'section', c: gcount, recs: grows.map(entryFor) };
+        const ref = { n: glabel, lvl: 'section', f: gfile };
+        for (const r of grows) sectionOf.set(r.id, ref);
+        sections.push({ n: glabel, lvl: 'section', c: gcount, f: gfile });
+      }
+      const list = loose.filter(r => !nestedSection.has(r.id)).map(entryFor);
+      files[file] = sections.length
+        ? { n: label, lvl: 'chapter', c: counted, kids: sections, recs: list }
+        : { n: label, lvl: 'chapter', c: counted, recs: list };
       const chapterRef = { n: label, lvl: 'chapter', f: file };
       for (const r of ch.recs) {
-        paths.set(r.id, [rulesRef, bookRef, chapterRef]);
-        for (const a of (attach.get(r.id) || [])) paths.set(a.id, [rulesRef, bookRef, chapterRef]);
+        const chain = [rulesRef, bookRef, chapterRef];
+        if (sectionOf.has(r.id)) chain.push(sectionOf.get(r.id));
+        paths.set(r.id, chain);
+        for (const a of (attach.get(r.id) || [])) paths.set(a.id, chain);
       }
       kids.push({ n: label, lvl: 'chapter', c: counted, f: file });
     }

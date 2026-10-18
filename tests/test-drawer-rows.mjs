@@ -11,7 +11,10 @@ ok('the inline box no longer prints a duplicate title', surface.indexOf('sv-inli
 ok('the row prints the number in its own margin slot, before the title',
   /if \(r\.num\) b\.appendChild\(el\('span', 'sv-rec-num', r\.num\)\)/.test(surface)
   && surface.indexOf("'sv-rec-num'") < surface.indexOf("'sv-rec-title'"));
-ok('the payload row carries the rule number, and never the chapter\'s own', /if \(raw\.ruleId && raw\.ruleId !== chNum\) out\.num = raw\.ruleId/.test(payload) && !/num: raw\.ruleId \|\| ''/.test(payload));
+ok('the payload row carries the rule number, and never the chapter\'s own', /if \(num && num !== chNum\) out\.num = num/.test(payload) && !/num: raw\.ruleId \|\| ''/.test(payload));
+// task-106: the appendix writes some numbers into the heading and leaves ruleId
+// empty ('01.02.06 Splitting Units'); the row takes the number out of the title.
+ok('and it reads a number the corpus left in the heading', /const glued = !raw\.ruleId \? \/\^\(\\d\{2\}/.test(payload) && /title \+= ' \\u2014 errata'/.test(payload));
 // The corpus records the number: Dice is 01.05, its children 01.05.01 and 01.05.02.
 const core = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'rules-corpus', 'core-rules.json'), 'utf8'));
 // task-90: a section's heading carries its chapter now ('Core Concepts > Dice'), so the

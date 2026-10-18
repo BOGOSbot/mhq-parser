@@ -91,9 +91,24 @@ note about what the page keeps.
 
 ## Finding an entry
 
-The drawer is the whole rulebook: three books, then chapters, then the numbered
-rows, one record open at a time with its own prev/next bar. Above the tree there
-is one field, and it does not filter the open branch - it searches every book.
+The drawer is the whole rulebook: three books, then chapters, then - where the
+book prints one - the 0x.0x section, then the numbered rows. Rows are ordered by
+the rule's own number, never by the alphabet: a chapter reads 01.01, 01.02, ...
+and the chapter's lead row stays first. The Rules Appendix prints the same
+chapters one level deeper than Core Rules (its records are the 0x.0x.0x
+definitions and the 0x.0x section exists only as their heading's first segment),
+so the tree model builds those section nodes and numbers them from the records'
+ruleIds: *Rules Appendix > 01 Core Concepts > 01.02 Units and Models*.
+`sortChapterRows` and `ruleNumber` in `src/wiki-toc.mjs` are that rule.
+
+A rule's number is sometimes left inside its heading by the corpus - the
+appendix's errata h3s carry `01.02.06 Splitting Units` and no ruleId - so the
+payload row moves the number into the row's own slot and marks the record
+`— errata` when its body opens with an errata verb. Two rows then read as the
+rule and its erratum rather than as a duplicate.
+
+Above the tree there is one field, and it does not filter the open branch - it
+searches every book.
 `GET /rules/find` greps the heading projection and ranks the same three tiers
 the lookup router uses (the last heading segment is the phrase, then contains it,
 then carries it), then by kind and by length. A leading verb is not part of the
