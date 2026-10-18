@@ -75,6 +75,8 @@ costs money even paused, so delete it when the test is over.
 ## Known limits of this deployment
 
 - **The test URL is open** (no auth) because basic auth was friction on a phone. The host is an unguessable box id, not a secret; republish with `--basic-auth` for anything longer-lived.
+- **The preview proxy is slow for a buffered response and fine for a stream.** The same question, measured 2026-10-18: **27.6 s in-box** (steps: retrieve+judge 13.1 s), **182 s through the public URL as one JSON body** (`stream:false`), and **0.68 s to the first SSE event** with a ~100 s total on the page's streaming path. The page streams, so a phone shows progress from under a second; a plain API client asking for `stream:false` will think the box is broken.
+- **The paid judge route is not usable for a test yet.** `RULES_JEV_GATEWAY=openrouter` measured 289 s for one question and then hung past 10 minutes while the box sat idle at 0.6 % CPU and `openrouter.ai` answered in 51 ms from inside it. The Box runs the free gateway; the OpenRouter key stays in its credentials file, so the switch is one env var.
 - **Cold wake** can exceed a phone's default timeout: the proxy holds the request
   while the box resumes and waits up to 30 s more for the port, then 503 with
   `Retry-After: 5`.
