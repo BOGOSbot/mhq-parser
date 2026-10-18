@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cardFor, recordBody, recordShape, proseHtml, CARD_KINDS } from '../src/wiki-cards.mjs';
-import { stripBuiltBlock, stripSeeAlso } from '../src/wiki-plan.mjs';
+import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries } from '../src/wiki-plan.mjs';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -14,7 +14,7 @@ const all = readAllCorpus();
 const fam = { stratagem: 0, ability: 0, other: 0 };
 const byKind = {};
 const abilities = [], stratagems = [];
-let identical = 0, changed = 0, skipped = 0; const mismatches = [];
+let identical = 0, changed = 0, skipped = 0, seeAlsoChanged = 0; const mismatches = [];
 for (const r of all) {
   const text = stripBuiltBlock(r);
   const shape = recordShape(text);
@@ -38,6 +38,7 @@ for (const r of all) {
   if (!isCard) { try { isCard = !!cardFor(r, {}); } catch (e) { isCard = false; } }
   const cardOrRuling = isCard;
   if (cardOrRuling) { skipped++; continue; }
+  if (seeAlsoEntries(r).some(e => e.child)) seeAlsoChanged++;
   if (now === old) { identical++; byKind[kind].identical++; } else { changed++; byKind[kind].changed++; if (mismatches.length < 5) mismatches.push(r.id); }
 }
 console.log('records ' + all.length + ' | stratagem ' + fam.stratagem + ' | ability ' + fam.ability + ' | other ' + fam.other);
@@ -63,7 +64,9 @@ t('every ability renders either the table or the plain fallback', proseAbilities
 t('the rest are cards and keep their card rendering', abilities.length - proseAbilities.length, 2);
 t('every stratagem keeps its CP badge', stratagems.filter(r => { const s = recordShape(stripBuiltBlock(r), r.heading); return !s.cp || recordBody(r).indexOf('svl-cp') === -1 || recordBody(r).indexOf(esc(s.cp)) === -1; }).length, 0);
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-t('nothing outside the two families changed', changed - fam.stratagem - fam.ability, 0);
+// task-91: a record with a SEE ALSO CHILD entry now renders it as a container under the
+// body, so those records change by design. Everything else stays byte-identical.
+t('only the SEE ALSO container records changed outside the two families', changed - fam.stratagem - fam.ability, seeAlsoChanged);
 // The rule that files a record with no Type: it must carry the rows at line starts.
 // An empty Type with nothing to show is never an ability (the 6 Aeldari today).
 t('an ability either carries a Type line or carries the rows',

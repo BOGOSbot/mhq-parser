@@ -28,7 +28,7 @@ import { linkify, esc } from './wikilinks.mjs';
 // block is stripped exactly from the record's own links array (task-72), and the SEE
 // ALSO block is stripped for display only when it names the record's own section links
 // (task-87).
-import { stripBuiltBlock, stripSeeAlso } from './wiki-plan.mjs';
+import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries } from './wiki-plan.mjs';
 
 // The two kinds whose text is a flat transcription of the CSV card. Every other
 // kind (stratagem, enhancement, detachment, rule, ability, index) has no card
@@ -102,6 +102,11 @@ export const CARD_CSS = [
   '.wcard-ability-name { font-weight:600; }',
   '.wcard-ability-text { margin:.15rem 0 0; }',
   '.wcard-ability-link { display:inline-block; margin-top:.2rem; font-size:.82rem; }',
+  // task-91: a SEE ALSO child is its own container under the rule it belongs to.
+  '.wseealso-list { margin:.7rem 0 0; }',
+  '.wseealso { margin:.25rem 0; }',
+  '.wseealso > summary { cursor:pointer; font-weight:600; }',
+  '.wseealso-miss { color:var(--w-dim, #98a2b3); font-size:.9em; }',
   '.wcard-keywords { display:flex; flex-wrap:wrap; gap:.35rem; padding:0; margin:.2rem 0 .8rem; list-style:none; }',
   '.wcard-kw { background:var(--chip); border-radius:999px; padding:.2rem .55rem; font-size:.82rem; }',
   '.wcard-kw-faction { font-weight:600; }',
@@ -550,6 +555,26 @@ function shapeHtml(text, opts) {
   // stripped on this path too (task-89 stripped it only in the plain fallback).
   return head + table + proseHtml(stripTurnPhase(rest), opts);
 }
+// task-91/94: the SEE ALSO block's CHILD entries become containers of their own, with the
+// child record's content inside - Mandal's '02.05.01 Using Keywords & Mixed Keywords in
+// Units' + its text. An entry whose number does not extend the record's own number is a
+// cross-reference and is dropped outright (see seeAlsoEntries).
+function seeAlsoHtml(record, o) {
+  if (!record) return '';
+  const entries = seeAlsoEntries(record).filter(function (e) { return e.child; });
+  if (!entries.length) return '';
+  const pool = [].concat((o.corpora && o.corpora.rules) || [], (o.corpora && o.corpora.factions) || []);
+  const parts = entries.map(function (e) {
+    const label = e.num + ' ' + e.title;
+    const kid = pool.find(function (r) { return String(r.ruleId || '') === e.num; });
+    if (!kid) return '<p class="wseealso-miss">' + esc(label) + '</p>';
+    const kidText = stripSeeAlso({ text: stripBuiltBlock(kid), links: kid.links });
+    const body = proseHtml(kidText, { selfId: o.selfId, href: o.href, cap: 40, selfHeading: kid.heading });
+    return '<details class="wseealso" open><summary>' + esc(label) + '</summary>' + body + '</details>';
+  });
+  return parts.length ? '<div class="wseealso-list">' + parts.join('') + '</div>' : '';
+}
+
 export function recordBody(record, opts) {
   const o = opts || {};
   // The card prose gets the same links as the prose path, and the record's own id
@@ -559,22 +584,23 @@ export function recordBody(record, opts) {
   // blocks; the vector sees them and the corpus is unchanged.
   const text = stripSeeAlso({ text: stripBuiltBlock(record), links: record && record.links });
   const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
-  if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang, o);
+  const tail = seeAlsoHtml(record, o);
+  if (record && record.kind === 'ruling') return banner + rulingBody(record, o.lang, o) + tail;
   // task-78 B: the labelled families come before the card. FALL-BACK MOVE is kind
   // 'stratagem' and had a stratagem card; its Type line says Movement Ability, and
   // Mandal's point is that it is not a stratagem, so the layout wins over the card.
   // Only records the classifier claims are affected; every other card is untouched.
   if (recordShape(text, record && record.heading)) {
-    return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading });
+    return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading }) + tail;
   }
   const card = cardFor(record, o);
-  if (card) return banner + cardHtml(card, o);
+  if (card) return banner + cardHtml(card, o) + tail;
   // An index page carpeted in links is worse than an index with none: kind
   // 'index' keeps its text plain (cap 0).
   const cap = record && record.kind === 'index' ? 0 : 40;
   // task-78 B: the two labelled families get their own layout; every other record
   // takes the same proseHtml call, with the same options, as before - byte-identical.
-  return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading });
+  return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading }) + tail;
 }
 
 export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, proseHtml, recordBody, rulingBody, recordShape };

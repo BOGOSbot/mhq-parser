@@ -97,27 +97,53 @@ export function stripBuiltBlock(rec) {
   return text.endsWith(suffix) ? text.slice(0, text.length - suffix.length) : text;
 }
 
-// task-87: the page's 'SEE ALSO' block is a navigation list of the rules the reader can
-// also reach as rows in the tree, so in prose it repeats the reader's siblings. Stripped
-// for DISPLAY only - the corpus text and the index keep it, because its numbers
-// ('01.05.01') are real search material. Stripped only when the block is terminal and
-// its tail really names one of the record's section links; a block naming anything else
-// is not ours to cut.
+// task-87/91/94: the page's 'SEE ALSO' block is a navigation list, and the card renders its
+// CHILD entries as containers of their own (seeAlsoEntries below). Every block leaves the
+// reader's text - DISPLAY only: the corpus and the index keep it, because its numbers
+// ('01.05.01') are real search material. A block is the run of '<Title> <number>' pairs after
+// the marker; it ends at the first blank line, because a record can hold more than one (the
+// 'Duplicated Abilities' records do), and the text after it is another rule, not an entry.
 export function stripSeeAlso(rec) {
   const text = String((rec && rec.text) || '');
-  const at = text.lastIndexOf('\nSEE ALSO\n');
-  if (at === -1) return text;
-  const tail = text.slice(at + '\nSEE ALSO\n'.length);
-  if (!tail.trim()) return text;
-  const titles = ((rec && rec.links) || [])
-    .filter(l => l && l.kind === 'section' && l.title)
-    .map(l => String(l.title).toLowerCase());
-  if (!titles.length) return text;
-  const lower = tail.toLowerCase();
-  if (!titles.some(t => lower.includes(t))) return text;
-  return text.slice(0, at).replace(/\s+$/, '');
+  if (text.indexOf('\nSEE ALSO\n') === -1) return text;
+  let out = text, i, guard = 0;
+  while ((i = out.indexOf('\nSEE ALSO\n')) !== -1 && guard++ < 40) {
+    const rest = out.slice(i + '\nSEE ALSO\n'.length);
+    const nl = rest.search(/\n\s*\n/);
+    out = nl === -1 ? out.slice(0, i) : out.slice(0, i) + out.slice(i + '\nSEE ALSO\n'.length + nl);
+  }
+  return out.replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '');
 }
 
+// task-91/94: the entries of every SEE ALSO block. An entry whose number EXTENDS the
+// record's own number is a CHILD of it ('02.05' -> '02.05.01') and the card renders it as
+// its own container. An entry whose number does not match the header it sits under is a
+// cross-reference the extraction carried in ('01.02' -> '17.02'): it is not a child, and it
+// is removed outright (Mandal, 2026-10-18).
+export function seeAlsoEntries(rec) {
+  const text = String((rec && rec.text) || '');
+  const mine = String((rec && rec.ruleId) || '').trim();
+  const out = [];
+  const marker = /\nSEE ALSO\n/g;
+  let m;
+  while ((m = marker.exec(text)) !== null) {
+    const rest = text.slice(m.index + m[0].length);
+    const seg = rest.split(/\n\s*\n/)[0] || '';
+    const num = /\b(\d{2}(?:\.\d{2}){1,2})\b/g;
+    let last = 0, n, first = true;
+    while ((n = num.exec(seg)) !== null) {
+      let title = seg.slice(last, n.index).replace(/^[^\w\[]+/, '').trim();
+      last = num.lastIndex;
+      // The widget wraps, so the first fragment can be the tail of a word ('...within' +
+      // 'thin'). A one-word lower-case opener is that fragment, not a title.
+      if (first && title && title.indexOf(' ') === -1 && /^[a-z]/.test(title)) title = '';
+      first = false;
+      if (!title) continue;
+      out.push({ title: title, num: n[1], child: !!mine && (n[1] === mine || n[1].indexOf(mine + '.') === 0) });
+    }
+  }
+  return out;
+}
 export function resolveLinks(links, has) {
   const kept = [];
   let dropped = 0;
