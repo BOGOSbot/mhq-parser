@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cardFor, recordBody, recordShape, proseHtml, CARD_KINDS } from '../src/wiki-cards.mjs';
 import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries } from '../src/wiki-plan.mjs';
+import { markWargearText } from '../src/wargear-marks.mjs';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -39,7 +40,10 @@ for (const r of all) {
   // task-87 display strip is in both sides, so a SEE ALSO block leaving the reader's text
   // is not read as a layout change.
   const opts = { selfId: r.id, href: undefined, cap: kind === 'index' ? 0 : 40, selfHeading: r.heading };
-  const old = proseHtml(stripSeeAlso({ text: text, links: r.links }), opts);
+  // task-34: the wargear marks (Range 12", BS 2+) are a render convention, so the
+  // baseline takes them too - otherwise every record with a wargear line reads as a
+  // layout change when it is only the notation.
+  const old = proseHtml(stripSeeAlso({ text: markWargearText(text), links: r.links }), opts);
   const now = recordBody(r);
   let isCard = kind === 'ruling' || (CARD_KINDS && CARD_KINDS.has && CARD_KINDS.has(kind));
   if (!isCard) { try { isCard = !!cardFor(r, {}); } catch (e) { isCard = false; } }

@@ -47,7 +47,8 @@ t('a stat line per model', modelNames, c.models.length);
 ok('the model header carries the stats', ['M', 'T', 'Sv', 'W', 'Ld', 'OC'].every(k => dsHtml.indexOf('<th scope="col">' + k + '</th>') !== -1));
 ok('and the model values, escaped where they hold a quote', dsHtml.indexOf('<td>6&quot;</td>') !== -1 && dsHtml.indexOf('<td>40mm</td>') !== -1);
 ok('the ranged weapons table is headed Range/A/BS/S/AP/D', /Ranged weapons<\/h2><div class="wcard-scroll"><table class="wcard-table wcard-weapons"><thead><tr>(<th scope="col">(Range|A|BS|S|AP|D)<\/th>){6}<\/tr>/.test(dsHtml));
-ok('and holds the datasheet\'s own weapon with its stats', dsHtml.indexOf('Guardian spear') !== -1 && dsHtml.indexOf('<td>24</td><td>2</td><td>2</td><td>5</td><td>-1</td><td>2</td>') !== -1);
+// task-34: the range and the skill carry the game's marks now - 24" and 2+.
+ok('and holds the datasheet\'s own weapon with its stats', dsHtml.indexOf('Guardian spear') !== -1 && dsHtml.indexOf('<td>24&quot;</td><td>2</td><td>2+</td><td>5</td><td>-1</td><td>2</td>') !== -1);
 ok('the melee table is headed with WS, where the export puts the skill', /Melee weapons<\/h2><div class="wcard-scroll"><table class="wcard-table wcard-weapons"><thead><tr>(<th scope="col">(Range|A|WS|S|AP|D)<\/th>){6}<\/tr>/.test(dsHtml) && dsHtml.indexOf('Misericordia') !== -1);
 t('every name row is followed by its stats row', (dsHtml.match(/<tr class="wcard-name"/g) || []).length, (dsHtml.match(/<tr class="wcard-stats"/g) || []).length);
 ok('(81-4) the rule abilities are one link per distinct ability, not a table', dsHtml.indexOf('Core abilities and army rules') !== -1 && dsHtml.indexOf('<ul class="wcard-abilities wcard-abilitylist">') !== -1 && dsHtml.indexOf('wcard-table wcard-abilities') === -1);

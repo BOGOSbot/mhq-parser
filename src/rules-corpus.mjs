@@ -43,6 +43,9 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_ENDPOINT, MODEL, MODEL_REASONING, MODEL_TIMEOUT_MS, JUDGE_REASONING_TIMEOUT_MS, JEV_ENDPOINT, JEV_MODEL, anchorFor, credential } from './rules.mjs';
 import { TRACE_RETENTION_MONTHS, sweepTraces } from './rules-traces.mjs';
+// task-34: the flat passage text gets the wargear marks at display time - the corpus
+// bytes are untouched, the finding's excerpt and the passage sheet are not bare.
+import { markWargearText } from './wargear-marks.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // task-83: the corpus directory is resolved PER CALL. Captured at import it was a
@@ -3564,8 +3567,11 @@ export function findingFor(section, n) {
     lexicalRank: section.lexicalRank || 0,
     lexicalScore: section.lexicalScore,
     matchedTerms: section.matchedTerms || [],
-    text: section.text,
-    excerpt: section.text.length > 600 ? section.text.slice(0, 600).replace(/\s+\S*$/, '') + ' ...' : section.text,
+    // task-34: the flat text as displayed - a finding's excerpt, the passage sheet,
+    // the record dialog's first paint. The stored bytes stay bare; the marks are a
+    // render convention and markWargearText is idempotent.
+    text: markWargearText(section.text),
+    excerpt: markWargearText(section.text.length > 600 ? section.text.slice(0, 600).replace(/\s+\S*$/, '') + ' ...' : section.text),
   };
 }
 

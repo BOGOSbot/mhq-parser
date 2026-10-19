@@ -1,7 +1,8 @@
 import {
   ABILITY_CHARS, abilityRuleIds, buildUnitCard, cardBuildCount, cardTables, findAbilityRecord, findDatasheet, recordCard, resetCardTables, resolveRecordLinks, unitCard, unitCardEnabled, wantsUnitCard,
 } from '../src/unit-card.mjs';
-import { readAllCorpus } from '../src/rules-corpus.mjs';
+import { readAllCorpus, findingFor } from '../src/rules-corpus.mjs';
+import { markRange, markHit, markWargearText } from '../src/wargear-marks.mjs';
 import { buildTrace } from '../src/rules-traces.mjs';
 
 let pass = 0, fail = 0;
@@ -45,15 +46,38 @@ t('the translated text resolves it too', findDatasheet('', 'Give me the profile 
 t('an unknown unit does not resolve', findDatasheet('donne moi le profil de Zorglub', ''), null);
 t('a bare unit word does not match a longer name', findDatasheet('what is the profile of a rhino', ''), null);
 
+// --- task-34: the wargear marks ---------------------------------------------
+// Six cases on the formatter itself, then the record Mandal read on the phone and
+// the finding text the excerpt shows.
+t('a numeric range on a Ranged weapon gets its inch mark', markRange('12', 'Ranged'), '12"');
+t('Melee is not a distance', markRange('Melee', 'Melee'), 'Melee');
+t('an empty range stays empty', markRange('', 'Ranged'), '');
+t('a numeric BS/WS gets its plus', [markHit('3'), markHit('2')], ['3+', '2+']);
+t('N/A means the profile has none', markHit('N/A'), 'N/A');
+t("'-' means the profile has none", markHit('-'), '-');
+t('an empty BS/WS stays empty', markHit(''), '');
+// The flat text the corpus stores and a finding shows: postfix at render only.
+const flat = 'Wargear Grabba Dragga (Ranged): Range 12 A 1 BS 2 S 10 AP -2 D 3';
+t('the flat passage text takes the same marks', markWargearText(flat), 'Wargear Grabba Dragga (Ranged): Range 12" A 1 BS 2+ S 10 AP -2 D 3');
+t('and the marks are idempotent', markWargearText(markWargearText(flat)), markWargearText(flat));
+t('Melee, N/A and - in the flat text are untouched', markWargearText('Range Melee BS N/A WS - Range'), 'Range Melee BS N/A WS - Range');
+t('the finding excerpt and its passage are the marked text', (function () {
+  const f = findingFor({ id: 'datasheet#x', set: 'factions', source: 'factions-csv', heading: 'Raptors', url: 'https://x', text: flat }, 1);
+  return [f.excerpt, f.text];
+})(), ['Wargear Grabba Dragga (Ranged): Range 12" A 1 BS 2+ S 10 AP -2 D 3', 'Wargear Grabba Dragga (Ranged): Range 12" A 1 BS 2+ S 10 AP -2 D 3']);
+
 // --- the Fuegan card, field for field ---------------------------------------
 const c = buildUnitCard('000000574');
 ok('every field comes from the export, none from a model', c && c.source === 'Aeldari' && c.edition === '11' && c.version === '1.3');
 t('the statline is the CSV statline', c.models, [{
   line: '1', name: 'Fuegan', M: '7"', T: '3', Sv: '2+', inv: '4+', W: '5', Ld: '6+', OC: '1', base: '40mm',
 }]);
-t('the weapons are the CSV weapons', c.ranged.map(w => [w.name, w.range, w.A, w.BS, w.S, w.AP, w.D, w.notes]), [
-  ['Searsong – beam', '12', '3', '2', '8', '-3', '2', 'assault, melta 1, sustained hits 2'],
-  ['Searsong – lance', '18', '1', '2', '14', '-4', 'D6', 'assault, melta 6'],
+// task-34: the range carries its inch mark and BS/WS its plus - the export writes
+// both bare (0 of 7,758 wargear rows carry either), so this is the game's notation
+// restored at render. A and S and AP and D are not touched.
+t('the weapons are the CSV weapons, with the notation marks', c.ranged.map(w => [w.name, w.range, w.A, w.BS, w.S, w.AP, w.D, w.notes]), [
+  ['Searsong – beam', '12"', '3', '2+', '8', '-3', '2', 'assault, melta 1, sustained hits 2'],
+  ['Searsong – lance', '18"', '1', '2+', '14', '-4', 'D6', 'assault, melta 6'],
 ]);
 t('melee is split out', c.melee.map(w => w.name), ['Fire Axe']);
 t('the abilities are named, including the ones resolved through Abilities.csv', c.abilities.map(a => a.type + ':' + a.name), ['Core:Leader', 'Faction:Battle Focus', 'Datasheet:Burning Lance', 'Datasheet:Unquenchable Resolve']);
@@ -68,6 +92,10 @@ t('the composition keeps its HTML out', c.composition, ['1 Fuegan – EPIC HERO'
 t('the loadout drops the sentence the label already says', c.loadout, 'Searsong; Fire Axe.');
 t('Fuegan has no options and no damaged bracket', [c.options, c.damaged], [[], null]);
 ok('the card cites the datasheet page', /^https:\/\/wahapedia\.ru\//.test(c.url));
+t('the card marks both columns and leaves A/S/AP/D alone', c.ranged.map(w => [w.range, w.BS, w.A, w.S]), [['12"', '2+', '3', '8'], ['18"', '2+', '1', '14']]);
+const waz = buildUnitCard(findDatasheet('Wazdakka Gutsmek', 'Wazdakka Gutsmek').id);
+t('the record Mandal read: ranged ranges and BS', waz.ranged.map(w => [w.range, w.BS]), [['12"', '2+'], ['24"', '4+']]);
+t('and its melee table keeps Melee in the range column with WS marked', waz.melee.map(w => [w.range, w.BS]), [['Melee', '2+'], ['Melee', '4+'], ['Melee', '2+']]);
 
 // Nothing on the card may carry markup: the export is HTML inside a pipe file,
 // and a card is the one place it is displayed raw.

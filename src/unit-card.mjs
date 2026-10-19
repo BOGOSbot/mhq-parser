@@ -29,6 +29,8 @@
 import fs from 'fs';
 import path from 'path';
 import { csvDir, csvRows, htmlToText, trimAbilityTail } from './rules-corpus.mjs';
+// task-34: the two marks the export leaves bare, one home for the card and the flat text.
+import { markRange, markHit, markWargearText } from './wargear-marks.mjs';
 import { mergeChunkParts } from './wiki-plan.mjs';
 
 const clean = s => htmlToText(String(s == null ? '' : s)).replace(/\s+/g, ' ').trim();
@@ -297,8 +299,8 @@ export function buildUnitCard(id, opts) {
   }));
   if (!models.length) { cache.set(key, null); return null; }
   const weapons = (t.wargear.get(d.id) || []).map(w => ({
-    name: clean(w.name), type: clean(w.type), range: clean(w.range),
-    A: w.A, BS: w.BS_WS, S: w.S, AP: w.AP, D: w.D, notes: clean(w.description),
+    name: clean(w.name), type: clean(w.type), range: markRange(clean(w.range), w.type),
+    A: w.A, BS: markHit(w.BS_WS), S: w.S, AP: w.AP, D: w.D, notes: clean(w.description),
   }));
   const abilities = (t.abilities.get(d.id) || []).map(ab => {
     const ref = ab.ability_id ? t.abilityById.get(ab.ability_id) : null;
@@ -438,7 +440,9 @@ export function recordCard(id, opts) {
     ruleId: rec.ruleId || '',
     title: named.name || rec.heading || rec.id,
     crumb: parts.slice(0, named.at >= 0 ? named.at : parts.length - 1),
-    text: String(rec.text || ''),
+    // task-34: the flat text as the reader sees it (the dialog's first paint before
+    // the fragment lands, and the lookup payload) - the same marks as the card.
+    text: markWargearText(String(rec.text || '')),
     url: rec.url || '',
     href: hrefFor(rec),
     links: resolveRecordLinks(rec.links, byId),

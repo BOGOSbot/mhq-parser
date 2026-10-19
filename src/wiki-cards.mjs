@@ -29,6 +29,8 @@ import { linkify, esc } from './wikilinks.mjs';
 // ALSO block is stripped for display only when it names the record's own section links
 // (task-87).
 import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries, mergeChunkParts } from './wiki-plan.mjs';
+// task-34: the flat passage marks, the same ones the card builder uses.
+import { markWargearText } from './wargear-marks.mjs';
 
 // task-97: the CSV export's own columns. Only a record from a CSV source carries them, so only
 // there do they leave the prose - a rule whose text happens to say 'Type:' is not ours to cut.
@@ -727,7 +729,10 @@ export function recordBody(record, opts) {
   // blocks; the vector sees them and the corpus is unchanged.
   const kids = seeAlsoKids(record, o);
   // task-94: the child's copy inside the body goes before anything renders it.
-  const text = dropChildEchoes(stripSeeAlso({ text: stripBuiltBlock(record), links: record && record.links }), kids);
+  // task-34: the flat record body is a display path too - the drawer's inline record
+  // for a record with no card still shows the wargear lines, so it takes the same
+  // marks as the card. Idempotent, and the corpus bytes are untouched.
+  const text = markWargearText(dropChildEchoes(stripSeeAlso({ text: stripBuiltBlock(record), links: record && record.links }), kids));
   const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
   // task-96: a numbered group whose own body is empty ('02.02.01 Modifiers') hands the
   // content to the unnumbered sub-headings that follow it.
