@@ -268,23 +268,47 @@ details{border-color:var(--line)}
 .dissent{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
 .dissent .dtitle{color:var(--dim);font:600 11px var(--sans);letter-spacing:.04em;margin-bottom:5px}
 .dissent .note{margin-top:0}
-.vevidence{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px}
-.vevidence .vlabel{color:var(--dim);font:11px var(--mono)}
-.vevidence a.cite{font-size:11.5px}
-/* The verdict is one sentence; the reasoning behind it is support, so it is a
-   toggle. On a phone this is the difference between the findings starting above
-   the fold and starting two screens down. */
-.vline{font:600 15px/1.45 var(--serif);color:var(--txt);margin:7px 0 0}
-.note.ok.vline,.note.warn.vline{color:var(--txt)}
-.whybox{margin-top:7px}
-.whybox summary{color:var(--dim);font:12px/1.4 var(--sans);cursor:pointer;display:inline-flex;
-  align-items:center;gap:6px;padding:2px 0;list-style:none}
-.whybox summary::-webkit-details-marker{display:none}
-.whybox summary:before{content:'';width:6px;height:6px;border-right:1.5px solid currentColor;
-  border-bottom:1.5px solid currentColor;transform:rotate(-45deg);margin-top:-2px;transition:transform .15s}
-.whybox[open] summary:before{transform:rotate(45deg);margin-top:-4px}
-.whybox summary:hover{color:var(--txt)}
-.whybox .note{font-size:13.5px;line-height:1.55;margin:6px 0 0}
+/* task-24 (J4): the ruling, not a verdict stripe. The answer is the slots a rules
+   answer has - the line, the rule's own words behind a navy rule, the source named
+   by TITLE, the named rules that change it, what the corpus does not cover. There
+   is no confidence chip, no 'why' toggle and no 'passages it rests on' line:
+   `why` and `confidence` stay in the payload for the trace, and the ledger below
+   the ruling is those passages. */
+.ruling{margin:10px 0 0}
+.rline{font:500 16.5px/1.45 var(--sans);color:var(--ink);margin:0}
+.rquote{font:15.5px/1.5 var(--serif);color:var(--ink);margin:10px 0 0;padding:0 0 0 12px;
+  border-left:2px solid var(--acc)}
+.rquote.bad{color:var(--warn);text-decoration:line-through;text-decoration-thickness:1px}
+.rstrike{color:var(--warn);text-decoration:line-through;text-decoration-thickness:1px}
+.rsrc{margin:7px 0 0;font:11px/1.4 var(--mono);color:var(--dim);padding-left:14px}
+.rsrc a{color:var(--acc);text-decoration:none}
+.rsrc a:hover{text-decoration:underline}
+.rsrc .srule{margin-left:7px}
+.rex{margin:10px 0 0;font:13px/1.6 var(--sans);color:var(--dim);padding-left:14px}
+.rex a{color:var(--acc);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--acc) 28%,transparent)}
+.rex .dot{color:var(--line);margin:0 6px}
+.rmiss{margin:10px 0 0;font:13.5px/1.55 var(--sans);color:var(--dim);padding-left:12px;
+  border-left:2px solid var(--line)}
+.rtrace{margin:9px 0 0;font:11px/1.4 var(--mono);color:var(--warn);padding-left:14px}
+/* the ledger: no chips, no borders, no rank numbers - the used passages are the
+   rows shown in full, and the rest is one collapsed line. */
+.lname{display:block;font:600 16px/1.25 var(--serif);color:var(--ink);letter-spacing:-.01em}
+.lpath{font:11px/1.4 var(--mono);color:var(--dim);margin-top:4px;overflow-wrap:anywhere}
+.lmark{font:11px/1.4 var(--mono);color:var(--dim);margin-top:6px;opacity:.7}
+.fitem.cited{padding:11px 0 10px}
+.resid{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:6px;
+  padding:13px 2px;border:0;border-top:1px solid var(--line);background:none;color:var(--dim);
+  font:12px var(--sans);cursor:pointer}
+.resid:hover{color:var(--txt)}
+.resid .chev{font:13px var(--mono)}
+.resid .rnames{display:block;margin-top:3px;font:10.5px/1.35 var(--mono);color:var(--dim);opacity:.8;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fitem.res{display:flex;gap:8px;align-items:baseline;padding:9px 0 8px;
+  border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.rname{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:12.5px/1.35 var(--serif);color:var(--txt)}
+.rpath{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-align:right;font:10.5px/1.35 var(--mono);color:var(--dim)}
 details.secondv{display:block;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
 .secondv summary{list-style:none;cursor:pointer}
 .secondv summary::-webkit-details-marker{display:none}
@@ -717,7 +741,6 @@ var I18N = {
   kindIndex: 'index',
   kindOther: 'record',
     citedByJudge: 'the judge cites this',
-    verdictEvidence: 'passages it rests on:',
     close: 'Close',
     openSource: 'Open on Wahapedia',
     findingsCounts: ' core, ',
@@ -730,12 +753,15 @@ var I18N = {
     judgeNo: 'it does not think these findings answer it',
     judgeYes: 'it thinks these findings answer it',
     partMissing: 'a part of the answer never arrived',
-    judgeWhy: 'why',
     noVerdict: 'no verdict',
-    answeredYes: 'these findings answer the question',
-    answeredNo: 'these findings do NOT answer the question',
-    afterWidening: 'after widening',
-    confidence: 'confidence: ',
+    // task-24 (J4): the ruling's own lines.
+    rulingStart: 'start with ',
+    rulingUnless: 'unless',
+    rulingTrace: '{n} of {m} claims are not in the passage cited - the answer above is not sound',
+    findingsLedger: 'Findings',
+    nearestPassages: 'Nearest passages',
+    quotedAbove: 'quoted above',
+    otherPassages: 'other passages',
     passage: 'passage',
     cardTitle: 'Datasheet',
     cardReady: 'datasheet shown - the search for the rule runs on',
@@ -914,7 +940,6 @@ var I18N = {
   kindIndex: 'index',
   kindOther: 'fiche',
     citedByJudge: 'cité par le juge',
-    verdictEvidence: 'passages sur lesquels il s\u2019appuie :',
     close: 'Fermer',
     openSource: 'Ouvrir sur Wahapedia',
     findingsCounts: ' règles de base, ',
@@ -927,12 +952,14 @@ var I18N = {
     judgeNo: 'il estime que ces constats ne répondent pas à la question',
     judgeYes: 'il estime que ces constats répondent à la question',
     partMissing: 'une partie de la réponse n\u2019est jamais arrivée',
-    judgeWhy: 'pourquoi',
     noVerdict: 'pas de verdict',
-    answeredYes: 'ces constats répondent à la question',
-    answeredNo: 'ces constats ne répondent PAS à la question',
-    afterWidening: 'après élargissement',
-    confidence: 'confiance : ',
+    rulingStart: 'commencez par ',
+    rulingUnless: 'sauf si',
+    rulingTrace: '{n} affirmations sur {m} ne figurent pas dans le passage cité — la réponse ci-dessus n\u2019est pas fiable',
+    findingsLedger: 'Constats',
+    nearestPassages: 'Passages les plus proches',
+    quotedAbove: 'cité ci-dessus',
+    otherPassages: 'autres passages',
     passage: 'passage',
     cardTitle: 'Fiche technique',
     cardReady: 'fiche affichée — la recherche de la règle continue',
@@ -2150,7 +2177,7 @@ function renderVerdicts(state) {
   // a widening renumbers the findings, so citations are shown only while the
   // verdict and the list on screen are the same pass.
   var samePass = (state.judgeAttempt || 0) === (state.pass || 0);
-  card.appendChild(verdictLine(state.judge, state.judgeAttempt, samePass ? state.findings : null));
+  card.appendChild(rulingBlock(state.judge, samePass ? state.findings : null));
   if (state.judge2) {
     var box = document.createElement('details');
     box.className = 'secondv';
@@ -2159,64 +2186,94 @@ function renderVerdicts(state) {
     head.appendChild(el('span', 'leg anchor', t('secondJudge')));
     head.appendChild(el('span', 'sreason', state.judge2.reasoning === 'none' ? t('judgeNoReasoning') : t('judgeReasoning')));
     box.appendChild(head);
-    box.appendChild(verdictLine(state.judge2.judge, 0, null));
+    box.appendChild(rulingBlock(state.judge2.judge, null));
     card.appendChild(box);
   }
 }
 
-function verdictLine(judge, attempt, findings) {
-  var wrap = el('div');
-  // The verdict after a widening is a second verdict, and saying so stops it
-  // reading as the only one there was - which is how a re-evaluation looks like
-  // no evaluation at all.
-  if (attempt > 0) wrap.appendChild(el('span', 'conf rerun', t('afterWidening')));
-  var conf = judge && judge.confidence ? judge.confidence : '';
-  if (conf) wrap.appendChild(el('span', 'conf ' + conf, t('confidence') + conf));
-  var line = el('div', 'note');
-  // The verdict is published in full and may run to a few sentences: keep its
-  // line breaks instead of letting HTML collapse them into one block.
-  line.style.whiteSpace = 'pre-wrap';
-  var unknown = !judge || judge.answered === null || judge.answered === undefined;
-  if (!unknown && judge.answered) line.className = 'note ok vline';
-  else if (!unknown) line.className = 'note warn vline';
-  else line.className = 'note vline';
-  var why = judge && judge.why ? String(judge.why) : '';
-  var verdict = unknown ? t('noVerdict') : (judge.answered ? t('answeredYes') : t('answeredNo'));
-  line.textContent = verdict;
-  wrap.appendChild(line);
-  // The reason is the model's own prose and a small model reaches for markdown
-  // in it - a literal ** around a rule name reads as a typo. It goes through the
-  // same emphasis rendering as the answer, with no citations to resolve: a
-  // [1] in a verdict means the passage it names, and the passage numbers are
-  // already printed beside it. It is collapsed: the findings are the page, and
-  // the reasoning is the support, not the headline.
-  if (why) {
-    var det = document.createElement('details');
-    det.className = 'whybox';
-    var sum = document.createElement('summary');
-    sum.textContent = t('judgeWhy');
-    det.appendChild(sum);
-    var body = el('div', 'note');
-    body.style.whiteSpace = 'pre-wrap';
-    body.appendChild(inlineNodes(why, {}));
-    det.appendChild(body);
-    wrap.appendChild(det);
+// task-24 (J4): the ruling. The answer is rendered as the slots it has, and the
+// verification chrome is gone - no verdict line, no confidence chip, no 'why'
+// toggle, no 'passages it rests on'. `why` and `confidence` stay in the payload for
+// the trace and the dev panel; the ledger under the ruling is those passages.
+function leafOf(heading) {
+  var parts = crumbs(heading);
+  return parts.length ? parts[parts.length - 1] : String(heading || '');
+}
+function findFinding(findings, n) {
+  for (var i = 0; i < (findings || []).length; i++) if (findings[i].n === n) return findings[i];
+  return null;
+}
+// The source, named BY TITLE - never by its number - with the section path beside it.
+// The title opens the same passage popup the [n] markers used to.
+function sourceLine(f) {
+  var p = el('p', 'rsrc');
+  var a = el('a', null, leafOf(f.heading));
+  a.href = '#';
+  a.addEventListener('click', function (ev) { ev.preventDefault(); openPassage(f); });
+  p.appendChild(a);
+  var parts = crumbs(f.heading);
+  if (parts.length > 1) p.appendChild(el('span', 'srule', parts.slice(0, parts.length - 1).join(' \u203a ')));
+  return p;
+}
+// A figure the cited passages do not carry is struck where it stands, so the reader
+// sees which claim failed rather than only that one did.
+function strikeFigures(text, bad) {
+  var frag = document.createDocumentFragment();
+  var tokens = (bad || []).filter(function (b) { return /^\d{2,}$/.test(b); });
+  if (!tokens.length) { frag.appendChild(document.createTextNode(text)); return frag; }
+  var re = new RegExp('(' + tokens.map(escapeRe).join('|') + ')', 'g');
+  var last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+    frag.appendChild(el('span', 'rstrike', m[0]));
+    last = m.index + m[0].length;
   }
-  // The evidence, one click away. The judge names the passages it rests on by
-  // number; each becomes the same link the answer's [n] markers are, opening the
-  // passage popup from the payload - so a verdict can always be followed to what
-  // it was made from, and the reader can disagree with it.
-  var cited = judge && Array.isArray(judge.passages) ? judge.passages : [];
-  if (cited.length && findings && findings.length) {
-    var byN = {};
-    for (var i = 0; i < findings.length; i++) byN[findings[i].n] = findings[i];
-    var ev = el('div', 'vevidence');
-    ev.appendChild(el('span', 'vlabel', t('verdictEvidence')));
-    for (var c = 0; c < cited.length; c++) {
-      var f = byN[cited[c]];
-      if (f) ev.appendChild(citeLink(f, '[' + cited[c] + ']'));
+  if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+  return frag;
+}
+function rulingBlock(judge, findings) {
+  var wrap = el('div', 'ruling');
+  var answered = !!(judge && judge.answered === true);
+  var trace = (judge && judge.trace) || null;
+  var answer = judge && judge.answer ? String(judge.answer) : '';
+  if (!answer) {
+    // FALLBACK: the model failed to write the answer line. The floor is the
+    // recommendation - start with the titles - and never an empty block.
+    var titles = [];
+    for (var i = 0; i < (findings || []).length && titles.length < 3; i++) titles.push(leafOf(findings[i].heading));
+    answer = titles.length ? t('rulingStart') + titles.join(', ') : t('noVerdict');
+  }
+  var line = el('p', 'rline');
+  line.appendChild(strikeFigures(answer, trace && trace.bad));
+  wrap.appendChild(line);
+  // answered:false never renders a quote slot, whatever the payload carries.
+  if (answered && judge.quote) {
+    var quote = el('blockquote', trace && trace.quoteOk === false ? 'rquote bad' : 'rquote');
+    quote.textContent = String(judge.quote);
+    wrap.appendChild(quote);
+    var src = findFinding(findings, judge.from);
+    if (src) wrap.appendChild(sourceLine(src));
+  }
+  if (answered && judge.exceptions && judge.exceptions.length && findings) {
+    var links = [];
+    for (var k = 0; k < judge.exceptions.length; k++) {
+      var ex = findFinding(findings, judge.exceptions[k]);
+      if (!ex) continue;
+      var a = el('a', null, leafOf(ex.heading));
+      a.href = '#';
+      (function (rec) { a.addEventListener('click', function (ev) { ev.preventDefault(); openPassage(rec); }); })(ex);
+      links.push(a);
     }
-    wrap.appendChild(ev);
+    if (links.length) {
+      var p = el('p', 'rex');
+      p.appendChild(document.createTextNode(t('rulingUnless') + ' '));
+      for (var j = 0; j < links.length; j++) { if (j) p.appendChild(el('span', 'dot', '\u00b7')); p.appendChild(links[j]); }
+      wrap.appendChild(p);
+    }
+  }
+  if (!answered && judge && judge.missing) wrap.appendChild(el('p', 'rmiss', String(judge.missing)));
+  if (trace && trace.dropped > 0) {
+    wrap.appendChild(el('p', 'rtrace', t('rulingTrace').replace('{n}', String(trace.dropped)).replace('{m}', String(trace.total))));
   }
   return wrap;
 }

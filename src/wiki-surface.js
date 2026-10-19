@@ -1102,6 +1102,101 @@ function heroOrder(findings, cited, state, ctx) {
   return picked.concat(citedOnes, rest, dropped);
 }
 
+// --- task-24 (J4): the ledger -------------------------------------------------
+// The findings ledger loses every chip: no [n], no border, no card. The passages
+// the reading used are the rows shown in full - title in serif, section path in
+// 11px mono, the excerpt on tap - and the row whose words are quoted above is
+// marked instead of repeating them. Everything else is ONE collapsed line.
+function ledgerName(f) {
+  var parts = String(f.heading || '').split(' > ').filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : String(f.heading || '');
+}
+function ledgerPath(f, ctx) {
+  var parts = ctx.crumbs(f.heading);
+  return parts.length > 1 ? parts.slice(0, parts.length - 1).join(' \u203a ') : '';
+}
+function ledgerUsedRow(f, state, ctx, quoted) {
+  var li = el('li', 'fitem cited');
+  var btn = el('button', 'lrow');
+  btn.type = 'button';
+  btn.appendChild(el('span', 'lname', ledgerName(f)));
+  var path = ledgerPath(f, ctx);
+  if (path) btn.appendChild(el('span', 'lpath', path));
+  li.appendChild(btn);
+  if (quoted) {
+    // The words are already above; repeating them here would be the loudest
+    // thing in the ledger and would say nothing new.
+    li.appendChild(el('div', 'lmark', ctx.t('quotedAbove')));
+    return li;
+  }
+  var text = el('div', 'ftext');
+  text.hidden = true;
+  text.appendChild(ctx.markTerms(String(f.excerpt || ''), (f.leg === 'lexical' || f.leg === 'both') ? f.matchedTerms : []));
+  btn.addEventListener('click', function (ev) { ev.preventDefault(); text.hidden = !text.hidden; });
+  li.appendChild(text);
+  return li;
+}
+function ledgerResidue(rest, ctx) {
+  var wrap = el('div');
+  var btn = el('button', 'resid');
+  btn.type = 'button';
+  var label = el('span', null, rest.length + ' ' + ctx.t('otherPassages'));
+  var names = el('span', 'rnames', rest.slice(0, 3).map(ledgerName).join(' \u00b7 '));
+  label.appendChild(names);
+  btn.appendChild(label);
+  var chev = el('span', 'chev', '+');
+  btn.appendChild(chev);
+  var list = document.createElement('ol');
+  list.className = 'cites';
+  list.hidden = true;
+  for (var i = 0; i < rest.length; i++) {
+    var li = el('li', 'fitem res');
+    li.appendChild(el('span', 'rname', ledgerName(rest[i])));
+    var p = ledgerPath(rest[i], ctx);
+    if (p) li.appendChild(el('span', 'rpath', p));
+    list.appendChild(li);
+  }
+  btn.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    var open = list.hidden;
+    list.hidden = !open;
+    names.hidden = open;
+    chev.textContent = open ? '\u2212' : '+';
+  });
+  wrap.appendChild(btn);
+  wrap.appendChild(list);
+  return wrap;
+}
+function rulingLedger(findings, state, ctx) {
+  var judge = state.judge || {};
+  var answered = judge.answered === true;
+  var usedNums = [];
+  var add = function (n) { if (typeof n === 'number' && usedNums.indexOf(n) === -1) usedNums.push(n); };
+  if (answered) {
+    add(judge.from);
+    (judge.exceptions || []).forEach(add);
+    (judge.passages || []).forEach(add);
+  }
+  var order = heroOrder(findings, judge.passages || [], state, ctx);
+  var used = [];
+  for (var i = 0; i < order.length; i++) if (usedNums.indexOf(order[i].n) !== -1) used.push(order[i]);
+  // A refusal (or a not-a-question) cites nothing: the nearest three are shown in
+  // full and the rest collapse like any other residue.
+  if (!used.length) used = order.slice(0, 3);
+  var usedIds = {};
+  for (var u = 0; u < used.length; u++) usedIds[used[u].id] = true;
+  var rest = [];
+  for (var r = 0; r < order.length; r++) if (!usedIds[order[r].id]) rest.push(order[r]);
+  var title = (answered ? ctx.t('findingsLedger') : ctx.t('nearestPassages')) + ' - ' + order.length;
+  var card = ctx.sectionCard(title);
+  var ol = el('ol', 'cites');
+  var quotedFrom = answered && judge.quote ? judge.from : null;
+  for (var k = 0; k < used.length; k++) ol.appendChild(ledgerUsedRow(used[k], state, ctx, used[k].n === quotedFrom));
+  card.appendChild(ol);
+  if (rest.length) card.appendChild(ledgerResidue(rest, ctx));
+  return card;
+}
+
 function findingsCard(findings, counts, cited, state, ctx) {
   // Ordered by the rank the retrievers gave them, not by arrival: a widened
   // pass re-renders this card with the wider list, and the order is the whole
@@ -1356,6 +1451,10 @@ function devPanel(f, state, ctx) {
   window.WIKI_SURFACE_API = {
     findings: function (host, state, ctx) {
       host.textContent = '';
+      // task-24 (J4): once a verdict exists the findings are the ruling's ledger -
+      // the passages it used in full, the rest collapsed. Before that they are the
+      // ranked list the reader watches arrive.
+      if (state && state.judge) { host.appendChild(rulingLedger(sortedFindings(state.findings || []), state, ctx)); return; }
       host.appendChild(findingsCard(state.findings, state.counts, state.cited, state, ctx));
     },
     findingOrder: function (findings, cited, state, ctx) { return heroOrder(findings, cited, state, ctx); },

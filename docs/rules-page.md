@@ -372,12 +372,27 @@ those.
    turns it back on - the path is kept because its format is going into the
    judge.
 
-**The verdict is a strip, not a card of prose.** The judge's answer is one
-sentence with its confidence and the numbered passages it rests on, each a link;
-the model's reasoning sits behind a `why` toggle and the second judge is a
-collapsed row of its own. This is what keeps the findings above the fold on a
-390px phone: before it, two judges' reasoning pushed the first finding two
-screens down, on a page whose product is the findings.
+**The ruling is slots, not a card of prose (J4, task-24).** The judge answers in
+fields now: a line, the rule's own words under it as a verbatim quote behind a navy
+rule, the source named BY TITLE with its section path beside it, an `unless
+<exceptions>` line whose names are links, and - on a refusal - a grey-ruled
+`missing` block saying what the corpus does not cover. There is no verdict stripe,
+no confidence chip, no `why` toggle and no 'passages it rests on' line: `why` and
+`confidence` stay in the payload for the trace and the dev panel, and the findings
+below are the ledger - the passages the ruling used shown in full with no rank
+chip, the row it quoted marked 'quoted above', everything else behind ONE collapsed
+'N other passages' line with the first three names. A refusal cites nothing, so the
+ledger reads 'Nearest passages' and shows the top three in full.
+
+**Soundness is checked, not asserted.** Every figure of two digits or more and
+every quoted stretch of 12+ characters in the answer and the quote must appear
+(case-insensitively) in the passages the ruling names - `from`, `exceptions`,
+`passages` - and the quote must be in the passage it names, a shared 40-character
+prefix counting against a passage the prompt truncated. A claim that fails is
+struck where it stands and 'N of M claims are not in the passage cited - the answer
+above is not sound' is printed in warn. The fallbacks: no `quote` renders the
+answer and the source only, no `answer` falls back to the recommendation line
+('start with <titles>'), and an `answered:false` ruling never renders a quote slot.
 
 ## Two judges, one answer
 

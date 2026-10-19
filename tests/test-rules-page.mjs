@@ -54,7 +54,9 @@ t('and in the French table too', missingFr, []);
 const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild', 'rankN', 'rankScore', 'rankScoreTitle', 'matchedWords', 'moreFindings', 'close', 'openSource',
   'cardTitle', 'cardRanged', 'cardMelee', 'cardAbilities', 'cardKeywords', 'cardComposition', 'cardPoints', 'cardSourceNote', 'cardOpen',
   'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'judgeDissentTitle', 'judgeDissentWeaker', 'judgeDissentOther',
-  'cardReady', 'streamCut', 'citedByJudge', 'verdictEvidence', 'voteHelp', 'voteUp', 'voteDown', 'voteThanks',
+  'cardReady', 'streamCut', 'citedByJudge', 'voteHelp', 'voteUp', 'voteDown',
+  // task-24 (J4): the ruling's own lines and the ledger's.
+  'rulingStart', 'rulingUnless', 'rulingTrace', 'findingsLedger', 'nearestPassages', 'quotedAbove', 'otherPassages', 'voteThanks',
   'pickHelp', 'pickThis', 'pickNone', 'pickWaiting', 'pickThanks', 'pickNoneThanks',
   'rerunTitle', 'rerunNote', 'rerankHelp', 'rerankButton',
   // The hero card's controls and the provenance its dev toggle opens.
@@ -121,7 +123,9 @@ ok('done no longer short-circuits on a card', code.indexOf('if (state.card) { se
 ok('the card takes the cited passages', /function findingsCard\(findings, counts, cited, state, ctx\)/.test(SURFACE));
 ok('the union keeps the top five and promotes the cited ones', /i < 5 \|\| isCited\(findings\[i\]\)/.test(SURFACE));
 ok('a cited finding is badged and shown whole', /if \(cited\) head\.appendChild\(el\('span', 'leg cite'/.test(SURFACE));
-ok('the verdict links to the passages it rests on', /ev\.appendChild\(citeLink\(f, '\[' \+ cited\[c\] \+ '\]'\)\)/.test(code));
+// task-24 (J4): the ruling names its source BY TITLE, with the section path
+// beside it, and that name is the link to the passage.
+ok('the ruling links its source by title', /function sourceLine/.test(code) && /leafOf\(f\.heading\)/.test(code) && /openPassage\(f\)/.test(code));
 ok('a widening drops the citations it renumbered', /if \(ev\.attempt > 0\) state\.cited = \[\];/.test(code));
 ok('citations show only against the list the verdict judged', /var samePass = /.test(code));
 ok('one place draws the findings list', /function renderFindings\(state\)/.test(code));
