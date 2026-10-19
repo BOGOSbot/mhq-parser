@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { recordCard } from '../src/unit-card.mjs';
 
 // The /rules page's own rules, checked where a reviewer cannot see them by hand:
 // commit 864ad28 fixed one hardcoded English label ('Findings - N') that the
@@ -313,6 +314,43 @@ ok('the route refuses an id the corpus does not hold', /if \(!record\) return fa
 ok('the record address is the payload slug, never a second map', /slug: surfaceSlugMap\(\).get\(id\)/.test(server) && server.indexOf('map.json') === -1);
 
 
+
+// task-23: a finding row is titled with the record, not with the section it hangs
+// under. The helper is pure and lives between markers so it can be driven here
+// with the capture's own headings; the row then prints it, and the path stops
+// before it so the question is not printed twice.
+const rnStart = SURFACE.indexOf('// --- task-23 row name');
+const rnEnd = SURFACE.indexOf('// --- end task-23 row name');
+ok('the row-name helper is a pure block the test can drive', rnStart !== -1 && rnEnd > rnStart);
+const rowName = new Function(SURFACE.slice(rnStart, rnEnd) + '; return rowName;')();
+const FAQ_Q = 'If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll?';
+const FAQ_PATH = ['Muster Armies', 'Fill Your Army Roster', 'FAQ', FAQ_Q, 'FALL-BACK MOVE'];
+const ONESHOT_PATH = ['[ONE SHOT]', 'FAQ', 'Q: ' + FAQ_Q, 'FALL-BACK MOVE'];
+const NESTED = ['Movement Phase', '3. End of Movement Phase', '09.05.01 More Than One Normal Move in a Phase', 'FALL-BACK MOVE'];
+t('an FAQ row is named by its own question', rowName(FAQ_PATH), { name: FAQ_Q, at: 3 });
+t('a one-shot FAQ row keeps the source own question label', rowName(ONESHOT_PATH), { name: 'Q: ' + FAQ_Q, at: 2 });
+t('a nested rule keeps its own name', rowName(NESTED), { name: 'FALL-BACK MOVE', at: 3 });
+t('a bare name keeps its own name', rowName(['FALL-BACK MOVE']), { name: 'FALL-BACK MOVE', at: 0 });
+t('a datasheet row keeps its own name', rowName(['Datasheets', 'Tyrannofex']), { name: 'Tyrannofex', at: 1 });
+t('a question that IS the name is not mistaken for a section', rowName(['Other Concepts', 'Hazard Rolls', 'Q: I failed hazard rolls?']), { name: 'Q: I failed hazard rolls?', at: 2 });
+ok('the three rows above print three distinct titles',
+  new Set([rowName(NESTED).name, rowName(FAQ_PATH).name, rowName(ONESHOT_PATH).name].map(function (s) { return s.toLowerCase(); })).size === 3);
+t('a leaf that restates a segment above it is not the name', rowName(['Muster Armies', 'FAQ', 'Some Rule', 'Some Rule']).name, 'FAQ');
+ok('the row prints the helper name and the path stops before it',
+  /var named = rowName\(parts\);[\s\S]{0,200}displayTitle\(named\.name/.test(SURFACE) && /var above = parts\.slice\(0, named\.at >= 0 \? named\.at : parts\.length - 1\)/.test(SURFACE));
+ok('the drawer and record header name the record too', /function titleOf\(rec\) \{[\s\S]{0,320}rowName\(String\(rec\.heading\)\.split\(' > '\)\.filter\(Boolean\)\)\.name/.test(SURFACE) && /if \(rec\.title\) return rec\.title;/.test(SURFACE));
+// The same rule, on the server, is what the drawer and the record header read:
+// /rules/record's title and crumb must name the record too, or the row and the
+// sheet disagree. Driven with the same headings as the client helper above.
+const mk = (id, heading) => ({ id: id, heading: heading, kind: 'rule', set: 'rules', source: 'core-rules', text: '' });
+const cardFor = heading => recordCard('core-rules#X', { index: new Map([['core-rules#X', mk('core-rules#X', heading)]]) });
+t('the record header names the FAQ by its question', cardFor(FAQ_PATH.join(' > ')).title, FAQ_Q);
+t('the record breadcrumb stops before the question', cardFor(FAQ_PATH.join(' > ')).crumb, ['Muster Armies', 'Fill Your Army Roster', 'FAQ']);
+t('the record header keeps a nested rule own name', cardFor(NESTED.join(' > ')).title, 'FALL-BACK MOVE');
+t('the record breadcrumb keeps a nested rule path', cardFor(NESTED.join(' > ')).crumb, ['Movement Phase', '3. End of Movement Phase', '09.05.01 More Than One Normal Move in a Phase']);
+t('the record header keeps a datasheet name', cardFor('Datasheets > Tyrannofex').title, 'Tyrannofex');
+ok('the client and server name a record the same way',
+  rowName(FAQ_PATH).name === cardFor(FAQ_PATH.join(' > ')).title && rowName(NESTED).name === cardFor(NESTED.join(' > ')).title);
 
 // The layout of the question: the box grows with its text, the translation has
 // its own box under it, and the retention line is in the body where a run cannot

@@ -80,7 +80,16 @@
   function bookOf(slug) { var i = String(slug || '').indexOf('--'); return i === -1 ? '' : String(slug).slice(0, i); }
   function leafOfId(id) { var s = String(id); var h = s.indexOf('#'); return h === -1 ? s : s.slice(h + 1); }
   function headingLeaf(h) { var p = String(h || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : ''; }
-  function titleOf(rec) { if (!rec) return ''; if (rec.title) return rec.title; if (rec.heading) return headingLeaf(rec.heading); return leafOfId(rec.id); }
+  // task-23: the drawer and the record header name the record, not its section.
+  // A finding carries the retrieval heading, whose leaf is the matched section;
+  // rowName() knows the record's own name is the question above it. A record with
+  // its own title (the server's /rules/record, a payload row) is untouched.
+  function titleOf(rec) {
+    if (!rec) return '';
+    if (rec.title) return rec.title;
+    if (rec.heading) return rowName(String(rec.heading).split(' > ').filter(Boolean)).name || leafOfId(rec.id);
+    return leafOfId(rec.id);
+  }
   // The reader sees a place, not a key. The slug's prefix names the book; the
   // roster gives the faction its display name. Never a raw record id, never a
   // bare source string like 'faction-ac' (the old render removed those too).
@@ -1188,6 +1197,36 @@ function sortedFindings(list) {
   return out;
 }
 
+// --- task-23 row name (pure; tests/test-rules-page.mjs extracts this block) ---
+// A finding row must be titled with the RECORD, not with the section it hangs
+// under. The retrieval heading is a path whose leaf is the matched section, and a
+// Q&A / errata / '[ONE SHOT]' record hangs under the rule it answers about:
+// 'Muster Armies > Fill Your Army Roster > FAQ > If a rule says ...? > FALL-BACK
+// MOVE' is a record whose own name is the question, and three such records all
+// printed the same 'Fall-Back Move'. The tell is local to the path - a question
+// segment above the leaf (or a leaf that restates an earlier segment) - so the
+// name is that segment and the path stops before it. A heading whose leaf IS the
+// record's own name is untouched: a datasheet, 'FALL-BACK MOVE' itself, a rule.
+function rowName(parts) {
+  var list = (parts || []).map(function (p) { return String(p == null ? '' : p).trim(); });
+  if (!list.length) return { name: '', at: -1 };
+  var last = list.length - 1;
+  var i;
+  for (i = last - 1; i >= 0; i--) {
+    if (/\?$/.test(list[i]) || /^q\s*:/i.test(list[i])) return { name: list[i], at: i };
+  }
+  var low = list[last].toLowerCase();
+  for (i = last - 1; i >= 0; i--) {
+    if (list[i].toLowerCase() !== low) continue;
+    for (var k = i - 1; k >= 0; k--) {
+      if (list[k].toLowerCase() !== low) return { name: list[k], at: k };
+    }
+    break;
+  }
+  return { name: list[last], at: last };
+}
+// --- end task-23 row name ----------------------------------------------------
+
 function findingItem(f, prominent, cited, state, ctx) {
   var selectable = !!(state && state.selectable && !state.rerun);
   var first = selectable && (state.positive || []).indexOf(f.id) !== -1;
@@ -1200,7 +1239,8 @@ function findingItem(f, prominent, cited, state, ctx) {
   if (first) head.appendChild(el('span', 'leg badgetop', ctx.t('heroTop')));
   if (ignored) head.appendChild(el('span', 'leg badgeign', ctx.t('heroIgnored')));
   var parts = ctx.crumbs(f.heading);
-  var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + displayTitle(parts.length ? parts[parts.length - 1] : f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
+  var named = rowName(parts);
+  var a = el('a', 'ftitle', (f.faction ? f.faction + ' - ' : '') + displayTitle(named.name || f.heading) + (f.ruleId ? '  (' + f.ruleId + ')' : ''));
   a.href = f.href || f.url; a.target = '_blank'; a.rel = 'noopener';
   // task-8: the title opens the door the switch names - the quick record, or the
   // drawer at this chapter with the record inline (ctx.openDoor owns the choice).
@@ -1221,13 +1261,16 @@ function findingItem(f, prominent, cited, state, ctx) {
     ctx.openDoor(state, f);
   });
   // The section path follows the switch too: '\u00b7 quick' opens the record,
-  // '\u00b7 in the book' opens the chapter with the record inline.
-  if (parts.length > 1) {
+  // '\u00b7 in the book' opens the chapter with the record inline. It stops
+  // before the record's own name (task-23): a Q&A row titled with its question
+  // must not print that same question again as its path.
+  var above = parts.slice(0, named.at >= 0 ? named.at : parts.length - 1);
+  if (above.length > 0) {
     var path = el('button', 'fcrumbs fpath');
     path.type = 'button';
-    path.appendChild(el('span', null, parts.slice(0, -1).join(' \u203a ')));
+    path.appendChild(el('span', null, above.join(' \u203a ')));
     path.appendChild(el('span', 'door', ' \u00b7 ' + (ctx.doorMode(state) === 'book' ? ctx.t('doorBook') : ctx.t('doorQuick'))));
-    path.setAttribute('aria-label', (ctx.doorMode(state) === 'book' ? ctx.t('doorBook') : ctx.t('doorQuick')) + ': ' + parts.slice(0, -1).join(' \u203a '));
+    path.setAttribute('aria-label', (ctx.doorMode(state) === 'book' ? ctx.t('doorBook') : ctx.t('doorQuick')) + ': ' + above.join(' \u203a '));
     path.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); ctx.openDoor(state, f); });
     li.appendChild(path);
   }

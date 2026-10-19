@@ -379,6 +379,31 @@ export function resolveRecordLinks(links, byId) {
 // builder for the four categories the view opens - unit, faction, detachment,
 // rules section - so the page renders one shape instead of a renderer per kind.
 // Null when the id is not in the corpus: a half card is never shown.
+// task-23: the record's own name, not the section it hangs under. Same rule and
+// same shape as src/wiki-surface.js's rowName (tests pin both against the same
+// headings): a Q&A / errata / '[ONE SHOT]' record's path ends at the rule it
+// answers about, so its leaf is that section's name and three records printed
+// 'FALL-BACK MOVE'; the record's own name is the question segment above the leaf,
+// and the breadcrumb stops before it. A heading whose leaf IS the name is
+// untouched.
+function rowName(parts) {
+  const list = (parts || []).map(p => String(p == null ? '' : p).trim());
+  if (!list.length) return { name: '', at: -1 };
+  const last = list.length - 1;
+  for (let i = last - 1; i >= 0; i--) {
+    if (/\?$/.test(list[i]) || /^q\s*:/i.test(list[i])) return { name: list[i], at: i };
+  }
+  const low = list[last].toLowerCase();
+  for (let i = last - 1; i >= 0; i--) {
+    if (list[i].toLowerCase() !== low) continue;
+    for (let k = i - 1; k >= 0; k--) {
+      if (list[k].toLowerCase() !== low) return { name: list[k], at: k };
+    }
+    break;
+  }
+  return { name: list[last], at: last };
+}
+
 export function recordCard(id, opts) {
   const o = opts || {};
   const corpora = o.corpora || {};
@@ -397,6 +422,7 @@ export function recordCard(id, opts) {
     ? buildUnitCard(bare, o.corpora ? { corpora: o.corpora } : undefined)
     : null;
   const parts = String(rec.heading || '').split(' > ').filter(Boolean);
+  const named = rowName(parts);
   return {
     id: rec.id,
     kind,
@@ -405,8 +431,8 @@ export function recordCard(id, opts) {
     faction: rec.faction || '',
     heading: rec.heading || '',
     ruleId: rec.ruleId || '',
-    title: parts.length ? parts[parts.length - 1] : (rec.heading || rec.id),
-    crumb: parts.slice(0, -1),
+    title: named.name || rec.heading || rec.id,
+    crumb: parts.slice(0, named.at >= 0 ? named.at : parts.length - 1),
     text: String(rec.text || ''),
     url: rec.url || '',
     href: hrefFor(rec),

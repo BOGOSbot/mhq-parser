@@ -518,6 +518,18 @@ the retrieval.
 - The display sorts each half by that rank - ranks are per-half positions, so
   interleaving two halves would invent an order - shows the top five overall
   whole above the prose, and puts the rest behind *more findings*.
+- **A row's title is the record, never its section (task-23).** The retrieval
+  heading is a path whose leaf is the matched section, and a Q&A, errata or
+  `[ONE SHOT]` record hangs under the rule it answers about - so
+  `Muster Armies > Fill Your Army Roster > FAQ > If a rule says ...? > FALL-BACK
+  MOVE` made three different records print `Fall-Back Move`. One pure rule names
+  the record instead: a question segment above the leaf is the record's own name
+  (the source's `Q:` kept where it wrote one), and the section path stops before
+  it, so the question is not printed twice. A heading whose leaf IS the name -
+  `FALL-BACK MOVE` itself, a datasheet, an ordinary rule - is untouched. The same
+  rule is applied on the server (`recordCard`, which is what the drawer and the
+  record header read) and in the client (`rowName`, `titleOf`); the tests drive
+  both implementations with the same headings and assert they agree.
 - **The findings are rows, and the reader reranks them.** Each row is the
   record's title and one line of it; one `⋯` opens a sheet with the same three
   actions on every row - **Put first** (a green caret), **Ignore** (an `x`), and
