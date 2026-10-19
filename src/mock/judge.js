@@ -12,6 +12,8 @@
   var openRows = {};
   var readOpen = false;
   var showAll = false;
+  var residOpen = false;
+  var citedOpen = {};
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -129,6 +131,73 @@
     return out.join('');
   }
 
+  // --- arm 4: the ruling and the ledger ------------------------------------
+  // The answer is not a paragraph: it is the slots a rules answer actually has.
+  // The judge fills them (same single call, a different instruction), and the
+  // quote is the passage's own words, checked against it before it is printed.
+  function arm4(d) {
+    var st = d.st, r = st.ruling || {}, out = ['<div class="ruling">'];
+    out.push('<p class="rline">' + esc(r.answer) + '</p>');
+    if (r.quote) {
+      out.push('<blockquote class="rquote' + (r.quoteOk ? '' : ' bad') + '">' + esc(r.quote) + '</blockquote>');
+      var f = null;
+      for (var i = 0; i < st.findings.length; i++) if (st.findings[i].n === r.from) f = st.findings[i];
+      if (f) out.push('<p class="rsrc"><a class="srclink" href="#row-' + d.map[f.n] + '" data-row="' + d.map[f.n] + '">' + esc(f.title) + '</a><span class="srule">' + esc(f.crumb || '') + '</span></p>');
+    }
+    if (r.exceptions && r.exceptions.length) {
+      var ex = [];
+      for (var k = 0; k < r.exceptions.length; k++) {
+        var e = null;
+        for (var j = 0; j < st.findings.length; j++) if (st.findings[j].n === r.exceptions[k]) e = st.findings[j];
+        if (e) ex.push('<a class="exlink" href="#row-' + d.map[e.n] + '" data-row="' + d.map[e.n] + '">' + esc(e.short) + '</a>');
+      }
+      if (ex.length) out.push('<p class="rex">unless ' + ex.join('<span class="dot">&middot;</span>') + (r.more ? '<span class="dot">&middot;</span><span class="moreex">and ' + r.more + ' more</span>' : '') + '</p>');
+    }
+    if (r.missing) out.push('<p class="rmiss">' + esc(r.missing) + '</p>');
+    if (r.trace && r.trace.dropped > 0) out.push('<p class="rtrace">' + r.trace.dropped + ' of ' + r.trace.total + ' claims are not in the passage cited &mdash; the answer above is not sound</p>');
+    out.push('</div>');
+    return out.join('');
+  }
+  function ledgerHtml(d) {
+    var st = d.st, out = [], full = [], rest = [], i;
+    for (i = 0; i < d.rows.length; i++) {
+      var f = d.rows[i], disp = i + 1;
+      var keep = d.cited.length ? d.cited.indexOf(f.n) !== -1 : i < 3;
+      if (keep) full.push({ f: f, disp: disp }); else rest.push({ f: f, disp: disp });
+    }
+    out.push('<div class="fhead"><h2>' + (d.cited.length ? 'Findings' : 'Nearest passages') + '</h2><span class="cnt">'
+      + d.rows.length + (d.cited.length ? ' &middot; ' + full.length + ' read' : '') + '</span></div>');
+    out.push('<ol class="cites">');
+    for (i = 0; i < full.length; i++) {
+      var row = full[i], quoted = st.ruling && st.ruling.from === row.f.n;
+      var open = citedOpen[row.disp] === true;
+      out.push('<li class="fitem cited" id="row-' + row.disp + '">');
+      out.push('<button class="lrow" data-cited="' + row.disp + '">');
+      out.push('<span class="lname">' + esc(row.f.short) + '</span>');
+      out.push('<span class="lpath">' + esc(row.f.crumb || '') + '</span>');
+      out.push('</button>');
+      if (quoted) out.push('<div class="lmark">quoted above</div>');
+      if (open) out.push('<div class="ftext open">' + esc(row.f.excerpt) + '</div>');
+      out.push('</li>');
+    }
+    out.push('</ol>');
+    if (rest.length) {
+      var names = [];
+      for (i = 0; i < rest.length && i < 3; i++) names.push(rest[i].f.short);
+      out.push('<button class="resid" data-resid="1"><span>' + rest.length + ' other passages'
+        + (residOpen ? '' : '<span class="rnames">' + esc(names.join(' \u00b7 ')) + '</span>') + '</span>'
+        + '<span class="chev">' + (residOpen ? '\u2212' : '+') + '</span></button>');
+      if (residOpen) {
+        out.push('<ol class="cites">');
+        for (i = 0; i < rest.length; i++) {
+          out.push('<li class="fitem res" id="row-' + rest[i].disp + '"><span class="rname">' + esc(rest[i].f.short) + '</span><span class="rpath">' + esc(rest[i].f.crumb || '') + '</span></li>');
+        }
+        out.push('</ol>');
+      }
+    }
+    return out.join('');
+  }
+
   function rowHtml(d, f, disp, isPick) {
     var cited = d.cited.indexOf(f.n) !== -1;
     var cls = 'num' + (isPick ? ' pick' : (cited ? ' on' : ''));
@@ -150,6 +219,15 @@
     var d = display(), st = d.st, out = [];
     out.push('<div class="wrap">');
     out.push('<div class="qrecap"><span class="qt">\u201c' + esc(st.question) + '\u201d</span></div>');
+    if (ARM === 4) {
+      out.push(arm4(d));
+      out.push(ledgerHtml(d));
+      out.push('<p class="note"><b>' + esc(st.answerKind) + '</b> ' + esc(st.note) + '</p>');
+      out.push('</div>');
+      document.getElementById('page').innerHTML = out.join('');
+      wire();
+      return;
+    }
     out.push(ARM === 1 ? arm1(d) : ARM === 2 ? arm2(d) : arm3(d));
     out.push('<div class="fhead"><h2>Findings</h2><span class="cnt">' + d.rows.length + ' ranked' + (d.cited.length ? ' &middot; ' + d.cited.length + ' used by the judge' : '') + '</span></div>');
     out.push('<ol class="cites">');
@@ -183,6 +261,16 @@
       openRows[k] = !openRows[k];
       render();
     });
+    nodes = document.querySelectorAll('[data-cited]');
+    for (i = 0; i < nodes.length; i++) nodes[i].addEventListener('click', function () {
+      var k = this.getAttribute('data-cited');
+      citedOpen[k] = !citedOpen[k];
+      render();
+    });
+    nodes = document.querySelectorAll('[data-resid]');
+    for (i = 0; i < nodes.length; i++) nodes[i].addEventListener('click', function () {
+      residOpen = !residOpen; render();
+    });
     nodes = document.querySelectorAll('[data-all]');
     for (i = 0; i < nodes.length; i++) nodes[i].addEventListener('click', function () {
       showAll = true; render();
@@ -194,7 +282,7 @@
   }
 
   function dock() {
-    var arms = [1, 2, 3], i, out = [];
+    var arms = [1, 2, 3, 4], i, out = [];
     out.push('<div class="dock">');
     out.push('<div class="row arms"><span class="lab">arm</span>');
     for (i = 0; i < arms.length; i++) out.push('<button data-arm="' + arms[i] + '"' + (arms[i] === ARM ? ' class="on"' : '') + '>J' + arms[i] + '</button>');

@@ -56,7 +56,11 @@ function finding(f) {
     var at = ex.indexOf(tail);
     if (at > -1 && at < 80) ex = ex.slice(at + tail.length).replace(/^[\s\u203a>-]+/, '');
   }
-  return { n: f.n, title: p.title, crumb: p.crumb, excerpt: cut(ex, 190), passage: String(f.passage || '') };
+  // The corpus appends a kind to some headings (' - keywords and abilities (2/2)');
+  // it is useful in a tree row and noise in a citation, so the short name drops it.
+  var short = p.title.replace(/\s+-\s+keywords and abilities( \(\d+\/\d+\))?$/i, '').replace(/\s+-\s+datasheet$/i, '').trim();
+  if (short && ex.slice(0, short.length).toLowerCase() === short.toLowerCase()) ex = ex.slice(short.length).replace(/^[\s\u203a>-]+/, '');
+  return { n: f.n, title: p.title, short: short || p.title, crumb: p.crumb, excerpt: cut(ex, 190), passage: String(f.passage || '') };
 }
 // The trace check: every number of two digits or more and every quoted string in
 // the reading must appear in the passages the reading cites. It is a floor, not
@@ -98,6 +102,37 @@ function stateOf(tag, kind, label, answerKind, note, mutate) {
   };
 }
 
+// The ruling: the slots a rules answer actually has. The judge returns these
+// fields instead of a paragraph (same single call, a different instruction); the
+// quote is copied verbatim from the passage it names and is checked against it.
+var RULINGS = {
+  fell: {
+    answer: 'No \u2014 a unit that Fell Back cannot shoot this turn, unless a rule says otherwise.',
+    quote: 'Until the end of the turn, unless otherwise stated, your unit is not eligible to shoot, declare a charge or start an action.',
+    from: 1,
+    exceptions: [12, 13],
+    more: 2
+  },
+  points: {
+    answer: '170 pts for the standard build, 190 pts for the other \u2014 the Macro Plasma Incinerator adds 10 pts.',
+    quote: 'Points: 1 model 170 pts; 1 model 170 pts; 1 model 190 pts; 1 model 190 pts; per Macro Plasma Incinerator 10 pts',
+    from: 6,
+    exceptions: []
+  },
+  refused: {
+    answer: 'Nothing in the indexed rules covers Kill Team.',
+    missing: 'The "Kill Team" ability the corpus carries belongs to Agents of the Imperium units, not to Harlequins, and the Kill Team game system is not part of these rules.',
+    from: null,
+    exceptions: []
+  },
+  notq: {
+    answer: 'That is not a rules question.',
+    missing: 'The index holds rules, datasheets, stratagems, detachments and missions. Painting is not in it.',
+    from: null,
+    exceptions: []
+  }
+};
+
 var states = [];
 states.push(stateOf('a', 'answered', 'the rule', 'Real capture, 2026-10-19.',
   'Can a unit shoot after it Fell Back? - 15 findings; the judge answers from [1] and [2], and the sentence it writes quotes the rule verbatim. The three FAQ rows are titled with their own question, the task-23 fix (933b799).'));
@@ -117,11 +152,34 @@ states.push(stateOf('c', 'answered', 'a dropped claim', 'Synthetic.',
     return {};
   }));
 
+// Attach the ruling to each state, with the quote checked against the passage it
+// names: a quote the passage does not contain is struck, exactly as a claim is.
+function attachRuling(st, base, tweak) {
+  var r = JSON.parse(JSON.stringify(RULINGS[base]));
+  if (tweak) tweak(r);
+  var cited = st.findings.filter(function (f) { return (st.judge.passages || []).indexOf(f.n) !== -1; });
+  var hay = cited.map(function (f) { return f.passage; }).join('\n');
+  var body = String(r.answer || '') + ' ' + String(r.quote || '');
+  var nums = body.match(/\b\d{2,}\b/g) || [];
+  var bad = nums.filter(function (n) { return hay.indexOf(n) === -1; });
+  r.quoteOk = !r.quote || hay.indexOf(String(r.quote).slice(0, 40)) !== -1;
+  r.trace = { total: nums.length + (r.quote ? 1 : 0), dropped: bad.length + (r.quoteOk ? 0 : 1), bad: bad };
+  st.ruling = r;
+  return st;
+}
+attachRuling(states[0], 'fell');
+attachRuling(states[1], 'points');
+attachRuling(states[2], 'refused');
+attachRuling(states[3], 'notq');
+attachRuling(states[4], 'fell');
+attachRuling(states[5], 'points', function (r) { r.answer = r.answer.replace('170 pts', '150 pts'); });
+
 var data = {
   arms: [
     { badge: 'J1', name: 'The recommendation', pitch: 'the judge says where to look and marks the rows it used. No model sentence reaches the screen, so nothing on it can be confidently wrong.' },
     { badge: 'J2', name: 'The rule itself', pitch: 'the judge only decides which passage opens; what you read at the top is the rulebook\u2019s own words.' },
-    { badge: 'J3', name: 'The reading', pitch: 'one to three sentences in the interface voice, never in the rulebook face, with the passages they came from and what the trace check dropped.' }
+    { badge: 'J3', name: 'The reading', pitch: 'one to three sentences in the interface voice, never in the rulebook face, with the passages they came from and what the trace check dropped.' },
+    { badge: 'J4', name: 'The ruling and the ledger', pitch: 'the answer is not a paragraph: it is the slots a rules answer has - the line, the rulebook quote verbatim, the exceptions - and the findings are a ledger with no chrome at all.' }
   ],
   states: states
 };

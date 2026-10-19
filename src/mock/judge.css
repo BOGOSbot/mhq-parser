@@ -109,3 +109,48 @@ li.gap{border-top:1px solid var(--line);padding:6px 0 2px;color:var(--dim);font:
 .untraced{color:var(--warn);text-decoration:line-through;text-decoration-thickness:1px}
 .note{margin:26px 0 0;font:11.5px/1.5 var(--sans);color:var(--dim)}
 .note b{color:var(--txt);font-weight:600}
+/* --- arm 4: the ruling and the ledger --------------------------------------
+   The answer is not a paragraph. It is the slots a rules answer has, and each
+   slot has one voice: the judge's line in sans, the rulebook's words in serif
+   behind a navy rule, the sources named by title and never by number. */
+.ruling{margin:12px 0 0}
+.rline{font:500 16.5px/1.45 var(--sans);color:var(--ink);margin:0}
+.rquote{font:15.5px/1.5 var(--serif);color:var(--ink);margin:10px 0 0;padding:0 0 0 12px;
+  border-left:2px solid var(--acc)}
+.rquote.bad{color:var(--warn);text-decoration:line-through;text-decoration-thickness:1px}
+.rsrc{margin:7px 0 0;font:11px/1.4 var(--mono);color:var(--dim);padding-left:14px}
+.srclink{color:var(--acc);text-decoration:none}
+.srclink:hover{text-decoration:underline}
+.srule{margin-left:7px}
+.rex{margin:10px 0 0;font:13px/1.6 var(--sans);color:var(--dim);padding-left:14px}
+.exlink{color:var(--acc);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--acc) 28%,transparent)}
+.dot{color:var(--line);margin:0 6px}
+.moreex{color:var(--dim)}
+.rmiss{margin:10px 0 0;font:13.5px/1.55 var(--sans);color:var(--dim);padding-left:12px;border-left:2px solid var(--line)}
+.rtrace{margin:9px 0 0;font:11px/1.4 var(--mono);color:var(--warn);padding-left:14px}
+/* the ledger: no chips, no borders, no rank numbers - rank is the order, and the
+   passages the reading used are simply the ones that are here in full. */
+.lname{display:block;font:600 16px/1.25 var(--serif);color:var(--ink);letter-spacing:-.01em}
+.lpath{font:11px/1.4 var(--mono);color:var(--dim);margin-top:4px;overflow-wrap:anywhere}
+.lmark{font:11px/1.4 var(--mono);color:var(--dim);margin-top:6px;opacity:.7}
+.fitem.cited{padding:15px 0 14px}
+.resid{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:6px;
+  padding:13px 2px;border:0;border-top:1px solid var(--line);background:none;color:var(--dim);
+  font:12px var(--sans);cursor:pointer}
+.resid:hover{color:var(--txt)}
+.resid .chev{font:13px var(--mono)}
+.fitem.res{display:flex;gap:8px;align-items:baseline;padding:9px 0 8px;
+  border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.rname{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:12.5px/1.35 var(--serif);color:var(--txt)}
+.rpath{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-align:right;font:10.5px/1.35 var(--mono);color:var(--dim)}
+/* the cited group is a citation list, not a wall: name and place, the passage on tap */
+.lrow{display:block;width:100%;text-align:left;background:none;border:0;padding:0;cursor:pointer;color:inherit}
+.lrow .lname{display:block}
+.lrow .lpath{display:block;margin-top:3px;font-size:10.5px}
+.fitem.cited{padding:11px 0 10px}
+.fitem.cited .ftext{margin-top:8px}
+.resid>span:first-child{flex:1 1 auto;min-width:0;overflow:hidden}
+.resid .rnames{display:block;margin-top:3px;font:10.5px/1.35 var(--mono);color:var(--dim);opacity:.8;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

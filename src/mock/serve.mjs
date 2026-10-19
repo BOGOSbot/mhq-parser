@@ -14,7 +14,7 @@ http.createServer((req, res) => {
   const url = decodeURIComponent((req.url || '/').split('?')[0]);
   // Short paths for the phone: /j is the chooser, /j1../j3 the arms. / stays the
   // door mockup it has always been.
-  const short = { '/j': 'judge.html', '/j1': 'j1.html', '/j2': 'j2.html', '/j3': 'j3.html' };
+  const short = { '/j': 'judge.html', '/j1': 'j1.html', '/j2': 'j2.html', '/j3': 'j3.html', '/j4': 'j4.html' };
   const rel = url === '/' ? 'a.html' : (short[url.replace(/\/+$/, '')] || url.replace(/^\/+/, ''));
   const file = path.resolve(dir, rel);
   if (!file.startsWith(dir + path.sep)) { res.writeHead(403); res.end('forbidden'); return; }
