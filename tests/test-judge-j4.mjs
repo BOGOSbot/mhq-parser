@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 // Back, points, refused, not-a-question and fabricated-figure states.
 let pass = 0, fail = 0;
 const ok = (name, cond) => { if (cond) pass++; else { fail++; console.log('FAIL ' + name); } };
+const t = (name, got, want) => { const same = JSON.stringify(got) === JSON.stringify(want); if (same) pass++; else { fail++; console.log('FAIL ' + name + '\n  got : ' + JSON.stringify(got) + '\n  want: ' + JSON.stringify(want)); } };
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const page = fs.readFileSync(path.join(ROOT, 'src', 'rules.html'), 'utf8');
 const surface = fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.js'), 'utf8');
@@ -43,7 +44,24 @@ ok('the used passages are the ruling\'s own numbers', /add\(judge\.from\)/.test(
 ok('a refusal shows the nearest three in full', /if \(!used\.length\) used = order\.slice\(0, 3\)/.test(surface) && /t\('nearestPassages'\)/.test(surface));
 ok('the quoted row is marked instead of repeating the words', /t\('quotedAbove'\)/.test(surface) && /lmark/.test(surface));
 ok('the excerpt is one tap away, not above the answer', /text\.hidden = true/.test(surface) && /ledgerPath|ftext/.test(surface));
-ok('the uncited rest is ONE collapsed line with the first three names', /t\('otherPassages'\)/.test(surface) && /\.slice\(0, 3\)\.map\(ledgerName\)/.test(surface));
+ok('the uncited rest is ONE collapsed line', /t\('otherPassages'\)/.test(surface) && /distinctNames\(rest, 3\)/.test(surface));
+
+// --- task-25: no card, no label, short names, distinct residue names ----------
+ok('the ruling is not wrapped in a card', page.indexOf("var verdict = el('div', 'card')") === -1 && /el\('div', 'ruleblock'\)/.test(page));
+ok('no heading is drawn over the ruling', page.indexOf("el('h2', null, t('judgeTitle'))") === -1);
+ok('the ledger is not a card either', /el\('div', 'ledger'\)/.test(surface) && !/var card = ctx\.sectionCard/.test(surface.slice(surface.indexOf('function rulingLedger'), surface.indexOf('function findingsCard'))));
+ok('the display name is the short one, from one implementation', /api\.shortName/.test(page) && /shortName: shortName/.test(surface));
+ok('the second judge is a plain dim sentence, not an eyebrow', /secondJudgeWith/.test(page) && /secondJudgeWithout/.test(page) && page.indexOf("'secondhead'") === -1 && page.indexOf('sreason') === -1);
+
+// The strip and the distinct pick are tested, not just grepped: pull the two pure
+// functions out of the asset and run them.
+const fnText = name => { const at = surface.indexOf('function ' + name + '('); return surface.slice(at, surface.indexOf('\n  }', at) + 4); };
+const sandbox = new Function(fnText('displayTitle') + '\n' + fnText('shortName') + '\n' + fnText('leafShort') + '\n' + fnText('distinctNames') + '\nreturn { shortName: shortName, distinctNames: distinctNames };')();
+t('a units twin loses its kind marker', sandbox.shortName('Ironstrider Ballistarii - keywords and abilities (2/2)'), 'Ironstrider Ballistarii');
+t('an ALL-CAPS name is title-cased for display', sandbox.shortName('FALL-BACK MOVE'), 'Fall-Back Move');
+t('a datasheet marker is stripped too', sandbox.shortName('Wazdakka Gutsmek - datasheet'), 'Wazdakka Gutsmek');
+t('a name that is not a marker is untouched', sandbox.shortName('Tactical Doctrine - faction rule'), 'Tactical Doctrine - faction rule');
+t('the residue names three DISTINCT names, not three copies', sandbox.distinctNames([{ heading: 'A > FALL-BACK MOVE' }, { heading: 'B > FALL-BACK MOVE' }, { heading: 'C > FALL-BACK MOVE' }, { heading: 'D > CHARGE MOVE' }], 3), ['Fall-Back Move', 'Charge Move']);
 ok('opening the residue shows path-only rows, not excerpts', /'fitem res'/.test(surface) && /'rname'/.test(surface) && /'rpath'/.test(surface));
 // The ledger row is the mockup's: a name, a path, no rank number and no cite chip.
 const usedRow = surface.slice(surface.indexOf('function ledgerUsedRow'), surface.indexOf('function ledgerResidue'));

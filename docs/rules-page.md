@@ -372,17 +372,21 @@ those.
    turns it back on - the path is kept because its format is going into the
    judge.
 
-**The ruling is slots, not a card of prose (J4, task-24).** The judge answers in
-fields now: a line, the rule's own words under it as a verbatim quote behind a navy
-rule, the source named BY TITLE with its section path beside it, an `unless
-<exceptions>` line whose names are links, and - on a refusal - a grey-ruled
-`missing` block saying what the corpus does not cover. There is no verdict stripe,
-no confidence chip, no `why` toggle and no 'passages it rests on' line: `why` and
+**The ruling is slots, not a card of prose (J4, task-24; decluttered in task-25).**
+The judge answers in fields now: a line, the rule's own words under it as a verbatim
+quote behind a navy rule, the source named BY TITLE with its section path beside it,
+an `unless <exceptions>` line whose names are links, and - on a refusal - a
+grey-ruled `missing` block saying what the corpus does not cover. It is a block in
+the page flow: no card border and no heading over it, and the second judge is one
+plain dim sentence inside its own collapsed row. There is no verdict stripe, no
+confidence chip, no `why` toggle and no 'passages it rests on' line: `why` and
 `confidence` stay in the payload for the trace and the dev panel, and the findings
-below are the ledger - the passages the ruling used shown in full with no rank
-chip, the row it quoted marked 'quoted above', everything else behind ONE collapsed
-'N other passages' line with the first three names. A refusal cites nothing, so the
-ledger reads 'Nearest passages' and shows the top three in full.
+below are the ledger - borderless, the passages the ruling used shown in full with
+no rank chip, the row it quoted marked 'quoted above', everything else behind ONE
+collapsed 'N other passages' line with the first three DISTINCT names. The display
+name is the short one (a trailing ' - keywords and abilities (n/m)' or ' - datasheet'
+stripped): the kind belongs on the path line, not in the name. A refusal cites
+nothing, so the ledger reads 'Nearest passages' and shows the top three in full.
 
 **Soundness is checked, not asserted.** Every figure of two digits or more and
 every quoted stretch of 12+ characters in the answer and the quote must appear

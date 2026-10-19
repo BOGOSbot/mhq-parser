@@ -109,6 +109,31 @@
   // The corpus keeps the source's ALL-CAPS emphasis ('FALL-BACK MOVE', 239 mission
   // records): a name is a name, so a title that is entirely upper case is set in
   // title case for display. The data keeps the source; only the screen changes.
+  // task-25: the corpus appends the kind to some headings - 'Ironstrider Ballistarii
+  // - keywords and abilities (2/2)', 'X - datasheet' - and the mockup shows the short
+  // name because the PATH line is where the kind belongs. Display only: the heading
+  // model, the record view and every id keep the raw title.
+  function shortName(t) {
+    var s = String(t == null ? '' : t)
+      .replace(/\s+-\s+keywords and abilities(\s*\(\d+\/\d+\))?$/i, '')
+      .replace(/\s+-\s+datasheet$/i, '')
+      .trim();
+    return displayTitle(s);
+  }
+  // The record's own name, short: the last segment of the path, kind marker gone.
+  function leafShort(heading) {
+    var parts = String(heading || '').split(' > ').filter(Boolean);
+    return shortName(parts.length ? parts[parts.length - 1] : String(heading || ''));
+  }
+  // The first N DISTINCT names: three copies of one title read as a rendering bug.
+  function distinctNames(list, n) {
+    var out = [];
+    for (var i = 0; i < (list || []).length && out.length < n; i++) {
+      var name = typeof list[i] === 'string' ? list[i] : leafShort(list[i].heading);
+      if (name && out.indexOf(name) === -1) out.push(name);
+    }
+    return out;
+  }
   function displayTitle(t) {
     var s = String(t == null ? '' : t).replace(/^\[(.*)\]$/, '$1').trim();
     if (!s || !/[A-Z]/.test(s) || s !== s.toUpperCase()) return s;
@@ -1107,10 +1132,7 @@ function heroOrder(findings, cited, state, ctx) {
 // the reading used are the rows shown in full - title in serif, section path in
 // 11px mono, the excerpt on tap - and the row whose words are quoted above is
 // marked instead of repeating them. Everything else is ONE collapsed line.
-function ledgerName(f) {
-  var parts = String(f.heading || '').split(' > ').filter(Boolean);
-  return parts.length ? parts[parts.length - 1] : String(f.heading || '');
-}
+function ledgerName(f) { return leafShort(f.heading); }
 function ledgerPath(f, ctx) {
   var parts = ctx.crumbs(f.heading);
   return parts.length > 1 ? parts.slice(0, parts.length - 1).join(' \u203a ') : '';
@@ -1141,7 +1163,7 @@ function ledgerResidue(rest, ctx) {
   var btn = el('button', 'resid');
   btn.type = 'button';
   var label = el('span', null, rest.length + ' ' + ctx.t('otherPassages'));
-  var names = el('span', 'rnames', rest.slice(0, 3).map(ledgerName).join(' \u00b7 '));
+  var names = el('span', 'rnames', distinctNames(rest, 3).join(' \u00b7 '));
   label.appendChild(names);
   btn.appendChild(label);
   var chev = el('span', 'chev', '+');
@@ -1187,8 +1209,12 @@ function rulingLedger(findings, state, ctx) {
   for (var u = 0; u < used.length; u++) usedIds[used[u].id] = true;
   var rest = [];
   for (var r = 0; r < order.length; r++) if (!usedIds[order[r].id]) rest.push(order[r]);
-  var title = (answered ? ctx.t('findingsLedger') : ctx.t('nearestPassages')) + ' - ' + order.length;
-  var card = ctx.sectionCard(title);
+  // task-25: the ledger is not a card - the mockup has no border around it.
+  var card = el('div', 'ledger');
+  var head = el('div', 'fhead');
+  head.appendChild(el('h2', null, answered ? ctx.t('findingsLedger') : ctx.t('nearestPassages')));
+  head.appendChild(el('span', 'cnt', String(order.length) + ' \u00b7 ' + used.length + ' read'));
+  card.appendChild(head);
   var ol = el('ol', 'cites');
   var quotedFrom = answered && judge.quote ? judge.from : null;
   for (var k = 0; k < used.length; k++) ol.appendChild(ledgerUsedRow(used[k], state, ctx, used[k].n === quotedFrom));
@@ -1459,6 +1485,7 @@ function devPanel(f, state, ctx) {
     },
     findingOrder: function (findings, cited, state, ctx) { return heroOrder(findings, cited, state, ctx); },
     displayTitle: displayTitle,
+    shortName: shortName,
     controls: function (state, f, ctx) { return findingControls(state, f, isFirsted(state, f), isIgnored(state, f), ctx); },
     meta: function (f, ctx) { return findingMeta(f, ctx); },
     // task-8/20: the drawer side of the one door - reveal a finding's record in

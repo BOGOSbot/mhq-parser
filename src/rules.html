@@ -259,8 +259,6 @@ details{border-color:var(--line)}
 /* The judge: a verdict stripe under the findings' title, not a competing card. */
 #verdict h2,.card h2{color:var(--dim)}
 .secondv{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
-.secondhead{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
-.sreason{color:var(--dim);font:11px var(--mono)}
 .dispute{margin-top:12px;padding:12px;border:1px solid color-mix(in srgb,var(--warn) 50%,transparent);
   border-radius:12px;background:color-mix(in srgb,var(--warn) 7%,transparent)}
 .dispute .dtitle{color:var(--warn);font:600 11px var(--sans);letter-spacing:.04em;margin-bottom:5px}
@@ -290,6 +288,11 @@ details{border-color:var(--line)}
 .rmiss{margin:10px 0 0;font:13.5px/1.55 var(--sans);color:var(--dim);padding-left:12px;
   border-left:2px solid var(--line)}
 .rtrace{margin:9px 0 0;font:11px/1.4 var(--mono);color:var(--warn);padding-left:14px}
+/* task-25: the ruling and the ledger are blocks in the page flow, not cards. The
+   mockup has no border and no heading over the ruling: the sans answer line over
+   the serif quote is what says the machine is talking. */
+.ruleblock{margin:14px 0 0}
+.ledger{margin:14px 0 0}
 /* the ledger: no chips, no borders, no rank numbers - the used passages are the
    rows shown in full, and the rest is one collapsed line. */
 .lname{display:block;font:600 16px/1.25 var(--serif);color:var(--ink);letter-spacing:-.01em}
@@ -306,6 +309,7 @@ details{border-color:var(--line)}
   font:12px var(--sans);cursor:pointer}
 .resid:hover{color:var(--txt)}
 .resid .chev{font:13px var(--mono)}
+.resid>span:first-child{flex:1 1 auto;min-width:0;overflow:hidden}
 .resid .rnames{display:block;margin-top:3px;font:10.5px/1.35 var(--mono);color:var(--dim);opacity:.8;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fitem.res{display:flex;gap:8px;align-items:baseline;padding:9px 0 8px;
@@ -315,9 +319,9 @@ details{border-color:var(--line)}
 .rpath{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   text-align:right;font:10.5px/1.35 var(--mono);color:var(--dim)}
 details.secondv{display:block;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
-.secondv summary{list-style:none;cursor:pointer}
+.secondv summary{list-style:none;cursor:pointer;color:var(--dim);font:12px/1.45 var(--sans)}
 .secondv summary::-webkit-details-marker{display:none}
-.secondv summary:hover .leg{color:var(--txt)}
+.secondv summary:hover{color:var(--txt)}
 .fhead .leg.both,.fhead .leg.cite{display:none}
 .linkchip{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   vertical-align:bottom;display:inline-block}
@@ -670,6 +674,8 @@ var I18N = {
     secondJudge: 'Second judge',
     judgeNoReasoning: 'without reasoning',
     judgeReasoning: 'with reasoning',
+    secondJudgeWith: 'A second judge, with reasoning, also read these findings.',
+    secondJudgeWithout: 'A second judge, without reasoning, also read these findings.',
     judgeDisagreeTitle: 'The two judges disagree',
     judgeDisagreeNo: 'The second judge does not think these findings answer the question. That is the more cautious verdict, so the answer above is not confirmed.',
     judgeDisagreeYes: 'The second judge would answer from these findings, but the first judge found them insufficient. The cautious verdict stands: the answer above stays a statement of absence.',
@@ -871,6 +877,8 @@ var I18N = {
     secondJudge: 'Second juge',
     judgeNoReasoning: 'sans raisonnement',
     judgeReasoning: 'avec raisonnement',
+    secondJudgeWith: 'Un second juge, avec raisonnement, a aussi lu ces constats.',
+    secondJudgeWithout: 'Un second juge, sans raisonnement, a aussi lu ces constats.',
     judgeDisagreeTitle: 'Les deux juges ne sont pas d\u2019accord',
     judgeDisagreeNo: 'Le second juge estime que ces constats ne répondent pas à la question. C\u2019est l\u2019avis le plus prudent : la réponse ci-dessus n\u2019est pas confirmée.',
     judgeDisagreeYes: 'Le second juge répondrait à partir de ces constats, mais le premier les a jugés insuffisants. L\u2019avis prudent l\u2019emporte : la réponse ci-dessus reste une absence de réponse.',
@@ -2176,7 +2184,6 @@ function citeLink(c, label) {
 function renderVerdicts(state) {
   var card = state.verdict;
   card.textContent = '';
-  card.appendChild(el('h2', null, t('judgeTitle')));
   if (!state.judge) { card.appendChild(el('div', 'note waiting', t('readingFindings'))); return; }
   // A verdict's passage numbers only mean something against the list it judged:
   // a widening renumbers the findings, so citations are shown only while the
@@ -2184,12 +2191,13 @@ function renderVerdicts(state) {
   var samePass = (state.judgeAttempt || 0) === (state.pass || 0);
   card.appendChild(rulingBlock(state.judge, samePass ? state.findings : null));
   if (state.judge2) {
+    // task-25: a plain dim sentence, not an uppercase eyebrow. The second judge
+    // stays reachable - task-16's cautious-verdict work depends on it.
     var box = document.createElement('details');
     box.className = 'secondv';
     var head = document.createElement('summary');
-    head.className = 'secondhead';
-    head.appendChild(el('span', 'leg anchor', t('secondJudge')));
-    head.appendChild(el('span', 'sreason', state.judge2.reasoning === 'none' ? t('judgeNoReasoning') : t('judgeReasoning')));
+    head.className = 'secondnote';
+    head.textContent = state.judge2.reasoning === 'none' ? t('secondJudgeWithout') : t('secondJudgeWith');
     box.appendChild(head);
     box.appendChild(rulingBlock(state.judge2.judge, null));
     card.appendChild(box);
@@ -2200,9 +2208,16 @@ function renderVerdicts(state) {
 // verification chrome is gone - no verdict line, no confidence chip, no 'why'
 // toggle, no 'passages it rests on'. `why` and `confidence` stay in the payload for
 // the trace and the dev panel; the ledger under the ruling is those passages.
+// task-25: the display name is the short one - the corpus appends the kind
+// (' - keywords and abilities (2/2)', ' - datasheet') and the path line is where the
+// kind belongs. One implementation, in the surface; the page asks for it.
+function shortName(heading) {
+  var api = window.WIKI_SURFACE_API;
+  return api && api.shortName ? api.shortName(heading) : String(heading || '');
+}
 function leafOf(heading) {
   var parts = crumbs(heading);
-  return parts.length ? parts[parts.length - 1] : String(heading || '');
+  return shortName(parts.length ? parts[parts.length - 1] : String(heading || ''));
 }
 function findFinding(findings, n) {
   for (var i = 0; i < (findings || []).length; i++) if (findings[i].n === n) return findings[i];
@@ -2486,8 +2501,8 @@ function resultSlots(host, state) {
   // mechanical and instant, and the pipeline below it still runs.
   var cardSlot = el('div', 'cardslot');
   host.appendChild(cardSlot);
-  var verdict = el('div', 'card');
-  verdict.appendChild(el('h2', null, t('judgeTitle')));
+  // task-25: no card and no heading around the ruling.
+  var verdict = el('div', 'ruleblock');
   verdict.appendChild(el('div', 'note waiting', t('waitingFindings')));
   host.appendChild(verdict);
   // The findings sit above the prose and carry the top five whole: they are the
