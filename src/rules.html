@@ -686,7 +686,9 @@ var I18N = {
     judgeReasoning: 'with reasoning',
     secondJudgeWith: 'A second judge, with reasoning, also read these findings.',
     secondJudgeWithout: 'A second judge, without reasoning, also read these findings.',
-    // task-27: what is running while the send is disabled.
+    // task-27: what is running while the send is disabled. runningAsk covers the
+    // beat before the server's first event names the real first stage.
+    runningAsk: 'asking the corpus...',
     secondReading: 'A second judge is reading these findings...',
     runningTranslate: 'translating the question...',
     runningRetrieve: 'searching the corpus...',
@@ -896,6 +898,7 @@ var I18N = {
     judgeReasoning: 'avec raisonnement',
     secondJudgeWith: 'Un second juge, avec raisonnement, a aussi lu ces constats.',
     secondJudgeWithout: 'Un second juge, sans raisonnement, a aussi lu ces constats.',
+    runningAsk: 'interrogation du corpus...',
     secondReading: 'Un second juge relit ces constats...',
     runningTranslate: 'traduction de la question...',
     runningRetrieve: 'recherche dans le corpus...',
@@ -3211,6 +3214,9 @@ async function ask(over) {
   busy = true;
   var btn = $('#go');
   btn.disabled = true;
+  // task-27: the send is disabled from this line, so the status explains it from
+  // this line too; the start event refines it to the stage actually running.
+  setStatus(t('runningAsk'), 'busy');
   var t0 = performance.now();
   // A cold question reads real pages and takes ten to thirty seconds. A frozen
   // button over a still line reads as broken, so the status counts.
