@@ -2225,14 +2225,23 @@ function findFinding(findings, n) {
 }
 // The source, named BY TITLE - never by its number - with the section path beside it.
 // The title opens the same passage popup the [n] markers used to.
+// task-26: the name and the path both come from the surface's one derivation
+// (rowDisplay -> task-23's rowName), so a Q&A record is named by its question here
+// exactly as it is in the ledger, the tree and the record header.
+function rowDisplayOf(heading) {
+  var api = window.WIKI_SURFACE_API;
+  if (api && api.rowDisplay) return api.rowDisplay(heading);
+  var parts = crumbs(heading);
+  return { name: shortName(parts.length ? parts[parts.length - 1] : String(heading || '')), path: parts.slice(0, Math.max(0, parts.length - 1)) };
+}
 function sourceLine(f) {
   var p = el('p', 'rsrc');
-  var a = el('a', null, leafOf(f.heading));
+  var disp = rowDisplayOf(f.heading);
+  var a = el('a', null, disp.name || leafOf(f.heading));
   a.href = '#';
   a.addEventListener('click', function (ev) { ev.preventDefault(); openPassage(f); });
   p.appendChild(a);
-  var parts = crumbs(f.heading);
-  if (parts.length > 1) p.appendChild(el('span', 'srule', parts.slice(0, parts.length - 1).join(' \u203a ')));
+  if (disp.path.length) p.appendChild(el('span', 'srule', disp.path.join(' \u203a ')));
   return p;
 }
 // A figure the cited passages do not carry is struck where it stands, so the reader

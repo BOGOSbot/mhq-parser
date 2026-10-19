@@ -355,6 +355,31 @@ t('the record breadcrumb keeps a nested rule path', cardFor(NESTED.join(' > ')).
 t('the record header keeps a datasheet name', cardFor('Datasheets > Tyrannofex').title, 'Tyrannofex');
 ok('the client and server name a record the same way',
   rowName(FAQ_PATH).name === cardFor(FAQ_PATH.join(' > ')).title && rowName(NESTED).name === cardFor(NESTED.join(' > ')).title);
+// task-26: the ledger renders the same derivation - one helper, driven here with
+// the same headings as the tree row above and the record header above it. This is
+// the regression the Lead found on the live Box: four ledger rows titled
+// 'Fall-Back Move' with the question stranded in the path.
+const fnSrc = name => {
+  const at = SURFACE.indexOf('function ' + name + '(');
+  let i = SURFACE.indexOf('{', at), depth = 0;
+  for (; i < SURFACE.length; i++) {
+    if (SURFACE[i] === '{') depth++;
+    else if (SURFACE[i] === '}') { depth--; if (!depth) return SURFACE.slice(at, i + 1); }
+  }
+  return '';
+};
+const rdStart = SURFACE.indexOf('// --- task-26 row display');
+const rdEnd = SURFACE.indexOf('// --- end task-26 row display');
+ok('the row-display helper is a pure block the test can drive', rdStart !== -1 && rdEnd > rdStart);
+const rowDisplay = new Function(['displayTitle', 'shortName', 'pathParts', 'rowName', 'rowDisplay'].map(fnSrc).join('\n') + '; return rowDisplay;')();
+t('the ledger names the FAQ row by its own question', rowDisplay(FAQ_PATH), { name: FAQ_Q, path: ['Muster Armies', 'Fill Your Army Roster', 'FAQ'], at: 3 });
+t('the ledger names the one-shot row by its own question', rowDisplay(ONESHOT_PATH), { name: 'Q: ' + FAQ_Q, path: ['[ONE SHOT]', 'FAQ'], at: 2 });
+t('the ledger path stops before the question', rowDisplay(FAQ_PATH).path.join(' \u203a '), 'Muster Armies \u203a Fill Your Army Roster \u203a FAQ');
+t('the ledger agrees with the record header', rowDisplay(FAQ_PATH).name, cardFor(FAQ_PATH.join(' > ')).title);
+t('and with the tree row name', rowDisplay(FAQ_PATH).name, rowName(FAQ_PATH).name);
+ok('the ledger uses that one helper for its name and its path', /function ledgerName\(f\) \{ return rowDisplay\(f\.heading\)\.name/.test(SURFACE) && /function ledgerPath\(f\) \{ return rowDisplay\(f\.heading\)\.path/.test(SURFACE));
+ok('and the page source line asks for the same object', /api\.rowDisplay/.test(code));
+
 
 // The layout of the question: the box grows with its text, the translation has
 // its own box under it, and the retention line is in the body where a run cannot

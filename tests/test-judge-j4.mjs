@@ -53,15 +53,38 @@ ok('the ledger is not a card either', /el\('div', 'ledger'\)/.test(surface) && !
 ok('the display name is the short one, from one implementation', /api\.shortName/.test(page) && /shortName: shortName/.test(surface));
 ok('the second judge is a plain dim sentence, not an eyebrow', /secondJudgeWith/.test(page) && /secondJudgeWithout/.test(page) && page.indexOf("'secondhead'") === -1 && page.indexOf('sreason') === -1);
 
-// The strip and the distinct pick are tested, not just grepped: pull the two pure
-// functions out of the asset and run them.
-const fnText = name => { const at = surface.indexOf('function ' + name + '('); return surface.slice(at, surface.indexOf('\n  }', at) + 4); };
-const sandbox = new Function(fnText('displayTitle') + '\n' + fnText('shortName') + '\n' + fnText('leafShort') + '\n' + fnText('distinctNames') + '\nreturn { shortName: shortName, distinctNames: distinctNames };')();
+// The pure row display chain is tested, not just grepped: pull it out of the asset
+// by brace matching and run it on the capture's own headings.
+const fnText = name => {
+  const at = surface.indexOf('function ' + name + '(');
+  let i = surface.indexOf('{', at), depth = 0;
+  for (; i < surface.length; i++) {
+    if (surface[i] === '{') depth++;
+    else if (surface[i] === '}') { depth--; if (!depth) return surface.slice(at, i + 1); }
+  }
+  return '';
+};
+const sandbox = new Function(['displayTitle', 'shortName', 'pathParts', 'rowName', 'rowDisplay', 'distinctNames'].map(fnText).join('\n')
+  + '\nreturn { shortName: shortName, rowDisplay: rowDisplay, distinctNames: distinctNames };')();
 t('a units twin loses its kind marker', sandbox.shortName('Ironstrider Ballistarii - keywords and abilities (2/2)'), 'Ironstrider Ballistarii');
 t('an ALL-CAPS name is title-cased for display', sandbox.shortName('FALL-BACK MOVE'), 'Fall-Back Move');
 t('a datasheet marker is stripped too', sandbox.shortName('Wazdakka Gutsmek - datasheet'), 'Wazdakka Gutsmek');
 t('a name that is not a marker is untouched', sandbox.shortName('Tactical Doctrine - faction rule'), 'Tactical Doctrine - faction rule');
 t('the residue names three DISTINCT names, not three copies', sandbox.distinctNames([{ heading: 'A > FALL-BACK MOVE' }, { heading: 'B > FALL-BACK MOVE' }, { heading: 'C > FALL-BACK MOVE' }, { heading: 'D > CHARGE MOVE' }], 3), ['Fall-Back Move', 'Charge Move']);
+
+// --- task-26: the one row display derivation ---------------------------------
+// The capture's own headings, the same expectations as test-rules-page.mjs.
+const FAQ_Q = 'If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll?';
+const FAQ_PATH = ['Muster Armies', 'Fill Your Army Roster', 'FAQ', FAQ_Q, 'FALL-BACK MOVE'];
+const ONESHOT_PATH = ['[ONE SHOT]', 'FAQ', 'Q: ' + FAQ_Q, 'FALL-BACK MOVE'];
+const NESTED = ['Core Rules', '09 Movement Phase', 'FALL-BACK MOVE'];
+t('a Q&A row is named by its question, and the path stops before it', sandbox.rowDisplay(FAQ_PATH), { name: FAQ_Q, path: ['Muster Armies', 'Fill Your Army Roster', 'FAQ'], at: 3 });
+t('the one-shot row keeps the source own question label', sandbox.rowDisplay(ONESHOT_PATH), { name: 'Q: ' + FAQ_Q, path: ['[ONE SHOT]', 'FAQ'], at: 2 });
+t('a plain nested rule keeps its own name', sandbox.rowDisplay(NESTED), { name: 'Fall-Back Move', path: ['Core Rules', '09 Movement Phase'], at: 2 });
+t('the three rows the Fell Back capture shows no longer share a title', sandbox.distinctNames([{ heading: FAQ_PATH.join(' > ') }, { heading: ONESHOT_PATH.join(' > ') }, { heading: NESTED.join(' > ') }], 3), [FAQ_Q, 'Q: ' + FAQ_Q, 'Fall-Back Move']);
+ok('the ledger name and path are that one derivation', /function ledgerName\(f\) \{ return rowDisplay\(f\.heading\)\.name; \}/.test(surface) && /function ledgerPath\(f\) \{ return rowDisplay\(f\.heading\)\.path/.test(surface));
+ok('the page source line asks the same helper', /api\.rowDisplay/.test(page) && /rowDisplay: function \(heading\)/.test(surface));
+ok('shortName runs AFTER the rowName pick, never before', surface.indexOf('name: shortName(r.name)') > surface.indexOf('var r = rowName(parts)'));
 ok('opening the residue shows path-only rows, not excerpts', /'fitem res'/.test(surface) && /'rname'/.test(surface) && /'rpath'/.test(surface));
 // The ledger row is the mockup's: a name, a path, no rank number and no cite chip.
 const usedRow = surface.slice(surface.indexOf('function ledgerUsedRow'), surface.indexOf('function ledgerResidue'));

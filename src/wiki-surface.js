@@ -120,16 +120,11 @@
       .trim();
     return displayTitle(s);
   }
-  // The record's own name, short: the last segment of the path, kind marker gone.
-  function leafShort(heading) {
-    var parts = String(heading || '').split(' > ').filter(Boolean);
-    return shortName(parts.length ? parts[parts.length - 1] : String(heading || ''));
-  }
   // The first N DISTINCT names: three copies of one title read as a rendering bug.
   function distinctNames(list, n) {
     var out = [];
     for (var i = 0; i < (list || []).length && out.length < n; i++) {
-      var name = typeof list[i] === 'string' ? list[i] : leafShort(list[i].heading);
+      var name = typeof list[i] === 'string' ? list[i] : rowDisplay(list[i].heading).name;
       if (name && out.indexOf(name) === -1) out.push(name);
     }
     return out;
@@ -1132,17 +1127,17 @@ function heroOrder(findings, cited, state, ctx) {
 // the reading used are the rows shown in full - title in serif, section path in
 // 11px mono, the excerpt on tap - and the row whose words are quoted above is
 // marked instead of repeating them. Everything else is ONE collapsed line.
-function ledgerName(f) { return leafShort(f.heading); }
-function ledgerPath(f, ctx) {
-  var parts = ctx.crumbs(f.heading);
-  return parts.length > 1 ? parts.slice(0, parts.length - 1).join(' \u203a ') : '';
-}
+// task-26: the ledger's name and path come from rowDisplay, the one derivation -
+// the record's own name (a Q&A record is titled with its question) and the path
+// stopping before it.
+function ledgerName(f) { return rowDisplay(f.heading).name; }
+function ledgerPath(f) { return rowDisplay(f.heading).path.join(' \u203a '); }
 function ledgerUsedRow(f, state, ctx, quoted) {
   var li = el('li', 'fitem cited');
   var btn = el('button', 'lrow');
   btn.type = 'button';
   btn.appendChild(el('span', 'lname', ledgerName(f)));
-  var path = ledgerPath(f, ctx);
+  var path = ledgerPath(f);
   if (path) btn.appendChild(el('span', 'lpath', path));
   li.appendChild(btn);
   if (quoted) {
@@ -1174,7 +1169,7 @@ function ledgerResidue(rest, ctx) {
   for (var i = 0; i < rest.length; i++) {
     var li = el('li', 'fitem res');
     li.appendChild(el('span', 'rname', ledgerName(rest[i])));
-    var p = ledgerPath(rest[i], ctx);
+    var p = ledgerPath(rest[i]);
     if (p) li.appendChild(el('span', 'rpath', p));
     list.appendChild(li);
   }
@@ -1348,6 +1343,25 @@ function rowName(parts) {
 }
 // --- end task-23 row name ----------------------------------------------------
 
+// --- task-26 row display (pure; extracted with the task-23 block) -------------
+// Three surfaces ask the same two questions about a heading - what is this record
+// called, and where does its path stop - and the answer is task-23's rowName(parts).
+// This is the ONE place that turns it into display text, so the ledger, the tree
+// rows and the record header cannot drift apart again: the name gets shortName (the
+// task-25 kind strip, then displayTitle), and the path is the segments BEFORE the
+// name. shortName runs AFTER the pick, never before: rowName reads the raw segments,
+// and stripping a marker first could hide the tell.
+function pathParts(heading) {
+  return String(heading || '').split(' > ').filter(Boolean);
+}
+function rowDisplay(headingOrParts) {
+  var parts = Array.isArray(headingOrParts) ? headingOrParts.map(function (p) { return String(p == null ? '' : p).trim(); }) : pathParts(headingOrParts);
+  var r = rowName(parts);
+  var at = r.at >= 0 ? r.at : parts.length - 1;
+  return { name: shortName(r.name), path: parts.slice(0, at), at: at };
+}
+// --- end task-26 row display --------------------------------------------------
+
 function findingItem(f, prominent, cited, state, ctx) {
   var selectable = !!(state && state.selectable && !state.rerun);
   var first = selectable && (state.positive || []).indexOf(f.id) !== -1;
@@ -1486,6 +1500,8 @@ function devPanel(f, state, ctx) {
     findingOrder: function (findings, cited, state, ctx) { return heroOrder(findings, cited, state, ctx); },
     displayTitle: displayTitle,
     shortName: shortName,
+    // task-26: the one row display derivation, for the page's own source line.
+    rowDisplay: function (heading) { return rowDisplay(heading); },
     controls: function (state, f, ctx) { return findingControls(state, f, isFirsted(state, f), isIgnored(state, f), ctx); },
     meta: function (f, ctx) { return findingMeta(f, ctx); },
     // task-8/20: the drawer side of the one door - reveal a finding's record in
