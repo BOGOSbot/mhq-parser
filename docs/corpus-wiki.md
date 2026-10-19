@@ -424,6 +424,27 @@ halves) or a hosted faction-side arm (6,829 records, minutes) - run, see *Arm 3*
   block pushed a parent over the budget. Alternative: cap the block harder and
   keep the parent whole.
 
+## A rebuild re-downloads the export (`--cached` is not a freeze)
+
+`node src/rules-corpus.mjs --scrape --set factions --cached` fetches every CSV
+again: `--cached` only keeps a file **when the fetch fails**, so a successful
+rebuild always adopts the origin's current export. Measured 2026-10-19: a
+one-record routing change rebuilt from the 2026-10-12 cache the live corpus was
+built from, and the command pulled the 2026-10-19 export instead (46 extra
+faction records, different split points, a different delivered count). The corpus
+on disk is the only copy that proves what the baseline was, so when a delta must
+be attributable, rebuild offline against the frozen inputs:
+
+```
+# the per-corpus box snapshot carries csv/ with the corpus it was taken with
+tar -xzf workspace/box-snapshot/rules-corpus-<stamp>.tar.gz -C <scratch>
+# build the flat corpus and the wiki shape there, then copy the five corpus
+# files back over workspace/rules-corpus and run the ingest/prune/stats loop
+RULES_CORPUS_DIR=<scratch>/rules-corpus node <the builder>
+```
+
+Refreshing the export is then its own change, with its own measurement.
+
 ## Phase C: the rebuild, step by step (dry-run verified 2026-10-13)
 
 Preconditions: arm 3 has reported (the faction half's dense leg), Mandal has said

@@ -57,10 +57,13 @@ for (const k of Object.keys(byKind).sort()) { const v = byKind[k]; if (v.stratag
 // The 22: Type says Movement/Shooting Ability with an empty CP.
 // The core stratagem file's own 54 records; 22 of them are typed Movement/Shooting Ability.
 const core22 = abilities.filter(r => /^core-stratagems?#/.test(String(r.id)));
-t('the 22 core ability records classify as abilities', core22.length, 22);
+// task-13: 21 - PULSE JET MOVE left the core stratagems for the Wazdakka datasheet.
+t('the 21 core ability records classify as abilities', core22.length, 21);
 // task-89: 12 of them have their rows only mid-line (a collapsed CSV table) and take
 // the plain fallback; the other 10 keep the table.
 t('the mid-line rows take the plain fallback', core22.filter(r => recordShape(stripBuiltBlock(r), r.heading).family === 'ability-plain').length, 12);
+// 21 = 12 mid-line + 9 with a table, since task-13.
+
 ok('none of them is a stratagem', core22.every(r => { const f = recordShape(stripBuiltBlock(r), r.heading).family; return f === 'ability' || f === 'ability-plain'; }));
 // task-89: 12 of the 22 have their rows only mid-line and take the plain fallback.
 const table22 = core22.filter(r => recordShape(stripBuiltBlock(r), r.heading).family === 'ability');

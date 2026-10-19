@@ -921,7 +921,7 @@ export function buildFactionSections() {
   // here rather than in the tree: the 59 detachments the export types, and the
   // stratagems and enhancements that point at them. Counted, never silent.
   const boardingIds = new Set(read('Detachments.csv').filter(isBoardingActionsDetachment).map(d => d.id));
-  const outOfScope = { detachments: 0, stratagems: 0, enhancements: 0 };
+  const outOfScope = { detachments: 0, stratagems: 0, enhancements: 0, challengers: 0, abilitiesAttached: 0, abilitiesDropped: 0 };
   const abilityById = new Map();
   for (const a of read('Abilities.csv')) if (!abilityById.has(a.id)) abilityById.set(a.id, a);
 
@@ -933,6 +933,41 @@ export function buildFactionSections() {
     }
     return m;
   };
+  // task-13(a), Mandal 2026-10-19: one faction-less movement ability is NOT a core
+  // ability. PULSE JET MOVE exists only for the Ork Epic Hero Wazdakka Gutsmek and
+  // the core rules page never names it (measured over the 22 names after the
+  // duplicate collapse: 21 appear in the core-rules text, this is the one that does
+  // not). The export carries the full movement definition ONLY in its Stratagems.csv
+  // row, so the definition is attached to the datasheet that owns the ability and
+  // the standalone core copy is dropped - the text is not lost.
+  // Fold the way dedupeKey does: the export writes a non-breaking hyphen in
+  // 'CLOSE\u2011QUARTERS SHOOTING' while the rules page writes an ASCII one, and a
+  // raw substring check called that core ability a stray (measured, 2026-10-19).
+  const foldAbility = s => String(s == null ? '' : s)
+    .replace(/[\u2010-\u2015\u2212]/g, '-')
+    .toLowerCase().replace(/[\s\u00a0]+/g, ' ');
+  const corePageText = (() => {
+    try {
+      const j = JSON.parse(fs.readFileSync(corpusPath('core-rules'), 'utf8'));
+      return foldAbility((j.sections || []).map(s => String(s.text || '')).join('\n'));
+    } catch (e) { return ''; }
+  })();
+  const strayAbilities = new Map();
+  for (const s of read('Stratagems.csv')) {
+    if (s.faction_id) continue;
+    const type = clean(s.type);
+    if (!/^(Movement|Shooting) Ability$/i.test(type)) continue;
+    const name = clean(s.name);
+    if (!name) continue;
+    if (corePageText.indexOf(foldAbility(name)) !== -1) continue;
+    strayAbilities.set(foldAbility(name), {
+      id: 'core-stratagem#' + s.id, name: name, type: type,
+      cp: String(s.cp_cost || ''), turn: clean(s.turn), phase: clean(s.phase),
+      body: [clean(s.legend), clean(s.description)].filter(Boolean).join(' ').trim(),
+      done: false,
+    });
+  }
+
   const models = byDatasheet(read('Datasheets_models.csv'));
   const costs = byDatasheet(read('Datasheets_models_cost.csv'));
   const wargear = byDatasheet(read('Datasheets_wargear.csv'));
@@ -1005,6 +1040,24 @@ export function buildFactionSections() {
       const name = clean(ab.name) || (ref ? clean(ref.name) : '');
       const desc = trimAbilityTail(clean(ab.description) || (ref ? clean(ref.description) : ''));
       if (name || desc) rules.push('Ability' + (ab.type ? ' (' + ab.type + ')' : '') + ': ' + (name ? name + ' - ' : '') + desc);
+      // task-13(a): the datasheet's own line is one sentence; the full definition
+      // (MAXIMUM DISTANCE / BEFORE / WHILE / AFTER MOVING) lives in the export's
+      // faction-less ability row. That row belongs here, on the datasheet whose
+      // ability it defines, so it is attached to this list rather than left in the
+      // core rules.
+      const abName = foldAbility(name);
+      if (abName.length >= 4) {
+        for (const stray of strayAbilities.values()) {
+          if (stray.done) continue;
+          const key = foldAbility(stray.name);
+          if (key === abName || key.indexOf(abName + ' ') === 0 || abName.indexOf(key + ' ') === 0) {
+            rules.push('Ability (' + stray.type + '): ' + stray.name + ' - ' + stray.body);
+            stray.done = true;
+            outOfScope.abilitiesAttached += 1;
+            break;
+          }
+        }
+      }
     }
     push('unitrules#' + d.id, source, d.name + ' - keywords and abilities', url, rules);
   }
@@ -1013,6 +1066,8 @@ export function buildFactionSections() {
   // 'Core - Battle Tactic Stratagem', the current WHEN/TARGET wording) and an older set with
   // the generic Type 'Core Stratagem'. Both are faction-less, so both were emitted and the
   // drawer listed each stratagem twice. One per name, decided after the loop.
+  const strayById = new Map();
+  for (const stray of strayAbilities.values()) strayById.set(stray.id, stray);
   const corePending = [];
   for (const s of read('Stratagems.csv')) {
     // Boarding Actions is a different game with its own stratagems, and it rides
@@ -1030,6 +1085,19 @@ export function buildFactionSections() {
       // reader a unit's normal shooting is a stratagem, which it is not; the
       // label now follows the export's own Type.
       const type = clean(s.type);
+      // task-13(b), Mandal 2026-10-19: the nine 'Challenger - ...' rows are
+      // mission-format stratagems from a format outside matched play, so they are
+      // out of the corpus like the boarding-patrol records - counted, never
+      // silent.
+      if (/^Challenger/i.test(type)) { outOfScope.challengers++; continue; }
+      // task-13(a): a faction-less ability the core page does not name is not a
+      // core rule. Its definition has been attached to the datasheet that owns it
+      // (PULSE JET MOVE -> Wazdakka Gutsmek) and the standalone copy is dropped.
+      const stray = strayById.get('core-stratagem#' + s.id);
+      if (stray) {
+        if (!stray.done) outOfScope.abilitiesDropped += 1;
+        continue;
+      }
       const coreKind = /stratagem/i.test(type) ? 'core stratagem' : 'core ' + String(type || 'ability').toLowerCase();
       const lines = [
         s.name + ' - ' + coreKind,

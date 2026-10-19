@@ -14,7 +14,7 @@ const tally = rows => rows.reduce((a, r) => { const k = r.kind || '(none)'; a[k]
 
 // --- every record carries an edition -----------------------------------------
 t('every record carries a numeric edition', all.filter(r => !/^\d+$/.test(String(r.edition || ''))).length, 0);
-t('the distribution (154 rulings and 19 ability definitions are edition 11 too)', editionCounts(all), { 0: 1037, 10: 3, 11: 6256 });
+t('the distribution (154 rulings and 19 ability definitions are edition 11 too; task-13 removed ten edition-11 records)', editionCounts(all), { 0: 1037, 10: 3, 11: 6246 });
 t('edition 0 is the Legends / Forge World line, every kind', tally(all.filter(r => String(r.edition) === '0')), { 'faction-rule': 1, datasheet: 427, unitrules: 599, stratagem: 6, enhancement: 4 });
 t('edition 10 is the two leftover 10th-edition datasheets and their half', tally(all.filter(r => String(r.edition) === '10')), { datasheet: 2, unitrules: 1 });
 // The join resolves by the record's own id, not by a name in its text:
@@ -32,7 +32,7 @@ t('assignEditions stamps a whole list', assignEditions([{ id: 'datasheet#0000008
 
 // --- Boarding Actions is out of scope ----------------------------------------
 const raw = buildFactionSections();
-t('the importer removes the 59 Boarding Actions detachments, 241 stratagems and 117 enhancements', raw.boarding, { detachments: 59, stratagems: 241, enhancements: 117 });
+t('the importer removes the 59 Boarding Actions detachments, 241 stratagems and 117 enhancements, the 9 Challengers and the one attached ability copy', raw.boarding, { detachments: 59, stratagems: 241, enhancements: 117, challengers: 9, abilitiesAttached: 1, abilitiesDropped: 0 });
 const named = ['Khaine\u2019s Arrow', 'Protector Host', 'Wraiths of the Void', 'Star-dancer Masque'];
 t('NAMED: the 4 Aeldari Boarding Actions detachments are gone', named.map(n => all.some(r => r.kind === 'detachment' && String(r.heading).indexOf(n) === 0)), [false, false, false, false]);
 ok('a detachment row is out of scope by its own type column', isBoardingActionsDetachment({ type: 'Boarding Actions' }) && !isBoardingActionsDetachment({ type: '' }));

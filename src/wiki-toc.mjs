@@ -520,23 +520,21 @@ export function tocTree(records, pageOf, opts) {
   };
 
   // Core-stratagem records that are not stratagems, by their OWN Type line: the
-  // 15 "Movement Ability" and 7 "Shooting Ability" records are move/shoot type
-  // definitions whose text names the chapter they belong to ("as described in
-  // Moving (03)", "... Making Attacks (04)"), so they go to those chapters. The 9
-  // "Challenger" records are mission-format stratagems with no core home and no
-  // detachment, so they join the event machinery as Missions > Events >
-  // Challenger. Core Rules > Stratagems keeps only the core stratagems.
+  // 14 remaining "Movement Ability" and 7 "Shooting Ability" records are move/shoot
+  // type definitions whose text names the chapter they belong to ("as described in
+  // Moving (03)", "... Making Attacks (04)"), so they go to those chapters. Core
+  // Rules > Stratagems keeps only the core stratagems. task-13, Mandal 2026-10-19:
+  // the 15th movement ability (PULSE JET MOVE, Wazdakka Gutsmek's) is not a core
+  // ability and is attached to its datasheet instead; the nine Challenger
+  // mission-format stratagems are out of matched play and out of the corpus.
   const stratType = r => (/Type:\s*(.+)/.exec(String(r.text || '')) || [])[1] || '';
   const forcedChapter = new Map();
-  const challengers = [];
   for (const r of records) {
     if (r.source !== 'core-stratagems' || r.kind !== 'stratagem') continue;
     const ty = stratType(r);
     if (/^Movement Ability/i.test(ty)) forcedChapter.set(r.id, '03');
     else if (/^Shooting Ability/i.test(ty)) forcedChapter.set(r.id, '04');
-    else if (/^Challenger/i.test(ty)) challengers.push(r);
   }
-  const challengerIds = new Set(challengers.map(r => r.id));
   const childrenOf = new Map();
   const bookNodes = [];
   const rulesRef = { n: 'Rules', lvl: 'branch', f: 'tree/rules.js' };
@@ -561,7 +559,7 @@ export function tocTree(records, pageOf, opts) {
   const chapterRank = ch => ch.num === '' ? 300 : (ch.num === '00' ? 200 : parseInt(ch.num, 10));
   for (const book of TREE_BOOKS) {
     const bookRef = { n: book.name, lvl: 'book', f: 'tree/rules/' + book.slug + '.js' };
-    const bookRecs = records.filter(r => r.set === 'rules' && book.sources.indexOf(r.source) !== -1 && !challengerIds.has(r.id));
+    const bookRecs = records.filter(r => r.set === 'rules' && book.sources.indexOf(r.source) !== -1);
     const before = unattached.length, beforeDropped = dropped.length;
     const folded = fold(bookRecs);
     unattachedBooks[book.slug] = unattached.length - before;
@@ -891,13 +889,11 @@ export function tocTree(records, pageOf, opts) {
   const foldedM = fold(ev);
   const missionsUnattached = () => unattached.length - beforeM;
   unattachedBooks['event-companion'] = missionsUnattached();
-  // The 9 Challenger mission stratagems join Events as one chapter.
-  const evSections = foldedM.sections.concat(challengers);
+  const evSections = foldedM.sections;
   const partNodes = [];
   const missionsRef = { n: 'Missions', lvl: 'branch', f: 'tree/missions.js' };
   for (const part of MISSION_PARTS) {
     const recs = evSections.filter(r => {
-      if (challengerIds.has(r.id)) return part.name === 'Events';
       const h = String(r.heading || '').split(' > ')[0];
       return part.heading === null ? (h !== 'Primary Mission deck' && h !== 'Secondary Mission deck') : h === part.heading;
     });
@@ -905,7 +901,7 @@ export function tocTree(records, pageOf, opts) {
     const partRef = { n: part.name, lvl: 'part', f: partFile };
     const chapters = new Map();
     for (const r of recs) {
-      const first = challengerIds.has(r.id) ? 'Challenger' : (headingSegments(r)[0] || 'Other');
+      const first = headingSegments(r)[0] || 'Other';
       if (!chapters.has(first)) chapters.set(first, []);
       chapters.get(first).push(r);
     }
@@ -933,7 +929,7 @@ export function tocTree(records, pageOf, opts) {
     files[partFile] = { n: part.name, lvl: 'part', c: partC, kids: kids };
     partNodes.push({ n: part.name, lvl: 'part', c: partC, f: partFile });
   }
-  const missionsC = ev.length + challengers.length - missionsUnattached();
+  const missionsC = ev.length - missionsUnattached();
   files['tree/missions.js'] = { n: 'Missions', lvl: 'branch', c: missionsC, kids: partNodes };
 
   // --- Factions -> alliance -> faction -> Army rules / Detachments / Units ---

@@ -19,9 +19,12 @@ t('an edition-0 datasheet is not delivered', isDelivered({ id: 'datasheet#000000
 t('an edition-11 datasheet is', isDelivered({ id: 'datasheet#000000882', edition: '11' }), true);
 t('an index stub is delivered (counted navigation, not filtered content)', isDelivered({ id: 'faction-index#faction-ae', edition: '11' }), true);
 t('an empty record is not delivered', isDelivered(null), false);
-// task-85 rebuilt the corpus from source: 7,283 records, 6,245 delivered, 1,038 filtered.
-t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7296, 7296]);
-t('delivered is 6,258 (154 rulings + 19 ability definitions + 43 mission cards + 62 faction ability records + 19 recovered numbered sections) and filtered is 1,038', [delivered.length, filtered.length], [6258, 1038]);
+// task-13 dropped ten rules-branch records: the core-stratagem copy of PULSE JET
+// MOVE (its definition now rides the Wazdakka Gutsmek datasheet) and the nine
+// Challenger mission stratagems (outside matched play). 7,296 -> 7,286 corpus,
+// 6,258 -> 6,248 delivered; filtered stays 1,038.
+t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7286, 7286]);
+t('delivered is 6,248 (154 rulings + 19 ability definitions + 43 mission cards + 62 faction ability records + 19 recovered numbered sections) and filtered is 1,038', [delivered.length, filtered.length], [6248, 1038]);
 
 // --- the query path cannot return what the product does not deliver -----------
 const ids = deliveredIds();

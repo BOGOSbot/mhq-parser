@@ -141,6 +141,19 @@ their number or title already names a visible row, so they stay attached rather
 than listed twice. The delivered count does not move (6,258) and neither do the
 book, branch or chapter counts.
 
+**The routing trio (task-13, Mandal 2026-10-19).** Three corpus and tree
+decisions, one loop (`--scrape --set factions --cached --flat` → `wiki-build.mjs`
+→ `--ingest` → `--prune` → `--stats` MATCH → payload bake). **PULSE JET MOVE is
+Wazdakka Gutsmek's ability, not a core rule**: the core-stratagem copy left the
+corpus and its full definition (MAXIMUM DISTANCE … BEFORE/WHILE/AFTER MOVING) now
+rides that datasheet's own ability list, so the text is not lost. The nine
+`Challenger - …` mission-format stratagems are outside matched play and left the
+corpus with the Missions > Events > Challenger chapter. The enhancement titles
+keep Mandal's 2026-10-18 form, detachment inside the title. Measured: delivered
+6,258 → **6,248**, Missions 115 → **106**, Rules 781 → **780**, Core Rules entries
+344 → **343**, corpus 7,296 → **7,286**, filtered 1,038 unchanged, and the index
+reads MATCH (1 upsert, 10 deletes).
+
 **One rule, two sources, one row.** The core page and the appendix print the same
 definition for eight numbers, and the core page splits three more out as
 unnumbered children. Left alone they would read as two rows with one title under

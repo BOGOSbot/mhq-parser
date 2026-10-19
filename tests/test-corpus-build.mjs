@@ -113,7 +113,9 @@ t('the residue is never core', residue.filter(s => s.set === 'rules').length, 0)
   t('a shooting ability is labelled an ability', /ASSAULT SHOOTING - core shooting ability/.test(first('ASSAULT SHOOTING')), true);
   t('a movement ability is labelled an ability', /DISEMBARK MOVE - core movement ability/.test(first('DISEMBARK MOVE')), true);
   t('a real core stratagem is still one', /COMMAND RE-ROLL - core stratagem/.test(first('COMMAND RE-ROLL')), true);
-  t('exactly the ability rows lose the stratagem label', core.filter(s => / - core (movement|shooting) ability/.test(s.text)).length, 22);
+  // task-13: 21 - the 15 movement + 7 shooting abilities minus PULSE JET MOVE,
+  // which is Wazdakka Gutsmek's and now rides that datasheet's ability list.
+  t('exactly the ability rows lose the stratagem label', core.filter(s => / - core (movement|shooting) ability/.test(s.text)).length, 21);
 }
 
 // --- the rules the page wrote inside a parent body --------------------------

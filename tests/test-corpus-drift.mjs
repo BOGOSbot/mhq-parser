@@ -58,7 +58,9 @@ const BASELINE = {
   scrape: { sections: 382, chars: 289486 },
   shape: {
     'core-rules': { sections: 382, chars: 289486 },
-    'factions-csv': { sections: 6398, bytes: 10093906 },
+    // task-13: +710 bytes - the Wazdakka Gutsmek datasheet now carries the full
+    // PULSE JET MOVE definition that used to be a core-stratagem record.
+    'factions-csv': { sections: 6398, bytes: 10094616 },
   },
 };
 
@@ -140,7 +142,7 @@ t('(drift) the CSV path reproduces factions-csv.json', {
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
   added: csvAdded,
   missing: csvMissing,
-}, { sections: 6398, bytes: 10093906, added: 0, missing: 0 });
+}, { sections: 6398, bytes: 10094616, added: 0, missing: 0 });
 
 const rebuiltPool = fs.readdirSync(root).filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')))

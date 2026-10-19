@@ -28,7 +28,7 @@ const index = read('index.json');
 // (a) the three shapes at paths mirroring the URLs -----------------------------
 t('(a) index.json is exactly the branches with name, count and key', Object.keys(index), ['branches']);
 t('(a) the three branch keys are rules, missions and factions', index.branches.map(b => b.b), ['rules', 'missions', 'factions']);
-t('(a) the branch names and counts are the tree index', index.branches.map(b => b.n + ':' + b.c), ['Rules:781', 'Missions:115', 'Factions:5187']);
+t('(a) the branch names and counts are the tree index (task-13: -1 rule, -9 missions)', index.branches.map(b => b.n + ':' + b.c), ['Rules:780', 'Missions:106', 'Factions:5187']);
 for (const b of index.branches) {
   const p = read('index/' + b.b + '.json');
   t('(a) index/' + b.b + '.json carries n, lvl, c, kids, recs, pages', ['n', 'lvl', 'c', 'kids', 'recs', 'pages'].every(k => k in p) && p.n === b.n && p.lvl === 'branch', true);
@@ -47,7 +47,7 @@ for (const book of books) {
   for (const [id, rec] of Object.entries(c.records)) { if (seen.has(id)) { console.log('DUPLICATE ' + id + ' in ' + seen.get(id) + ' and ' + book); } seen.set(id, book); slugBook.set(id, rec.slug.split('--')[0]); }
 }
 t('(b) every delivered record appears exactly once', seen.size, stats.delivered);
-t('(b) the delivered count is the render rule: pageNamer minus tree.filtered', stats.delivered, 6258);
+t('(b) the delivered count is the render rule: pageNamer minus tree.filtered (task-13: -10)', stats.delivered, 6248);
 // task-77: map.json is deleted. The witness is the corpus's own delivery rule
 // (rules-corpus isDelivered), computed here without the payload builder.
 const modelDelivered = readAllCorpus().filter(isDelivered).length;
@@ -140,8 +140,8 @@ const moving09 = findNode(coreBook, '09 Movement Phase');
 const normalMove = ((moving09 || {}).kids || []).find(k => /NORMAL MOVE$/.test(k.n));
 ok('(16) a section lead\'s nested records are rows under the section', !!normalMove && (normalMove.recs || []).some(r => r.num === '09.06') && (normalMove.recs || []).some(r => r.num === '09.07' && /fall-back move/i.test(r.title)));
 ok('(16) the nested rows follow the section lead in number order', asc(((normalMove || {}).recs || []).map(r => r.num || '').filter(Boolean).slice(1)));
-t('(16) the core book count is unchanged', coreBook.c, 627);
-t('(16) the rules branch count is unchanged', branch.c, 781);
+t('(16) the core book count is unchanged (task-13 moved PULSE JET MOVE to its datasheet)', coreBook.c, 626);
+t('(16) the rules branch count is unchanged (task-13 dropped ten rules-branch records)', branch.c, 780);
 const splitting = ((unitsNode || {}).recs || []).filter(r => /Splitting Units/.test(r.title));
 t('(5) the rule and its errata are two rows under the same number', splitting.map(r => r.num).join(','), '01.02.06,01.02.06');
 ok('(5) the errata says so, so the pair does not read as a duplicate', /errata$/.test(splitting[1] && splitting[1].title));

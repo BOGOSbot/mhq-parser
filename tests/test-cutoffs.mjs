@@ -29,12 +29,14 @@ const cutKids = k => kids(k).filter(x => x.cut);
 
 // task-4 removed the appendix's local [ONE SHOT] chapter: its five rows moved to
 // the 00 chapter, outside either book, so the inventory loses one cut chapter.
-t('the measured cutoff inventory: 63 unnumbered chapters, 3 parts, 48 groups', (function () {
+t('the measured cutoff inventory: 62 unnumbered chapters, 3 parts, 48 groups', (function () {
   const by = {};
   for (const n of Object.values(files)) if (n.cut) by[n.lvl] = (by[n.lvl] || 0) + 1;
   return by;
-})(), { chapter: 63, part: 3, group: 48 });
-t('and stats.cuts agrees', tree.stats.cuts, 114);
+})(), { chapter: 62, part: 3, group: 48 });
+// task-13: one chapter fewer - the nine Challenger records left the corpus, so the
+// Missions > Events > Challenger chapter is gone with them.
+t('and stats.cuts agrees', tree.stats.cuts, 113);
 
 // Rules: a 0x header is a LABEL, not an entry. It is not cut and its children are
 // listed in its place (task-61); the books still do not cut, and the Rulings
@@ -42,12 +44,13 @@ t('and stats.cuts agrees', tree.stats.cuts, 114);
 // core chapters' rows now and the 0x.0x section level walks to them, so the entry
 // count is every row a chapter or a section lists. task-16: a section lead's
 // nested records are rows too (the core page's copies of the CSV stratagems are
-// not - they duplicate a visible row), so the count is 344: 314 + 30.
+// not - they duplicate a visible row), so the count is 343: 314 + 29 (task-13
+// moved the core-stratagem PULSE JET MOVE definition to the Wazdakka datasheet).
 ok('a 0x chapter is not a cut entry', kids('tree/rules/core-rules.js').filter(x => /^\d{2}\s/.test(x.n)).every(x => !x.cut));
-ok('and its children are the entries: 344 under Core Rules', (function () {
+ok('and its children are the entries: 343 under Core Rules', (function () {
   const entryCount = f => (f.kids || []).reduce((n, k) => n + entryCount(files[k.f] || { recs: [] }), (f.recs || []).length);
   const flat = b => (files[b].kids || []).reduce((n, k) => n + entryCount(files[k.f] || {}), 0);
-  return flat('tree/rules/core-rules.js') === 344;
+  return flat('tree/rules/core-rules.js') === 343;
 })());
 ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut);
 ok('the two ruling books are waypoints, their chapters are the cutoffs', !files['tree/rulings/wtc.js'].cut && !files['tree/rulings/feq.js'].cut && kids('tree/rulings/wtc.js').every(x => x.cut) && kids('tree/rulings/feq.js').every(x => x.cut));
