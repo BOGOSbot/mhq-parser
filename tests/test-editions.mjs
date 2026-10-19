@@ -14,18 +14,26 @@ const tally = rows => rows.reduce((a, r) => { const k = r.kind || '(none)'; a[k]
 
 // --- every record carries an edition -----------------------------------------
 t('every record carries a numeric edition', all.filter(r => !/^\d+$/.test(String(r.edition || ''))).length, 0);
-// task-32: B restores 62 parts the record-wise dedupe dropped (25 of them edition 0,
-// 37 edition 11) and A drops the export's template row (2 edition-11 records), so the
-// distribution moves by +25 edition 0 and +34 edition 11 - all of it the three fixes.
-t('the distribution (154 rulings and 19 ability definitions are edition 11 too; task-13 removed ten edition-11 records)', editionCounts(all), { 0: 1062, 10: 3, 11: 6280 });
-t('edition 0 is the Legends / Forge World line, every kind (task-32: the restored parts)', tally(all.filter(r => String(r.edition) === '0')), { 'faction-rule': 1, datasheet: 431, unitrules: 620, stratagem: 6, enhancement: 4 });
+// task-33: the 2026-10-19 export re-tags the 15 '<faction> (Warhammer Legends)' source
+// rows to edition 11, so edition 0 is down to the 121 records the export still calls
+// 0 (the Forge World / pack line) and edition 11 carries 7,267.
+t('the distribution (154 rulings and 19 ability definitions are edition 11 too; task-13 removed ten edition-11 records)', editionCounts(all), { 0: 121, 10: 3, 11: 7267 });
+// task-33: the Legends rows are edition 11 now, so the edition-0 set is the Forge World
+// pack alone - the Legends records are filtered by the name rule instead.
+t('edition 0 is the Forge World / pack line, every kind (task-33)', tally(all.filter(r => String(r.edition) === '0')), { datasheet: 41, unitrules: 80 });
 t('edition 10 is the two leftover 10th-edition datasheets and their half', tally(all.filter(r => String(r.edition) === '10')), { datasheet: 2, unitrules: 1 });
 // The join resolves by the record's own id, not by a name in its text:
 const fx = id => editionOf({ id: id, kind: String(id).split('#')[0] }, '11');
 t('a datasheet resolves through its own source_id', fx('datasheet#000000882'), '11');
-t('a Legends datasheet resolves to edition 0', fx('datasheet#000001458'), '0');
+// task-33: Contemptor-Achillus Dreadnought (000001458) was a Forge World pack datasheet
+// and is a normal Adeptus Custodes one in the new export (source 000000024, edition 11),
+// so the pack fixture is a datasheet the export still calls edition 0.
+t('a Forge World pack datasheet resolves to edition 0', fx('datasheet#000001564'), '0');
 t('a faction stratagem joins its faction source by name', fx('stratagem#000008931007'), '11');
-t('a stratagem only edition-0 datasheets carry is edition 0 (the pack link)', fx('stratagem#000009127002'), '0');
+// task-33: this pack-linked stratagem's datasheets are edition 11 now, so the pack link
+// no longer stamps it 0 - the Legends name rule filters it (the pack link still finds
+// the Forge World packs, see the mutation check below).
+t('a pack-linked Legends stratagem resolves 11 now, and is filtered by name', [fx('stratagem#000009127002'), isLegendsRecord({ id: 'stratagem#000009127002', kind: 'stratagem' }), isDelivered({ id: 'stratagem#000009127002', kind: 'stratagem', edition: '11' })], ['11', true, false]);
 t('a faction rule joins through Abilities.csv', fx('faction-rule#000009894'), '11');
 t('a Boarding Actions detachment is edition 10', fx('detachment#000000959'), '10');
 t('and its enhancements are edition 10', fx('enhancement#000009588002'), '10');
@@ -45,11 +53,11 @@ t('and a normal datasheet is not', isLegendsRecord({ id: 'datasheet#000000882', 
 t('a Legends record claiming edition 11 is still not delivered', isDelivered({ id: 'datasheet#000001525', kind: 'datasheet', edition: '11' }), false);
 t('a Legends stratagem only Legends datasheets carry is Legends too', isLegendsRecord({ id: 'stratagem#000009127002', kind: 'stratagem' }), true);
 t('a normal stratagem is not', isLegendsRecord({ id: 'stratagem#000008931007', kind: 'stratagem' }), false);
-// The frozen corpus carries 928 Legends records (384 datasheets, 534 unitrules, 5
-// stratagems, 4 enhancements, 1 faction rule) and every one of them is edition 0
-// today, so the new rule changes nothing until the 2026-10-19 export is adopted.
+// The 2026-10-19 export carries 959 Legends records (396 datasheets, 553 unitrules, 5
+// stratagems, 4 enhancements, 1 faction rule); 942 of them are edition 11, which is
+// exactly why the name rule exists - none is delivered.
 const legends = all.filter(isLegendsRecord);
-t('the frozen corpus has 928 Legends records and none is delivered', [legends.length, legends.filter(isDelivered).length], [928, 0]);
+t('the adopted corpus has 959 Legends records and none is delivered', [legends.length, legends.filter(isDelivered).length], [959, 0]);
 t('assignEditions stamps a whole list', assignEditions([{ id: 'datasheet#000000882', kind: 'datasheet' }], '11')[0].edition, '11');
 
 // --- Boarding Actions is out of scope ----------------------------------------
@@ -75,7 +83,9 @@ ok('and the Seer Council detachment is a row in the Aeldari tree', (tree.files['
 ok('MUTATION: clearing the type column clears the out-of-scope verdict', !isBoardingActionsDetachment({ id: '000000959', type: '' }));
 ok('MUTATION: a page heading that only looks like the expansion is kept', !isBoardingActionsPageSection({ heading: 'Boarding Action Plan' }));
 t('MUTATION: changing the fallback edition changes the answer', editionOf({ id: 'page#x', kind: 'rule' }, '10'), '10');
-t('MUTATION: and a pack-linked stratagem cannot be talked back to 11 by a fallback', editionOf({ id: 'stratagem#000009127002', kind: 'stratagem' }, '11'), '0');
+// task-33: the fallback cannot talk a Legends record back in either - it resolves 11
+// and isDelivered still says no.
+t('MUTATION: a Legends record cannot be talked back in by a fallback', [editionOf({ id: 'stratagem#000009127002', kind: 'stratagem' }, '11'), isDelivered({ id: 'stratagem#000009127002', kind: 'stratagem', edition: '11' })], ['11', false]);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

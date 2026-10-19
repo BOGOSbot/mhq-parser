@@ -93,9 +93,9 @@ t('the residue is never core', residue.filter(s => s.set === 'rules').length, 0)
     else cross++;
   }
   t('no record repeats its own text', within, 0);
-  // Measured on the frozen build: 62 part texts repeat across two ids, all of them
-  // (2/2) points tables of the export's duplicated datasheet rows.
-  t('the cross-row repeats are the export copies, named', cross, 62);
+  // Measured on the 2026-10-19 export: 63 part texts repeat across two ids, all of
+  // them (2/2) points tables of the export's duplicated datasheet rows.
+  t('the cross-row repeats are the export copies, named', cross, 63);
 }
 
 // --- a datasheet is two records, not one -------------------------------------

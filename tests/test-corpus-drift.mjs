@@ -60,12 +60,9 @@ const BASELINE = {
     'core-rules': { sections: 382, chars: 289486 },
     // task-13: +710 bytes - the Wazdakka Gutsmek datasheet now carries the full
     // PULSE JET MOVE definition that used to be a core-stratagem record.
-    // 2026-10-19 (task-32): the same frozen CSV rebuilt with the three correctness
-    // fixes - 6,457 shaped sections, 10,157,665 bytes. B restores 62 parts the
-    // record-wise dedupe had dropped (the 22,844 characters the CSV holds), A drops
-    // the export's own template row and the blank wargear lines, C leaves the 174
-    // navigation pages out of the index.
-    'factions-csv': { sections: 6457, bytes: 10157665 },
+    // task-33 (2026-10-19 export): 6,502 shaped sections, 10,244,777 bytes - the new
+    // export's records with task-32's three fixes still in.
+    'factions-csv': { sections: 6502, bytes: 10244777 },
   },
 };
 
@@ -147,7 +144,7 @@ t('(drift) the CSV path reproduces factions-csv.json', {
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
   added: csvAdded,
   missing: csvMissing,
-}, { sections: 6457, bytes: 10157665, added: 0, missing: 0 });
+}, { sections: 6502, bytes: 10244777, added: 0, missing: 0 });
 
 const rebuiltPool = fs.readdirSync(root).filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')))

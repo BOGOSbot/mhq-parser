@@ -76,7 +76,10 @@ t('the table ones render rows and no CP badge', table22.filter(r => { const h = 
 ok('the plain ones render prose with the ALL-CAPS styling, no CP badge and no Turn/Phase', plain22.every(r => { const h = recordBody(r); return h.indexOf('wprose') !== -1 && h.indexOf('wcaps') !== -1 && h.indexOf('svl-cp') === -1 && h.indexOf('Turn:') === -1; }));
 const proseAbilities = abilities.filter(r => { try { return !cardFor(r, {}); } catch (e) { return true; } });
 t('every ability renders either the table or the plain fallback', proseAbilities.filter(r => { const h = recordBody(r); return !(h.indexOf('svl-ability') !== -1 || (h.indexOf('wprose') !== -1 && h.indexOf('wcaps') !== -1)); }).length, 0);
-t('the rest are cards and keep their card rendering', abilities.length - proseAbilities.length, 2);
+// task-33: the 2026-10-19 export's unitrules parts are longer, and 13 ability-shaped
+// parts now carry a card the CSV can render (11 of them Custodes, whose datasheets the
+// export re-issued) - it was 2 on the frozen export.
+t('the rest are cards and keep their card rendering', abilities.length - proseAbilities.length, 13);
 t('every stratagem keeps its CP badge', stratagems.filter(r => { const s = recordShape(stripBuiltBlock(r), r.heading); return !s.cp || recordBody(r).indexOf('svl-cp') === -1 || recordBody(r).indexOf(esc(s.cp)) === -1; }).length, 0);
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 // task-91: a record with a SEE ALSO CHILD entry now renders it as a container under the

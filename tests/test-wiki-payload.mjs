@@ -28,10 +28,9 @@ const index = read('index.json');
 // (a) the three shapes at paths mirroring the URLs -----------------------------
 t('(a) index.json is exactly the branches with name, count and key', Object.keys(index), ['branches']);
 t('(a) the three branch keys are rules, missions and factions', index.branches.map(b => b.b), ['rules', 'missions', 'factions']);
-// task-32: the faction branch is the indexable count - 5,394 delivered minus the 174
-// kind 'index' pages - so 5,220 (it was 5,187 before the three fixes restored 62 parts
-// and dropped the template pair).
-t('(a) the branch names and counts are the tree index (task-13: -1 rule, -9 missions)', index.branches.map(b => b.n + ':' + b.c), ['Rules:780', 'Missions:106', 'Factions:5220']);
+// task-33: the faction branch is the indexable count - 5,438 delivered minus the 175
+// kind 'index' pages - and the rules branch is 781 with the export's extra core record.
+t('(a) the branch names and counts are the tree index (task-13: -1 rule, -9 missions)', index.branches.map(b => b.n + ':' + b.c), ['Rules:781', 'Missions:106', 'Factions:5263']);
 for (const b of index.branches) {
   const p = read('index/' + b.b + '.json');
   t('(a) index/' + b.b + '.json carries n, lvl, c, kids, recs, pages', ['n', 'lvl', 'c', 'kids', 'recs', 'pages'].every(k => k in p) && p.n === b.n && p.lvl === 'branch', true);
@@ -50,7 +49,7 @@ for (const book of books) {
   for (const [id, rec] of Object.entries(c.records)) { if (seen.has(id)) { console.log('DUPLICATE ' + id + ' in ' + seen.get(id) + ' and ' + book); } seen.set(id, book); slugBook.set(id, rec.slug.split('--')[0]); }
 }
 t('(b) every delivered record appears exactly once', seen.size, stats.delivered);
-t('(b) the delivered count is the render rule: pageNamer minus tree.filtered (task-13: -10; task-32: 6,282)', stats.delivered, 6282);
+t('(b) the delivered count is the render rule: pageNamer minus tree.filtered (task-13: -10; task-33: 6,327)', stats.delivered, 6327);
 // task-77: map.json is deleted. The witness is the corpus's own delivery rule
 // (rules-corpus isDelivered), computed here without the payload builder.
 const modelDelivered = readAllCorpus().filter(isDelivered).length;
@@ -143,8 +142,8 @@ const moving09 = findNode(coreBook, '09 Movement Phase');
 const normalMove = ((moving09 || {}).kids || []).find(k => /NORMAL MOVE$/.test(k.n));
 ok('(16) a section lead\'s nested records are rows under the section', !!normalMove && (normalMove.recs || []).some(r => r.num === '09.06') && (normalMove.recs || []).some(r => r.num === '09.07' && /fall-back move/i.test(r.title)));
 ok('(16) the nested rows follow the section lead in number order', asc(((normalMove || {}).recs || []).map(r => r.num || '').filter(Boolean).slice(1)));
-t('(16) the core book count is unchanged (task-13 moved PULSE JET MOVE to its datasheet)', coreBook.c, 626);
-t('(16) the rules branch count is unchanged (task-13 dropped ten rules-branch records)', branch.c, 780);
+t('(16) the core book count is unchanged (task-13 moved PULSE JET MOVE to its datasheet; task-33: +1 export record)', coreBook.c, 627);
+t('(16) the rules branch count is unchanged (task-13 dropped ten rules-branch records; task-33: +1)', branch.c, 781);
 const splitting = ((unitsNode || {}).recs || []).filter(r => /Splitting Units/.test(r.title));
 t('(5) the rule and its errata are two rows under the same number', splitting.map(r => r.num).join(','), '01.02.06,01.02.06');
 ok('(5) the errata says so, so the pair does not read as a duplicate', /errata$/.test(splitting[1] && splitting[1].title));
@@ -197,12 +196,12 @@ const facPayload = read('index/factions.json');
 ok('(81-3b) the branch payload carries no rows map', facPayload.rows === undefined);
 const rowsFile = read('index/factions-rows.json');
 const rowMapIds = Object.keys(rowsFile.rows || {});
-t('(81-3) the rows file carries the page and owned ids', rowMapIds.length, 2084);
+t('(81-3) the rows file carries the page and owned ids', rowMapIds.length, 2086);
 ok('(81-3b) and the branch file is small again', fs.statSync(path.join(ROOT, 'workspace', 'wiki-data', 'index', 'factions.json')).size < 420000);
 let ownRows = 0, ownIds = new Set(), biggestOwn = 0;
 const walkOwn = n => { for (const r of (n.recs || [])) { if (r.own && r.own.length) { ownRows++; biggestOwn = Math.max(biggestOwn, r.own.length); for (const id of r.own) ownIds.add(id); } } for (const k of (n.kids || [])) walkOwn(k); };
 walkOwn(facPayload);
-t('(81-3) detachments carrying their owned ids', ownRows, 252);
+t('(81-3) detachments carrying their owned ids', ownRows, 256);
 t('(81-3) the biggest owned list is Lords of Dread (12)', biggestOwn, 12);
 t('(81-3) every owned id has a row in the rows file', [...ownIds].filter(id => !(rowsFile.rows || {})[id]).length, 0);
 t('(81-3) and a page id does too', (facPayload.pages || []).every(pg => (pg.recs || []).every(id => (rowsFile.rows || {})[id])), true);

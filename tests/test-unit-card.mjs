@@ -68,7 +68,8 @@ t('the finding excerpt and its passage are the marked text', (function () {
 
 // --- the Fuegan card, field for field ---------------------------------------
 const c = buildUnitCard('000000574');
-ok('every field comes from the export, none from a model', c && c.source === 'Aeldari' && c.edition === '11' && c.version === '1.3');
+// task-33: the 2026-10-19 export bumps the Aeldari source to version 1.4 (errata 14.10.2026).
+ok('every field comes from the export, none from a model', c && c.source === 'Aeldari' && c.edition === '11' && c.version === '1.4');
 t('the statline is the CSV statline', c.models, [{
   line: '1', name: 'Fuegan', M: '7"', T: '3', Sv: '2+', inv: '4+', W: '5', Ld: '6+', OC: '1', base: '40mm',
 }]);
@@ -83,9 +84,10 @@ t('melee is split out', c.melee.map(w => w.name), ['Fire Axe']);
 t('the abilities are named, including the ones resolved through Abilities.csv', c.abilities.map(a => a.type + ':' + a.name), ['Core:Leader', 'Faction:Battle Focus', 'Datasheet:Burning Lance', 'Datasheet:Unquenchable Resolve']);
 t('an ability does not repeat its own name and rule id', c.abilities[0].description.slice(0, 19), 'Mighty heroes fight');
 ok('a long Faction ability is shortened and says so', c.abilities[1].truncated && c.abilities[1].description.length <= ABILITY_CHARS + 3);
+// task-33: the 2026-10-19 export writes the keyword list in its own order now.
 t('the keywords are split into faction and other', c.keywords, {
   faction: ['Asuryani'],
-  other: ['Character', 'Epic Hero', 'Aeldari', 'Grenades', 'Aspect Warrior', 'Phoenix Lord', 'Fuegan', 'Infantry'],
+  other: ['Infantry', 'Character', 'Epic Hero', 'Phoenix Lord', 'Aspect Warrior', 'Aeldari', 'Grenades', 'Fuegan'],
 });
 t('the points are the CSV points', c.points, [{ label: '1 model', cost: '130' }]);
 t('the composition keeps its HTML out', c.composition, ['1 Fuegan – EPIC HERO']);

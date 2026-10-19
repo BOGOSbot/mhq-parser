@@ -14,7 +14,9 @@ import { readAllCorpus } from '../src/rules-corpus.mjs';
 // claim (one renderer, no drift) is unchanged and no longer needs a render to hold.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
-const REC = 'datasheet#000000882';
+// task-33: datasheet#000000882 (Custodian Guard) is one of the 75 records the 2026-10-19
+// export superseded; the re-issued Custodian Guard Sodality takes its place.
+const REC = 'datasheet#000004251';
 const FALLBACK = 'detachment#000000990';
 let pass = 0, fail = 0;
 function t(name, got, want) {

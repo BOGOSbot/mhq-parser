@@ -56,9 +56,9 @@ const rows = csvRows(fs.readFileSync(path.join(CORPUS, 'csv', 'Detachments.csv')
 const dispositions = {};
 for (const r of rows) { const d = String(r.force_disposition || '').trim(); if (d) dispositions[d] = (dispositions[d] || 0) + 1; }
 t('the export names the five force dispositions', Object.keys(dispositions).sort(), ['Disruption', 'Priority Assets', 'Purge the Foe', 'Reconnaissance', 'Take and Hold']);
-// 252 of 311 detachment rows carry a disposition; the other 59 are blank in the
-// export, so the join reaches 252 detachments, not 311.
-t('the join reaches the rows that carry one', [rows.length, Object.values(dispositions).reduce((a, b) => a + b, 0)], [311, 252]);
+// 256 of 315 detachment rows carry a disposition (task-33: the 2026-10-19 export adds
+// four); the rest are blank in the export, so the join reaches 256, not 315.
+t('the join reaches the rows that carry one', [rows.length, Object.values(dispositions).reduce((a, b) => a + b, 0)], [315, 256]);
 const mentionsDisposition = primary.concat(secondary).filter(r => Object.keys(dispositions).some(d => String(r.text || '').indexOf(d) !== -1)).length;
 t('no mission card names a disposition: every matrix cell is reference-only', mentionsDisposition, 0);
 

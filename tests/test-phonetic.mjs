@@ -53,8 +53,10 @@ const cobalites = searchHeadings('find cobalites', { limit: 20 });
 ok('a misheard plural returns the datasheet', cobalites.rows.some(r => r.phonetic && /Kabalite Warriors/.test(r.title)));
 const eldar = searchHeadings('eldar', { limit: 40 });
 ok('the old faction name reaches the new one', eldar.rows.some(r => r.phonetic && /Aeldari/.test(r.title)));
-const hit = searchHeadings('find agamatus custodians', { limit: 10 });
-ok('clean text still wins with the literal tier first', hit.rows[0].phonetic !== true && /Agamatus Custodians/.test(hit.rows[0].title));
+// task-33: the fixture was 'Agamatus Custodians', which the 2026-10-19 export re-issued
+// away; the claim is the same with a name the export still carries literally.
+const hit = searchHeadings('find redemptor dreadnought', { limit: 10 });
+ok('clean text still wins with the literal tier first', hit.rows[0].phonetic !== true && /Redemptor Dreadnought/.test(hit.rows[0].title));
 const clean = searchHeadings('fuegan', { limit: 10 });
 ok('a name the reader spelled right is literal, with no phonetic noise', clean.rows.length >= 1 && clean.rows.every(r => !r.phonetic));
 const noise = searchHeadings('can a unit shoot after it fell back', { limit: 40 });

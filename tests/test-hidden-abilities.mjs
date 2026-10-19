@@ -88,9 +88,9 @@ t('after task-50 only the corpus typo SUPA-HAZARDOUS has no heading', hiddenWeap
 t('every real ability now has a heading of its own', weapons.filter(r => r.dedicated).length, 22);
 ok('and the 19 recovered by task-50 are among them', ['ANTI', 'DEVASTATING WOUNDS', 'LETHAL HITS', 'SUSTAINED HITS', 'TWIN-LINKED'].every(n => weapons.some(r => r.name === n && r.dedicated)));
 t('Lethal Hits has a heading of its own now', (weapons.find(r => r.name === 'LETHAL HITS') || {}).dedicated, true);
-// task-32: B restores six parts the record-wise dedupe dropped, and each carries this
-// definition, so the count moves 346 -> 352 with the recovered text.
-t('and the corpus uses it 352 times (the definition counts itself; task-13 removed ten rules-branch records)', (weapons.find(r => r.name === 'LETHAL HITS') || {}).uses, 352);
+// task-33: the 2026-10-19 export carries this definition on 350 records (task-32's
+// restored parts had taken the frozen count to 352).
+t('and the corpus uses it 350 times (the definition counts itself; task-13 removed ten rules-branch records)', (weapons.find(r => r.name === 'LETHAL HITS') || {}).uses, 350);
 t('no core ability is hidden: the export names them and the corpus carries them', hiddenCores, []);
 ok('the hidden set is a bounded list, not a chunking crisis', hiddenWeapons.length < 25);
 
