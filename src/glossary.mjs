@@ -155,6 +155,101 @@ const RULE_TERMS = [
   { category: 'rule', en: 'Disembark', fr: 'désembarque' },
 ];
 
+// Names the parallel source cannot carry, or carries under another spelling. The
+// MFM publishes unit, detachment and enhancement names only - a weapon or a
+// stratagem is never in it, and a Legends datasheet has no points row - so a
+// glossary built from it alone is structurally blind to them. Each pair below was
+// read off real usage (the voice benchmark's reviewed term list, BOGOS's 30 terms
+// measured on actual French audio), not guessed; the note's rule holds: a
+// glossary that invents translations in bulk is worse than none.
+//
+// T'au is the apostrophe case: the MFM's own faction is T'AU EMPIRE (curly
+// apostrophe), and a recogniser writes T'au (straight), so the bare term is here
+// as the spelling a reader looks up and a transcriber must produce.
+const COVERAGE_TERMS = [
+  { category: 'weapon', en: 'Krak', fr: 'KRAK' },
+  { category: 'weapon', en: 'Rapier', fr: 'RAPIER' },
+  { category: 'datasheet', en: 'Sicaran', fr: 'SICARAN' },
+  { category: 'faction', en: "T'au", fr: "T'AU" },
+];
+
+// The 25 faction pairs the build expects. The cache under .verify-ref/ is
+// gitignored (it is scraped data, not source), so this list is what keeps a
+// rebuild honest: the build reports any pair it did not find, and '--fetch'
+// scrapes the missing ones from the MFM with playwright-cli - the same route
+// src/verify-points.mjs uses for the points cross-check. The last three are the
+// ones task-21 found missing, which is why Leagues of Votann, Adeptus Mechanicus
+// and Imperial Agents had no names in the glossary at all.
+export const MFM_SLUGS = [
+  'adepta-sororitas', 'adeptus-custodes', 'adeptus-mechanicus', 'aeldari', 'astra-militarum',
+  'chaos-daemons', 'chaos-knights', 'chaos-space-marines', 'dark-angels', 'death-guard',
+  'deathwatch', 'drukhari', 'emperors-children', 'grey-knights', 'imperial-agents',
+  'imperial-knights', 'leagues-of-votann', 'necrons', 'orks', 'space-marines',
+  'space-wolves', 'tau-empire', 'thousand-sons', 'tyranids', 'world-eaters',
+];
+
+// THE source of a pair: the MFM page, rendered text, cached beside the rest.
+async function scrapeRef(slug, lang) {
+  const { execFileSync } = await import('node:child_process');
+  const url = 'https://mfm.warhammer-community.com/' + (lang || 'en') + '/' + slug;
+  execFileSync('playwright-cli open ' + url, { stdio: 'pipe', shell: process.platform === 'win32' });
+  return new Promise(r => setTimeout(r, 4000)).then(() => {
+    const out = execFileSync('playwright-cli eval "document.body.innerText"', { stdio: 'pipe', encoding: 'utf8', shell: process.platform === 'win32' });
+    const m = out.match(/### Result\r?\n("(?:[^"\\]|\\.)*")/);
+    if (!m) throw new Error('mfm scrape failed for ' + url + ': no page text (is playwright-cli installed?)');
+    return JSON.parse(m[1]);
+  });
+}
+export async function fetchMissingPairs(refDir, slugs) {
+  fs.mkdirSync(refDir, { recursive: true });
+  const scraped = [];
+  for (const slug of slugs) {
+    for (const lang of ['en', 'fr']) {
+      const key = lang === 'en' ? slug : slug + '@fr';
+      const file = path.join(refDir, key + '.txt');
+      if (fs.existsSync(file) && fs.statSync(file).size > 500) continue;
+      const text = await scrapeRef(slug, lang);
+      fs.writeFileSync(file, text);
+      scraped.push(key);
+    }
+  }
+  return scraped;
+}
+
+// Coverage is a word question, not an equality one: Agamatus is covered by
+// 'Agamatus Custodians', and T'au by the MFM's T’AU EMPIRE once the apostrophe is
+// folded. A name is covered when every word of it (3+ letters) is in the glossary's
+// EN word set, or the whole name is.
+export function foldName(text) {
+  return String(text == null ? '' : text)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u2018\u2019\u02bc]/g, "'")
+    .toLowerCase().trim();
+}
+export function glossaryWordSet(glossary) {
+  const words = new Set();
+  const names = new Set();
+  for (const e of (glossary && glossary.entries) || []) {
+    const whole = foldName(e.en);
+    if (whole) names.add(whole);
+    for (const w of whole.split(/[^a-z0-9']+/)) if (w.length >= 3) words.add(w);
+  }
+  return { words, names };
+}
+export function coverageReport(names, glossary) {
+  const set = glossaryWordSet(glossary);
+  const missing = [];
+  let covered = 0;
+  for (const name of names) {
+    const whole = foldName(name);
+    const words = whole.split(/[^a-z0-9']+/).filter(w => w.length >= 3);
+    const absent = words.filter(w => !set.words.has(w));
+    if (set.names.has(whole) || !absent.length) covered++;
+    else missing.push({ name, absent });
+  }
+  return { total: names.length, covered, missing };
+}
+
 export function buildGlossary() {
   const files = fs.readdirSync(REF_DIR).filter(f => f.endsWith('.txt') && !f.includes('@fr'));
   const entries = [];
@@ -197,7 +292,7 @@ export function buildGlossary() {
     if (!seen.has(key)) seen.set(key, e);
   }
   const ruleSeen = new Map();
-  for (const e of RULE_TERMS) {
+  for (const e of RULE_TERMS.concat(COVERAGE_TERMS)) {
     const key = e.category + '|' + e.en + '|' + e.fr;
     if (!ruleSeen.has(key)) ruleSeen.set(key, e);
   }
@@ -205,10 +300,13 @@ export function buildGlossary() {
     .sort((a, b) => a.category.localeCompare(b.category) || a.en.localeCompare(b.en) || a.fr.localeCompare(b.fr));
   const byCategory = {};
   for (const e of list) byCategory[e.category] = (byCategory[e.category] || 0) + 1;
+  const missingPairs = MFM_SLUGS.filter(s => !fs.existsSync(path.join(REF_DIR, s + '.txt')) || !fs.existsSync(path.join(REF_DIR, s + '@fr.txt')));
   return {
     generated: new Date().toISOString(),
+    expectedPairs: MFM_SLUGS.length,
+    missingPairs,
     source: 'mfm.warhammer-community.com (en + fr), cached under .verify-ref/',
-    note: "Parallel-source glossary. Keywords, stratagems and rules-section names are NOT covered by the MFM: the 'rule' category below carries the few of those a real question exposed, each read off the French rules text itself, not guessed.",
+    note: "Parallel-source glossary. Keywords, stratagems and rules-section names are NOT covered by the MFM, and weapons never are: the 'weapon' and 'rule' categories carry the few of those a measured question exposed, each read off real usage, not guessed.",
     pairs,
     counts: byCategory,
     entries: list,
@@ -216,10 +314,11 @@ export function buildGlossary() {
 }
 
 function toMarkdown(g) {
-  const order = ['faction', 'force_disposition', 'detachment', 'datasheet', 'enhancement', 'rule'];
+  const order = ['faction', 'force_disposition', 'detachment', 'datasheet', 'enhancement', 'weapon', 'rule'];
   const titles = {
     faction: 'Factions', force_disposition: 'Force dispositions', detachment: 'Detachments',
-    datasheet: 'Datasheets / units', enhancement: 'Enhancements', rule: 'Rules (hand-set)',
+    datasheet: 'Datasheets / units', enhancement: 'Enhancements', weapon: 'Weapons (hand-set)',
+    rule: 'Rules (hand-set)',
   };
   const out = ['# Glossary FR / EN', '',
     'Built from the Munitorum Field Manual, published in both languages with the same structure.',
@@ -227,7 +326,8 @@ function toMarkdown(g) {
     '| category | entries |', '|---|---|'];
   for (const c of order) out.push('| ' + (titles[c] || c) + ' | ' + (g.counts[c] || 0) + ' |');
   out.push('', '> Keywords, stratagems and rules-section names are **not** covered: the MFM does not',
-    '> publish them. They are left out rather than guessed.', '');
+    '> publish them. Weapons are never in it either; the few listed below are the ones a',
+    '> measured question could not be answered without. They are left out rather than guessed.', '');
   for (const c of order) {
     const list = g.entries.filter(e => e.category === c);
     if (!list.length) continue;
@@ -249,9 +349,17 @@ export function printTable(rows) {
 
 function main() {
   const argv = process.argv.slice(2);
+  if (argv.indexOf('--fetch') !== -1) {
+    const have = slug => fs.existsSync(path.join(REF_DIR, slug + '.txt')) && fs.existsSync(path.join(REF_DIR, slug + '@fr.txt'));
+    const missing = MFM_SLUGS.filter(s => !have(s));
+    if (!missing.length) console.log('no missing pairs under ' + REF_DIR);
+    else fetchMissingPairs(REF_DIR, missing).then(scraped => console.log('fetched ' + scraped.join(', '))).catch(e => { console.error(String((e && e.message) || e)); process.exitCode = 1; });
+    return;
+  }
   const g = buildGlossary();
+  if (g.missingPairs.length) console.error('WARNING: ' + g.missingPairs.length + ' expected MFM pair(s) not cached: ' + g.missingPairs.join(', '));
   if (argv.indexOf('--stats') !== -1) {
-    console.log('pairs ' + g.pairs.length + ' | entries ' + g.entries.length);
+    console.log('pairs ' + g.pairs.length + '/' + g.expectedPairs + ' | entries ' + g.entries.length);
     for (const c of Object.keys(g.counts)) console.log('  ' + c.padEnd(20) + g.counts[c]);
     return;
   }
@@ -263,7 +371,9 @@ function main() {
   console.log('written ' + OUT_MD);
 }
 
-if (process.argv[1] && process.argv[1].endsWith('glossary.mjs')) {
+// Strict self-check: a suffix test also matched tests/test-glossary.mjs, which
+// made importing the module run the build.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try { main(); } catch (e) { console.error(String((e && e.message) || e)); process.exitCode = 1; }
 }
 

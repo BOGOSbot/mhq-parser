@@ -543,7 +543,7 @@ the retrieval.
   sounds closest (`Archon` -> `arcon`, `Tyranofex`). The default is server-side
   transcription through `POST /rules/voice`: MediaRecorder records, the page
   decodes and re-encodes 16 kHz mono WAV, and the route calls
-  `google/gemini-2.5-flash` on OpenRouter with the **full 1,710-entry 40k
+  `google/gemini-2.5-flash` on OpenRouter with the **full 1,897-entry 40k
   glossary as one cached system prefix** (an explicit cache breakpoint; the system
   prefix is the only cached part and never varies). Measured: **$0.00733 cold,
   then $0.0011 for an 8 s clip** (22.5k cached tokens), ~1.1-1.6 s. This is the
@@ -560,7 +560,15 @@ the retrieval.
   The transcript lands in the question box and is **never auto-submitted** - the
   reader corrects it first. A server failure (no key, timeout, bad response) falls
   back to the browser recogniser instead of leaving a dead microphone, and the
-  setting keeps the browser path one tap away.
+  setting keeps the browser path one tap away. The glossary itself is swept for
+  coverage (task-21): `node tests/glossary-coverage.mjs` builds the corpus
+  vocabulary from the Wahapedia tables and reports what the glossary cannot
+  reach, and `node tests/glossary-coverage.mjs --terms <file>` gates a tested
+  term set. The last sweep found three faction pairs the scrape cache had never
+  held (Leagues of Votann, Adeptus Mechanicus, Imperial Agents) and four names the
+  MFM cannot publish (Krak, Rapier, Sicaran, and `T'au` against the source's
+  `T'AU EMPIRE`): the build now lists the 25 expected pairs, reports any it did not
+  cache, and carries the four as documented hand-set entries.
 - **A finding's links render from the payload, never from its text.** The record
   carries `links: [{ to, title, kind, anchor, url }]`; the server resolves each
   target against the corpus, drops one the corpus does not hold, and the page

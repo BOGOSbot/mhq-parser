@@ -1,7 +1,9 @@
 {
- "generated": "2026-10-12T03:30:59.446Z",
+ "generated": "2026-10-18T23:57:09.008Z",
+ "expectedPairs": 25,
+ "missingPairs": [],
  "source": "mfm.warhammer-community.com (en + fr), cached under .verify-ref/",
- "note": "Parallel-source glossary. Keywords, stratagems and rules-section names are NOT covered by the MFM: the 'rule' category below carries the few of those a real question exposed, each read off the French rules text itself, not guessed.",
+ "note": "Parallel-source glossary. Keywords, stratagems and rules-section names are NOT covered by the MFM, and weapons never are: the 'weapon' and 'rule' categories carry the few of those a measured question exposed, each read off real usage, not guessed.",
  "pairs": [
   {
    "slug": "adepta-sororitas",
@@ -14,6 +16,13 @@
    "slug": "adeptus-custodes",
    "en": 378,
    "fr": 378,
+   "aligned": true,
+   "entries": 108
+  },
+  {
+   "slug": "adeptus-mechanicus",
+   "en": 362,
+   "fr": 362,
    "aligned": true,
    "entries": 108
   },
@@ -95,11 +104,25 @@
    "entries": 105
   },
   {
+   "slug": "imperial-agents",
+   "en": 391,
+   "fr": 391,
+   "aligned": true,
+   "entries": 114
+  },
+  {
    "slug": "imperial-knights",
    "en": 262,
    "fr": 262,
    "aligned": true,
    "entries": 86
+  },
+  {
+   "slug": "leagues-of-votann",
+   "en": 284,
+   "fr": 284,
+   "aligned": true,
+   "entries": 89
   },
   {
    "slug": "necrons",
@@ -159,12 +182,13 @@
   }
  ],
  "counts": {
-  "datasheet": 801,
-  "detachment": 206,
-  "enhancement": 673,
-  "faction": 22,
+  "datasheet": 877,
+  "detachment": 226,
+  "enhancement": 758,
+  "faction": 26,
   "force_disposition": 6,
-  "rule": 2
+  "rule": 2,
+  "weapon": 2
  },
  "entries": [
   {
@@ -271,9 +295,33 @@
   },
   {
    "category": "datasheet",
+   "en": "AQUILA KILL TEAM",
+   "fr": "KILL TEAM AQUILA",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "AQUILON CUSTODIANS",
    "fr": "CUSTODIENS AQUILON",
    "slug": "adeptus-custodes"
+  },
+  {
+   "category": "datasheet",
+   "en": "ARCHAEOPTER FUSILAVE",
+   "fr": "ARCHÉOPTÈRE FUSILAVE",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "ARCHAEOPTER STRATORAPTOR",
+   "fr": "ARCHÉOPTÈRE STRATORAPTOR",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "ARCHAEOPTER TRANSVECTOR",
+   "fr": "ARCHÉOPTÈRE TRANSVECTOR",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -298,6 +346,12 @@
    "en": "ARJAC ROCKFIST",
    "fr": "ARJAC ROCKFIST",
    "slug": "space-wolves"
+  },
+  {
+   "category": "datasheet",
+   "en": "ARKANYST EVALUATOR",
+   "fr": "ÉVALUATEUR ARKANYSTE",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "datasheet",
@@ -478,6 +532,12 @@
    "en": "BEASTS OF NURGLE",
    "fr": "BÊTES DE NURGLE",
    "slug": "chaos-daemons"
+  },
+  {
+   "category": "datasheet",
+   "en": "BELISARIUS CAWL",
+   "fr": "BELISARIUS CAWL",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -697,6 +757,12 @@
   },
   {
    "category": "datasheet",
+   "en": "BURI AEGNIRSSEN",
+   "fr": "BURI AEGNIRSSEN",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
    "en": "BURNA-BOMMER",
    "fr": "KRAMA-BOMBA",
    "slug": "orks"
@@ -772,6 +838,12 @@
    "en": "CALADIUS GRAV-TANK",
    "fr": "CHAR ANTIGRAV CALADIUS",
    "slug": "adeptus-custodes"
+  },
+  {
+   "category": "datasheet",
+   "en": "CALLIDUS ASSASSIN",
+   "fr": "ASSASSIN CALLIDUS",
+   "slug": "imperial-agents"
   },
   {
    "category": "datasheet",
@@ -1195,6 +1267,12 @@
   },
   {
    "category": "datasheet",
+   "en": "CORPUSCARII ELECTRO-PRIESTS",
+   "fr": "ÉLECTROPRÊTRES CORPUSCARII",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
    "en": "CORSAIR SKYREAVERS",
    "fr": "ÉCUMEURS CÉLESTES CORSAIRES",
    "slug": "aeldari"
@@ -1255,6 +1333,24 @@
   },
   {
    "category": "datasheet",
+   "en": "CTHONIAN BESERKS",
+   "fr": "BESERKS CTHONIENS",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
+   "en": "CTHONIAN EARTHSHAKERS",
+   "fr": "TREMBLETERRES CTHONIENS",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
+   "en": "CULEXUS ASSASSIN",
+   "fr": "ASSASSIN CULEXUS",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "CULTIST FIREBRAND",
    "fr": "CULTISTE BOUTEFEU",
    "slug": "chaos-space-marines"
@@ -1282,6 +1378,12 @@
    "en": "CUSTODIAN WARDENS",
    "fr": "VEILLEURS CUSTODIENS",
    "slug": "adeptus-custodes"
+  },
+  {
+   "category": "datasheet",
+   "en": "CYBERNETICA DATASMITH",
+   "fr": "COMPILATEUR CYBERNÉTIQUE",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -1453,6 +1555,12 @@
   },
   {
    "category": "datasheet",
+   "en": "DEATHWATCH KILL TEAM",
+   "fr": "KILL TEAM DE LA DEATHWATCH",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "DEATHWATCH TERMINATOR SQUAD",
    "fr": "ESCOUADE TERMINATOR DE LA DEATHWATCH",
    "slug": "deathwatch"
@@ -1573,6 +1681,18 @@
   },
   {
    "category": "datasheet",
+   "en": "EINHYR CHAMPION",
+   "fr": "CHAMPION EINHYR",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
+   "en": "EINHYR HEARTHGUARD",
+   "fr": "ÂTREGARDES EINHYRS",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
    "en": "ELDRAD ULTHRAN",
    "fr": "ELDRAD ULTHRAN",
    "slug": "aeldari"
@@ -1606,6 +1726,24 @@
    "en": "ETHEREAL",
    "fr": "ÉTHÉRÉ",
    "slug": "tau-empire"
+  },
+  {
+   "category": "datasheet",
+   "en": "EVERSOR ASSASSIN",
+   "fr": "ASSASSIN EVERSOR",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
+   "en": "EVERY MODEL HAS THE IMPERIUM KEYWORD",
+   "fr": "CHAQUE FIGURINE A LE MOT-CLÉ IMPERIUM",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
+   "en": "EXACTION SQUAD",
+   "fr": "ESCOUADE D’EXACTION",
+   "slug": "imperial-agents"
   },
   {
    "category": "datasheet",
@@ -1813,6 +1951,12 @@
   },
   {
    "category": "datasheet",
+   "en": "FULGURITE ELECTRO-PRIESTS",
+   "fr": "ÉLECTROPRÊTRES FULGURITES",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
    "en": "GARGANTUAN SQUIGGOTH",
    "fr": "SQUIGGOUTH GARGANTUESQUE",
    "slug": "orks"
@@ -1927,9 +2071,21 @@
   },
   {
    "category": "datasheet",
+   "en": "GREY KNIGHTS TERMINATOR SQUAD",
+   "fr": "ESCOUADE TERMINATOR DES GREY KNIGHTS",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "GREY KNIGHTS THUNDERHAWK GUNSHIP",
    "fr": "ESCORTEUR THUNDERHAWK DES GREY KNIGHTS",
    "slug": "grey-knights"
+  },
+  {
+   "category": "datasheet",
+   "en": "GRIMNYR",
+   "fr": "GRIMNYR",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "datasheet",
@@ -1993,15 +2149,39 @@
   },
   {
    "category": "datasheet",
+   "en": "HASTARII EXTERMINATORS",
+   "fr": "EXTERMINATEURS HASTARII",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "HASTARII FUSILIERS",
+   "fr": "FUSILIERS HASTARII",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
    "en": "HAVOCS",
    "fr": "HAVOCS",
    "slug": "chaos-space-marines"
   },
   {
    "category": "datasheet",
+   "en": "HEARTHKYN WARRIORS",
+   "fr": "GUERRIERS ÂTREKOGS",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
    "en": "HEAVY INTERCESSOR SQUAD",
    "fr": "ESCOUADE LOURDE INTERCESSOR",
    "slug": "dark-angels"
+  },
+  {
+   "category": "datasheet",
+   "en": "HEKATON LAND FORTRESS",
+   "fr": "FORTERESSE MOBILE HEKATON",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "datasheet",
@@ -2062,6 +2242,18 @@
    "en": "HERETIC ASTARTES DAEMON PRINCE WITH WINGS",
    "fr": "PRINCE DÉMON DE L’HERETICUS ASTARTES AILÉ",
    "slug": "chaos-space-marines"
+  },
+  {
+   "category": "datasheet",
+   "en": "HERNKYN PIONEERS",
+   "fr": "PIONNIERS HERNKOGS",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
+   "en": "HERNKYN YAEGIRS",
+   "fr": "YAEGIRS HERNKOGS",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "datasheet",
@@ -2191,6 +2383,18 @@
   },
   {
    "category": "datasheet",
+   "en": "IMPERIAL NAVY BREACHERS",
+   "fr": "SAPEURS DE LA MARINE IMPÉRIALE",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
+   "en": "IMPERIAL RHINO",
+   "fr": "RHINO IMPÉRIAL",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "IMPULSOR",
    "fr": "IMPULSOR",
    "slug": "dark-angels"
@@ -2251,6 +2455,48 @@
   },
   {
    "category": "datasheet",
+   "en": "INQUISITOR",
+   "fr": "INQUISITEUR",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
+   "en": "INQUISITOR COTEAZ",
+   "fr": "INQUISITEUR COTEAZ",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
+   "en": "INQUISITOR DRAXUS",
+   "fr": "INQUISITRICE DRAXUS",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
+   "en": "INQUISITOR GREYFAX",
+   "fr": "INQUISITRICE GREYFAX",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
+   "en": "INQUISITOR KROYLE",
+   "fr": "INQUISITEUR KROYLE",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
+   "en": "INQUISITORIAL AGENTS",
+   "fr": "AGENTS INQUISITORIAUX",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
+   "en": "INQUISITORIAL CHIMERA",
+   "fr": "CHIMERA INQUISITORIAL",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "INTERCEPTOR SQUAD",
    "fr": "ESCOUADE INTERCEPTOR",
    "slug": "grey-knights"
@@ -2299,6 +2545,24 @@
   },
   {
    "category": "datasheet",
+   "en": "IRONKIN STEELJACKS WITH HEAVY VOLKANITE DISINTEGRATORS",
+   "fr": "CHAUDRONNIERS COGNATS DE FER AVEC DÉSINTÉGRATEURS VOLKANITES LOURDS",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
+   "en": "IRONKIN STEELJACKS WITH MELEE WEAPONS",
+   "fr": "CHAUDRONNIERS COGNATS DE FER AVEC ARMES DE MÊLÉE",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
+   "en": "IRONSTRIDER BALLISTARII",
+   "fr": "FERRO-ÉCHASSIERS BALLISTARII",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
    "en": "JAIN ZAR",
    "fr": "JAIN ZAR",
    "slug": "aeldari"
@@ -2341,6 +2605,18 @@
   },
   {
    "category": "datasheet",
+   "en": "KAPRICUS CARRIER",
+   "fr": "PORTEUR KAPRICUS",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
+   "en": "KAPRICUS DEFENDERS",
+   "fr": "DÉFENSEURS KAPRICUS",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
    "en": "KARANAK",
    "fr": "KARANAK",
    "slug": "chaos-daemons"
@@ -2350,6 +2626,24 @@
    "en": "KASRKIN",
    "fr": "KASRKINS",
    "slug": "astra-militarum"
+  },
+  {
+   "category": "datasheet",
+   "en": "KASTELAN ROBOTS",
+   "fr": "ROBOTS KASTELAN",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "KATAPHRON BREACHERS",
+   "fr": "BRÉCHEURS KATAPHRON",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "KATAPHRON DESTROYERS",
+   "fr": "DESTRUCTEURS KATAPHRON",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -2935,6 +3229,12 @@
   },
   {
    "category": "datasheet",
+   "en": "MEMNYR STRATEGIST",
+   "fr": "STRATÈGE MEMNYR",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "datasheet",
    "en": "MIASMIC MALIGNIFIER",
    "fr": "EXHAUSTEUR PANDÉMIQUE",
    "slug": "death-guard"
@@ -3016,6 +3316,12 @@
    "en": "MYPHITIC BLIGHT-HAULERS",
    "fr": "SEMI-CHENILLÉS MÉPHITIQUES",
    "slug": "death-guard"
+  },
+  {
+   "category": "datasheet",
+   "en": "NAVIGATOR",
+   "fr": "NAVIGATEUR",
+   "slug": "imperial-agents"
   },
   {
    "category": "datasheet",
@@ -3166,6 +3472,12 @@
    "en": "OLD ONE EYE",
    "fr": "LE VIEUX BORGNE",
    "slug": "tyranids"
+  },
+  {
+   "category": "datasheet",
+   "en": "ONAGER DUNECRAWLER",
+   "fr": "ONAGRE DES DUNES",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -3364,6 +3676,18 @@
    "en": "PSYCHOPHAGE",
    "fr": "PSYCHOPHAGE",
    "slug": "tyranids"
+  },
+  {
+   "category": "datasheet",
+   "en": "PTERAXII SKYSTALKERS",
+   "fr": "VAUTOURS PTERAXII",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "PTERAXII STERYLIZORS",
+   "fr": "STÉRILISATEURS PTERAXII",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -3595,6 +3919,12 @@
   },
   {
    "category": "datasheet",
+   "en": "ROGUE TRADER ENTOURAGE",
+   "fr": "ENTOURAGE DE LIBRE MARCHAND",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "ROTIGUS",
    "fr": "ROTIGUS",
    "slug": "chaos-daemons"
@@ -3622,6 +3952,12 @@
    "en": "RUNTHERD",
    "fr": "FOUETTARD",
    "slug": "orks"
+  },
+  {
+   "category": "datasheet",
+   "en": "SAGITAUR",
+   "fr": "SAGITAUR",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "datasheet",
@@ -3727,6 +4063,24 @@
   },
   {
    "category": "datasheet",
+   "en": "SERBERYS RAIDERS",
+   "fr": "HUSSARD SERBERYS",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "SERBERYS SULPHURHOUNDS",
+   "fr": "SOUFREDOGUES SERBERYS",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "SERVITOR BATTLECLADE",
+   "fr": "CLADE DE COMBAT DE SERVITORS",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
    "en": "SHADOW WEAVER PLATFORM",
    "fr": "PLATEFORME À TISSEUR DE TÉNÈBRES",
    "slug": "aeldari"
@@ -3781,15 +4135,62 @@
   },
   {
    "category": "datasheet",
+   "en": "Sicaran",
+   "fr": "SICARAN"
+  },
+  {
+   "category": "datasheet",
+   "en": "SICARIAN INFILTRATORS",
+   "fr": "INFILTRATEURS SICARIENS",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "SICARIAN RUSTSTALKERS",
+   "fr": "CORRÔDEURS SICARIENS",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
    "en": "SISTERS NOVITIATE SQUAD",
    "fr": "ESCOUADE DE SŒURS NOVICES",
    "slug": "adepta-sororitas"
   },
   {
    "category": "datasheet",
+   "en": "SISTERS OF BATTLE IMMOLATOR",
+   "fr": "IMMOLATOR DES SŒURS DE BATAILLE",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
+   "en": "SISTERS OF BATTLE SQUAD",
+   "fr": "ESCOUADE DE SŒURS DE BATAILLE",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "SKARBRAND",
    "fr": "SKARBRAND",
    "slug": "chaos-daemons"
+  },
+  {
+   "category": "datasheet",
+   "en": "SKITARII MARSHAL",
+   "fr": "MARÉCHAL SKITARIUS",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "SKITARII RANGERS",
+   "fr": "RANGERS SKITARII",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "SKITARII VANGUARD",
+   "fr": "PATROUILLEURS SKITARII",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -3802,6 +4203,18 @@
    "en": "SKORPEKH LORD",
    "fr": "SEIGNEUR SKORPEKH",
    "slug": "necrons"
+  },
+  {
+   "category": "datasheet",
+   "en": "SKORPIUS DISINTEGRATOR",
+   "fr": "DÉSINTÉGRATEUR SKORPIUS",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "SKORPIUS DUNERIDER",
+   "fr": "GLISSEUR SKORPIUS",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -4051,6 +4464,12 @@
   },
   {
    "category": "datasheet",
+   "en": "SUBDUCTOR SQUAD",
+   "fr": "ESCOUADE SUBDUCTOR",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "SUBODEN KHAN",
    "fr": "SUBODEN KHAN",
    "slug": "space-marines"
@@ -4078,6 +4497,24 @@
    "en": "SWOOPING HAWKS",
    "fr": "ÉPERVIERS VOLTIGEURS",
    "slug": "aeldari"
+  },
+  {
+   "category": "datasheet",
+   "en": "SYDONIAN DRAGOONS WITH RADIUM JEZZAILS",
+   "fr": "DRAGONS SYDONIENS AVEC JEZZAIL À RADIUM",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "SYDONIAN DRAGOONS WITH TASER LANCES",
+   "fr": "DRAGONS SYDONIENS AVEC LANCES TASER",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "SYDONIAN SKATROS",
+   "fr": "SKATROS SYDONIEN",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -4129,15 +4566,33 @@
   },
   {
    "category": "datasheet",
+   "en": "TECH-PRIEST DOMINUS",
+   "fr": "TECHNOPRÊTRE DOMINUS",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
    "en": "TECH-PRIEST ENGINSEER",
    "fr": "TECHNAUGURE",
-   "slug": "astra-militarum"
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "datasheet",
+   "en": "TECH-PRIEST MANIPULUS",
+   "fr": "TECHNOPRÊTRE MANIPULUS",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
    "en": "TECHMARINE",
    "fr": "TECHMARINE",
    "slug": "dark-angels"
+  },
+  {
+   "category": "datasheet",
+   "en": "TECHNOARCHEOLOGIST",
+   "fr": "TECHNOARCHÉOLOGUE",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -4240,6 +4695,12 @@
    "en": "THE YNCARNE",
    "fr": "L’YNCARNE",
    "slug": "aeldari"
+  },
+  {
+   "category": "datasheet",
+   "en": "THULIA GHULD",
+   "fr": "THULIA GHULD",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "datasheet",
@@ -4567,15 +5028,33 @@
   },
   {
    "category": "datasheet",
+   "en": "VIGILANT SQUAD",
+   "fr": "ESCOUADE VIGILANT",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "VIGILATORS",
    "fr": "VIGILATORS",
    "slug": "adeptus-custodes"
   },
   {
    "category": "datasheet",
+   "en": "VINDICARE ASSASSIN",
+   "fr": "ASSASSIN VINDICARE",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "datasheet",
    "en": "VOIDRAVEN BOMBER",
    "fr": "BOMBARDIER KORVIDE",
    "slug": "drukhari"
+  },
+  {
+   "category": "datasheet",
+   "en": "VOIDSMEN-AT-ARMS",
+   "fr": "COSMOMARINS EN ARMES",
+   "slug": "imperial-agents"
   },
   {
    "category": "datasheet",
@@ -5005,6 +5484,12 @@
   },
   {
    "category": "detachment",
+   "en": "ARMOURED TRAILBLAZERS",
+   "fr": "PIONNIERS BLINDÉS",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "detachment",
    "en": "ARMOURED WARHOST",
    "fr": "OST BLINDÉ",
    "slug": "aeldari"
@@ -5092,6 +5577,12 @@
    "en": "BLOOD LEGION",
    "fr": "LÉGION DU SANG",
    "slug": "chaos-daemons"
+  },
+  {
+   "category": "detachment",
+   "en": "BRANDFAST OATHBAND",
+   "fr": "BANDE ASSERMENTÉE EXPRESSE",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "detachment",
@@ -5191,6 +5682,18 @@
   },
   {
    "category": "detachment",
+   "en": "COHORT ACQUISITUS",
+   "fr": "COHORTE ACQUISITUS",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "detachment",
+   "en": "COHORT CYBERNETICA",
+   "fr": "COHORTE CYBERNETICA",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "detachment",
    "en": "COMBINED ARMS",
    "fr": "FORCES COMBINÉES",
    "slug": "astra-militarum"
@@ -5281,6 +5784,12 @@
   },
   {
    "category": "detachment",
+   "en": "DATA-PSALM CONCLAVE",
+   "fr": "CONCLAVE INFOPSAUME",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "detachment",
    "en": "DEATH LORD’S CHOSEN",
    "fr": "ÉLUS DU SEIGNEUR DE LA MORT",
    "slug": "death-guard"
@@ -5353,6 +5862,12 @@
   },
   {
    "category": "detachment",
+   "en": "ERADICATION COHORT",
+   "fr": "COHORTE D'ÉRADICATION",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "detachment",
    "en": "EXHIBITION OF SLAUGHTER",
    "fr": "MASSACRE D’EXHIBITION",
    "slug": "drukhari"
@@ -5362,6 +5877,18 @@
    "en": "EXPERIMENTAL PROTOTYPE CADRE",
    "fr": "CADRE DE PROTOTYPES EXPÉRIMENTAUX",
    "slug": "tau-empire"
+  },
+  {
+   "category": "detachment",
+   "en": "EXPLORATOR MANIPLE",
+   "fr": "MANIPULE EXPLORATOR",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "detachment",
+   "en": "FARSEEKERS",
+   "fr": "CHERCHEURS DES CONFINS",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "detachment",
@@ -5491,6 +6018,12 @@
   },
   {
    "category": "detachment",
+   "en": "HALOSCREED BATTLE CLADE",
+   "fr": "CLADE DE COMBAT HALO-SERMONNÉ",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "detachment",
    "en": "HAMMER OF THE EMPEROR",
    "fr": "MARTEAU DE L'EMPEREUR",
    "slug": "astra-militarum"
@@ -5500,6 +6033,24 @@
    "en": "HAND OF THE DYNASTY",
    "fr": "MAIN DE LA DYNASTIE",
    "slug": "necrons"
+  },
+  {
+   "category": "detachment",
+   "en": "HEARTHBAND",
+   "fr": "ÂTREBANDE",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "detachment",
+   "en": "HEARTHFYRE ARSENAL",
+   "fr": "ARSENAL DU FEU DE L’ÂTRE",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "detachment",
+   "en": "HEARTHGUARD COVENANT",
+   "fr": "CONVENTION D’ÂTREGARDES",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "detachment",
@@ -5548,6 +6099,12 @@
    "en": "IMMATERIAL INTERDICTION",
    "fr": "INTERDICTION IMMATÉRIELLE",
    "slug": "grey-knights"
+  },
+  {
+   "category": "detachment",
+   "en": "IMPERIALIS FLEET",
+   "fr": "CLASSIS IMPERIALIS",
+   "slug": "imperial-agents"
   },
   {
    "category": "detachment",
@@ -5635,9 +6192,21 @@
   },
   {
    "category": "detachment",
+   "en": "LORDS OF THE FORGE",
+   "fr": "SEIGNEURS DE LA FORGE",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "detachment",
    "en": "LORDS OF THE WARP",
    "fr": "SEIGNEURS DU WARP",
    "slug": "chaos-daemons"
+  },
+  {
+   "category": "detachment",
+   "en": "LUMINEN AUTO-CHOIR",
+   "fr": "AUTO-CHŒUR LUMINEN",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "detachment",
@@ -5656,6 +6225,12 @@
    "en": "MEDUSA'S WRATH",
    "fr": "COLÈRE DE MEDUSA",
    "slug": "space-marines"
+  },
+  {
+   "category": "detachment",
+   "en": "MERCENARY OATHBAND",
+   "fr": "MERCENAIRES ASSERMENTÉS",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "detachment",
@@ -5743,6 +6318,12 @@
   },
   {
    "category": "detachment",
+   "en": "PERSECUTION PROSPECT",
+   "fr": "PROSPECTION PERSÉCUTRICE",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "detachment",
    "en": "PHOBOS SHADOW FORCE",
    "fr": "FORCE FURTIVE PHOBOS",
    "slug": "dark-angels"
@@ -5776,6 +6357,12 @@
    "en": "QUESTORIS COMPANIONS",
    "fr": "COMPAGNONS QUESTORIS",
    "slug": "imperial-knights"
+  },
+  {
+   "category": "detachment",
+   "en": "RAD-ZONE CORPS",
+   "fr": "CORPS DES ZONES IRRADIÉES",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "detachment",
@@ -5938,6 +6525,12 @@
    "en": "SILENT HUNTERS",
    "fr": "CHASSERESSES SILENCIEUSES",
    "slug": "adeptus-custodes"
+  },
+  {
+   "category": "detachment",
+   "en": "SKITARII HUNTER COHORT",
+   "fr": "COHORTE DE CHASSE SKITARII",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "detachment",
@@ -6124,6 +6717,12 @@
    "en": "VANGUARD ONSLAUGHT",
    "fr": "OFFENSIVE D'AVANT-GARDE",
    "slug": "tyranids"
+  },
+  {
+   "category": "detachment",
+   "en": "VEILED BLADE ELIMINATION FORCE",
+   "fr": "FORCE D'ÉLIMINATION DE LAME VOILÉE",
+   "slug": "imperial-agents"
   },
   {
    "category": "detachment",
@@ -6343,9 +6942,21 @@
   },
   {
    "category": "enhancement",
+   "en": "Amulet of Auto-chastisement",
+   "fr": "Amulette d’Auto-châtiment",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
    "en": "Amulet of Tainted Vigour",
    "fr": "Amulette de Vigueur Impie",
    "slug": "chaos-space-marines"
+  },
+  {
+   "category": "enhancement",
+   "en": "Ancestral Crest",
+   "fr": "Cimier Ancestral",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -6397,6 +7008,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Arch-negator",
+   "fr": "Archi-négateur",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Archeotech Autoloaders",
    "fr": "Autochargeurs Archéotechnologiques",
    "slug": "imperial-knights"
@@ -6439,6 +7056,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Artisan",
+   "fr": "Artisan",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Aspect of Murder",
    "fr": "Aspect du Meurtre",
    "slug": "aeldari"
@@ -6460,6 +7083,12 @@
    "en": "Assault Hatches",
    "fr": "Trappes d'Assaut",
    "slug": "astra-militarum"
+  },
+  {
+   "category": "enhancement",
+   "en": "Asset Manipulator",
+   "fr": "Manipulateur de Moyens",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -6505,6 +7134,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Autoclavic Denunciation",
+   "fr": "Dénonciation Autoclavique",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Autodivinator",
    "fr": "Autodivinateur",
    "slug": "necrons"
@@ -6535,6 +7170,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Bastion Shield",
+   "fr": "Bouclier modèle Bastion",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Battalion Commander",
    "fr": "Chef de Bataillon",
    "slug": "astra-militarum"
@@ -6544,6 +7185,12 @@
    "en": "Battle-lust",
    "fr": "Avidité Guerrière",
    "slug": "world-eaters"
+  },
+  {
+   "category": "enhancement",
+   "en": "Battle-sphere Uplink",
+   "fr": "Relais de Sphère du Combat",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -6589,6 +7236,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Belicosa-class Capacitor Vanes",
+   "fr": "Pales de Condensateur de Classe Belicosa",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Berzerker Glaive",
    "fr": "Vouge de Berzerk",
    "slug": "world-eaters"
@@ -6616,6 +7269,12 @@
    "en": "Biophagic Flow",
    "fr": "Flux Biophagique",
    "slug": "tyranids"
+  },
+  {
+   "category": "enhancement",
+   "en": "Blackweave Shroud",
+   "fr": "Suaire de Noirétoffe",
+   "slug": "imperial-agents"
   },
   {
    "category": "enhancement",
@@ -6775,6 +7434,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Calculated Tenacity",
+   "fr": "Ténacité Calculée",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Calm Under Fire",
    "fr": "Calme sous le Feu",
    "slug": "astra-militarum"
@@ -6790,6 +7455,12 @@
    "en": "Cankerblight",
    "fr": "Fléau du Chancre",
    "slug": "chaos-daemons"
+  },
+  {
+   "category": "enhancement",
+   "en": "Cantic Thrallnet",
+   "fr": "Réseau-esclave Cantique",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -6877,9 +7548,33 @@
   },
   {
    "category": "enhancement",
+   "en": "Clandestine Infiltrator",
+   "fr": "Infiltrateur Clandestin",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
+   "en": "Clandestine Operation",
+   "fr": "Opération Clandestine",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
    "en": "Clarion of Urgency",
    "fr": "Clairon de l’Urgence",
    "slug": "adepta-sororitas"
+  },
+  {
+   "category": "enhancement",
+   "en": "Cognitive Reinforcement",
+   "fr": "Renforcement Cognitif",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
+   "en": "Combat Landers",
+   "fr": "Troupes Spatioportées",
+   "slug": "imperial-agents"
   },
   {
    "category": "enhancement",
@@ -7027,6 +7722,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Daemon Slayer",
+   "fr": "Tueur de Démons",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
    "en": "Daemon Weapon of Nurgle",
    "fr": "Arme-démon de Nurgle",
    "slug": "death-guard"
@@ -7051,6 +7752,18 @@
   },
   {
    "category": "enhancement",
+   "en": "Data-blessed Autosermon",
+   "fr": "Autosermon de Données Bénites",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
+   "en": "Dead Reckoning",
+   "fr": "Estimation des Pertes",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Death Mask of Ollanius",
    "fr": "Masque Mortuaire d'Ollanius",
    "slug": "astra-militarum"
@@ -7063,6 +7776,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Decoy Targets",
+   "fr": "Cibles-leurres",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
    "en": "Deepening Madness",
    "fr": "Folie Croissante",
    "slug": "necrons"
@@ -7072,6 +7791,12 @@
    "en": "Defensive Mastery",
    "fr": "Maîtrise Défensive",
    "slug": "space-marines"
+  },
+  {
+   "category": "enhancement",
+   "en": "Dêlvewerke Navigator",
+   "fr": "Navigateur de Ghâlmonde",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -7108,6 +7833,12 @@
    "en": "Diamond of Distortion",
    "fr": "Diamant de Distorsion",
    "slug": "thousand-sons"
+  },
+  {
+   "category": "enhancement",
+   "en": "Digital Weapons",
+   "fr": "Armes Digitales",
+   "slug": "imperial-agents"
   },
   {
    "category": "enhancement",
@@ -7255,6 +7986,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Electromiasmic Brazier",
+   "fr": "Brasero Électromiasmatique",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Elevated Might",
    "fr": "Puissance Élevée",
    "slug": "tyranids"
@@ -7264,6 +8001,12 @@
    "en": "Elixir of the Corpse Courts",
    "fr": "Élixir des Cours de Cadavres",
    "slug": "drukhari"
+  },
+  {
+   "category": "enhancement",
+   "en": "Emotionless Clarity",
+   "fr": "Clarté Impassible",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -7357,6 +8100,18 @@
   },
   {
    "category": "enhancement",
+   "en": "Esoteric Explosives",
+   "fr": "Explosifs Ésotériques",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
+   "en": "Etacarn SB9 Targeting Implant",
+   "fr": "Implant de Ciblage EtaCarn SB9",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Eternal Conqueror",
    "fr": "Conquérant Éternel",
    "slug": "necrons"
@@ -7423,9 +8178,21 @@
   },
   {
    "category": "enhancement",
+   "en": "Explorator Dispensation",
+   "fr": "Dotation d’Exploration",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Extra Sneaky",
    "fr": "Super Sournois",
    "slug": "orks"
+  },
+  {
+   "category": "enhancement",
+   "en": "Eye for Weakness",
+   "fr": "Déceleur de Points Faibles",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -7519,6 +8286,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Fârstrydr Node",
+   "fr": "Nodule ÂrpentR",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Faultless Opportunist",
    "fr": "Opportuniste Infaillible",
    "slug": "emperors-children"
@@ -7579,6 +8352,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Fleetmaster",
+   "fr": "Maître de Flotte",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
    "en": "Fleshmetal Fusion",
    "fr": "Fusion Métallodermique",
    "slug": "chaos-knights"
@@ -7618,6 +8397,12 @@
    "en": "Forged in Battle",
    "fr": "Forgés par la Bataille",
    "slug": "space-marines"
+  },
+  {
+   "category": "enhancement",
+   "en": "Formidable Resolve",
+   "fr": "Détermination Formidable",
+   "slug": "imperial-agents"
   },
   {
    "category": "enhancement",
@@ -7687,6 +8472,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Genetor",
+   "fr": "Genetor",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Gift of Foresight",
    "fr": "Don de Prescience",
    "slug": "aeldari"
@@ -7696,6 +8487,12 @@
    "en": "Gift of Terran Artifice",
    "fr": "Don des Artificiers de Terra",
    "slug": "adeptus-custodes"
+  },
+  {
+   "category": "enhancement",
+   "en": "Gift of the Prescient",
+   "fr": "Don des Prescients",
+   "slug": "imperial-agents"
   },
   {
    "category": "enhancement",
@@ -7729,6 +8526,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Graviton Vault",
+   "fr": "Écrin à Gravitons",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Greyveil Hex",
    "fr": "Maléfice du Voile Gris",
    "slug": "chaos-space-marines"
@@ -7744,6 +8547,12 @@
    "en": "Grimoire of Conjunctions",
    "fr": "Grimoire des Conjonctions",
    "slug": "grey-knights"
+  },
+  {
+   "category": "enhancement",
+   "en": "Grimoire of True Names",
+   "fr": "Grimoire des Noms Véritables",
+   "slug": "imperial-agents"
   },
   {
    "category": "enhancement",
@@ -7816,6 +8625,12 @@
    "en": "Heretek Adept",
    "fr": "Adepte Hérétek",
    "slug": "emperors-children"
+  },
+  {
+   "category": "enhancement",
+   "en": "High Kâhl",
+   "fr": "Grand Kâhl",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -7933,6 +8748,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Ignis Judicium",
+   "fr": "Ignis Judicium",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
    "en": "Immolator",
    "fr": "Immolator",
    "slug": "space-marines"
@@ -8035,6 +8856,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Inloaded Lethality",
+   "fr": "Létalité Téléchargée",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Insectile Murmuration",
    "fr": "Murmure d’Insectes",
    "slug": "death-guard"
@@ -8077,9 +8904,21 @@
   },
   {
    "category": "enhancement",
+   "en": "Introneural Biotech",
+   "fr": "Biotechnologie Intraneurale",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
    "en": "Invigorated Mechatendrils",
    "fr": "Mécavrilles Vigoureuses",
    "slug": "chaos-space-marines"
+  },
+  {
+   "category": "enhancement",
+   "en": "Iron Ambassador",
+   "fr": "Ambassadeur de Fer",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -8098,6 +8937,12 @@
    "en": "Ironbound Enmity",
    "fr": "Hostilité Forgée",
    "slug": "chaos-space-marines"
+  },
+  {
+   "category": "enhancement",
+   "en": "Ironskein",
+   "fr": "Ferrotrame",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -8203,6 +9048,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Liber Heresius",
+   "fr": "Liber Heresius",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
    "en": "Light of Clarity",
    "fr": "Lueur de Clarté",
    "slug": "aeldari"
@@ -8233,6 +9084,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Logis",
+   "fr": "Logos",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Long-range Scout",
    "fr": "Éclaireur Longue Distance",
    "slug": "astra-militarum"
@@ -8248,6 +9105,12 @@
    "en": "Lord of Forbidden Lore",
    "fr": "Seigneur du Savoir Interdit",
    "slug": "thousand-sons"
+  },
+  {
+   "category": "enhancement",
+   "en": "Lord of Machines",
+   "fr": "Seigneur des Machines",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -8281,6 +9144,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Magos",
+   "fr": "Magos",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Magos Questoris",
    "fr": "Magos Questoris",
    "slug": "imperial-knights"
@@ -8305,9 +9174,21 @@
   },
   {
    "category": "enhancement",
+   "en": "Malphonic Susurrus",
+   "fr": "Susurrus Maléphonique",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Mandulian Reliquary",
    "fr": "Reliquaire de Mandulis",
    "slug": "grey-knights"
+  },
+  {
+   "category": "enhancement",
+   "en": "Mantle of Elders",
+   "fr": "Manteau des Anciens",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -8320,6 +9201,12 @@
    "en": "Mantle of Ophelia",
    "fr": "Manteau d’Ophelia",
    "slug": "adepta-sororitas"
+  },
+  {
+   "category": "enhancement",
+   "en": "Mantle of the Gnosticarch",
+   "fr": "Manteau du Gnosticarque",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -8377,6 +9264,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Martial Signatum Amplificator",
+   "fr": "Amplificateur de Sceau Martial",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Martial Tuition",
    "fr": "Tutorat Martial",
    "slug": "imperial-knights"
@@ -8431,6 +9324,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Mechanicus Locum",
+   "fr": "Mechanicus Locum",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Mekwaaagh! Mastermind",
    "fr": "J’ni d’la Mékawaaagh!",
    "slug": "orks"
@@ -8443,9 +9342,27 @@
   },
   {
    "category": "enhancement",
+   "en": "Mercenary Prospector",
+   "fr": "Prospecteur Mercenaire",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Metalodermal Tesla Weave",
    "fr": "Gaze Tesla Métallodermique",
    "slug": "necrons"
+  },
+  {
+   "category": "enhancement",
+   "en": "Metaphysical Brokerage",
+   "fr": "Courtage Métaphysique",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
+   "en": "Micromelta Rounds",
+   "fr": "Munitions à Microfusion",
+   "slug": "imperial-agents"
   },
   {
    "category": "enhancement",
@@ -8515,6 +9432,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Multiwave System Jammer",
+   "fr": "Système de Brouillage Multibande",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Murder-forged Entity",
    "fr": "Entité Forgée pour le Meurtre",
    "slug": "world-eaters"
@@ -8554,6 +9477,12 @@
    "en": "Naturalised Camouflage",
    "fr": "Camouflage Naturel",
    "slug": "tyranids"
+  },
+  {
+   "category": "enhancement",
+   "en": "Necromechanic",
+   "fr": "Nécromécanicien",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -8623,9 +9552,21 @@
   },
   {
    "category": "enhancement",
+   "en": "No Escape",
+   "fr": "No Escape",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
    "en": "Noctilith Mantle",
    "fr": "Coiffe de Noctilithe",
    "slug": "thousand-sons"
+  },
+  {
+   "category": "enhancement",
+   "en": "Nomad Strategist",
+   "fr": "Stratège Nomade",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -8644,6 +9585,12 @@
    "en": "Oath of Macragge",
    "fr": "Serment de Macragge",
    "slug": "space-marines"
+  },
+  {
+   "category": "enhancement",
+   "en": "Oathbound Speculator",
+   "fr": "Spéculateur Assermenté",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -8677,6 +9624,18 @@
   },
   {
    "category": "enhancement",
+   "en": "Omnicogitator",
+   "fr": "Omnicogitateur",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
+   "en": "Omnissiah’s Fury",
+   "fr": "Fureur de l'Omnimessie",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Omnissian Unguents",
    "fr": "Onguents de l'Omnimessie",
    "slug": "astra-militarum"
@@ -8686,6 +9645,12 @@
    "en": "One Foot in the Future",
    "fr": "Un Pied dans le Futur",
    "slug": "grey-knights"
+  },
+  {
+   "category": "enhancement",
+   "en": "Optimised Attack Lines",
+   "fr": "Lignes d’Attaque Optimisées",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -8719,6 +9684,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Pan-spectral Lockons",
+   "fr": "Verrouilleurs Panspectraux",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Panoply of the Cursed Knights",
    "fr": "Panoplie des Chevaliers Maudits",
    "slug": "chaos-knights"
@@ -8746,6 +9717,12 @@
    "en": "Parasitic Woe‑reaper",
    "fr": "Parasite Moissonneur",
    "slug": "death-guard"
+  },
+  {
+   "category": "enhancement",
+   "en": "Peerless Eradicator",
+   "fr": "Éradicateur Infaillible",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -8812,6 +9789,12 @@
    "en": "Piercing Talons",
    "fr": "Serres Perforantes",
    "slug": "tyranids"
+  },
+  {
+   "category": "enhancement",
+   "en": "Piledriver",
+   "fr": "Marteau-pilon",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -8884,6 +9867,12 @@
    "en": "Precognicient Volleys",
    "fr": "Salves Précognitives",
    "slug": "grey-knights"
+  },
+  {
+   "category": "enhancement",
+   "en": "Precursive Judgement",
+   "fr": "Jugement Précurseur",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -9019,6 +10008,18 @@
   },
   {
    "category": "enhancement",
+   "en": "Quake Multigenerator",
+   "fr": "Multigénérateur Sismique",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
+   "en": "Quake Supervisor",
+   "fr": "Superviseur de Séisme",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Quantum Abacus",
    "fr": "Boulier Quantique",
    "slug": "necrons"
@@ -9034,6 +10035,12 @@
    "en": "Quickening Foci",
    "fr": "Mantras d’Accélération",
    "slug": "grey-knights"
+  },
+  {
+   "category": "enhancement",
+   "en": "Radial Suffusion",
+   "fr": "Suffusion Radiale",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -9217,9 +10224,21 @@
   },
   {
    "category": "enhancement",
+   "en": "Sanctified Ordnance",
+   "fr": "Matériel Sanctifié",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Sanctuary",
    "fr": "Sanctuaire",
    "slug": "imperial-knights"
+  },
+  {
+   "category": "enhancement",
+   "en": "Saturation Rounds",
+   "fr": "Munitions à Saturation",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -9289,6 +10308,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Shroudwërke Talismans",
+   "fr": "Talismans Embrümonde",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Sigil of Exigence",
    "fr": "Sceau d'Exigence",
    "slug": "grey-knights"
@@ -9298,6 +10323,12 @@
    "en": "Sigil of the Hunt",
    "fr": "Symbole de la Chasse",
    "slug": "grey-knights"
+  },
+  {
+   "category": "enhancement",
+   "en": "Signature Restoration",
+   "fr": "Restauration Distinctive",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -9517,6 +10548,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Stealth-screened Cybercanids",
+   "fr": "Cybercanidés Furfifs",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Steeped in Suffering",
    "fr": "Imprégné de Souffrance",
    "slug": "emperors-children"
@@ -9619,6 +10656,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Surgical Saboteur",
+   "fr": "Saboteur Chirurgical",
+   "slug": "leagues-of-votann"
+  },
+  {
+   "category": "enhancement",
    "en": "Surly as a Squiggoth",
    "fr": "Méchant kom’ un Squiggouth",
    "slug": "orks"
@@ -9664,6 +10707,12 @@
    "en": "Synaptoprescience",
    "fr": "Synaptoprescience",
    "slug": "tyranids"
+  },
+  {
+   "category": "enhancement",
+   "en": "Tactical Alchemy",
+   "fr": "Alchimie Tactique",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -9742,6 +10791,12 @@
    "en": "Tempered in Battle (Aura)",
    "fr": "Trempé dans les Combats (Aura)",
    "slug": "dark-angels"
+  },
+  {
+   "category": "enhancement",
+   "en": "Temporcopia",
+   "fr": "Temporcopia",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -9859,6 +10914,12 @@
   },
   {
    "category": "enhancement",
+   "en": "TL-4ø9",
+   "fr": "TL-4ø9",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Tome of Bounteous Blessings",
    "fr": "Grimoire des Bienfaits Abondants",
    "slug": "death-guard"
@@ -9901,6 +10962,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Transoracular Dyad Wafers",
+   "fr": "Plaquettes Dyades Transoraculaires",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Tremor Senses",
    "fr": "Sensibilité Sismique",
    "slug": "tyranids"
@@ -9922,6 +10989,12 @@
    "en": "Tripwires",
    "fr": "Fils de Détente",
    "slug": "astra-militarum"
+  },
+  {
+   "category": "enhancement",
+   "en": "Trivärg Cyber Implant",
+   "fr": "Cyber-implant Trivärg",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -9964,6 +11037,12 @@
    "en": "Unflinching Will",
    "fr": "Volonté Inflexible",
    "slug": "necrons"
+  },
+  {
+   "category": "enhancement",
+   "en": "Universal Anathema",
+   "fr": "Anathème Universel",
+   "slug": "imperial-agents"
   },
   {
    "category": "enhancement",
@@ -10012,6 +11091,12 @@
    "en": "Veiled Blade",
    "fr": "Lame Voilée",
    "slug": "adeptus-custodes"
+  },
+  {
+   "category": "enhancement",
+   "en": "Veiled Hunter",
+   "fr": "Chasseur Voilé",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -10069,6 +11154,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Vingh’s Wafers of Dynamism",
+   "fr": "Plaquettes Dynamisantes de Vingh",
+   "slug": "adeptus-mechanicus"
+  },
+  {
+   "category": "enhancement",
    "en": "Violent Demise",
    "fr": "Trépas Violent",
    "slug": "world-eaters"
@@ -10090,6 +11181,12 @@
    "en": "Voidstone",
    "fr": "Pierre du Néant",
    "slug": "aeldari"
+  },
+  {
+   "category": "enhancement",
+   "en": "Voltagheist Reliquary",
+   "fr": "Reliquaire Voltagheist",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "enhancement",
@@ -10219,6 +11316,12 @@
   },
   {
    "category": "enhancement",
+   "en": "Witch Hunter",
+   "fr": "Chasseur de Sorciers",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "enhancement",
    "en": "Witherbone Pipes",
    "fr": "Biniou Gâté",
    "slug": "death-guard"
@@ -10228,6 +11331,12 @@
    "en": "Wolf-Touched",
    "fr": "Marque du Loup",
    "slug": "space-wolves"
+  },
+  {
+   "category": "enhancement",
+   "en": "Writ of Acquisition",
+   "fr": "Décret d’Acquisition",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "enhancement",
@@ -10258,6 +11367,12 @@
    "en": "ADEPTUS CUSTODES",
    "fr": "ADEPTUS CUSTODES",
    "slug": "adeptus-custodes"
+  },
+  {
+   "category": "faction",
+   "en": "ADEPTUS MECHANICUS",
+   "fr": "ADEPTUS MECHANICUS",
+   "slug": "adeptus-mechanicus"
   },
   {
    "category": "faction",
@@ -10327,9 +11442,21 @@
   },
   {
    "category": "faction",
+   "en": "IMPERIAL AGENTS",
+   "fr": "AGENTS IMPÉRIAUX",
+   "slug": "imperial-agents"
+  },
+  {
+   "category": "faction",
    "en": "IMPERIAL KNIGHTS",
    "fr": "CHEVALIERS IMPÉRIAUX",
    "slug": "imperial-knights"
+  },
+  {
+   "category": "faction",
+   "en": "LEAGUES OF VOTANN",
+   "fr": "LIGUES DE VOTANN",
+   "slug": "leagues-of-votann"
   },
   {
    "category": "faction",
@@ -10354,6 +11481,11 @@
    "en": "SPACE WOLVES",
    "fr": "SPACE WOLVES",
    "slug": "space-wolves"
+  },
+  {
+   "category": "faction",
+   "en": "T'au",
+   "fr": "T'AU"
   },
   {
    "category": "faction",
@@ -10424,6 +11556,16 @@
    "category": "rule",
    "en": "Embark",
    "fr": "embarque"
+  },
+  {
+   "category": "weapon",
+   "en": "Krak",
+   "fr": "KRAK"
+  },
+  {
+   "category": "weapon",
+   "en": "Rapier",
+   "fr": "RAPIER"
   }
  ]
 }

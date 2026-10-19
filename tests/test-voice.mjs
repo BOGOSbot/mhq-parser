@@ -31,7 +31,7 @@ t('the model rides the request', body.model, 'google/gemini-2.5-flash');
 ok('the audio is an input_audio part', body.messages[1].content[1].type === 'input_audio' && body.messages[1].content[1].input_audio.data === 'AAAA' && body.messages[1].content[1].input_audio.format === 'wav');
 ok('the glossary is the system prefix', /French = English/.test(body.messages[0].content[0].text) && /TYRANNOFEX/.test(body.messages[0].content[0].text) && /ARCHON/.test(body.messages[0].content[0].text));
 ok('the prefix is cached with an explicit breakpoint', body.messages[0].content[0].cache_control && body.messages[0].content[0].cache_control.type === 'ephemeral');
-ok('the prompt is the 1,710-entry glossary', (voicePrompt().match(/\n/g) || []).length > 1700);
+ok('the prompt is the rebuilt glossary (task-21: 25 pairs, 1,897 entries)', (voicePrompt().match(/\n/g) || []).length > 1850);
 ok('the prompt names the job and the rule', /ONE English question/.test(voicePrompt()) && /official English term/.test(voicePrompt()));
 
 // --- response parsing --------------------------------------------------------

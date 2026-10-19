@@ -1,19 +1,21 @@
 # Glossary FR / EN
 
 Built from the Munitorum Field Manual, published in both languages with the same structure.
-Generated 2026-10-12 from 22 faction pairs.
+Generated 2026-10-18 from 25 faction pairs.
 
 | category | entries |
 |---|---|
-| Factions | 22 |
+| Factions | 26 |
 | Force dispositions | 6 |
-| Detachments | 206 |
-| Datasheets / units | 801 |
-| Enhancements | 673 |
+| Detachments | 226 |
+| Datasheets / units | 877 |
+| Enhancements | 758 |
+| Weapons (hand-set) | 2 |
 | Rules (hand-set) | 2 |
 
 > Keywords, stratagems and rules-section names are **not** covered: the MFM does not
-> publish them. They are left out rather than guessed.
+> publish them. Weapons are never in it either; the few listed below are the ones a
+> measured question could not be answered without. They are left out rather than guessed.
 
 ## Factions
 
@@ -21,6 +23,7 @@ Generated 2026-10-12 from 22 faction pairs.
 |---|---|
 | ADEPTA SORORITAS | ADEPTA SORORITAS |
 | ADEPTUS CUSTODES | ADEPTUS CUSTODES |
+| ADEPTUS MECHANICUS | ADEPTUS MECHANICUS |
 | AELDARI | AELDARI |
 | ASTRA MILITARUM | ASTRA MILITARUM |
 | CHAOS DAEMONS | DÉMONS DU CHAOS |
@@ -32,11 +35,14 @@ Generated 2026-10-12 from 22 faction pairs.
 | DRUKHARI | DRUKHARI |
 | EMPEROR’S CHILDREN | EMPEROR’S CHILDREN |
 | GREY KNIGHTS | GREY KNIGHTS |
+| IMPERIAL AGENTS | AGENTS IMPÉRIAUX |
 | IMPERIAL KNIGHTS | CHEVALIERS IMPÉRIAUX |
+| LEAGUES OF VOTANN | LIGUES DE VOTANN |
 | NECRONS | NÉCRONS |
 | ORKS | ORKS |
 | SPACE MARINES | SPACE MARINES |
 | SPACE WOLVES | SPACE WOLVES |
+| T'au | T'AU |
 | T’AU EMPIRE | EMPIRE T’AU |
 | THOUSAND SONS | THOUSAND SONS |
 | TYRANIDS | TYRANIDES |
@@ -62,6 +68,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | ANNIHILATION LEGION | LÉGION D'ANNIHILATION |
 | ARGENT ASSAULT | ASSAUT D’ARGENT |
 | ARMOURED INFANTRY | INFANTERIE MÉCANISÉE |
+| ARMOURED TRAILBLAZERS | PIONNIERS BLINDÉS |
 | ARMOURED WARHOST | OST BLINDÉ |
 | ARMY OF FAITH | ARMÉE DE LA FOI |
 | ASPECT HOST | OST ASPECT |
@@ -77,6 +84,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | BLADE OF ULTRAMAR | LAME D'ULTRAMAR |
 | BLITZ BRIGADE | BRIGADE BLITZ |
 | BLOOD LEGION | LÉGION DU SANG |
+| BRANDFAST OATHBAND | BANDE ASSERMENTÉE EXPRESSE |
 | BRAZEN ENGINES | MACHINES D’AIRAIN |
 | BRIDGEHEAD STRIKE | FRAPPE DE TÊTE DE PONT |
 | BRINGERS OF FLAME | PORTEUSES DE LA FLAMME |
@@ -93,6 +101,8 @@ Generated 2026-10-12 from 22 faction pairs.
 | CHANGEHOST OF DECEIT | CHANGEOST DE LA DUPERIE |
 | CHAOS CULT | CULTE DU CHAOS |
 | CHORUS OF CONDEMNATION | CHŒUR DE CONDAMNATION |
+| COHORT ACQUISITUS | COHORTE ACQUISITUS |
+| COHORT CYBERNETICA | COHORTE CYBERNETICA |
 | COMBINED ARMS | FORCES COMBINÉES |
 | CONTAGION ENGINES | MACHINES DE CONTAGION |
 | CORSAIR COTERIE | COTERIE DE CORSAIRES |
@@ -108,6 +118,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | DA BIG HUNT | LA CHASSE AU GROS |
 | DAEMONIC INCURSION | INCURSION DÉMONIAQUE |
 | DARKFLIGHT PURSUIT | POURSUITE DE SOMBREVOL |
+| DATA-PSALM CONCLAVE | CONCLAVE INFOPSAUME |
 | DEATH LORD’S CHOSEN | ÉLUS DU SEIGNEUR DE LA MORT |
 | DEATHWATCH SUPPORT | APPUI DE LA DEATHWATCH |
 | DECEPTORS | IMPOSTEURS |
@@ -120,8 +131,11 @@ Generated 2026-10-12 from 22 faction pairs.
 | DREAD TALONS | SERRES DE LA TERREUR |
 | ELDRITCH RAIDERS | PILLARDS SORCIERS |
 | ELEGANT BRUTES | BRUTES ÉLÉGANTES |
+| ERADICATION COHORT | COHORTE D'ÉRADICATION |
 | EXHIBITION OF SLAUGHTER | MASSACRE D’EXHIBITION |
 | EXPERIMENTAL PROTOTYPE CADRE | CADRE DE PROTOTYPES EXPÉRIMENTAUX |
+| EXPLORATOR MANIPLE | MANIPULE EXPLORATOR |
+| FARSEEKERS | CHERCHEURS DES CONFINS |
 | FATEFUL PERFORMANCE | REPRÉSENTATION FATIDIQUE |
 | FELLHAMMER SIEGE-HOST | OST DE SIÈGE AFFREMARTEL |
 | FIRES OF PURGATION | FEUX PURIFICATEURS |
@@ -143,8 +157,12 @@ Generated 2026-10-12 from 22 faction pairs.
 | GUARDIAN BATTLEHOST | OST DE BATAILLE DE GARDIENS |
 | HALLOWED CONCLAVE | CONCLAVE SANCTIFIÉ |
 | HALLOWED MARTYRS | MARTYRS SACRÉS |
+| HALOSCREED BATTLE CLADE | CLADE DE COMBAT HALO-SERMONNÉ |
 | HAMMER OF THE EMPEROR | MARTEAU DE L'EMPEREUR |
 | HAND OF THE DYNASTY | MAIN DE LA DYNASTIE |
+| HEARTHBAND | ÂTREBANDE |
+| HEARTHFYRE ARSENAL | ARSENAL DU FEU DE L’ÂTRE |
+| HEARTHGUARD COVENANT | CONVENTION D’ÂTREGARDES |
 | HELHUNT LANCE | LANCE DE TRAQUE INFERNALE |
 | HEXWARP THRALLBAND | SERVITUDE DU MALEWARP |
 | HOUNDPACK LANCE | LANCE HORDEDOGUE |
@@ -153,6 +171,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | HYPERCRYPT LEGION | LÉGION D'HYPERCRYPTE |
 | ICONOCLAST FIEFDOM | FIEF ICONOCLASTE |
 | IMMATERIAL INTERDICTION | INTERDICTION IMMATÉRIELLE |
+| IMPERIALIS FLEET | CLASSIS IMPERIALIS |
 | INFERNAL LANCE | LANCE INFERNALE |
 | INNER CIRCLE TASK FORCE | FORCE OPÉRATIONNELLE DU CERCLE INTÉRIEUR |
 | INVASION FLEET | FLOTTE D'INVASION |
@@ -167,10 +186,13 @@ Generated 2026-10-12 from 22 faction pairs.
 | LEGION OF EXCESS | LÉGION DE L'EXCÈS |
 | LIONS OF THE EMPEROR | LIONS DE L’EMPEREUR |
 | LORDS OF DREAD | SEIGNEURS DE L’EFFROI |
+| LORDS OF THE FORGE | SEIGNEURS DE LA FORGE |
 | LORDS OF THE WARP | SEIGNEURS DU WARP |
+| LUMINEN AUTO-CHOIR | AUTO-CHŒUR LUMINEN |
 | MADCAP MEKS | MEKS ZINZINS |
 | MECHANISED ASSAULT | ASSAUT MOTORISÉ |
 | MEDUSA'S WRATH | COLÈRE DE MEDUSA |
+| MERCENARY OATHBAND | MERCENAIRES ASSERMENTÉS |
 | MERCURIAL HOST | OST INCONSTANT |
 | MIGHT OF THE MORITOI | PUISSANCE DES MORITOI |
 | MONT’KA | MONT'KA |
@@ -185,12 +207,14 @@ Generated 2026-10-12 from 22 faction pairs.
 | PATH OF THE OUTCAST | VOIE DE L’ERRANT |
 | PEERLESS BLADESMEN | ÉPÉISTES HORS PAIR |
 | PENITENT HOST | OST PÉNITENT |
+| PERSECUTION PROSPECT | PROSPECTION PERSÉCUTRICE |
 | PHOBOS SHADOW FORCE | FORCE FURTIVE PHOBOS |
 | PHOBOS SHOCK FORCE | FORCE DE CHOC PHOBOS |
 | PLAGUE LEGION | LÉGION DE LA PESTE |
 | POSSESSED SLAUGHTERBAND | ÉCORCHERIE DE POSSÉDÉS |
 | QUESTOR FORGEPACT | FORGEPACTE DE QUESTEURS |
 | QUESTORIS COMPANIONS | COMPAGNONS QUESTORIS |
+| RAD-ZONE CORPS | CORPS DES ZONES IRRADIÉES |
 | RAPID EVISCERATION | ÉVISCÉRATION RAPIDE |
 | REALSPACE RAIDERS | PILLARDS DE L’ESPACE RÉEL |
 | REAPER’S WAGER | PARI DE LA FAUCHEUSE |
@@ -218,6 +242,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | SHOOTA BOYZ | FLING’BOYZ |
 | SIEGE REGIMENT | RÉGIMENT DE SIÈGE |
 | SILENT HUNTERS | CHASSERESSES SILENCIEUSES |
+| SKITARII HUNTER COHORT | COHORTE DE CHASSE SKITARII |
 | SKYSHROUD SPEARHEAD | FER DE LANCE LINCEUL CÉLESTE |
 | SKYSPLINTER ASSAULT | ASSAUT FÊLECIEL |
 | SOLAR SPEARHEAD | FER DE LANCE SOLAIRE |
@@ -249,6 +274,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | UNENDING SWARM | ESSAIM INÉPUISABLE |
 | VALOURSTRIKE LANCE | LANCE DE FRAPPE VALEUREUSE |
 | VANGUARD ONSLAUGHT | OFFENSIVE D'AVANT-GARDE |
+| VEILED BLADE ELIMINATION FORCE | FORCE D'ÉLIMINATION DE LAME VOILÉE |
 | VESSELS OF WRATH | VAISSEAUX DE LA COLÈRE |
 | VETERANS OF THE LONG WAR | VETERANS OF THE LONG WAR |
 | VIRULENT VECTORIUM | VECTORIUM VIRULENT |
@@ -285,11 +311,16 @@ Generated 2026-10-12 from 22 faction pairs.
 | ANCIENT | DOYEN |
 | ANGRON | ANGRON |
 | ANNIHILATION BARGE | CONSOLE D’ANNIHILATION |
+| AQUILA KILL TEAM | KILL TEAM AQUILA |
 | AQUILON CUSTODIANS | CUSTODIENS AQUILON |
+| ARCHAEOPTER FUSILAVE | ARCHÉOPTÈRE FUSILAVE |
+| ARCHAEOPTER STRATORAPTOR | ARCHÉOPTÈRE STRATORAPTOR |
+| ARCHAEOPTER TRANSVECTOR | ARCHÉOPTÈRE TRANSVECTOR |
 | ARCHON | ARCHONTE |
 | ARCO-FLAGELLANTS | ARCO-FLAGELLANTS |
 | ARES GUNSHIP | ESCORTEUR ARES |
 | ARJAC ROCKFIST | ARJAC ROCKFIST |
+| ARKANYST EVALUATOR | ÉVALUATEUR ARKANYSTE |
 | ARMIGER HELVERIN | ARMIGÈRES HELVÉRIENS |
 | ARMIGER MOIRAX | ARMIGÈRE MOIRAX |
 | ARMIGER WARGLAIVE | ARMIGÈRES HASTAIRES |
@@ -320,6 +351,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | BEASTBOSS | BOSS DRESSEUR |
 | BEASTBOSS ON SQUIGOSAUR | BOSS DRESSEUR SUR SQUIGOSAURE |
 | BEASTS OF NURGLE | BÊTES DE NURGLE |
+| BELISARIUS CAWL | BELISARIUS CAWL |
 | BIG MEK | GROS MEK |
 | BIG MEK DAKKARIG | MÉKADAKKA DE GROS MEK |
 | BIG MEK IN MEGA ARMOUR | GROS MEK EN MÉGA-ARMURE |
@@ -356,6 +388,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | BROTHERHOOD TERMINATOR SQUAD | ESCOUADE TERMINATOR DE CONFRÉRIE |
 | BRUTALIS DREADNOUGHT | DREADNOUGHT BRUTALIS |
 | BULLGRYN SQUAD | ESCOUADE DE TAUROGRYNS |
+| BURI AEGNIRSSEN | BURI AEGNIRSSEN |
 | BURNA-BOMMER | KRAMA-BOMBA |
 | BURNING CHARIOT | CHAR ARDENT |
 | C’TAN SHARD OF THE DECEIVER | ÉCHARDE C’TAN DU MYSTIFICATEUR |
@@ -369,6 +402,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | CADIAN SHOCK TROOPS | TROUPES DE CHOC CADIENNES |
 | CADRE FIREBLADE | SABRE DE FEU |
 | CALADIUS GRAV-TANK | CHAR ANTIGRAV CALADIUS |
+| CALLIDUS ASSASSIN | ASSASSIN CALLIDUS |
 | CANIS REX | CANIS REX |
 | CANONESS | CHANOINESSE |
 | CANONESS WITH JUMP PACK | CHANOINESSE À RÉACTEUR DORSAL |
@@ -439,6 +473,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | CONTORTED EPITOME | ÉPITOME TORTUEUX |
 | CONVERGENCE OF DOMINION | CONVERGENCE DE DOMINATION |
 | CORONUS GRAV-CARRIER | GRAVIPORTEUR CORONUS |
+| CORPUSCARII ELECTRO-PRIESTS | ÉLECTROPRÊTRES CORPUSCARII |
 | CORSAIR SKYREAVERS | ÉCUMEURS CÉLESTES CORSAIRES |
 | CORSAIR VOIDREAVERS | CORSAIRES NEANTARI |
 | CORSAIR VOIDSCARRED | CORSAIRES NEANTI |
@@ -449,11 +484,15 @@ Generated 2026-10-12 from 22 faction pairs.
 | CRISIS SUNFORGE BATTLESUITS | EXO-ARMURES CRISIS SUNFORGE |
 | CRONOS | CRONOS |
 | CRYPTOTHRALLS | CRYPTOSERFS |
+| CTHONIAN BESERKS | BESERKS CTHONIENS |
+| CTHONIAN EARTHSHAKERS | TREMBLETERRES CTHONIENS |
+| CULEXUS ASSASSIN | ASSASSIN CULEXUS |
 | CULTIST FIREBRAND | CULTISTE BOUTEFEU |
 | CULTIST MOB | BANDE DE CULTISTES |
 | CUSTODIAN GUARD | GARDES CUSTODIENS |
 | CUSTODIAN GUARD WITH ADRASITE AND PYRITHITE SPEARS | GARDES CUSTODIENS AVEC LANCES ADRASITE ET PYRITHITE |
 | CUSTODIAN WARDENS | VEILLEURS CUSTODIENS |
+| CYBERNETICA DATASMITH | COMPILATEUR CYBERNÉTIQUE |
 | CYCLOPS DEMOLITION VEHICLE | VÉHICULE DE DÉMOLITION CYCLOPS |
 | CYPHER | CYPHER |
 | D-CANNON PLATFORM | PLATEFORME À CANON À DISTORSION |
@@ -482,6 +521,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | DEATHMARKS | TRAQUEURS |
 | DEATHSHROUD TERMINATORS | TERMINATORS DU LINCEUL |
 | DEATHSTRIKE | DEATHSTRIKE |
+| DEATHWATCH KILL TEAM | KILL TEAM DE LA DEATHWATCH |
 | DEATHWATCH TERMINATOR SQUAD | ESCOUADE TERMINATOR DE LA DEATHWATCH |
 | DEATHWATCH VETERANS | VÉTÉRANS DE LA DEATHWATCH |
 | DEATHWING TERMINATOR SQUAD | ESCOUADE TERMINATOR DE LA DEATHWING |
@@ -502,12 +542,17 @@ Generated 2026-10-12 from 22 faction pairs.
 | DRAZHAR | DRAZHAR |
 | DROP POD | MODULE DE LARGAGE |
 | EIGHTBOUND | OCTOLIÉS |
+| EINHYR CHAMPION | CHAMPION EINHYR |
+| EINHYR HEARTHGUARD | ÂTREGARDES EINHYRS |
 | ELDRAD ULTHRAN | ELDRAD ULTHRAN |
 | ELIMINATOR SQUAD | ESCOUADE ELIMINATOR |
 | EPIDEMIUS | EPIDEMIUS |
 | ERADICATOR SQUAD WITH HEAVY BOLTERS | ESCOUADE ERADICATOR AVEC BOLTERS LOURDS |
 | ERADICATOR SQUAD WITH MELTA RIFLES | ESCOUADE ERADICATOR AVEC FUSILS FUSEURS |
 | ETHEREAL | ÉTHÉRÉ |
+| EVERSOR ASSASSIN | ASSASSIN EVERSOR |
+| EVERY MODEL HAS THE IMPERIUM KEYWORD | CHAQUE FIGURINE A LE MOT-CLÉ IMPERIUM |
+| EXACTION SQUAD | ESCOUADE D’EXACTION |
 | EXALTED EIGHTBOUND | OCTOLIÉS EXALTÉS |
 | EXALTED FLAMER | INCENDIAIRE EXALTÉ |
 | EXALTED SORCERER | SORCIER EXALTÉ |
@@ -542,6 +587,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | FOUL BLIGHTSPAWN | CORRUPTEUR NIDOREUX |
 | FUEGAN | FUEGAN |
 | FULGRIM | FULGRIM |
+| FULGURITE ELECTRO-PRIESTS | ÉLECTROPRÊTRES FULGURITES |
 | GARGANTUAN SQUIGGOTH | SQUIGGOUTH GARGANTUESQUE |
 | GARGOYLES | GARGOUILLES |
 | GAUNT’S GHOSTS | FANTÔMES DE GAUNT |
@@ -561,7 +607,9 @@ Generated 2026-10-12 from 22 faction pairs.
 | GREAT UNCLEAN ONE | GRAND IMMONDE |
 | GRETCHIN | GRETCHINS |
 | GREY HUNTERS | CHASSEURS GRIS |
+| GREY KNIGHTS TERMINATOR SQUAD | ESCOUADE TERMINATOR DES GREY KNIGHTS |
 | GREY KNIGHTS THUNDERHAWK GUNSHIP | ESCORTEUR THUNDERHAWK DES GREY KNIGHTS |
+| GRIMNYR | GRIMNYR |
 | GUARDIAN DEFENDERS | GARDIENS DÉFENSEURS |
 | GUNWAGON | KANONNIÈRE |
 | HAARKEN WORLDCLAIMER | HAARKEN WORLDCLAIMER |
@@ -572,8 +620,12 @@ Generated 2026-10-12 from 22 faction pairs.
 | HARPY | HARPIE |
 | HARRIDAN | HARIDELLE |
 | HARUSPEX | HARUSPEX |
+| HASTARII EXTERMINATORS | EXTERMINATEURS HASTARII |
+| HASTARII FUSILIERS | FUSILIERS HASTARII |
 | HAVOCS | HAVOCS |
+| HEARTHKYN WARRIORS | GUERRIERS ÂTREKOGS |
 | HEAVY INTERCESSOR SQUAD | ESCOUADE LOURDE INTERCESSOR |
+| HEKATON LAND FORTRESS | FORTERESSE MOBILE HEKATON |
 | HELBRUTE | MÉTABRUTUS |
 | HELDRAKE | MÉTADRAK |
 | HELLBLASTER SQUAD | ESCOUADE HELLBLASTER |
@@ -584,6 +636,8 @@ Generated 2026-10-12 from 22 faction pairs.
 | HEMLOCK WRAITHFIGHTER | CHASSEUR FANTÔME CONIUM |
 | HERETIC ASTARTES DAEMON PRINCE | PRINCE DÉMON DE L’HERETICUS ASTARTES |
 | HERETIC ASTARTES DAEMON PRINCE WITH WINGS | PRINCE DÉMON DE L’HERETICUS ASTARTES AILÉ |
+| HERNKYN PIONEERS | PIONNIERS HERNKOGS |
+| HERNKYN YAEGIRS | YAEGIRS HERNKOGS |
 | HEXMARK DESTROYER | DESTROYER HEXMARK |
 | HIEROPHANT | HIÉROPHANTE |
 | HIPPOGRIFF AFV | VBC HIPPOGRIFF |
@@ -605,6 +659,8 @@ Generated 2026-10-12 from 22 faction pairs.
 | IMMORTALS | IMMORTELS |
 | IMOTEKH THE STORMLORD | IMOTEKH LE SEIGNEUR DES TEMPÊTES |
 | IMPERIAL FISTS | IMPERIAL FISTS |
+| IMPERIAL NAVY BREACHERS | SAPEURS DE LA MARINE IMPÉRIALE |
+| IMPERIAL RHINO | RHINO IMPÉRIAL |
 | IMPULSOR | IMPULSOR |
 | INCEPTOR SQUAD | ESCOUADE INCEPTOR |
 | INCUBI | INCUBES |
@@ -615,6 +671,13 @@ Generated 2026-10-12 from 22 faction pairs.
 | INFERNUS SQUAD | ESCOUADE INFERNUS |
 | INFILTRATOR SQUAD | ESCOUADE INFILTRATOR |
 | INFRACTORS | INFRACTEURS |
+| INQUISITOR | INQUISITEUR |
+| INQUISITOR COTEAZ | INQUISITEUR COTEAZ |
+| INQUISITOR DRAXUS | INQUISITRICE DRAXUS |
+| INQUISITOR GREYFAX | INQUISITRICE GREYFAX |
+| INQUISITOR KROYLE | INQUISITEUR KROYLE |
+| INQUISITORIAL AGENTS | AGENTS INQUISITORIAUX |
+| INQUISITORIAL CHIMERA | CHIMERA INQUISITORIAL |
 | INTERCEPTOR SQUAD | ESCOUADE INTERCEPTOR |
 | INTERCESSOR SQUAD | ESCOUADE INTERCESSOR |
 | INTRANZIA FRAYE | INTRANZIA FRAYE |
@@ -623,6 +686,9 @@ Generated 2026-10-12 from 22 faction pairs.
 | IRON FATHER FEIRROS | VOTRE UNITÉ COÛTE |
 | IRON HANDS | IRON HANDS |
 | IRON PRIEST | PRÊTRE DE FER |
+| IRONKIN STEELJACKS WITH HEAVY VOLKANITE DISINTEGRATORS | CHAUDRONNIERS COGNATS DE FER AVEC DÉSINTÉGRATEURS VOLKANITES LOURDS |
+| IRONKIN STEELJACKS WITH MELEE WEAPONS | CHAUDRONNIERS COGNATS DE FER AVEC ARMES DE MÊLÉE |
+| IRONSTRIDER BALLISTARII | FERRO-ÉCHASSIERS BALLISTARII |
 | JAIN ZAR | JAIN ZAR |
 | JAKHALS | CHAKHALS |
 | JUDICIAR | JUDICATEUR |
@@ -630,8 +696,13 @@ Generated 2026-10-12 from 22 faction pairs.
 | KABALITE WARRIORS | GUERRIERS KABALITES |
 | KAIROS FATEWEAVER | KAIROS FATEWEAVER |
 | KAIUS KONORIUS | KAIUS KONORIUS |
+| KAPRICUS CARRIER | PORTEUR KAPRICUS |
+| KAPRICUS DEFENDERS | DÉFENSEURS KAPRICUS |
 | KARANAK | KARANAK |
 | KASRKIN | KASRKINS |
+| KASTELAN ROBOTS | ROBOTS KASTELAN |
+| KATAPHRON BREACHERS | BRÉCHEURS KATAPHRON |
+| KATAPHRON DESTROYERS | DESTRUCTEURS KATAPHRON |
 | KAYVAAN SHRIKE | KAYVAAN SHRIKE |
 | KEEPER OF SECRETS | GARDIEN DES SECRETS |
 | KHARSETH | KHARSETH |
@@ -729,6 +800,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | MEGANOBZ | MÉGANOBZ |
 | MEK | MEK |
 | MEK GUNZ | KANONS D’MEK |
+| MEMNYR STRATEGIST | STRATÈGE MEMNYR |
 | MIASMIC MALIGNIFIER | EXHAUSTEUR PANDÉMIQUE |
 | MILITARUM TEMPESTUS COMMAND SQUAD | ESCOUADE D’ÉTAT-MAJOR DU MILITARUM TEMPESTUS |
 | MINISTORUM PRIEST | PRÊTRE DU MINISTORUM |
@@ -743,6 +815,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | MUTALITH VORTEX BEAST | MUTALITHE À VORTEX |
 | MUTILATORS | MUTILATORS |
 | MYPHITIC BLIGHT-HAULERS | SEMI-CHENILLÉS MÉPHITIQUES |
+| NAVIGATOR | NAVIGATEUR |
 | NAZDREG | NAZDREG |
 | NECRON WARRIORS | GUERRIERS NÉCRONS |
 | NEKROSOR AMMENTAR | NÉKROSOR AMMENTAR |
@@ -768,6 +841,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | OGRYN BODYGUARD | GARDE DU CORPS OGRYN |
 | OGRYN SQUAD | ESCOUADE D’OGRYNS |
 | OLD ONE EYE | LE VIEUX BORGNE |
+| ONAGER DUNECRAWLER | ONAGRE DES DUNES |
 | OPHYDIAN DESTROYERS | DESTROYERS OPHYDIENS |
 | ORIKAN THE DIVINER | ORIKAN LE DEVIN |
 | ORION ASSAULT DROPSHIP | NAVETTE D'ASSAUT ORION |
@@ -801,6 +875,8 @@ Generated 2026-10-12 from 22 faction pairs.
 | PROSECUTORS | PROSECUTORS |
 | PSYCHOMANCER | PSYCHOMANCIEN |
 | PSYCHOPHAGE | PSYCHOPHAGE |
+| PTERAXII SKYSTALKERS | VAUTOURS PTERAXII |
+| PTERAXII STERYLIZORS | STÉRILISATEURS PTERAXII |
 | PURGATION SQUAD | ESCOUADE PURGATOR |
 | PURIFIER SQUAD | ESCOUADE PURIFICATOR |
 | PYROVORES | PYROVORES |
@@ -839,11 +915,13 @@ Generated 2026-10-12 from 22 faction pairs.
 | ROBOUTE GUILLIMAN | ROBOUTE GUILLIMAN |
 | ROGAL DORN BATTLE TANK | CHAR DE COMBAT ROGAL DORN |
 | ROGAL DORN COMMANDER | COMMANDANT DE ROGAL DORN |
+| ROGUE TRADER ENTOURAGE | ENTOURAGE DE LIBRE MARCHAND |
 | ROTIGUS | ROTIGUS |
 | ROYAL WARDEN | GARDE ROYAL |
 | RUBRIC MARINES | MARINES RUBRICAE |
 | RUKKATRUKK SQUIGBUGGIES | BUGGYS FOURRE-SQUIGS |
 | RUNTHERD | FOUETTARD |
+| SAGITAUR | SAGITAUR |
 | SAGITTARUM CUSTODIANS | CUSTODIENS SAGITTARI |
 | SAINT CELESTINE | SAINTE CÉLESTINE |
 | SALAMANDERS | SALAMANDERS |
@@ -861,6 +939,9 @@ Generated 2026-10-12 from 22 faction pairs.
 | SEKHETAR ROBOTS | ROBOTS SEKHETAR |
 | SERAPHIM SQUAD | ESCOUADE SÉRAPHINE |
 | SERAPTEK HEAVY CONSTRUCT | MÉCANOPODE LOURD SERAPTEK |
+| SERBERYS RAIDERS | HUSSARD SERBERYS |
+| SERBERYS SULPHURHOUNDS | SOUFREDOGUES SERBERYS |
+| SERVITOR BATTLECLADE | CLADE DE COMBAT DE SERVITORS |
 | SHADOW WEAVER PLATFORM | PLATEFORME À TISSEUR DE TÉNÈBRES |
 | SHADOWSEER | PROPHÈTE DE L’OMBRE |
 | SHADOWSWORD | SHADOWSWORD |
@@ -870,10 +951,20 @@ Generated 2026-10-12 from 22 faction pairs.
 | SHIELD-CAPTAIN ON DAWNEAGLE JETBIKE | CAPITAINE-REMPART SUR MOTOJET DAWNEAGLE |
 | SHINING SPEARS | LANCES ÉTINCELANTES |
 | SHROUD RUNNERS | COUREURS MIRAGES |
+| Sicaran | SICARAN |
+| SICARIAN INFILTRATORS | INFILTRATEURS SICARIENS |
+| SICARIAN RUSTSTALKERS | CORRÔDEURS SICARIENS |
 | SISTERS NOVITIATE SQUAD | ESCOUADE DE SŒURS NOVICES |
+| SISTERS OF BATTLE IMMOLATOR | IMMOLATOR DES SŒURS DE BATAILLE |
+| SISTERS OF BATTLE SQUAD | ESCOUADE DE SŒURS DE BATAILLE |
 | SKARBRAND | SKARBRAND |
+| SKITARII MARSHAL | MARÉCHAL SKITARIUS |
+| SKITARII RANGERS | RANGERS SKITARII |
+| SKITARII VANGUARD | PATROUILLEURS SKITARII |
 | SKORPEKH DESTROYERS | DESTROYERS SKORPEKHS |
 | SKORPEKH LORD | SEIGNEUR SKORPEKH |
+| SKORPIUS DISINTEGRATOR | DÉSINTÉGRATEUR SKORPIUS |
+| SKORPIUS DUNERIDER | GLISSEUR SKORPIUS |
 | SKULL ALTAR | AUTEL DES CRÂNES |
 | SKULL CANNON | CANON À CRÂNES |
 | SKULLMASTER | MAÎTRE DES CRÂNES |
@@ -915,11 +1006,15 @@ Generated 2026-10-12 from 22 faction pairs.
 | STRIKE SQUAD | ESCOUADE D’INCURSION |
 | STRIKE TEAM | ÉQUIPE D’ATTAQUE |
 | STRIKING SCORPIONS | SCORPIONS FOUDROYANTS |
+| SUBDUCTOR SQUAD | ESCOUADE SUBDUCTOR |
 | SUBODEN KHAN | SUBODEN KHAN |
 | SUCCUBUS | SUCCUBE |
 | SUN SHARK BOMBER | BOMBARDIER SUN SHARK |
 | SUPPORT | APPUI |
 | SWOOPING HAWKS | ÉPERVIERS VOLTIGEURS |
+| SYDONIAN DRAGOONS WITH RADIUM JEZZAILS | DRAGONS SYDONIENS AVEC JEZZAIL À RADIUM |
+| SYDONIAN DRAGOONS WITH TASER LANCES | DRAGONS SYDONIENS AVEC LANCES TASER |
+| SYDONIAN SKATROS | SKATROS SYDONIEN |
 | SYLL’ESSKE | SYLL’ESSKE |
 | TA’UNAR SUPREMACY ARMOUR | ARMURE DE SUPRÉMATIE TA’UNAR |
 | TALLYMAN | INTENDANT |
@@ -928,8 +1023,11 @@ Generated 2026-10-12 from 22 faction pairs.
 | TANKBUSTAS | KASS’TANKS |
 | TAUROX | TAUROX |
 | TAUROX PRIME | TAUROX PRIMUS |
+| TECH-PRIEST DOMINUS | TECHNOPRÊTRE DOMINUS |
 | TECH-PRIEST ENGINSEER | TECHNAUGURE |
+| TECH-PRIEST MANIPULUS | TECHNOPRÊTRE MANIPULUS |
 | TECHMARINE | TECHMARINE |
+| TECHNOARCHEOLOGIST | TECHNOARCHÉOLOGUE |
 | TECHNOMANCER | TECHNOMANCIEN |
 | TELEMON HEAVY DREADNOUGHT | DREADNOUGHT LOURD TELEMON |
 | TEMPESTUS AQUILONS | AQUILONS DU TEMPESTUS |
@@ -947,6 +1045,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | THE TWIN LANCE | LES LANCES JUMELLES |
 | THE VISARCH | LE VISARQUE |
 | THE YNCARNE | L’YNCARNE |
+| THULIA GHULD | THULIA GHULD |
 | THUNDERHAWK GUNSHIP | ESCORTEUR THUNDERHAWK |
 | THUNDERWOLF CAVALRY | CAVALERIE SUR LOUP TONNERRE |
 | TIDEWALL DRONEPORT | DRONEPORT TIDEWALL |
@@ -1001,8 +1100,11 @@ Generated 2026-10-12 from 22 faction pairs.
 | VESPID STINGWINGS | FRELONS VESPIDES |
 | VIBRO CANNON PLATFORM | PLATEFORME À CANON À VIBRATIONS |
 | VICTRIX HONOUR GUARD | GARDE D’HONNEUR VICTRIX |
+| VIGILANT SQUAD | ESCOUADE VIGILANT |
 | VIGILATORS | VIGILATORS |
+| VINDICARE ASSASSIN | ASSASSIN VINDICARE |
 | VOIDRAVEN BOMBER | BOMBARDIER KORVIDE |
+| VOIDSMEN-AT-ARMS | COSMOMARINS EN ARMES |
 | VOIDWEAVER | TISSEUR DU NÉANT |
 | VON RYAN’S LEAPERS | BONDISSEURS DE VON RYAN |
 | VULKAN HE’STAN | VULKAN HE’STAN |
@@ -1096,7 +1198,9 @@ Generated 2026-10-12 from 22 faction pairs.
 | Akshur’s Binding Runes | Runes d'Ancrage d'Akshur |
 | Alacritous Assault | Célérité de l'Assaut |
 | Alien Cunning | Ruse Extraterrestre |
+| Amulet of Auto-chastisement | Amulette d’Auto-châtiment |
 | Amulet of Tainted Vigour | Amulette de Vigueur Impie |
+| Ancestral Crest | Cimier Ancestral |
 | Ancestral Overbleed | Débordement Ancestral |
 | Ancient Weapons | Armes Antiques |
 | Animus Damper | Sourdine Spirituelle |
@@ -1105,6 +1209,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Arcane Might | Puissance des Arcanes |
 | Arcane Thralls | Serfs Occultes |
 | Arch Contaminator | Archi-contaminateur |
+| Arch-negator | Archi-négateur |
 | Archeotech Autoloaders | Autochargeurs Archéotechnologiques |
 | Archraider | Archipillard |
 | Archslaughterer | Archi-massacreur |
@@ -1112,10 +1217,12 @@ Generated 2026-10-12 from 22 faction pairs.
 | Armour of Antoninus | Armure d'Antoninus |
 | Artificer Armour | Armure d’Artificier |
 | Artificer Sarcophagus | Sarcophage d’Artificier |
+| Artisan | Artisan |
 | Aspect of Murder | Aspect du Meurtre |
 | Aspect of the Beast | Aspect de la Bête |
 | Assassins' Eye | Œil de l'Assassin |
 | Assault Hatches | Trappes d'Assaut |
+| Asset Manipulator | Manipulateur de Moyens |
 | Astral Overlap | Superposition Astrale |
 | Atomic Disintegrators | Désintégrateurs Atomiques |
 | Augury Halo | Halo-augure |
@@ -1123,13 +1230,16 @@ Generated 2026-10-12 from 22 faction pairs.
 | Auramite Sarcophagus | Sarcophages d’Auramite |
 | Auric Mantle | Manteau Aurique |
 | Auspex Triangulation Shrines | Autels-auspex de Triangulation |
+| Autoclavic Denunciation | Dénonciation Autoclavique |
 | Autodivinator | Autodivinateur |
 | Avatar of Perfection | Avatar de la Perfection |
 | Bane-forged Weapons | Armes de Maleforge |
 | Banishing Wave | Onde de Bannissement |
 | Bastion Plate | La Plate du Bastion |
+| Bastion Shield | Bouclier modèle Bastion |
 | Battalion Commander | Chef de Bataillon |
 | Battle-lust | Avidité Guerrière |
+| Battle-sphere Uplink | Relais de Sphère du Combat |
 | Beacon Angelis | Balise Angelis |
 | Bearer of the Evanescent Ion | Porteur du Bouclier Évanescent |
 | Bearer of the Iron Chalice | Porteur du Calice de Fer |
@@ -1137,11 +1247,13 @@ Generated 2026-10-12 from 22 faction pairs.
 | Bearer of the Lancer’s Sigil | Porteur du Sceau du Lancier |
 | Beckoning Blight | Fléau du Fanal |
 | Beguiling Grotesquerie | Grotesquerie Captivante |
+| Belicosa-class Capacitor Vanes | Pales de Condensateur de Classe Belicosa |
 | Berzerker Glaive | Vouge de Berzerk |
 | Bestial Aspect | Aspect Bestial |
 | Bilemaw Blight | Fléau de Gerbe-bile |
 | Biomechanical Mutation | Mutation Biomécanique |
 | Biophagic Flow | Flux Biophagique |
+| Blackweave Shroud | Suaire de Noirétoffe |
 | Blackwing Shroud | Suaire de l'Aile Noire |
 | Blade Imperator | Gladius Imperator |
 | Blade of Celerity | Lame de Célérité |
@@ -1168,9 +1280,11 @@ Generated 2026-10-12 from 22 faction pairs.
 | Brutal But Kunnin’ | Brutal Mais Ruzé |
 | Butcher Lord | Seigneur Boucher |
 | Cacophonic Accompaniment | Accompagnement Cacophonique |
+| Calculated Tenacity | Ténacité Calculée |
 | Calm Under Fire | Calme sous le Feu |
 | Camouflaged Snipers | Tireurs d’Élite Camouflés |
 | Cankerblight | Fléau du Chancre |
+| Cantic Thrallnet | Réseau-esclave Cantique |
 | Castellan’s Mark | Le Sceau du Castellan |
 | Castellum Omnivox | Omnivox Castellum |
 | Catechism of Divine Penitence | Catéchisme de Pénitence Divine |
@@ -1185,7 +1299,11 @@ Generated 2026-10-12 from 22 faction pairs.
 | Chosen of the Blood God | Élu du Dieu du Sang |
 | Chrono-impedance Fields | Champs de Chrono-impédance |
 | Chronoshard | Chrono-écharde |
+| Clandestine Infiltrator | Infiltrateur Clandestin |
+| Clandestine Operation | Opération Clandestine |
 | Clarion of Urgency | Clairon de l’Urgence |
+| Cognitive Reinforcement | Renforcement Cognitif |
+| Combat Landers | Troupes Spatioportées |
 | Competitive Streak | La Kompèt’ |
 | Conductor of Torment | Attiseur du Tourment |
 | Conduit of Chaos | Vaisseau du Chaos |
@@ -1210,20 +1328,26 @@ Generated 2026-10-12 from 22 faction pairs.
 | Da Boss is Watchin' | Eul’ Boss Vous R’garde |
 | Da Gobshot Thunderbuss | Tromblon Ratich’ |
 | Da Krunch | Krunch ! |
+| Daemon Slayer | Tueur de Démons |
 | Daemon Weapon of Nurgle | Arme-démon de Nurgle |
 | Damocles-class Uplink | Liaison de Classe Damoclès |
 | Dark Blessings | Sombre Bénédiction |
 | Dark Vitality | Sombre Vitalité |
+| Data-blessed Autosermon | Autosermon de Données Bénites |
+| Dead Reckoning | Estimation des Pertes |
 | Death Mask of Ollanius | Masque Mortuaire d'Ollanius |
 | Deathwing Assault | Assaut Deathwing |
+| Decoy Targets | Cibles-leurres |
 | Deepening Madness | Folie Croissante |
 | Defensive Mastery | Maîtrise Défensive |
+| Dêlvewerke Navigator | Navigateur de Ghâlmonde |
 | Demanding Leader | Noble Exigeant |
 | Despot’s Claim | Conquête du Despote |
 | Destabilising Predation | Prédation Déstabilisante |
 | Destroyer Ankh | Ankh de Destroyer |
 | Diabolic Savant | Savant Diabolique |
 | Diamond of Distortion | Diamant de Distorsion |
+| Digital Weapons | Armes Digitales |
 | Dimensional Overseer | Superviseur Dimensionnel |
 | Dimensional Sanctum | Sanctuaire Dimensionnel |
 | Disciple of Khorne | Disciple de Khorne |
@@ -1248,8 +1372,10 @@ Generated 2026-10-12 from 22 faction pairs.
 | Efficient Aggression | Agressivité Efficiente |
 | Eldritch Nightmare | Cauchemar Surnaturel |
 | Eldritch Vortex of E’Taph | Vortex Ésotérique d'E'Taph |
+| Electromiasmic Brazier | Brasero Électromiasmatique |
 | Elevated Might | Puissance Élevée |
 | Elixir of the Corpse Courts | Élixir des Cours de Cadavres |
+| Emotionless Clarity | Clarté Impassible |
 | Empowered Manifestation | Manifestation Renforcée |
 | Empyric Onslaught | Assaut Empyréen |
 | Empyric Suffusion | Imprégnation Empyréenne |
@@ -1265,6 +1391,8 @@ Generated 2026-10-12 from 22 faction pairs.
 | Entropic Knell | Glas Entropique |
 | Ephemeral Tome | Grimoire Éphémère |
 | Eruption of Vitality | Éruption de Vitalité |
+| Esoteric Explosives | Explosifs Ésotériques |
+| Etacarn SB9 Targeting Implant | Implant de Ciblage EtaCarn SB9 |
 | Eternal Conqueror | Conquérant Éternel |
 | Eternal Madness | Folie Éternelle |
 | Ethereal Pathway | Chemin Éthérique de la Toile |
@@ -1276,7 +1404,9 @@ Generated 2026-10-12 from 22 faction pairs.
 | Exemplar of the Mont’ka | Parangon du Mont'ka |
 | Exemplary Officer | Officier Exemplaire |
 | Exotic Munitions | Munitions Exotiques |
+| Explorator Dispensation | Dotation d’Exploration |
 | Extra Sneaky | Super Sournois |
+| Eye for Weakness | Déceleur de Points Faibles |
 | Eye of Abaddon | L’Œil d’Abaddon |
 | Eye of Affliction | Œil de l’Affliction |
 | Eye of Oblivion | L’Œil de l’Oubli |
@@ -1292,6 +1422,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | False Majesty | Fausse Majesté |
 | Falsehood | Fausseté |
 | Fanged Leer | Regard Perfide |
+| Fârstrydr Node | Nodule ÂrpentR |
 | Faultless Opportunist | Opportuniste Infaillible |
 | Favoured of Khorne | Favori de Khorne |
 | Fell Harvester | Affrécolteur |
@@ -1302,6 +1433,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Fire and Fury | Feu et Fureur |
 | Firstdrawn Blade | Permière Lame au Clair |
 | Flash Grenades | Grenades Éblouissantes |
+| Fleetmaster | Maître de Flotte |
 | Fleshmetal Fusion | Fusion Métallodermique |
 | Flowing Flesh | Chair Fluide |
 | Flyboss | Boss Zaviateur |
@@ -1309,6 +1441,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Font of Spores | Fontaine de Spores |
 | Forge’s Blessing | Bénédiction de la Forge |
 | Forged in Battle | Forgés par la Bataille |
+| Formidable Resolve | Détermination Formidable |
 | Fratricidal Trophies | Trophées Fratricides |
 | Frenzied Ferocity | Férocité Frénétique |
 | Frenzied Focus | Transe Frénétique |
@@ -1320,16 +1453,20 @@ Generated 2026-10-12 from 22 faction pairs.
 | Gateways to Glory | Portails vers la Gloire |
 | Gauntlet of Compression | Gantelet de Compression |
 | Gaze of Ynnead | Regard d'Ynnead |
+| Genetor | Genetor |
 | Gift of Foresight | Don de Prescience |
 | Gift of Terran Artifice | Don des Artificiers de Terra |
+| Gift of the Prescient | Don des Prescients |
 | Glory Hog | Coureur de Gloire |
 | Gnarlskin Experimentor | Maître d’Expériences Calleuses |
 | Gore-stained Veterans | Vétérans Maculés de Sang |
 | Grand Strategist | Grand Stratège |
 | Gravitic Bolas | Bolas Gravitiques |
+| Graviton Vault | Écrin à Gravitons |
 | Greyveil Hex | Maléfice du Voile Gris |
 | Grimnar’s Mark | Marque de Grimnar |
 | Grimoire of Conjunctions | Grimoire des Conjonctions |
+| Grimoire of True Names | Grimoire des Noms Véritables |
 | Guerrilla Honours | Honneurs de Guérilla |
 | Guiding Presence | Guiding Presence |
 | Gunnery Honours | Honneurs d’Artilleur |
@@ -1342,6 +1479,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Helm of The Fly King | Heaume du Roi des Mouches |
 | Herald of Triumph | Héraut du Triomphe |
 | Heretek Adept | Adepte Hérétek |
+| High Kâhl | Grand Kâhl |
 | Higher Duty | Devoir Supérieur |
 | Honour Indefatigable | Honneur Inoxydable |
 | Honour of Vigilance | Honneur Vigilant |
@@ -1361,6 +1499,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Hyperstimm Trafficker | Hypernarcotrafiquante |
 | Icon of War | Icône Guerrière |
 | Iconoclast Idol (Aura) | Idole Iconoclaste (Aura) |
+| Ignis Judicium | Ignis Judicium |
 | Immolator | Immolator |
 | Immovable Conquerors | Conquérants Inamovibles |
 | Imperium’s Sword | Glaive de l’Imperium |
@@ -1378,6 +1517,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Infernal Puppeteer | Marionnettiste Infernal |
 | Informant Network | Réseau d’Informateurs |
 | Ingrained Superiority | Supériorité Enracinée |
+| Inloaded Lethality | Létalité Téléchargée |
 | Insectile Murmuration | Murmure d’Insectes |
 | Inspirational Exemplar | Exemple Galvanisant |
 | Instinctive Defence | Défense Instinctive |
@@ -1385,10 +1525,13 @@ Generated 2026-10-12 from 22 faction pairs.
 | Interred Expertise | Expertise Inhumée |
 | Intoxicating Elixir | Élixir Enivrant |
 | Intoxicating Musk | Musc Enivrant |
+| Introneural Biotech | Biotechnologie Intraneurale |
 | Invigorated Mechatendrils | Mécavrilles Vigoureuses |
+| Iron Ambassador | Ambassadeur de Fer |
 | Iron Artifice | Artifice de Fer |
 | Iron Surplice of Saint Istalela | Surplis de Fer de Sainte Istalela |
 | Ironbound Enmity | Hostilité Forgée |
+| Ironskein | Ferrotrame |
 | It Came from da Drops | Échappé d’la Fosse |
 | Kaptin's Hat | Chapo du Kap’tain’ |
 | Key of Ghosts | Clef des Fantômes |
@@ -1406,26 +1549,33 @@ Generated 2026-10-12 from 22 faction pairs.
 | Leaping Shadows | Ombres Bondissantes |
 | Leechbite Plate | Plate-sangsue |
 | Legacy Sidearm | Pistolet Patrimonial |
+| Liber Heresius | Liber Heresius |
 | Light of Clarity | Lueur de Clarté |
 | Linebreaker Onslaught | Offensive Briseuse de Ligne |
 | Litanies of Faith | Litanies de la Foi |
 | Living Carapace | Carapace Vivante |
 | Loathsome Dexterity | Dextérité Répugnante |
+| Logis | Logos |
 | Long-range Scout | Éclaireur Longue Distance |
 | Loping Predator | Prédateur Véloce |
 | Lord of Forbidden Lore | Seigneur du Savoir Interdit |
+| Lord of Machines | Seigneur des Machines |
 | Lord of the Ravenwing | Seigneur de la Ravenwing |
 | Lord of the Rubricae | Seigneur des Rubricae |
 | Lord of the Walking Pox | Seigneur de la Vérole Ambulante |
 | Lucid Eye | Œil Lucide |
 | Maggot Maws | Gueules d'Asticots |
+| Magos | Magos |
 | Magos Questoris | Magos Questoris |
 | Malevolent Heraldry | Héraldique Maléfique |
 | Malice Made Manifest | Malveillance Incarnée |
 | Malicious Vigour | Vigueur Malveillante |
+| Malphonic Susurrus | Susurrus Maléphonique |
 | Mandulian Reliquary | Reliquaire de Mandulis |
+| Mantle of Elders | Manteau des Anciens |
 | Mantle of Gloom | Manteau d'Obscurité |
 | Mantle of Ophelia | Manteau d’Ophelia |
+| Mantle of the Gnosticarch | Manteau du Gnosticarque |
 | Mantle of Wisdom | Manteau de Sagesse |
 | Manual of Saint Griselda | Manuel de Sainte Griselda |
 | Mark of Devotion | Marque de la Dévotion |
@@ -1435,6 +1585,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Mark of the Soul Forges | Marque de la Forge des Âmes |
 | Martial Paragon | Parangon Martial |
 | Martial Philosopher | Philosophie Martiale |
+| Martial Signatum Amplificator | Amplificateur de Sceau Martial |
 | Martial Tuition | Tutorat Martial |
 | Mask of Secrets | Masque des Secrets |
 | Master Artisan | Maître Artisan |
@@ -1444,9 +1595,13 @@ Generated 2026-10-12 from 22 faction pairs.
 | Master Regenesist | Maître Régénériste |
 | Master Repugnomancer | Maître Répugnomancien |
 | Master-forged Firearms | Armes à Feu de Facture Magistrale |
+| Mechanicus Locum | Mechanicus Locum |
 | Mekwaaagh! Mastermind | J’ni d’la Mékawaaagh! |
 | Mentor’s Pride | Fierté du Mentor |
+| Mercenary Prospector | Prospecteur Mercenaire |
 | Metalodermal Tesla Weave | Gaze Tesla Métallodermique |
+| Metaphysical Brokerage | Courtage Métaphysique |
+| Micromelta Rounds | Munitions à Microfusion |
 | Minefield Detail | Démineurs Attitrés |
 | Miniaturised Nebuloscope | Nébuloscope Miniaturisé |
 | Mirage Field | Champ Mirage |
@@ -1458,6 +1613,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Morghenna’s Curse | Malédiction de Morghenna |
 | Morgog’s Finkin’ Cap | Casque à Ruze de Morgog |
 | Mortality Shroud (Aura) | Linceul Mortel (Aura) |
+| Multiwave System Jammer | Système de Brouillage Multibande |
 | Murder-forged Entity | Entité Forgée pour le Meurtre |
 | Murder’s Jest | Farce du Meurtrier |
 | Murdermind | Esprit Meurtrier |
@@ -1465,6 +1621,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Mysterious Guardian | Gardien Mystérieux |
 | Narthecis Gauntlet | Gantelet Narthecis |
 | Naturalised Camouflage | Camouflage Naturel |
+| Necromechanic | Nécromécanicien |
 | Needle of Nurgle | Seringue de Nurgle |
 | Negation Emitters | Émetteurs Nullificateurs |
 | Nemesis Rounds | Munitions Némésis |
@@ -1476,27 +1633,35 @@ Generated 2026-10-12 from 22 faction pairs.
 | Nightforged Battery (Upgarde) | Batterie Noctiforgée |
 | NIGHTMARE SHROUD | Linceul de Cauchemar |
 | Nightmare’s Master | Maître du Cauchemar |
+| No Escape | No Escape |
 | Noctilith Mantle | Coiffe de Noctilithe |
+| Nomad Strategist | Stratège Nomade |
 | Nomadic Hunter | Chasseur Nomade |
 | Null Nodules | Nodules Nullificateurs |
 | Oath of Macragge | Serment de Macragge |
+| Oathbound Speculator | Spéculateur Assermenté |
 | Oblivion Knight | Chevalière de l’Oubli |
 | Occulus Infernum | Occulus Infernum |
 | Octagram of Conjuration | Octogramme de Conjuration |
 | Ocular Adaptation | Adaptation Oculaire |
 | Ominous Presence | Présence Funeste |
+| Omnicogitator | Omnicogitateur |
+| Omnissiah’s Fury | Fureur de l'Omnimessie |
 | Omnissian Unguents | Onguents de l'Omnimessie |
 | One Foot in the Future | Un Pied dans le Futur |
+| Optimised Attack Lines | Lignes d’Attaque Optimisées |
 | Orbs of Unlife | Orbe d’Anti-vie |
 | Osseus Key (Aura) | La Clef Osseus (Aura) |
 | Osteoclave Fulcrum | Axe Ostéoclave |
 | Pact of Cursed Pinions | Pacte des Rémiges Maudites |
 | Pact of Destruction | Pacte de Destruction |
+| Pan-spectral Lockons | Verrouilleurs Panspectraux |
 | Panoply of the Cursed Knights | Panoplie des Chevaliers Maudits |
 | Panoptispex | Panoptispex |
 | Paragon of Sanctity | Parangon de Sainteté |
 | Parasitic Biomorphology | Biomorphologie Parasite |
 | Parasitic Woe‑reaper | Parasite Moissonneur |
+| Peerless Eradicator | Éradicateur Infaillible |
 | Pennant of Silvered Fury | Fanion de Fureur Argentée |
 | Perfectly Adapted | Parfaite Adaptation |
 | Perfervid Haste | Précipitation Fervente |
@@ -1508,6 +1673,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Phial of the Abyss | Fiole des Abysses |
 | Phoenix Gem | Gemme du Phénix |
 | Piercing Talons | Serres Perforantes |
+| Piledriver | Marteau-pilon |
 | Pirate Prince | Prince Pirate |
 | Plagueveil | Voile de Peste |
 | Plasma Accelerator Rifle | Fusil Accélérateur à Plasma Froid |
@@ -1520,6 +1686,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Praesidius | Praesidius |
 | Precision of the Patient Hunter | Précision du Chasseur Patient |
 | Precognicient Volleys | Salves Précognitives |
+| Precursive Judgement | Jugement Précurseur |
 | Predestined Coordinates | Coordonnées Prédestinées |
 | Prelocational Optimiser | Optimisateur de Prélocalisation |
 | Prelude Performer | Artiste du Préambule |
@@ -1542,9 +1709,12 @@ Generated 2026-10-12 from 22 faction pairs.
 | Purity of Purpose | Pureté d’Action |
 | Putrid Carapace | Carapace Putride |
 | Pyresoul | Âme Ardente |
+| Quake Multigenerator | Multigénérateur Sismique |
+| Quake Supervisor | Superviseur de Séisme |
 | Quantum Abacus | Boulier Quantique |
 | Quantum Goad | Aiguillon Quantique |
 | Quickening Foci | Mantras d’Accélération |
+| Radial Suffusion | Suffusion Radiale |
 | Radiant Champion | Champion Rayonnant |
 | Radiant Mantle | Manteau Radieux |
 | Raid Leader | Chef de Raid |
@@ -1575,7 +1745,9 @@ Generated 2026-10-12 from 22 faction pairs.
 | Sanctic Reaper | Faucheuse Séraphique |
 | Sanctified Amulet | Amulette Sanctifiée |
 | Sanctified in Slaughter | Sanctification par le Massacre |
+| Sanctified Ordnance | Matériel Sanctifié |
 | Sanctuary | Sanctuaire |
+| Saturation Rounds | Munitions à Saturation |
 | Scare Gas Grenades | Grenades Cauchemars |
 | Seal of Shrouding | Sceau de Dissimulation |
 | Seersight Strike | Attaque Presciente |
@@ -1587,8 +1759,10 @@ Generated 2026-10-12 from 22 faction pairs.
 | Shimmerstone | Pierre Miroitante |
 | Shriekworm Familiar | Familier Hurlever |
 | Shroud of Obfuscation | Voile d’Obscurité |
+| Shroudwërke Talismans | Talismans Embrümonde |
 | Sigil of Exigence | Sceau d'Exigence |
 | Sigil of the Hunt | Symbole de la Chasse |
+| Signature Restoration | Restauration Distinctive |
 | Singular Will | Volonté Singulière |
 | Singularity Matrix | Matrice de Singularité |
 | Sixty-sixth Seal | Sceau Soixante-six |
@@ -1625,6 +1799,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Starflare Ignition System | Système d'Allumage Starflare |
 | Stave Abominus | Bâton Abominus |
 | Stave of Kurnous | Sceptre de Kurnous |
+| Stealth-screened Cybercanids | Cybercanidés Furfifs |
 | Steeped in Suffering | Imprégné de Souffrance |
 | Stone of Eldritch Fury | Pierre de Fureur Surnaturelle |
 | Storm of Whispers | Tempête de Murmures |
@@ -1642,6 +1817,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Superior Creation | Création Supérieure |
 | Supernova Launcher | Lanceur de Supernova |
 | Surgical Precision | Précision Chirurgicale |
+| Surgical Saboteur | Saboteur Chirurgical |
 | Surly as a Squiggoth | Méchant kom’ un Squiggouth |
 | Survival Gear | Équipement de Survie |
 | Swollen with Power | Bouffi de Puissance |
@@ -1650,6 +1826,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Synaptic Linchpin | Pilier Synaptique |
 | Synaptic Strategy | Stratégie Synaptique |
 | Synaptoprescience | Synaptoprescience |
+| Tactical Alchemy | Alchimie Tactique |
 | Tactical Insight | Sagacité Tactique |
 | Tactical Perfection | Perfection Tactique |
 | Tales of Heroism | Contes d’Héroïsmes |
@@ -1663,6 +1840,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Tellyporta Boss | Boss à Télatépula |
 | Temperamental Shokka | Shokkeur Caractériel |
 | Tempered in Battle (Aura) | Trempé dans les Combats (Aura) |
+| Temporcopia | Temporcopia |
 | Tempting Addendum | Addenda Tentant |
 | Tendrilous Emissions | Vrilles-effluves |
 | Terrorglut Parasite | Parasite Terrorisant |
@@ -1682,6 +1860,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Thundercowl Turbines | Turbines Ténébreuses |
 | Timeless Strategist | Stratège Atemporel |
 | Titan Killer | Tueur de Titans |
+| TL-4ø9 | TL-4ø9 |
 | Tome of Bounteous Blessings | Grimoire des Bienfaits Abondants |
 | Tome of Forbidden Ways | Grimoire des Recours Interdits |
 | Tome of True Names | Registre des Noms Véritables |
@@ -1689,10 +1868,12 @@ Generated 2026-10-12 from 22 faction pairs.
 | Torc of Morai-Heg | Torque de Morai‑Heg |
 | Touched by the Warp | Touché par le Warp |
 | Towering Arrogance | Arrogance Suprême |
+| Transoracular Dyad Wafers | Plaquettes Dyades Transoraculaires |
 | Tremor Senses | Sensibilité Sismique |
 | Triptych of Judgement | Triptyque du Jugement |
 | Triptych of the Macharian Crusade | Triptyque de la Croisade Macharienne |
 | Tripwires | Fils de Détente |
+| Trivärg Cyber Implant | Cyber-implant Trivärg |
 | Trygon Prime | Primat Trygon |
 | Tyrant’s Lash | Fouet du Tyran |
 | Tyrant’s Shadow | Ombre du Tyran |
@@ -1700,6 +1881,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Umbral Raptor | Rapace de l'Ombre |
 | Umbralefic Crystal | Cristal d'Umbraléfices |
 | Unflinching Will | Volonté Inflexible |
+| Universal Anathema | Anathème Universel |
 | Unleash Hell | Déchaînement Infernal |
 | Unmasking Suite | Panoplie de Démasquage |
 | Unravelled Fates | Destins Réprimés |
@@ -1708,6 +1890,7 @@ Generated 2026-10-12 from 22 faction pairs.
 | Veil of Darkness | Voile de Ténèbres |
 | Veil of Medrengard | Voile de Medrengard |
 | Veiled Blade | Lame Voilée |
+| Veiled Hunter | Chasseur Voilé |
 | Venator Omni-auspex | Omni-auspex Venator |
 | Venerable Champion (Aura) | Champion Vénérable (Aura) |
 | Vengeful Tread | Foulée Vengeresse |
@@ -1717,10 +1900,12 @@ Generated 2026-10-12 from 22 faction pairs.
 | Veteran of the Kataphraktoi | Vétéran des Kataphraktoi |
 | Vigilance of Titan | Vigilance de Titan |
 | Vile Vigour | Vigueur Infecte |
+| Vingh’s Wafers of Dynamism | Plaquettes Dynamisantes de Vingh |
 | Violent Demise | Trépas Violent |
 | Visions of Virulence | Visions de Virulence |
 | Voice of the Tyrant | La Voix du Tyran |
 | Voidstone | Pierre du Néant |
+| Voltagheist Reliquary | Reliquaire Voltagheist |
 | Walking Rampart | Rempart Ambulant |
 | War-tempered Artifice | Artisan Aguerri |
 | Warmaster’s Gift | Présent du Maître de Guerre |
@@ -1742,11 +1927,20 @@ Generated 2026-10-12 from 22 faction pairs.
 | Webway Walker | Arpenteur de la Toile |
 | Willbreaker | Briseur de Volonté |
 | Wimp-kickaz | Korrigeurs eud’ Mauviet’ |
+| Witch Hunter | Chasseur de Sorciers |
 | Witherbone Pipes | Biniou Gâté |
 | Wolf-Touched | Marque du Loup |
+| Writ of Acquisition | Décret d’Acquisition |
 | Writ of Compunction | Ordonnance de Componction |
 | Wyredjinn | Fibrodjinn |
 | Wyrmslayer Divination | Divination du Tueur de Guivre |
+
+## Weapons (hand-set)
+
+| English | Français |
+|---|---|
+| Krak | KRAK |
+| Rapier | RAPIER |
 
 ## Rules (hand-set)
 
