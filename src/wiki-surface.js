@@ -1183,26 +1183,35 @@ function ledgerName(f) { return rowDisplay(f.heading).name; }
 function ledgerPath(f) { return rowDisplay(f.heading).path.join(' \u203a '); }
 function ledgerUsedRow(f, state, ctx, quoted) {
   var li = el('li', 'fitem cited');
+  var head = el('div', 'lhead');
   var btn = el('button', 'lrow');
   btn.type = 'button';
   btn.appendChild(el('span', 'lname', ledgerName(f)));
   var path = ledgerPath(f);
   if (path) btn.appendChild(el('span', 'lpath', path));
-  li.appendChild(btn);
+  // task-27: a ledger row is a tree row - the tap opens the door the setting
+  // names (In the book: the drawer at the record inline; Quick read: the record
+  // dialog), and the `...` sheet carries the reader's three actions. The inline
+  // excerpt expand is gone: the record is one tap away, and a row that only
+  // expands is a dead end (Mandal, 2026-10-19).
+  btn.setAttribute('aria-label', ctx.t('recordOpen') + ': ' + ledgerName(f));
+  btn.addEventListener('click', function (ev) { ev.preventDefault(); ctx.openDoor(state, f); });
+  head.appendChild(btn);
+  var more = el('button', 'fmore', String.fromCharCode(8943));
+  more.type = 'button';
+  more.setAttribute('aria-label', ctx.t('findingActions'));
+  more.title = ctx.t('findingActions');
+  more.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); ctx.findingSheet(state, f); });
+  head.appendChild(more);
+  li.appendChild(head);
   if (quoted) {
     // The words are already above; repeating them here would be the loudest
     // thing in the ledger and would say nothing new.
     li.appendChild(el('div', 'lmark', ctx.t('quotedAbove')));
-    return li;
   }
-  var text = el('div', 'ftext');
-  text.hidden = true;
-  text.appendChild(ctx.markTerms(String(f.excerpt || ''), (f.leg === 'lexical' || f.leg === 'both') ? f.matchedTerms : []));
-  btn.addEventListener('click', function (ev) { ev.preventDefault(); text.hidden = !text.hidden; });
-  li.appendChild(text);
   return li;
 }
-function ledgerResidue(rest, ctx) {
+function ledgerResidue(rest, state, ctx) {
   var wrap = el('div');
   var btn = el('button', 'resid');
   btn.type = 'button';
@@ -1217,9 +1226,15 @@ function ledgerResidue(rest, ctx) {
   list.hidden = true;
   for (var i = 0; i < rest.length; i++) {
     var li = el('li', 'fitem res');
-    li.appendChild(el('span', 'rname', ledgerName(rest[i])));
+    // task-27: a residue row opens the door too; only the GROUP expands.
+    var row = el('button', 'rrow');
+    row.type = 'button';
+    row.appendChild(el('span', 'rname', ledgerName(rest[i])));
     var p = ledgerPath(rest[i]);
-    if (p) li.appendChild(el('span', 'rpath', p));
+    if (p) row.appendChild(el('span', 'rpath', p));
+    row.setAttribute('aria-label', ctx.t('recordOpen') + ': ' + ledgerName(rest[i]));
+    (function (rec) { row.addEventListener('click', function (ev) { ev.preventDefault(); ctx.openDoor(state, rec); }); })(rest[i]);
+    li.appendChild(row);
     list.appendChild(li);
   }
   btn.addEventListener('click', function (ev) {
@@ -1233,7 +1248,7 @@ function ledgerResidue(rest, ctx) {
   wrap.appendChild(list);
   return wrap;
 }
-function rulingLedger(findings, state, ctx) {
+function rulingLedger(findings, state, ctx, pending) {
   var judge = state.judge || {};
   var answered = judge.answered === true;
   var usedNums = [];
@@ -1247,8 +1262,10 @@ function rulingLedger(findings, state, ctx) {
   var used = [];
   for (var i = 0; i < order.length; i++) if (usedNums.indexOf(order[i].n) !== -1) used.push(order[i]);
   // A refusal (or a not-a-question) cites nothing: the nearest three are shown in
-  // full and the rest collapse like any other residue.
-  if (!used.length) used = order.slice(0, 3);
+  // full and the rest collapse like any other residue. Before the ruling exists
+  // (pending) the rows are the ranked list the reader is watching arrive, so the
+  // top five are shown, exactly as the list always did.
+  if (!used.length) used = order.slice(0, pending ? 5 : 3);
   var usedIds = {};
   for (var u = 0; u < used.length; u++) usedIds[used[u].id] = true;
   var rest = [];
@@ -1256,14 +1273,14 @@ function rulingLedger(findings, state, ctx) {
   // task-25: the ledger is not a card - the mockup has no border around it.
   var card = el('div', 'ledger');
   var head = el('div', 'fhead');
-  head.appendChild(el('h2', null, answered ? ctx.t('findingsLedger') : ctx.t('nearestPassages')));
-  head.appendChild(el('span', 'cnt', String(order.length) + ' \u00b7 ' + used.length + ' read'));
+  head.appendChild(el('h2', null, (answered || pending) ? ctx.t('findingsLedger') : ctx.t('nearestPassages')));
+  head.appendChild(el('span', 'cnt', pending ? String(order.length) : String(order.length) + ' \u00b7 ' + used.length + ' read'));
   card.appendChild(head);
   var ol = el('ol', 'cites');
   var quotedFrom = answered && judge.quote ? judge.from : null;
   for (var k = 0; k < used.length; k++) ol.appendChild(ledgerUsedRow(used[k], state, ctx, used[k].n === quotedFrom));
   card.appendChild(ol);
-  if (rest.length) card.appendChild(ledgerResidue(rest, ctx));
+  if (rest.length) card.appendChild(ledgerResidue(rest, state, ctx));
   return card;
 }
 
@@ -1322,31 +1339,38 @@ function findingsCard(findings, counts, cited, state, ctx) {
     // noise, and an accidental tap must not spend a judge and a writer. The
     // caret's order travels with the ids, so the second answer is written from
     // the passages in the order the reader put them.
-    var positive = state.positive || [];
-    var kept = [];
-    for (var k1 = 0; k1 < state.shownIds.length; k1++) {
-      var id1 = state.shownIds[k1];
-      if (state.keep[id1] !== false && positive.indexOf(id1) !== -1) kept.push(id1);
-    }
-    for (var k2 = 0; k2 < state.shownIds.length; k2++) {
-      var id2 = state.shownIds[k2];
-      if (state.keep[id2] !== false && positive.indexOf(id2) === -1) kept.push(id2);
-    }
-    var droppedN = state.shownIds.length - kept.length;
-    var foot = el('div', 'rerunfoot');
-    foot.appendChild(el('div', 'note', ctx.t('rerankHelp')));
-    var again = el('button', 'rerunbtn', ctx.t('rerankButton'));
-    again.type = 'button';
-    again.disabled = !droppedN || !kept.length;
-    again.addEventListener('click', function () {
-      ctx.rerank({ question: ctx.questionValue(state), asked: state.asked, over: state.traceId, keep: kept, shown: state.shownIds, append: true, english: true });
-    });
-    foot.appendChild(again);
-    card.appendChild(foot);
+    card.appendChild(rerankFooter(state, ctx));
   }
   var pickFoot = pickRow(state, ctx);
   if (pickFoot) card.appendChild(pickFoot);
   return card;
+}
+
+// task-27: the manual-rerank footer, in one place: the ledger renders it in the
+// pre-ruling and post-ruling states alike, so the reader's marks and the re-ask
+// never depend on which list shape is on screen.
+function rerankFooter(state, ctx) {
+  var positive = state.positive || [];
+  var kept = [];
+  for (var k1 = 0; k1 < state.shownIds.length; k1++) {
+    var id1 = state.shownIds[k1];
+    if (state.keep[id1] !== false && positive.indexOf(id1) !== -1) kept.push(id1);
+  }
+  for (var k2 = 0; k2 < state.shownIds.length; k2++) {
+    var id2 = state.shownIds[k2];
+    if (state.keep[id2] !== false && positive.indexOf(id2) === -1) kept.push(id2);
+  }
+  var droppedN = state.shownIds.length - kept.length;
+  var foot = el('div', 'rerunfoot');
+  foot.appendChild(el('div', 'note', ctx.t('rerankHelp')));
+  var again = el('button', 'rerunbtn', ctx.t('rerankButton'));
+  again.type = 'button';
+  again.disabled = !droppedN || !kept.length;
+  again.addEventListener('click', function () {
+    ctx.rerank({ question: ctx.questionValue(state), asked: state.asked, over: state.traceId, keep: kept, shown: state.shownIds, append: true, english: true });
+  });
+  foot.appendChild(again);
+  return foot;
 }
 
 function sortedFindings(list) {
@@ -1493,11 +1517,15 @@ function devPanel(f, state, ctx) {
   window.WIKI_SURFACE_API = {
     findings: function (host, state, ctx) {
       host.textContent = '';
-      // task-24 (J4): once a verdict exists the findings are the ruling's ledger -
-      // the passages it used in full, the rest collapsed. Before that they are the
-      // ranked list the reader watches arrive.
-      if (state && state.judge) { host.appendChild(rulingLedger(sortedFindings(state.findings || []), state, ctx)); return; }
-      host.appendChild(findingsCard(state.findings, state.counts, state.cited, state, ctx));
+      // task-27: the ledger is the page from the moment the findings arrive, not
+      // only after the ruling - the old bordered card with its chips is never on
+      // screen during a run. Before the verdict it lists the ranked passages;
+      // after it, the cited ones. The marks and the re-ask footer ride under both.
+      var list = sortedFindings(state.findings || []);
+      host.appendChild(rulingLedger(list, state, ctx, !state.judge));
+      if (state.selectable && !state.rerun) host.appendChild(rerankFooter(state, ctx));
+      var pickFoot = pickRow(state, ctx);
+      if (pickFoot) host.appendChild(pickFoot);
     },
     findingOrder: function (findings, cited, state, ctx) { return heroOrder(findings, cited, state, ctx); },
     displayTitle: displayTitle,

@@ -39,11 +39,28 @@ ok('the fallback with no answer is the recommendation line', /t\('rulingStart'\)
 
 // --- the ledger: cited in full, the rest one collapsed line -------------------
 ok('the ledger renderer exists', /function rulingLedger/.test(surface) && /function ledgerUsedRow/.test(surface) && /function ledgerResidue/.test(surface));
-ok('the ledger is used once a verdict exists', /state\.judge\) \{ host\.appendChild\(rulingLedger/.test(surface));
+// task-27: the ledger is the page from the moment the findings arrive, before and
+// after the verdict - the old bordered card is never rendered during a run.
+ok('the ledger is the list in every state', /host\.appendChild\(rulingLedger\(list, state, ctx, !state\.judge\)\)/.test(surface) && !/host\.appendChild\(findingsCard/.test(surface));
 ok('the used passages are the ruling\'s own numbers', /add\(judge\.from\)/.test(surface) && /judge\.exceptions/.test(surface) && /judge\.passages/.test(surface));
-ok('a refusal shows the nearest three in full', /if \(!used\.length\) used = order\.slice\(0, 3\)/.test(surface) && /t\('nearestPassages'\)/.test(surface));
+ok('a refusal shows the nearest three in full', /if \(!used\.length\) used = order\.slice\(0, pending \? 5 : 3\)/.test(surface) && /t\('nearestPassages'\)/.test(surface));
 ok('the quoted row is marked instead of repeating the words', /t\('quotedAbove'\)/.test(surface) && /lmark/.test(surface));
-ok('the excerpt is one tap away, not above the answer', /text\.hidden = true/.test(surface) && /ledgerPath|ftext/.test(surface));
+
+// --- task-27: the ledger row is a door and a sheet, not a dead end ------------
+const usedRowSrc = surface.slice(surface.indexOf('function ledgerUsedRow'), surface.indexOf('function ledgerResidue'));
+const residueSrc = surface.slice(surface.indexOf('function ledgerResidue'), surface.indexOf('function rulingLedger'));
+ok('a ledger row opens the door the setting names', /ctx\.openDoor\(state, f\)/.test(usedRowSrc) && /lrow/.test(usedRowSrc));
+ok('a ledger row carries the reader\'s sheet again', /ctx\.findingSheet\(state, f\)/.test(usedRowSrc) && /'fmore'/.test(usedRowSrc));
+ok('the inline excerpt toggle is gone', usedRowSrc.indexOf('text.hidden') === -1 && usedRowSrc.indexOf('ftext') === -1);
+ok('a residue row opens the door too', /ctx\.openDoor\(state, rec\)/.test(residueSrc) && /'rrow'/.test(residueSrc));
+ok('the residue GROUP still expands', /btn\.addEventListener\('click'/.test(residueSrc) && /list\.hidden = !open/.test(residueSrc));
+
+// --- task-27: the waiting states and the second-judge review ------------------
+ok('the waiting ruling is one dim line in the ruleblock, no card', /el\('div', 'ruleblock'\)/.test(page) && /el\('div', 'note waiting', t\('readingFindings'\)\)/.test(page) && /el\('div', 'note waiting', t\('waitingFindings'\)\)/.test(page));
+ok('the second-judge review is stated while it runs', /t\('secondReading'\)/.test(page) && /state\.secondPending/.test(page));
+ok('the review has a stage in the bar', /second: 'second judge'/.test(page) && /'second juge'/.test(page));
+ok('a running stage always explains the greyed send', /STAGE_RUNNING/.test(page) && /function stageRunning/.test(page) && /stageRunning\(name\)/.test(page));
+ok('the second judge closes its own stage', /doneStage\('second'\)/.test(page));
 ok('the uncited rest is ONE collapsed line', /t\('otherPassages'\)/.test(surface) && /distinctNames\(rest, 3\)/.test(surface));
 
 // --- task-25: no card, no label, short names, distinct residue names ----------
