@@ -788,39 +788,76 @@ export function editionTables() {
   const byName = new Map();
   for (const s of sources.values()) if (!byName.has(s.name)) byName.set(s.name, s);
   const factionEdition = new Map();
+  // task-32: the same join that stamps the edition stamps Legends, so the filter and
+  // the edition can never disagree about which source row a record came from.
+  const legendsFaction = new Set();
   for (const f of read('Factions.csv')) {
     const exact = byName.get(f.name);
     const near = exact || [...sources.values()].find(s => s.name.indexOf(f.name + ' (') === 0);
     factionEdition.set(f.id, near ? String(near.edition || '') : '');
+    if (near && isLegendsSource(near.name)) legendsFaction.add(f.id);
   }
   const dsSource = new Map(read('Datasheets.csv').map(d => [d.id, d.source_id]));
   const dsEdition = id => { const s = sources.get(dsSource.get(id)); return s ? String(s.edition || '') : ''; };
-  const packLinked = (file, key) => {
+  const dsLegends = id => { const s = sources.get(dsSource.get(id)); return !!s && isLegendsSource(s.name); };
+  const packLinked = (file, key, test) => {
     const seen = new Map();
     for (const l of read(file)) {
-      const e = dsEdition(l.datasheet_id);
-      if (!e) continue;
+      const flag = test(l.datasheet_id);
+      if (!flag) continue;
       const cur = seen.get(l[key]);
-      if (cur === undefined) seen.set(l[key], e);
-      else if (cur !== e) seen.set(l[key], 'mix');
+      if (cur === undefined) seen.set(l[key], flag);
+      else if (cur !== flag) seen.set(l[key], 'mix');
     }
     const out = new Set();
-    for (const [id, e] of seen) if (e === '0') out.add(id);
+    for (const [id, v] of seen) if (v === true || v === '0') out.add(id);
+    return out;
+  };
+  const packEdition = (file, key) => packLinked(file, key, id => dsEdition(id));
+  // task-32: the same link tables, read for Legends instead of edition - a stratagem
+  // that only Legends datasheets carry is Legends too.
+  // A link row counts for Legends only when EVERY datasheet the record links to is a
+  // Legends one - the same 'mix' rule the edition link sets use. A stratagem that a
+  // normal unit can also use is not a Legends stratagem.
+  const packLegends = (file, key) => {
+    const seen = new Map();
+    for (const l of read(file)) {
+      const flag = dsLegends(l.datasheet_id) ? 'legend' : 'plain';
+      const cur = seen.get(l[key]);
+      if (cur === undefined) seen.set(l[key], flag);
+      else if (cur !== flag) seen.set(l[key], 'mix');
+    }
+    const out = new Set();
+    for (const [id, v] of seen) if (v === 'legend') out.add(id);
     return out;
   };
   const detachments = new Map(read('Detachments.csv').map(d => [d.id, d]));
   EDITION_TABLES = {
-    factionEdition, dsEdition,
+    factionEdition, dsEdition, legendsFaction, dsLegends,
     boarding: new Set([...detachments.values()].filter(isBoardingActionsDetachment).map(d => d.id)),
-    packStratagems: packLinked('Datasheets_stratagems.csv', 'stratagem_id'),
-    packEnhancements: packLinked('Datasheets_enhancements.csv', 'enhancement_id'),
-    packAbilities: packLinked('Datasheets_abilities.csv', 'ability_id'),
+    packStratagems: packEdition('Datasheets_stratagems.csv', 'stratagem_id'),
+    packEnhancements: packEdition('Datasheets_enhancements.csv', 'enhancement_id'),
+    packAbilities: packEdition('Datasheets_abilities.csv', 'ability_id'),
+    legendsStratagems: packLegends('Datasheets_stratagems.csv', 'stratagem_id'),
+    legendsEnhancements: packLegends('Datasheets_enhancements.csv', 'enhancement_id'),
+    legendsAbilities: packLegends('Datasheets_abilities.csv', 'ability_id'),
     stratagem: new Map(read('Stratagems.csv').map(s => [s.id, s])),
     enhancement: new Map(read('Enhancements.csv').map(e => [e.id, e])),
     detachment: detachments,
     ability: new Map(read('Abilities.csv').map(a => [a.id, a])),
   };
   return EDITION_TABLES;
+}
+
+// task-32 (Mandal, 2026-10-19): Warhammer Legends is out, whatever edition the export
+// claims. The 2026-10-19 export re-tagged the 15 '<faction> (Warhammer Legends)'
+// Source.csv rows from edition 0 to edition 11, so the edition-0 filter alone stopped
+// catching them (~897 records / 1,035k characters). National tournaments run WTC and
+// FEQ rulings; Legends is a friendly-game minority, and carrying a second copy of a
+// faction's rules is the same 'two editions answer one question differently' problem
+// the corpus rule exists to prevent. The rule reads the SOURCE NAME, never the edition.
+export function isLegendsSource(name) {
+  return /\(warhammer legends\)/i.test(String(name == null ? '' : name));
 }
 
 // A detachment is Boarding Actions when the export's own type column says so.
@@ -876,21 +913,61 @@ export function editionCounts(sections) {
 }
 
 // --- one predicate for "does this record exist in the product" ----------------
+// task-32: the Legends predicate, in one place, using the same join as the edition.
+// A datasheet or unitrules record resolves through its own source_id; every other
+// CSV record resolves through its faction's source row (the join above). A record
+// whose source row is a '<...> (Warhammer Legends)' row is filtered whatever edition
+// the export claims for it.
+export function isLegendsRecord(section) {
+  const t = editionTables();
+  const kind = String((section && section.kind) || '').toLowerCase() || String((section && section.id) || '').split('#')[0];
+  const num = String((section && section.id) || '').split('#')[1] ? String(section.id).split('#')[1].split('~')[0] : '';
+  if (kind === 'datasheet' || kind === 'unitrules') return t.dsLegends(num);
+  if (kind === 'stratagem' && t.stratagem.has(num)) return t.legendsFaction.has(t.stratagem.get(num).faction_id) || t.legendsStratagems.has(num);
+  if (kind === 'enhancement' && t.enhancement.has(num)) return t.legendsFaction.has(t.enhancement.get(num).faction_id) || t.legendsEnhancements.has(num);
+  if (kind === 'detachment' && t.detachment.has(num)) return t.legendsFaction.has(t.detachment.get(num).faction_id);
+  if (kind === 'faction-rule' && t.ability.has(num)) return t.legendsFaction.has(t.ability.get(num).faction_id) || t.legendsAbilities.has(num);
+  return false;
+}
+
 // Delivered means the render will give it a page and the index may return it.
-// Two things are filtered: edition 0 (the Legends / Forge World line, stamped by
-// the join above) and the one named tenth-edition faction rule. The tree, the
-// index build, the prune and the query path all read this one predicate; no side
-// re-derives it. Index stubs are counted navigation, not filtered content, so
-// they are delivered.
+// Three things are filtered: a Warhammer Legends source (the named rule above, which
+// holds whatever edition the export claims - the 2026-10-19 export re-tagged those
+// rows to edition 11), edition 0 (the Forge World / pack line), and the one named
+// tenth-edition faction rule. The tree, the index build, the prune and the query path
+// all read this one predicate; no side re-derives it. Index stubs are counted
+// navigation, not filtered content, so they are delivered.
 export const TENTH_EDITION_RULE_IDS = new Set(['faction-rule#000008445']);
 export function isDelivered(record) {
   if (!record) return false;
+  if (isLegendsRecord(record)) return false;
   if (String(record.edition == null ? '' : record.edition) === '0') return false;
   return !TENTH_EDITION_RULE_IDS.has(String(record.id || ''));
 }
 
 export function deliveredSections(sections) {
   return (sections || []).filter(isDelivered);
+}
+
+// task-32 C: kind 'index' pages are navigation - a faction's name list with no rules
+// text, 296,563 characters that all sit over the judge's passage window - and every
+// card name in the corpus has one competing with the card itself. They stay in the
+// corpus (a link can still land on one, and the payload renders them) but they are
+// never embedded, so a retrieval can never return one. The ingest's plan and the
+// query's second line of defence share this predicate.
+export function indexedSections(sections) {
+  return deliveredSections(sections).filter(s => String((s && s.kind) || '') !== 'index');
+}
+
+let INDEXED_IDS = null;
+// The ids a retrieval is allowed to return: delivered, and not a navigation page.
+export function indexedIds() {
+  if (!INDEXED_IDS) {
+    INDEXED_IDS = new Set(readAllCorpus()
+      .filter(isDelivered).filter(r => String(r.kind || '') !== 'index')
+      .map(r => String(r.id)));
+  }
+  return INDEXED_IDS;
 }
 
 // The delivered ids of the corpus on disk, cached: the query path asks once per
@@ -905,7 +982,7 @@ export function deliveredIds() {
 // dropped even if it is still in the index (a stale vector between an ingest and
 // a prune, or a hand-run upsert). The first line is the ingest skipping it.
 export function deliveredHits(hits) {
-  const ids = deliveredIds();
+  const ids = indexedIds();
   return (hits || []).filter(h => ids.has(String((h && h.id) || '')));
 }
 
@@ -1006,6 +1083,9 @@ export function buildFactionSections() {
   };
 
   for (const d of read('Datasheets.csv')) {
+    // task-32 A: Datasheets.csv 000003708, 'Example Wargear', is the export's own
+    // template row and was shipping as a Space Marines datasheet (2 records).
+    if (/^example wargear$/i.test(String(d.name || '').trim())) continue;
     const faction = factionName.get(d.faction_id) || d.faction_id;
     const src = sources.get(d.source_id);
     const url = d.link || (factionLink.get(d.faction_id) || '');
@@ -1020,10 +1100,16 @@ export function buildFactionSections() {
     const stats = [header];
     if (src) stats.push('Source: ' + src.name + ' (edition ' + src.edition + (src.version ? ', v' + src.version : '') + ')');
     for (const m of models.get(d.id) || []) {
-      stats.push('Model ' + m.name + ': M ' + m.M + ' T ' + m.T + ' Sv ' + m.Sv + (m.inv_sv ? ' inv ' + m.inv_sv + '+' : '') + ' W ' + m.W + ' Ld ' + m.Ld + ' OC ' + m.OC + (m.base_size ? ' base ' + m.base_size : ''));
+      // task-32 A: 871 CSV model rows carry inv_sv '-' for none, and '-' is truthy -
+      // so 503 datasheets printed 'inv -+'. Print the field only for a real save.
+      const inv = /^\d+$/.test(String(m.inv_sv == null ? '' : m.inv_sv).trim()) ? ' inv ' + m.inv_sv + '+' : '';
+      stats.push('Model ' + m.name + ': M ' + m.M + ' T ' + m.T + ' Sv ' + m.Sv + inv + ' W ' + m.W + ' Ld ' + m.Ld + ' OC ' + m.OC + (m.base_size ? ' base ' + m.base_size : ''));
     }
     for (const c of composition.get(d.id) || []) stats.push('Composition: ' + clean(c.description));
     for (const w of wargear.get(d.id) || []) {
+      // task-32 A: 39 CSV rows have no name and no type (A 0, WS -, AP 0) - the
+      // export's blank template rows, printed as 'Wargear  (): ...' on 17 records.
+      if (!clean(w.name) && !clean(w.type)) continue;
       const prof = w.type === 'Ranged'
         ? 'Range ' + w.range + ' A ' + w.A + ' BS ' + w.BS_WS + ' S ' + w.S + ' AP ' + w.AP + ' D ' + w.D
         : 'A ' + w.A + ' WS ' + w.BS_WS + ' S ' + w.S + ' AP ' + w.AP + ' D ' + w.D;
@@ -1102,10 +1188,12 @@ export function buildFactionSections() {
         continue;
       }
       const coreKind = /stratagem/i.test(type) ? 'core stratagem' : 'core ' + String(type || 'ability').toLowerCase();
+      // task-32 A: a movement/shooting ability row has no CP, and 6 rows have no
+      // Type - the labels print only when there is a value behind them.
       const lines = [
         s.name + ' - ' + coreKind,
-        'Type: ' + type,
-        'CP: ' + s.cp_cost,
+        clean(type) ? 'Type: ' + type : '',
+        String(s.cp_cost == null ? '' : s.cp_cost).trim() ? 'CP: ' + s.cp_cost : '',
         'Turn: ' + clean(s.turn) + '  Phase: ' + clean(s.phase),
         clean(s.legend),
         clean(s.description),
@@ -1122,7 +1210,7 @@ export function buildFactionSections() {
     if (armyRule) {
       const ruleLines = [
         s.name + ' - ' + faction + ' army rule',
-        'Type: ' + clean(s.type),
+        clean(s.type) ? 'Type: ' + clean(s.type) : '',
         'Turn: ' + clean(s.turn) + '  Phase: ' + clean(s.phase),
         clean(s.legend),
         clean(s.description),
@@ -1132,8 +1220,8 @@ export function buildFactionSections() {
     }
     const lines = [
       s.name + ' - ' + faction + ' stratagem',
-      'Type: ' + clean(s.type),
-      'CP: ' + s.cp_cost,
+      clean(s.type) ? 'Type: ' + clean(s.type) : '',
+      String(s.cp_cost == null ? '' : s.cp_cost).trim() ? 'CP: ' + s.cp_cost : '',
       'Turn: ' + clean(s.turn) + '  Phase: ' + clean(s.phase),
       s.detachment ? 'Detachment: ' + clean(s.detachment) : '',
       clean(s.legend),
@@ -1204,15 +1292,38 @@ export function dedupeKey(section) {
   return norm(section.heading) + '|' + norm(section.text);
 }
 
+// task-32 B: dedupe a GROUP, not a part. The export lists some datasheets twice
+// (Raptors 000000958 and 000004067, Legionaries 000002570 and 000004064, ...): the
+// two rows' first parts differ in a source line, their second parts are identical
+// points tables. Record-wise dedupe kept the first row's ~1 and the second row's ~2
+// and dropped the second row's ~1 - leaving the first unit with no Points part at
+// all, which is where 22,844 characters the CSV holds went missing. The whole group
+// is now the unit of dedupe: identical groups collapse together, a group is never
+// left with a hole, and the parts of one record always come from one row.
 export function dedupeSections(sections) {
+  const list = (sections || []).slice();
+  const order = [], groups = new Map();
+  for (let i = 0; i < list.length; i++) {
+    const s = list[i];
+    const id = String((s && s.id) || '');
+    // A record with no id is its own group: keying every id-less record on '' would
+    // collapse unrelated records into one and stop deduping them at all (the builder
+    // test builds sections without ids on purpose).
+    const base = id ? id.replace(/~\d+$/, '') : '#' + i;
+    if (!groups.has(base)) { groups.set(base, []); order.push(base); }
+    groups.get(base).push(s);
+  }
   const seen = new Set();
   const out = [];
   let dropped = 0;
-  for (const s of sections) {
-    const key = dedupeKey(s);
-    if (seen.has(key)) { dropped++; continue; }
+  for (const base of order) {
+    const group = groups.get(base);
+    const head = String((group[0] && group[0].heading) || '').replace(/\s*\(\d+\/\d+\)$/, '');
+    const text = group.map(s => String(s.text || '')).join('\n');
+    const key = dedupeKey({ heading: head, text: text });
+    if (seen.has(key)) { dropped += group.length; continue; }
     seen.add(key);
-    out.push(s);
+    for (const s of group) out.push(s);
   }
   return { sections: out, dropped };
 }
@@ -3982,9 +4093,14 @@ export async function ingest(only, opts) {
     // The index answers for the product: only delivered records are planned, and
     // a filtered id already in the state becomes a vanish, so one ingest removes
     // what an earlier one embedded. The render reads the same predicate.
-    const sections = deliveredSections(payload.sections);
-    const filtered = payload.sections.length - sections.length;
+    // task-32 C: the ingest embeds and remembers only what a retrieval may return;
+    // a kind 'index' page is delivered (it renders) but never indexed.
+    const delivered = deliveredSections(payload.sections);
+    const sections = indexedSections(payload.sections);
+    const filtered = payload.sections.length - delivered.length;
+    const indexExcluded = delivered.length - sections.length;
     report.filtered = (report.filtered || 0) + filtered;
+    report.indexExcluded = (report.indexExcluded || 0) + indexExcluded;
     const changed = sections.filter(s => state[s.id] !== s.hash);
     const currentIds = new Set(sections.map(s => s.id));
     const vanished = Object.keys(state).filter(id => !currentIds.has(id));
@@ -3996,7 +4112,7 @@ export async function ingest(only, opts) {
       else if (!(opts && opts.allowMassDelete)) throw new Error(guard);
     }
     if (dryRun) {
-      report.sources.push({ source: source.name, sections: sections.length, filtered, upserted: 0, deleted: 0, unchanged, planned: changed.length, vanishedPlanned: vanished.length, rebuild: ledger.length + 1, dryRun: true });
+      report.sources.push({ source: source.name, sections: sections.length, filtered, indexExcluded, upserted: 0, deleted: 0, unchanged, planned: changed.length, vanishedPlanned: vanished.length, rebuild: ledger.length + 1, dryRun: true });
       report.upserted += 0;
       report.unchanged += unchanged;
       report.planned = (report.planned || 0) + changed.length;
@@ -4012,7 +4128,7 @@ export async function ingest(only, opts) {
     report.upserted += upserted;
     report.unchanged += unchanged;
     report.deleted += deleted;
-    report.sources.push({ source: source.name, sections: sections.length, filtered, upserted, deleted, unchanged, rebuild: ledger.length });
+    report.sources.push({ source: source.name, sections: sections.length, filtered, indexExcluded, upserted, deleted, unchanged, rebuild: ledger.length });
   }
   // The retention sweep rides the monthly ingest: the corpus is refreshed on a
   // cadence, so the raw traces past their retention go at the same time and the
@@ -4049,6 +4165,22 @@ export function corpusState() {
     const stamp = String(marker.lastUpdate || marker.version || '').trim();
     if (stamp && (!sourceDate || stamp > sourceDate)) sourceDate = stamp;
   }
+  // task-32 C: the health line compares the index against what may be indexed, not
+  // against everything the sources built: kind 'index' pages are delivered (they
+  // render) but never embedded, and the filtered edition-0 records are not delivered
+  // at all. `sets` is the indexable count per set, so /health's ahead/behind means
+  // what it says.
+  const indexed = {};
+  let deliveredCount = 0, filteredCount = 0, indexExcluded = 0;
+  try {
+    const all = readAllCorpus();
+    const del = all.filter(isDelivered);
+    const idx = del.filter(r => String((r && r.kind) || '') !== 'index');
+    filteredCount = all.length - del.length;
+    deliveredCount = del.length;
+    indexExcluded = del.length - idx.length;
+    for (const r of idx) indexed[namespaceFor(r.set)] = (indexed[namespaceFor(r.set)] || 0) + 1;
+  } catch (e) { /* a corpus read failure must not take /health down */ }
   corpusStateCache = {
     edition: EDITION,
     // What the sources said their data was last changed.
@@ -4056,7 +4188,10 @@ export function corpusState() {
     // When we last read them. This is the one to publish: it describes the copy
     // rather than the origin.
     updated: built,
-    sets,
+    sets: indexed,
+    delivered: deliveredCount,
+    filtered: filteredCount,
+    indexExcluded,
   };
   return corpusStateCache;
 }
@@ -4241,8 +4376,14 @@ async function main() {
       for (const ns of ['rules', 'factions', 'rulings']) indexed += (await rangeIds(ns)).length;
       if (indexed !== info.vectorCount) console.log('index ids read now: ' + indexed + ' (info says ' + info.vectorCount + ', it lags a delete)');
     }
+    // task-32 C: the comparison is against what may be indexed - delivered minus the
+    // kind 'index' navigation pages - not against everything delivered.
+    const indexable = indexedSections(corpus);
+    const indexableBy = {};
+    for (const r of indexable) { const ns = namespaceFor(r.set); indexableBy[ns] = (indexableBy[ns] || 0) + 1; }
     console.log('records: ' + corpus.length + ' corpus, ' + delivered.length + ' delivered ' + JSON.stringify(byNamespace) + ', ' + (corpus.length - delivered.length) + ' filtered (edition 0 or the named tenth-edition rule)');
-    console.log('index ids: ' + indexed + ' vs ' + delivered.length + ' delivered  ' + (indexed === delivered.length ? 'MATCH' : 'MISMATCH'));
+    console.log('indexable: ' + indexable.length + ' ' + JSON.stringify(indexableBy) + ' (' + (delivered.length - indexable.length) + ' kind: index pages excluded from the index)');
+    console.log('index ids: ' + indexed + ' vs ' + indexable.length + ' indexable  ' + (indexed === indexable.length ? 'MATCH' : 'MISMATCH'));
     console.log('editions: ' + JSON.stringify(editionCounts(corpus)) + '  (' + corpus.length + ' records; every record carries one)');
     return;
   }

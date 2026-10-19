@@ -28,7 +28,10 @@ const index = read('index.json');
 // (a) the three shapes at paths mirroring the URLs -----------------------------
 t('(a) index.json is exactly the branches with name, count and key', Object.keys(index), ['branches']);
 t('(a) the three branch keys are rules, missions and factions', index.branches.map(b => b.b), ['rules', 'missions', 'factions']);
-t('(a) the branch names and counts are the tree index (task-13: -1 rule, -9 missions)', index.branches.map(b => b.n + ':' + b.c), ['Rules:780', 'Missions:106', 'Factions:5187']);
+// task-32: the faction branch is the indexable count - 5,394 delivered minus the 174
+// kind 'index' pages - so 5,220 (it was 5,187 before the three fixes restored 62 parts
+// and dropped the template pair).
+t('(a) the branch names and counts are the tree index (task-13: -1 rule, -9 missions)', index.branches.map(b => b.n + ':' + b.c), ['Rules:780', 'Missions:106', 'Factions:5220']);
 for (const b of index.branches) {
   const p = read('index/' + b.b + '.json');
   t('(a) index/' + b.b + '.json carries n, lvl, c, kids, recs, pages', ['n', 'lvl', 'c', 'kids', 'recs', 'pages'].every(k => k in p) && p.n === b.n && p.lvl === 'branch', true);
@@ -47,7 +50,7 @@ for (const book of books) {
   for (const [id, rec] of Object.entries(c.records)) { if (seen.has(id)) { console.log('DUPLICATE ' + id + ' in ' + seen.get(id) + ' and ' + book); } seen.set(id, book); slugBook.set(id, rec.slug.split('--')[0]); }
 }
 t('(b) every delivered record appears exactly once', seen.size, stats.delivered);
-t('(b) the delivered count is the render rule: pageNamer minus tree.filtered (task-13: -10)', stats.delivered, 6248);
+t('(b) the delivered count is the render rule: pageNamer minus tree.filtered (task-13: -10; task-32: 6,282)', stats.delivered, 6282);
 // task-77: map.json is deleted. The witness is the corpus's own delivery rule
 // (rules-corpus isDelivered), computed here without the payload builder.
 const modelDelivered = readAllCorpus().filter(isDelivered).length;

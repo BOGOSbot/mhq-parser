@@ -76,9 +76,26 @@ t('the residue is never core', residue.filter(s => s.set === 'rules').length, 0)
 {
   const ids = [...new Set(sections.map(s => s.id))];
   t('every id is unique', ids.length, sections.length);
-  const names = new Map();
-  for (const s of sections) names.set(s.heading + '|' + s.text, (names.get(s.heading + '|' + s.text) || 0) + 1);
-  t('no record is textually repeated', [...names.values()].filter(n => n > 1).length, 0);
+  // task-32 B: the export lists some datasheets twice under two ids, and the two rows'
+  // (2/2) points tables are identical. Record-wise dedupe dropped those parts one by
+  // one and left the first unit without its points; the group dedupe keeps both rows
+  // whole, so the same PART text can appear under two ids. What must never happen is a
+  // repeat inside one record's own group - and the cross-row repeats are bounded and
+  // named rather than silently zero.
+  const base = id => String(id).replace(/~\d+$/, '');
+  const seen = new Map();
+  let within = 0, cross = 0;
+  for (const s of sections) {
+    const key = s.heading + '|' + s.text;
+    const prev = seen.get(key);
+    if (!prev) { seen.set(key, s); continue; }
+    if (base(prev.id) === base(s.id)) within++;
+    else cross++;
+  }
+  t('no record repeats its own text', within, 0);
+  // Measured on the frozen build: 62 part texts repeat across two ids, all of them
+  // (2/2) points tables of the export's duplicated datasheet rows.
+  t('the cross-row repeats are the export copies, named', cross, 62);
 }
 
 // --- a datasheet is two records, not one -------------------------------------

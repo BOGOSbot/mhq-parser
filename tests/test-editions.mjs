@@ -1,4 +1,4 @@
-import { readAllCorpus, editionCounts, editionOf, isBoardingActionsDetachment, isBoardingActionsPageSection, buildFactionSections, assignEditions } from '../src/rules-corpus.mjs';
+import { readAllCorpus, editionCounts, editionOf, isBoardingActionsDetachment, isBoardingActionsPageSection, isDelivered, isLegendsRecord, isLegendsSource, buildFactionSections, assignEditions } from '../src/rules-corpus.mjs';
 import { wikiTree } from '../src/wiki-toc.mjs';
 
 let pass = 0, fail = 0;
@@ -14,8 +14,11 @@ const tally = rows => rows.reduce((a, r) => { const k = r.kind || '(none)'; a[k]
 
 // --- every record carries an edition -----------------------------------------
 t('every record carries a numeric edition', all.filter(r => !/^\d+$/.test(String(r.edition || ''))).length, 0);
-t('the distribution (154 rulings and 19 ability definitions are edition 11 too; task-13 removed ten edition-11 records)', editionCounts(all), { 0: 1037, 10: 3, 11: 6246 });
-t('edition 0 is the Legends / Forge World line, every kind', tally(all.filter(r => String(r.edition) === '0')), { 'faction-rule': 1, datasheet: 427, unitrules: 599, stratagem: 6, enhancement: 4 });
+// task-32: B restores 62 parts the record-wise dedupe dropped (25 of them edition 0,
+// 37 edition 11) and A drops the export's template row (2 edition-11 records), so the
+// distribution moves by +25 edition 0 and +34 edition 11 - all of it the three fixes.
+t('the distribution (154 rulings and 19 ability definitions are edition 11 too; task-13 removed ten edition-11 records)', editionCounts(all), { 0: 1062, 10: 3, 11: 6280 });
+t('edition 0 is the Legends / Forge World line, every kind (task-32: the restored parts)', tally(all.filter(r => String(r.edition) === '0')), { 'faction-rule': 1, datasheet: 431, unitrules: 620, stratagem: 6, enhancement: 4 });
 t('edition 10 is the two leftover 10th-edition datasheets and their half', tally(all.filter(r => String(r.edition) === '10')), { datasheet: 2, unitrules: 1 });
 // The join resolves by the record's own id, not by a name in its text:
 const fx = id => editionOf({ id: id, kind: String(id).split('#')[0] }, '11');
@@ -28,6 +31,25 @@ t('a Boarding Actions detachment is edition 10', fx('detachment#000000959'), '10
 t('and its enhancements are edition 10', fx('enhancement#000009588002'), '10');
 t('an id the tables do not hold takes the file fallback', editionOf({ id: 'page#x', kind: 'rule' }, '11'), '11');
 t('and with no numeric fallback it stays unresolved', editionOf({ id: 'page#x', kind: 'rule' }, ''), '');
+// --- task-32: Warhammer Legends is out, whatever edition the export claims ---------
+// Mandal, 2026-10-19: national tournaments run WTC and FEQ rulings, Legends is a
+// friendly-game minority, and the 2026-10-19 export re-tagged the 15
+// '<faction> (Warhammer Legends)' Source.csv rows from edition 0 to edition 11 - so
+// the edition filter alone would let ~897 records / 1,035k characters back in. The
+// rule reads the source NAME.
+t('a Legends source name is recognised, whatever the case', [isLegendsSource('Adeptus Custodes (Warhammer Legends)'), isLegendsSource('space marines (WARHAMMER LEGENDS)')], [true, true]);
+t('a normal source name is not', [isLegendsSource('Adeptus Custodes'), isLegendsSource('Adeptus Custodes (Forge World)'), isLegendsSource(''), isLegendsSource(null)], [false, false, false, false]);
+t('a Legends datasheet is Legends', isLegendsRecord({ id: 'datasheet#000001525', kind: 'datasheet' }), true);
+t('and a normal datasheet is not', isLegendsRecord({ id: 'datasheet#000000882', kind: 'datasheet' }), false);
+// The crux: the export may stamp it edition 11, and it is filtered anyway.
+t('a Legends record claiming edition 11 is still not delivered', isDelivered({ id: 'datasheet#000001525', kind: 'datasheet', edition: '11' }), false);
+t('a Legends stratagem only Legends datasheets carry is Legends too', isLegendsRecord({ id: 'stratagem#000009127002', kind: 'stratagem' }), true);
+t('a normal stratagem is not', isLegendsRecord({ id: 'stratagem#000008931007', kind: 'stratagem' }), false);
+// The frozen corpus carries 928 Legends records (384 datasheets, 534 unitrules, 5
+// stratagems, 4 enhancements, 1 faction rule) and every one of them is edition 0
+// today, so the new rule changes nothing until the 2026-10-19 export is adopted.
+const legends = all.filter(isLegendsRecord);
+t('the frozen corpus has 928 Legends records and none is delivered', [legends.length, legends.filter(isDelivered).length], [928, 0]);
 t('assignEditions stamps a whole list', assignEditions([{ id: 'datasheet#000000882', kind: 'datasheet' }], '11')[0].edition, '11');
 
 // --- Boarding Actions is out of scope ----------------------------------------
