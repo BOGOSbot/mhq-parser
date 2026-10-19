@@ -40,16 +40,16 @@ window.JUDGE_DATA = {
     },
     {
      "n": 3,
-     "title": "Fall-Back Move",
-     "crumb": "Muster Armies › Fill Your Army Roster › FAQ › If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll?",
-     "excerpt": "FALL-BACK MOVE MAXIMUM DISTANCE: Your unit’s M characteristic. ELIGIBLE IF: Your unit is engaged…",
+     "title": "If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll?",
+     "crumb": "Muster Armies › Fill Your Army Roster › FAQ",
+     "excerpt": "If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll? > FALL-BACK MOVE MAXIMUM DISTANCE: Your unit’s M characteristic. ELIGIBLE IF: Your unit is eng…",
      "passage": "Muster Armies > Fill Your Army Roster > FAQ > If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll? > FALL-BACK MOVE\nMAXIMUM DISTANCE: Your unit’s M characteristic.\n\nELIGIBLE IF: Your unit is engaged.\n\nEFFECT: Your unit moves as described in Moving (03).\n\nBEFORE MOVING: Select fall-back mode:\nOrdered Retreat: If your unit is not battle-shocked, you can select this mode.\nDesperate Escape: Otherwise, you must select this mode. Make a hazard roll for each model in your unit (06.03).\n\nWHILE MOVING:\nDesperate Escape: Each model that is moved can be moved through enemy models.\n\nAFTER MOVING:\nYour unit must be unengaged.\nUntil the end of the turn, unless otherwise stated, your unit is not eligible to shoot, declare a charge or start an action.\nDesperate Escape: If your unit is not battle-shocked, you must make a battle-shock roll for your unit (01.07)."
     },
     {
      "n": 4,
-     "title": "Fall-Back Move",
-     "crumb": "[ONE SHOT] › FAQ › Q: If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll?",
-     "excerpt": "FALL-BACK MOVE MAXIMUM DISTANCE: Your unit’s M characteristic. ELIGIBLE IF: Your unit is engaged. EFFECT: Your unit move…",
+     "title": "Q: If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll?",
+     "crumb": "[ONE SHOT] › FAQ",
+     "excerpt": "Q: If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll? > FALL-BACK MOVE MAXIMUM DISTANCE: Your unit’s M characteristic. ELIGIBLE IF: Your unit is…",
      "passage": "[ONE SHOT] > FAQ > Q: If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll? > FALL-BACK MOVE\nMAXIMUM DISTANCE: Your unit’s M characteristic.\n\nELIGIBLE IF: Your unit is engaged.\n\nEFFECT: Your unit moves as described in Moving (03).\n\nBEFORE MOVING: Select fall-back mode:\nOrdered Retreat: If your unit is not battle-shocked, you can select this mode.\nDesperate Escape: Otherwise, you must select this mode. Make a hazard roll for each model in your unit (06.03).\n\nWHILE MOVING:\nDesperate Escape: Each model that is moved can be moved through enemy models.\n\nAFTER MOVING:\nYour unit must be unengaged.\nUntil the end of the turn, unless otherwise stated, your unit is not eligible to shoot, declare a charge or start an action.\nDesperate Escape: If your unit is not battle-shocked, you must make a battle-shock roll for your unit (01.07)."
     },
     {
@@ -152,7 +152,7 @@ window.JUDGE_DATA = {
     "bad": []
    },
    "answerKind": "Real capture, 2026-10-19.",
-   "note": "Can a unit shoot after it Fell Back? - 15 findings; the judge answers from [1] and [2], and the sentence it writes quotes the rule verbatim. Rows 2 to 4 all read Fall-Back Move: that is what the live page shows today, because an FAQ record’s heading path ends at its section. It is a row-title defect, not the judge’s."
+   "note": "Can a unit shoot after it Fell Back? - 15 findings; the judge answers from [1] and [2], and the sentence it writes quotes the rule verbatim. The three FAQ rows are titled with their own question, the task-23 fix (933b799)."
   },
   {
    "key": "c-answered",
@@ -274,9 +274,9 @@ window.JUDGE_DATA = {
     },
     {
      "n": 2,
-     "title": "Deadly Demise",
-     "crumb": "[ONE SHOT] › FAQ › Q: In what step during the attack sequence do I roll for Feel No Pain?",
-     "excerpt": "DEADLY DEMISE From detonating ammo stores to corrosive innards or frenzied death throes, some targets are deadly even in defeat. This ability always…",
+     "title": "Q: In what step during the attack sequence do I roll for Feel No Pain?",
+     "crumb": "[ONE SHOT] › FAQ",
+     "excerpt": "Q: In what step during the attack sequence do I roll for Feel No Pain? > DEADLY DEMISE From detonating ammo stores to corrosive innards or frenzied death throes, some targets are deadly even…",
      "passage": "[ONE SHOT] > FAQ > Q: In what step during the attack sequence do I roll for Feel No Pain? > DEADLY DEMISE\nFrom detonating ammo stores to corrosive innards or frenzied death throes, some targets are deadly even in defeat.\nThis ability always takes the form Deadly Demise X. Each time a model with this ability is destroyed, after the units embarked within it (if any) have made their emergency disembark moves, roll one D6. On a 6, that model suffers a deadly demise; each unit within 6\" of that model suffers a number of mortal wounds denoted by X (if this is a random number, roll separately for each unit within 6\").\n\n[EXTRA ATTACKS] 24.11\n\nSome warriors ride to battle atop trusty mounts that gore and trample nearby foes. Others wield combat weapons that deliver a frenzy of additional blows.\nEach time a unit containing one or more models with an [EXTRA ATTACKS] weapon fights, those models will make attacks with those weapons in addition to any others. In the Select Weapons step (04.01), for each of those models, you must select:\nAll of that model’s [EXTRA ATTACKS] weapons.\nOne of that model’s other melee weapons, if possible.\n\n05.04.01 Current Allocation Group\n\nThe first group in the allocation order begins as the current group. Once all models in an allocation group are destroyed, the next group in the allocation order becomes the current one.\n\n[PRECISION] 24.28\n\nPrecision attacks can pick high-value targets out in a crowd.\nWhile resolving attacks made with one or more [PRECISION] weapons, at the start of the Allocation Order step (05.03), if the target unit contains one or more CHARACTER models visible to one or more of the attacking models, the active player can select one allocation group that contains one of those visible CHARACTER models. If they do, until those attacks are resolved, or until that CHARACTER group is destroyed (whichever happens first), that CHARACTER group is the current allocation group.\n\n[TORRENT] 24.37"
     },
     {
@@ -512,9 +512,9 @@ window.JUDGE_DATA = {
     },
     {
      "n": 2,
-     "title": "Fire Overwatch",
-     "crumb": "[ONE SHOT] › FAQ › Q: In what step during the attack sequence do I roll for Feel No Pain?",
-     "excerpt": "FIRE OVERWATCH 1CP Core Stratagem A hail of fire can drive back advancing foes. WHEN: End of your opponent’s Movement phase. TARGET: One friendly un…",
+     "title": "Q: In what step during the attack sequence do I roll for Feel No Pain?",
+     "crumb": "[ONE SHOT] › FAQ",
+     "excerpt": "Q: In what step during the attack sequence do I roll for Feel No Pain? > FIRE OVERWATCH 1CP Core Stratagem A hail of fire can drive back advancing foes. WHEN: End of your opponent’s Movement…",
      "passage": "[ONE SHOT] > FAQ > Q: In what step during the attack sequence do I roll for Feel No Pain? > FIRE OVERWATCH\n1CP\n\r\n\n\r\n\r\n\r\nCore Stratagem\n\r\nA hail of fire can drive back advancing foes.\n\r\n\n\r\nWHEN: End of your opponent’s Movement phase.\n\nTARGET: One friendly unengaged unit (excluding TITANIC units).\n\nEFFECT: Your unit shoots using snap shooting.\n\r\n\n\r\n\n\r\n\n\r\n\n13.05 Dense\n\n\r\nDense terrain is an obstacle to even the largest war machines, and can shelter entire squads from enemy sight.\nExamples: Buildings, ruins, armoured containers, woods.\r\n\n13.11 Solid\n\n\r\nDense terrain features have the Solid rule. Line of sight cannot be drawn across any enclosed gap in the surface of such a terrain feature that is 3\" or less from ground level.\n\nDesigner’s Note: This rule ensures that models are not visible while sheltering in ground-level terrain, irrespective of small openings such as doors, windows or bullet holes, or because of small gaps between adjacent terrain features. 3\" is the height of the first floor of many terrain features, but some missions may adjust the height at which this rule takes effect."
     },
     {
@@ -547,9 +547,9 @@ window.JUDGE_DATA = {
     },
     {
      "n": 7,
-     "title": "Close-Quarters Shooting",
-     "crumb": "[ONE SHOT] › FAQ › Q: If a unit makes any disembark move in a turn (i.e. Disembark move, Emergency Disembark move etc.) has it disembarked that turn?",
-     "excerpt": "CLOSE-QUARTERS SHOOTING ELIGIBLE IF: All of the following apply to your unit: Engaged an…",
+     "title": "Q: If a unit makes any disembark move in a turn (i.e. Disembark move, Emergency Disembark move etc.) has it disembarked that turn?",
+     "crumb": "[ONE SHOT] › FAQ",
+     "excerpt": "Q: If a unit makes any disembark move in a turn (i.e. Disembark move, Emergency Disembark move etc.) has it disembarked that turn? > CLOSE-QUARTERS SHOOTING ELIGIBLE IF: All of the following…",
      "passage": "[ONE SHOT] > FAQ > Q: If a unit makes any disembark move in a turn (i.e. Disembark move, Emergency Disembark move etc.) has it disembarked that turn? > CLOSE-QUARTERS SHOOTING\nELIGIBLE IF: All of the following apply to your unit:\nEngaged and did not make an advance move this turn.\nHas one or more [CLOSE-QUARTERS] weapons or is a MONSTER / VEHICLE unit.\n\nEFFECT: Your unit shoots as described in Making Attacks (04).\n\nWHILE SHOOTING: Models in your unit can target enemy units your unit is engaged with.\nMONSTER / VEHICLE Models: Each time a MONSTER / VEHICLE model in your unit makes an attack:\nUnless that attack is made with a [CLOSE-QUARTERS] weapon and targets a unit your unit is engaged with, subtract 1 from the hit roll.\nIf that attack is made with a [BLAST] weapon, it still cannot target a unit your unit is engaged with.\n\nNon- MONSTER / Non- VEHICLE Models: You can only select [CLOSE-QUARTERS] weapons to make attacks with and you can only select enemy units that are engaged with your unit as targets.\n\nAFTER SHOOTING: Until the end of the phase, your unit is not eligible to start an action.\n\n[CLOSE-QUARTERS] 24.07\n\nWeapons designed for close-quarters fighting can be wielded effectively even in the press of melee combat.\nUnits containing one or more models with a [CLOSE-QUARTERS] weapon can shoot using close-quarters shooting (10.06).\n\nWhen using another shooting type, for each model in that unit (excluding MONSTER / VEHICLE models), you can only select one of the following to make attacks with:\nOne or more of its [CLOSE-QUARTERS] weapons.\nOne or more of its other ranged weapons.\n\n[HAZARDOUS] 24.15\n\nWeapons powered by unstable and dangerous energy sources pose a substantial risk to the wielder and those that stand beside them.\nEach time a unit is selected to shoot or selected to fight, after that unit has resolved all of its attacks, make a number of hazard rolls (06.03) for that unit equal to the number of [HAZARDOUS] weapons you selected in the Select Weapons step.\n\n05.04.05 Fight On Death\n\nSome rules enable models to attack after they have been destroyed. When a model under such an effect is destroyed, do not remove it from play."
     },
     {
@@ -568,16 +568,16 @@ window.JUDGE_DATA = {
     },
     {
      "n": 10,
-     "title": "Close-Quarters Shooting",
-     "crumb": "Muster Armies › Fill Your Army Roster › FAQ › Q: My attack has a rule that means it results in a critical hit on a hit roll of 4+, and I would otherwise need a 5+ to hit.",
-     "excerpt": "CLOSE-QUARTERS SHOOTING ELIGIBLE IF: All of the following apply to…",
+     "title": "Q: My attack has a rule that means it results in a critical hit on a hit roll of 4+, and I would otherwise need a 5+ to hit.",
+     "crumb": "Muster Armies › Fill Your Army Roster › FAQ",
+     "excerpt": "Q: My attack has a rule that means it results in a critical hit on a hit roll of 4+, and I would otherwise need a 5+ to hit. > CLOSE-QUARTERS SHOOTING ELIGIBLE IF: All of the following apply…",
      "passage": "Muster Armies > Fill Your Army Roster > FAQ > Q: My attack has a rule that means it results in a critical hit on a hit roll of 4+, and I would otherwise need a 5+ to hit. > CLOSE-QUARTERS SHOOTING\nELIGIBLE IF: All of the following apply to your unit:\nEngaged and did not make an advance move this turn.\nHas one or more [CLOSE-QUARTERS] weapons or is a MONSTER / VEHICLE unit.\n\nEFFECT: Your unit shoots as described in Making Attacks (04).\n\nWHILE SHOOTING: Models in your unit can target enemy units your unit is engaged with.\nMONSTER / VEHICLE Models: Each time a MONSTER / VEHICLE model in your unit makes an attack:\nUnless that attack is made with a [CLOSE-QUARTERS] weapon and targets a unit your unit is engaged with, subtract 1 from the hit roll.\nIf that attack is made with a [BLAST] weapon, it still cannot target a unit your unit is engaged with.\n\nNon- MONSTER / Non- VEHICLE Models: You can only select [CLOSE-QUARTERS] weapons to make attacks with and you can only select enemy units that are engaged with your unit as targets.\n\nAFTER SHOOTING: Until the end of the phase, your unit is not eligible to start an action.\n\n[CLOSE-QUARTERS] 24.07\n\nWeapons designed for close-quarters fighting can be wielded effectively even in the press of melee combat.\nUnits containing one or more models with a [CLOSE-QUARTERS] weapon can shoot using close-quarters shooting (10.06).\n\nWhen using another shooting type, for each model in that unit (excluding MONSTER / VEHICLE models), you can only select one of the following to make attacks with:\nOne or more of its [CLOSE-QUARTERS] weapons.\nOne or more of its other ranged weapons.\n\n[EXTRA ATTACKS] 24.11\n\nSome warriors ride to battle atop trusty mounts that gore and trample nearby foes. Others wield combat weapons that deliver a frenzy of additional blows.\nEach time a unit containing one or more models with an [EXTRA ATTACKS] weapon fights, those models will make attacks with those weapons in addition to any others. In the Select Weapons step (04.01), for each of those models, you must select:\nAll of that model’s [EXTRA ATTACKS] weapons.\nOne of that model’s other melee weapons, if possible.\n\n04.01.01 Models Without Ranged/Melee Weapons"
     },
     {
      "n": 11,
-     "title": "Firing Deck",
-     "crumb": "Muster Armies › Fill Your Army Roster › FAQ › When a model overhangs the edge of the battlefield, how does that affect its visibility?",
-     "excerpt": "FIRING DECK Some transports have dedicated platforms or firing ports from which embarked passengers can…",
+     "title": "When a model overhangs the edge of the battlefield, how does that affect its visibility?",
+     "crumb": "Muster Armies › Fill Your Army Roster › FAQ",
+     "excerpt": "When a model overhangs the edge of the battlefield, how does that affect its visibility? > FIRING DECK Some transports have dedicated platforms or firing ports from which embarked passengers…",
      "passage": "Muster Armies > Fill Your Army Roster > FAQ > When a model overhangs the edge of the battlefield, how does that affect its visibility? > FIRING DECK\nSome transports have dedicated platforms or firing ports from which embarked passengers can lay down a withering hail of munitions.\nThis ability always takes the form Firing Deck X. In your Shooting phase, each time this TRANSPORT is selected to shoot, if one or more units are embarked within it, resolve the following sequence:\nSelect up to X models embarked within this TRANSPORT (excluding models whose units have already been selected to shoot this phase).\nFor each selected model, select one of its ranged weapons (excluding [ONE SHOT] weapons).\nUntil this TRANSPORT has resolved all of its attacks, it has all of those selected weapons in addition to its other weapons.\nUntil the end of the turn, units embarked within this TRANSPORT are not eligible to shoot.\n\n18.02 Embarking\n\n\r\nOnce the first battle round has started, a friendly unit can embark within a friendly TRANSPORT model after making a normal, advance or fall-back move, if all of the following conditions apply:\nEach model in that unit is within 3\" of that TRANSPORT.\nThat unit was not set up on the battlefield this turn.\nThat unit is eligible to embark within that TRANSPORT, as described on that TRANSPORT ’s datasheet.\nThat TRANSPORT has sufficient remaining transport capacity for each model in that unit.\n\nWhen a unit embarks, the active player removes that unit from the battlefield and places it to one side – it is now embarked within that TRANSPORT and is not on the battlefield.\n\nSEE ALSO\nNot on the Battlefield 01.02.04"
     },
     {
@@ -750,16 +750,16 @@ window.JUDGE_DATA = {
     },
     {
      "n": 3,
-     "title": "Fall-Back Move",
-     "crumb": "Muster Armies › Fill Your Army Roster › FAQ › If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll?",
-     "excerpt": "FALL-BACK MOVE MAXIMUM DISTANCE: Your unit’s M characteristic. ELIGIBLE IF: Your unit is engaged…",
+     "title": "If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll?",
+     "crumb": "Muster Armies › Fill Your Army Roster › FAQ",
+     "excerpt": "If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll? > FALL-BACK MOVE MAXIMUM DISTANCE: Your unit’s M characteristic. ELIGIBLE IF: Your unit is eng…",
      "passage": "Muster Armies > Fill Your Army Roster > FAQ > If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll? > FALL-BACK MOVE\nMAXIMUM DISTANCE: Your unit’s M characteristic.\n\nELIGIBLE IF: Your unit is engaged.\n\nEFFECT: Your unit moves as described in Moving (03).\n\nBEFORE MOVING: Select fall-back mode:\nOrdered Retreat: If your unit is not battle-shocked, you can select this mode.\nDesperate Escape: Otherwise, you must select this mode. Make a hazard roll for each model in your unit (06.03).\n\nWHILE MOVING:\nDesperate Escape: Each model that is moved can be moved through enemy models.\n\nAFTER MOVING:\nYour unit must be unengaged.\nUntil the end of the turn, unless otherwise stated, your unit is not eligible to shoot, declare a charge or start an action.\nDesperate Escape: If your unit is not battle-shocked, you must make a battle-shock roll for your unit (01.07)."
     },
     {
      "n": 4,
-     "title": "Fall-Back Move",
-     "crumb": "[ONE SHOT] › FAQ › Q: If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll?",
-     "excerpt": "FALL-BACK MOVE MAXIMUM DISTANCE: Your unit’s M characteristic. ELIGIBLE IF: Your unit is engaged. EFFECT: Your unit move…",
+     "title": "Q: If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll?",
+     "crumb": "[ONE SHOT] › FAQ",
+     "excerpt": "Q: If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll? > FALL-BACK MOVE MAXIMUM DISTANCE: Your unit’s M characteristic. ELIGIBLE IF: Your unit is…",
      "passage": "[ONE SHOT] > FAQ > Q: If a rule says my unit must make a hazard roll does every model in the unit make a hazard roll? > FALL-BACK MOVE\nMAXIMUM DISTANCE: Your unit’s M characteristic.\n\nELIGIBLE IF: Your unit is engaged.\n\nEFFECT: Your unit moves as described in Moving (03).\n\nBEFORE MOVING: Select fall-back mode:\nOrdered Retreat: If your unit is not battle-shocked, you can select this mode.\nDesperate Escape: Otherwise, you must select this mode. Make a hazard roll for each model in your unit (06.03).\n\nWHILE MOVING:\nDesperate Escape: Each model that is moved can be moved through enemy models.\n\nAFTER MOVING:\nYour unit must be unengaged.\nUntil the end of the turn, unless otherwise stated, your unit is not eligible to shoot, declare a charge or start an action.\nDesperate Escape: If your unit is not battle-shocked, you must make a battle-shock roll for your unit (01.07)."
     },
     {

@@ -20,10 +20,31 @@ function cut(t, n) {
   var s = String(t == null ? '' : t).replace(/\s+/g, ' ').trim();
   return s.length <= n ? s : s.slice(0, n).replace(/\s+$/, '') + '\u2026';
 }
+// Ported from src/wiki-surface.js rowName() (task-23): a row is titled with the
+// record, not with the section it hangs under, so a Q&A record prints its own
+// question and the path stops before it.
+function rowName(list) {
+  var seg = (list || []).map(function (p) { return String(p == null ? '' : p).trim(); });
+  if (!seg.length) return { name: '', at: -1 };
+  var last = seg.length - 1, i;
+  for (i = last - 1; i >= 0; i--) {
+    if (/\?$/.test(seg[i]) || /^q\s*:/i.test(seg[i])) return { name: seg[i], at: i };
+  }
+  var low = seg[last].toLowerCase();
+  for (i = last - 1; i >= 0; i--) {
+    if (seg[i].toLowerCase() !== low) continue;
+    for (var k = i - 1; k >= 0; k--) {
+      if (seg[k].toLowerCase() !== low) return { name: seg[k], at: k };
+    }
+    break;
+  }
+  return { name: seg[last], at: last };
+}
 function parts(heading) {
   var seg = String(heading || '').split(' > ').filter(Boolean);
-  var leaf = seg.length ? seg[seg.length - 1] : '';
-  return { title: displayTitle(leaf), crumb: seg.slice(0, -1).join(' \u203a ') };
+  var r = rowName(seg);
+  var at = r.at < 0 ? seg.length - 1 : r.at;
+  return { title: displayTitle(r.name), crumb: seg.slice(0, at).join(' \u203a ') };
 }
 function finding(f) {
   var p = parts(f.heading);
@@ -79,7 +100,7 @@ function stateOf(tag, kind, label, answerKind, note, mutate) {
 
 var states = [];
 states.push(stateOf('a', 'answered', 'the rule', 'Real capture, 2026-10-19.',
-  'Can a unit shoot after it Fell Back? - 15 findings; the judge answers from [1] and [2], and the sentence it writes quotes the rule verbatim. Rows 2 to 4 all read Fall-Back Move: that is what the live page shows today, because an FAQ record\u2019s heading path ends at its section. It is a row-title defect, not the judge\u2019s.'));
+  'Can a unit shoot after it Fell Back? - 15 findings; the judge answers from [1] and [2], and the sentence it writes quotes the rule verbatim. The three FAQ rows are titled with their own question, the task-23 fix (933b799).'));
 states.push(stateOf('c', 'answered', 'the numbers', 'Real capture, 2026-10-19.',
   'The points question - the judge\u2019s pick is rank 6 of 11, which is what the pick-first toggle is for.'));
 states.push(stateOf('e', 'refused', 'nothing found', 'Real capture, 2026-10-19.',
