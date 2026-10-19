@@ -109,6 +109,14 @@ export const FAST_REASONING = process.env.RULES_FAST_REASONING || (process.env.R
 // take three minutes; RULES_MODEL_TIMEOUT_MS / RULES_FAST_TIMEOUT_MS move it.
 export const MODEL_TIMEOUT_MS = Number(process.env.RULES_MODEL_TIMEOUT_MS) || 180000;
 export const FAST_TIMEOUT_MS = Number(process.env.RULES_FAST_TIMEOUT_MS) || MODEL_TIMEOUT_MS;
+// task-31: a reasoning call is unbounded in practice on the fast model. Measured
+// against token.sensenova.ai on a deep-shaped judge prompt (18,645 characters, 10
+// passages, max_tokens 4000): reasoning_effort medium returned 200 in 27.6s where
+// 'none' returned 200 in 3.6s, and the same model on the Box's own deep list never
+// came back inside the 180s model timeout - the run then died as an error event.
+// The reasoning attempt gets its own bound; when it is not back by then the judge
+// is asked again without reasoning, so a deep run answers instead of dying.
+export const JUDGE_REASONING_TIMEOUT_MS = Number(process.env.RULES_JUDGE_REASONING_TIMEOUT_MS) || 45000;
 
 // Two gateways speak the System One decisions protocol - same request and
 // answers shape, different key refs. The free OpenCode Zen tier rate-limited

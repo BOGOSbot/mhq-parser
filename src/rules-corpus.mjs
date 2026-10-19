@@ -41,7 +41,7 @@ import http from 'http';
 import https from 'https';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_ENDPOINT, MODEL, MODEL_REASONING, MODEL_TIMEOUT_MS, JEV_ENDPOINT, JEV_MODEL, anchorFor, credential } from './rules.mjs';
+import { FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_ENDPOINT, MODEL, MODEL_REASONING, MODEL_TIMEOUT_MS, JUDGE_REASONING_TIMEOUT_MS, JEV_ENDPOINT, JEV_MODEL, anchorFor, credential } from './rules.mjs';
 import { TRACE_RETENTION_MONTHS, sweepTraces } from './rules-traces.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -2284,12 +2284,17 @@ async function routeText(route, prompt, key, maxTokens, opts) {
       // MissingSessionID without one. Any stable id does - it is routing, not
       // authentication - so one per process is enough.
       if (/opencode\.ai$/i.test(u.hostname)) headers['x-opencode-session'] = SESSION_ID;
-      const req = https.request({ method: 'POST', hostname: u.hostname, path: u.pathname, headers }, r => {
+      // The endpoint is whatever RULES_*_ENDPOINT says - a local gateway on http is a
+      // legitimate route (and the only way to test the fallback offline).
+      const lib = u.protocol === 'http:' ? http : https;
+      const req = lib.request({ method: 'POST', hostname: u.hostname, port: u.port || undefined, path: u.pathname, headers }, r => {
         const chunks = []; r.on('data', d => chunks.push(d));
         r.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch { resolve(null); } });
       });
       req.on('error', reject);
-      req.setTimeout(route.timeout || 180000, () => req.destroy(new Error('the model timed out')));
+      // A caller may bound one call below the route's default (task-31: the judge's
+      // reasoning attempt, which is unbounded in practice on the fast model).
+      req.setTimeout((opts && opts.timeout) || route.timeout || 180000, () => req.destroy(new Error('the model timed out')));
       req.end(body);
     });
     const choice = res && res.choices && res.choices[0];
@@ -2840,7 +2845,23 @@ export function rulingSlots(obj, answered, passages) {
 async function judgeAsk(question, passages, key, o, manifest) {
   const callOpts = o.reasoning === undefined ? { json: true } : { json: true, reasoning: o.reasoning };
   const prompt = judgePrompt(question, passages, Object.assign({}, o, { manifest: manifest || [] }));
-  let obj = parseJsonObject(await fastText(prompt, key, 4000, callOpts));
+  // task-31: the reasoning verdict is the slow, unbounded step. Bound it, and when
+  // it does not come back ask the same prompt without reasoning - a judge that
+  // answered without thinking beats a run that died thinking. Measured on the fast
+  // model: 27.6s with reasoning medium against 3.6s without, on one 18.6k prompt.
+  const asking = !!(o.reasoning && o.reasoning !== 'none');
+  let raw = '';
+  try {
+    raw = await fastText(prompt, key, 4000, asking ? Object.assign({}, callOpts, { timeout: JUDGE_REASONING_TIMEOUT_MS }) : callOpts);
+  } catch (e) {
+    if (!asking) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'the judge did not answer: ' + String((e && e.message) || e), raw: true };
+    try {
+      raw = await fastText(prompt, key, 4000, Object.assign({}, callOpts, { reasoning: 'none' }));
+    } catch (e2) {
+      return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'the judge did not answer: ' + String((e2 && e2.message) || e2), raw: true };
+    }
+  }
+  let obj = parseJsonObject(raw);
   // A small model sometimes answers the judgement in prose instead of the object
   // it was asked for. The verdict is binding - an unparseable one is read as
   // "I do not know" - so it is asked once more, for the object alone, rather
@@ -2849,8 +2870,13 @@ async function judgeAsk(question, passages, key, o, manifest) {
   // a prose preamble on roughly a fifth of calls at a 30 KB prompt, and a single retry
   // left the reader with 'the judge returned nothing'. It is asked up to three times in
   // all, and only when the object is missing - a verdict that parsed is never re-asked.
+  // task-31: these re-asks are a wait too, so they run without reasoning and stay
+  // bounded - the verdict's words are what matters, not the deliberation behind it.
+  const reOpts = Object.assign({}, callOpts, { reasoning: 'none' });
   for (let ask = 1; !obj && ask < (o.maxAsks || 3); ask++) {
-    obj = parseJsonObject(await fastText(prompt + '\n\nReply with the JSON object only, in one line, and nothing else.', key, 1200, callOpts));
+    try {
+      obj = parseJsonObject(await fastText(prompt + '\n\nReply with the JSON object only, in one line, and nothing else.', key, 1200, reOpts));
+    } catch (e) { break; }
   }
   if (!obj) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'judge returned nothing parseable', raw: true };
   const answered = obj.answered === true;

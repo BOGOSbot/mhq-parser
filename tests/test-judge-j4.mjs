@@ -108,5 +108,16 @@ const usedRow = surface.slice(surface.indexOf('function ledgerUsedRow'), surface
 ok('a ledger row carries no [n] chip', usedRow.indexOf("'num'") === -1 && usedRow.indexOf('f.n') === -1);
 ok('a ledger row carries no cite badge', usedRow.indexOf('citedByJudge') === -1 && usedRow.indexOf('leg cite') === -1);
 
+// --- task-31 B: the review is not a gate -------------------------------------
+// The send is released on the binding verdict (not at done), the run carries a
+// token, and the previous stream is aborted so a late review cannot interleave its
+// events into the next run's state.
+ok('the binding verdict releases the send', /releaseSend\(\);/.test(page) && /function releaseSend\(\) \{[^}]*busy = false;[^}]*disabled = false;/.test(page));
+ok('the release sits in the binding branch, before the judge status line', page.indexOf('releaseSend();') > page.indexOf('if (ev.second) return;') && page.indexOf('releaseSend();') < page.indexOf("setStatus(t('judgeIn')"));
+ok('the run carries a token and an abort controller', /var RUN = 0;/.test(page) && /RUN_ABORT = \(typeof AbortController !== 'undefined'\)/.test(page));
+ok('the ask carries the signal', /signal: RUN_ABORT \? RUN_ABORT\.signal : undefined/.test(page));
+ok('a stale run drops its events instead of applying them', (page.match(/if \(myRun !== RUN\) return;/g) || []).length >= 3);
+ok('the late review never disables the send again', page.indexOf('releaseSend();') === page.lastIndexOf('releaseSend();'));
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

@@ -2847,6 +2847,9 @@ function applyEvent(ev, state) {
     // The status line keeps the binding verdict's wording; the second judge is
     // reported in the card and, when it disagrees, in the annotation.
     if (ev.second) return;
+    // task-31 B: the ruling is the run's work. Release the send here; the second
+    // judge is an after-step that arrives late, and it never disables the send again.
+    releaseSend();
     var no = ev.judge && ev.judge.answered === false;
     setStatus(t('judgeIn') + (ev.elapsedMs / 1000).toFixed(1) + 's - ' + (no ? t('judgeNo') : t('judgeYes')), no ? 'warn' : 'ok');
     // The run is still busy: the review is what it is busy on now.
@@ -3120,6 +3123,19 @@ wireVoice(document.getElementById('mic'), document.getElementById('q'), function
 
 // --- asking -----------------------------------------------------------------
 var busy = false;
+// task-31 B: the run's work is done when the ruling lands, not when the stream
+// closes - the second judge is a review, not a gate. So the send is released on the
+// binding verdict and a new run may start while the review is still coming; the run
+// carries a token and the previous stream is aborted, so the late review cannot
+// interleave its events into the new state.
+var RUN = 0;
+var RUN_ABORT = null;
+function releaseSend() {
+  if (!busy) return;
+  busy = false;
+  var btn = $('#go');
+  if (btn) btn.disabled = false;
+}
 // task-22: a corrected translation clicked while a run is in flight is QUEUED,
 // not pasted into #q and dropped. One slot: a second click replaces the first.
 // It is launched from ask()'s finally, once the current run has really finished,
@@ -3183,6 +3199,8 @@ async function lookupAnswer(question) {
 
 async function ask(over) {
   if (busy) return;
+  RUN += 1;
+  var myRun = RUN;
   var o = over || {};
   var question = (o.question != null ? String(o.question) : $('#q').value).trim();
   if (question.length < 3) { setStatus(t('statusAskFirst'), 'err'); return; }
@@ -3216,8 +3234,11 @@ async function ask(over) {
     var state = startResult(answerLang, { append: o.append === true });
     state.question = question;
     state.selectable = o.append !== true;
+    if (RUN_ABORT) { try { RUN_ABORT.abort(); } catch (e) { /* no AbortController */ } }
+    RUN_ABORT = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var r = await fetch('/rules/ask', {
       method: 'POST',
+      signal: RUN_ABORT ? RUN_ABORT.signal : undefined,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question: question,
@@ -3251,6 +3272,9 @@ async function ask(over) {
     for (;;) {
       var chunk = await reader.read();
       if (chunk.done) break;
+      // A newer run owns the page now: this one's late events are dropped, not
+      // applied to a state they did not make (task-31 B).
+      if (myRun !== RUN) return;
       buf += dec.decode(chunk.value, { stream: true });
       var lines = buf.split('\n');
       buf = lines.pop();
@@ -3258,6 +3282,7 @@ async function ask(over) {
         if (!lines[i].trim()) continue;
         var ev = null;
         try { ev = JSON.parse(lines[i]); } catch (e2) { continue; }
+        if (myRun !== RUN) return;
         applyEvent(ev, state);
       }
     }
@@ -3267,11 +3292,14 @@ async function ask(over) {
     // from here. What arrived is kept and the bar keeps its timings: the findings
     // are the product, and replacing them with a raw browser string is the one
     // thing not to do. The real error goes to the console with how far it got.
+    // An aborted run is not an error: a new run took over (task-31 B).
+    if (myRun !== RUN) return;
     try { console.error('rules/ask stream ended early after ' + (state.events || 0) + ' events: ' + (e && e.message ? e.message : e)); } catch (e2) { /* no console */ }
     finishProgress();
     setStatus(state.answered ? t('streamCut') : String((e && e.message) || e), 'err');
   } finally {
     clearInterval(tick);
+    if (myRun !== RUN) return;
     busy = false;
     btn.disabled = false;
     // task-22: the run is over, so a queued correction can search now. It is
