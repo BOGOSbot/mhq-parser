@@ -248,7 +248,16 @@ ok('the record card resolves them through the same function', /links: resolveRec
 // measured on was written BEFORE the module (tests/fixtures/rules-lookups.json);
 // tests/test-lookup.mjs is the measurement.
 ok('the page asks the header index first', /if \(!o\.keep && !o\.english && await lookupAnswer\(question\)\) return;/.test(code));
-ok('a lookup opens the record without a model', /openRecord\(state, out\.record\.id\);/.test(code) && /setStatus\(t\('lookupFound'\), 'ok'\)/.test(code));
+// task-28: the instant lookup is a row like any other - it opens the door the
+// setting names (In the book: the drawer; Quick read: the record view), not a
+// bespoke surface.
+ok('a lookup opens the door, without a model', /openDoor\(state, out\.record\);/.test(code) && /setStatus\(t\('lookupFound'\), 'ok'\)/.test(code) && code.indexOf('unitCardView(ev.card)') !== -1);
+ok('the door honours both settings', /function openDoor\(state, f\)[\s\S]{0,220}if \(doorMode\(\) === 'book'\) openBook\(state, f\);\s*else openRecord\(state, f\.id\)/.test(code));
+
+// --- task-28: the explainer is gone, the M value is centred ------------------
+ok('no How this works control in either language', I18N.en.howto === undefined && I18N.fr.howto === undefined && I18N.en.intro === undefined && I18N.fr.intro === undefined && code.indexOf('howtosum') === -1 && code.indexOf('introtext') === -1);
+ok('the browse line and its books stay', code.indexOf("$('#browse')") !== -1 && code.indexOf('renderBrowse') !== -1);
+ok('the M value is explicitly centred in its chip', /\.stat \.v\{[^}]*text-align:center/.test(PAGE));
 ok('and hides the marks there is no question to label', /state\.selectable = false;/.test(code) && /state\.findings = \[out\.record\];/.test(code));
 // task-110: the lookup waits for Ask. task-67 also fired it from an input
 // listener with a 250 ms debounce, so a bare name drew its card while the reader

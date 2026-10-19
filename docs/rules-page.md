@@ -97,10 +97,11 @@ the send control inside it and the microphone beside it, the judge dial and the
 run status on a quiet line under it.
 
 What follows the composer is a footnote, not a landing page: one line listing the
-wiki's three books (**Browse the rulebook** - Rules, Missions, Factions), then
-**How this works** as a collapsed `details`. The three books open the drawer on
-that branch, so finding an entry does not require knowing that the Wiki control
-is the door. There are no worked examples on the page: the question box is the
+wiki's three books (**Browse the rulebook** - Rules, Missions, Factions). The
+**How this works** explainer is gone (task-28): it described a pipeline the page no
+longer runs, and the ruling and the ledger teach the page by being it. The three
+books open the drawer on that branch, so finding an entry does not require knowing
+that the Wiki control is the door. There are no worked examples on the page: the question box is the
 only door, and a chip that filled it was one more thing between the reader and
 the ask. The retention line sits under that block and outside it, so a run hides
 the intro but never the

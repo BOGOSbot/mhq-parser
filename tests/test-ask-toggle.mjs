@@ -48,10 +48,10 @@ ok('the page states the mapping and no measured accuracy', !/acc:/.test(page) &&
 // what the mode moves is still pinned above against ASK_MODES.
 ok('the page no longer explains the dial in prose', html.indexOf('id="modenote"') === -1 && html.indexOf('Retrieval moves with the mode') === -1);
 // task-69: the writer is off, and the copy must say so rather than implying prose
-// that never arrives. The behaviour assertions below are unchanged.
-// The writer-off statement does not leave with the note: it is in the intro, which is the
-// one place the reader is told what they are looking at.
-ok('the intro says the writer is off and the page is the product', /The model-written answer is off/.test(html) && /the findings, the verdict and the citations/.test(html));
+// that never arrives. task-28: the explainer that carried that sentence is gone -
+// the page no longer implies prose at all, because the ruling slots and the ledger
+// are the whole answer. The behaviour assertions below are unchanged.
+ok('the writer-off disclaimer left with the explainer', html.indexOf('The model-written answer is off') === -1 && html.indexOf('introtext') === -1 && html.indexOf('howtosum') === -1);
 
 // --- the toggle is real and defaults to fast ----------------------------------
 ok('two toggle buttons with a default fast', /id="modeFast"[^>]*aria-pressed="true"/.test(html) && /id="modeDeep"[^>]*aria-pressed="false"/.test(html));

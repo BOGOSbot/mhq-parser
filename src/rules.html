@@ -140,21 +140,7 @@ button::after{transition:none}
   text-decoration-color:color-mix(in srgb,var(--acc) 35%,transparent);text-underline-offset:3px}
 .browselink:hover{text-decoration-color:var(--acc)}
 .browselink + .browselink:before{content:'\00b7';color:var(--dim);margin-right:7px;text-decoration:none}
-/* The explainer is a footnote, not a landing page: one line to open it. */
-.howto{margin:18px 0 0;border-top:1px solid var(--line);padding-top:11px}
-.howto summary{color:var(--dim);font:12.5px/1 var(--sans);cursor:pointer;list-style:none;
-  display:inline-flex;align-items:center;gap:7px;padding:3px 0}
-.howto summary::-webkit-details-marker{display:none}
-.howto summary:before{content:'';width:7px;height:7px;border-right:1.5px solid currentColor;
-  border-bottom:1.5px solid currentColor;transform:rotate(-45deg);margin-top:-2px;transition:transform .15s}
-.howto[open] summary:before{transform:rotate(45deg);margin-top:-4px}
-.howto summary:hover{color:var(--txt)}
-.intro{color:var(--dim);font-size:13.5px;line-height:1.6;margin:12px 0 0;max-width:66ch}
-.intro ol{margin:10px 0 0;padding-left:20px}
-.intro li{margin:4px 0}
-.intro b{color:var(--txt);font-weight:600}
-.intro code{font:11.5px var(--mono);color:var(--txt);background:var(--panel2);
-  border:1px solid var(--line);border-radius:4px;padding:0 4px}
+/* task-28: the 'How this works' explainer is gone; the page's own rows teach it. */
 .note{color:var(--dim);font-size:12.5px;line-height:1.5}
 .note.warn{color:var(--warn)}
 .note.ok{color:var(--ok)}
@@ -407,7 +393,9 @@ body.sheetopen{overflow:hidden}
 .ustat{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .stat{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 10px;min-width:48px;text-align:center}
 .stat .k{display:block;font:600 9.5px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--dim)}
-.stat .v{display:block;font:700 15px var(--sans);color:var(--ink);font-variant-numeric:tabular-nums}
+/* task-28: the value is centred in its chip, explicitly - the M chip is the one
+   Mandal flagged and nothing inherited may left-align it. */
+.stat .v{display:block;font:700 15px var(--sans);color:var(--ink);font-variant-numeric:tabular-nums;text-align:center}
 .stat.inv .v{color:var(--acc)}
 .umodel{margin-top:12px}
 .umodelname{font-size:13px;color:var(--txt);margin-bottom:2px}
@@ -582,11 +570,6 @@ details pre{background:var(--bg);border:1px solid var(--line);border-radius:10px
     <!-- Finding a rule by name is one act; browsing the whole book is the other.
          The three books are one tap away, not hidden behind the drawer button. -->
     <div class="browse" id="browse"></div>
-    <!-- The explainer is a footnote you can open, not the landing page. -->
-    <details class="howto">
-      <summary id="howtosum">How this works</summary>
-      <div class="intro" id="introtext"></div>
-    </details>
   </div>
   <p class="note retention" id="retention"></p>
   <div id="result" class="hidden"></div>
@@ -750,7 +733,6 @@ var I18N = {
   legUnknown: 'no provenance',
   // The full-screen record and the wiki it opens onto.
   wikiNav: 'Wiki',
-  howto: 'How this works',
   browseLead: 'Browse the rulebook',
   browseBooks: ['Core rules', 'Missions', 'Factions'],
   recordOpen: 'open the full record',
@@ -854,7 +836,6 @@ var I18N = {
     corpusCountsA: ' core + ',
     corpusCountsB: ' faction records',
     stages: { translate: 'translate', retrieve: 'retrieve', judge: 'judge', answer: 'answer', widen: 'widen', datasheet: 'datasheet', second: 'second judge' },
-    intro: '<p>The question is searched against an indexed copy of the <span id="edlabel">current-edition</span> rules, not answered from memory. Both halves are searched — core rules, and faction datasheets, stratagems, detachments and enhancements:</p><ol><li><b>translate</b> — a question in another language is translated in full into English first, because the corpus is English, and the translation is shown so you can correct it;</li><li><b>retrieve</b> — each half is searched separately, then <b>jev</b> reranks the union. Jev decides; it does not write;</li><li><b>judge + answer</b> — the findings below are the product; a small model judges whether they answer the question. <b>The model-written answer is off</b>: what you see — the findings, the verdict and the citations — is the page.</li><li><b>voice</b> is optional: the <b>Voice</b> button transcribes in your browser and needs https or localhost. The text is left in the box to correct — speech recognition mangles unit names, and the wrong unit retrieves the wrong rule.</li></ol><p>Every citation below links to the section it came from — <code>.../core-rules/#1.-Hit-Roll</code> or a datasheet page. The anchor is derived by the server from the heading, never written by the model, so a citation cannot point at a source that was not indexed.</p>',
     answerFailed: 'The prose could not be written this time - the findings above are what was retrieved.',
     requestFailed: 'The request failed. Try again.',
     streamCut: 'the connection dropped before the end - what arrived is above, ask again for the rest',
@@ -958,7 +939,6 @@ var I18N = {
   foundBy: 'trouvé par ',
   legUnknown: 'sans provenance',
   wikiNav: 'Wiki',
-  howto: 'Comment ça marche',
   browseLead: 'Parcourir le livre de règles',
   browseBooks: ['Règles de base', 'Missions', 'Factions'],
   recordOpen: 'ouvrir la fiche complète',
@@ -1061,7 +1041,6 @@ var I18N = {
     corpusCountsA: ' règles de base + ',
     corpusCountsB: ' fiches de faction',
     stages: { translate: 'traduction', retrieve: 'recherche', judge: 'juge', answer: 'réponse', widen: 'élargissement', datasheet: 'fiche', second: 'second juge' },
-    intro: '<p>La question est cherchée dans une copie indexée des règles <span id="edlabel">de l\u2019édition en cours</span>, jamais répondue de mémoire. Les deux moitiés sont cherchées — règles de base, et fiches techniques, stratagèmes, détachements et optimisations de faction :</p><ol><li><b>traduction</b> — une question dans une autre langue est d\u2019abord traduite en entier en anglais, car le corpus est anglais, et la traduction est affichée pour être corrigée ;</li><li><b>recherche</b> — chaque moitié est cherchée séparément, puis <b>jev</b> reclasse l\u2019union. Jev décide ; il n\u2019écrit pas ;</li><li><b>juge + réponse</b> — les constats ci-dessous sont le produit ; un petit modèle juge s\u2019ils répondent à la question. <b>La rédaction par le modèle est désactivée</b> : ce que vous voyez — les constats, le verdict et les citations — est la page.</li><li><b>voix</b> est optionnel : le bouton <b>Voix</b> transcrit dans votre navigateur et exige https ou localhost. Le texte reste dans le champ pour être corrigé — la reconnaissance vocale abîme les noms d\u2019unités, et la mauvaise unité fait chercher la mauvaise règle.</li></ol><p>Chaque citation renvoie à la section d\u2019où elle vient — <code>.../core-rules/#1.-Hit-Roll</code> ou une page de fiche technique. L\u2019ancre est dérivée par le serveur à partir du titre, jamais écrite par le modèle : une citation ne peut pas pointer vers une source non indexée.</p>',
     answerFailed: 'La réponse n\u2019a pas pu être rédigée cette fois — les constats ci-dessus sont ce qui a été trouvé.',
     requestFailed: 'La requête a échoué. Réessayez.',
     streamCut: 'la connexion a lâché avant la fin — ce qui est arrivé est ci-dessus, relancez pour la suite',
@@ -1161,7 +1140,6 @@ function applyEdition() {
   var label = editionLabel();
   var wa = $('#wahalink'); if (wa) wa.href = url;
   var fw = $('#footwaha'); if (fw) fw.href = url;
-  var el = $('#edlabel'); if (el) el.textContent = label;
   // The edition is the one provenance fact a player needs: 10th and 11th answer
   // the same question differently. It rides the footer line with the build date.
   renderFoot();
@@ -1224,8 +1202,6 @@ function applyLang() {
   var go = $('#go'); if (go) paintSend(go, t('ask'));
   var mb = $('#mic'); if (mb) paintMic(mb, t('voice'));
   var ls = $('#lang'); if (ls) ls.setAttribute('title', t('langTitle'));
-  var it = $('#introtext'); if (it) it.innerHTML = t('intro');
-  var hs = $('#howtosum'); if (hs) hs.textContent = t('howto');
   var rt = $('#retention'); if (rt) rt.textContent = t('retention');
   var fr = $('#footrepo'); if (fr) { fr.title = t('footRepo'); fr.setAttribute('aria-label', t('footRepo')); }
   var fb = $('#footbug'); if (fb) { fb.title = t('footBug'); fb.setAttribute('aria-label', t('footBug')); }
@@ -3197,7 +3173,10 @@ async function lookupAnswer(question) {
   state.findings = [out.record];
   state.recordWikiMap = {};
   state.recordWikiMap[out.record.id] = out.wiki || '';
-  openRecord(state, out.record.id);
+  // task-28: the instant lookup is a row like any other - it opens the door the
+  // setting names (In the book: the drawer at the record; Quick read: the record
+  // view), not a bespoke unit-card surface (Mandal, 2026-10-19).
+  openDoor(state, out.record);
   setStatus(t('lookupFound'), 'ok');
   return true;
 }
