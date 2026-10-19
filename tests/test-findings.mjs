@@ -38,6 +38,23 @@ ok('every finding carries a leg and a rank', found.every(f => f.leg && f.rank >=
 t('ranks are positions in this half', found.map(f => f.rank), found.map((_, i) => i + 1));
 t('a word-start term does not read the longer word', (found.find(f => f.id === 'dis') || {}).matchedTerms || [], []);
 
+// task-32 C: a kind 'index' navigation page is delivered but must never reach a
+// finding. The vector leg already refuses it (indexedIds); the lexical leg greps the
+// whole corpus, which is where the page saw 'faction-sm - index 10/14' as a finding.
+const withIndex = corpus.concat([
+  { id: 'faction-index#faction-ae::1', set: 'factions', kind: 'index', heading: 'faction-ae - index 1/2', text: 'A unit can embark after shooting: the Adeptus Custodes index names Embarking.', url: 'https://x/faction-ae' },
+]);
+const indexFound = await retrieveWide('can a unit embark after shooting?', {
+  corpus: withIndex,
+  namespace: 'rules',
+  cfg: { url: 'http://127.0.0.1:1', token: 'none' },
+  terms: ['embark', 'shoot'],
+  topK: 3,
+  grepNet: 10,
+});
+t('a kind: index page never reaches a finding, even on a word match', indexFound.filter(f => String(f.kind || '') === 'index').map(f => f.id), []);
+ok('and the real rule is still found with the index page in the corpus', indexFound.some(f => f.id === 'emb'));
+
 // findingFor is the boundary the page sees: the provenance has to pass through.
 const f = findingFor({ id: 'emb', set: 'rules', heading: 'Embarking', text: 'x', url: 'https://x', ruleId: '18.02', leg: 'both', rank: 4, vectorRank: 2, vectorScore: 0.81, lexicalRank: 9, matchedTerms: ['embark'] }, 3);
 t('the finding keeps its retriever leg', f.leg, 'both');

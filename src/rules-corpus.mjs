@@ -3356,7 +3356,11 @@ export function childSections(records, corpus, perParent, total) {
 // index, no embedder, an unreachable service - and the other still answers.
 export async function retrieveWide(question, opts) {
   const o = opts || {};
-  const corpus = o.corpus || readAllCorpus();
+  // task-32 C, the second line of defence: BOTH legs read this corpus, and the lexical
+  // leg greps all of it, so a kind 'index' navigation page (or a filtered edition-0
+  // record) could still reach a finding through a word match even though the vector
+  // leg never returns one. The corpus this function sees is the indexable one.
+  const corpus = indexedSections(o.corpus || readAllCorpus());
   const lists = [];
 
   // Which retriever found what, and where it ranked it. The two legs are fused
