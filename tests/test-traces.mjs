@@ -58,7 +58,9 @@ t('the English actually searched travels with it', trace.asked, 'Can Asurmen re-
 t('a finding is a pointer', trace.findings[0], { n: 1, set: 'rules', source: 'core-rules', ruleId: '18.02', id: 'core-rules#Embarking' });
 t('no passage text in the trace', JSON.stringify(trace).includes('A unit can embark'), false);
 t('no judge why in the trace', JSON.stringify(trace).includes('Passage [1] says'), false);
-t('the verdict keeps its answer, confidence and reasoning setting', trace.judge, { answered: true, confidence: 'high', reasoning: '', cited: [] });
+// task-24 (J4): the ruling's slots travel with the verdict - the answer line, the
+// passage it quotes from, the exceptions it names, and the trace check's own counts.
+t('the verdict keeps its answer, confidence and reasoning setting', trace.judge, { answered: true, confidence: 'high', reasoning: '', cited: [], answer: '', from: null, exceptions: [], trace: null });
 t('the answer is kept - the bank grades on it', trace.answer, 'Oui [1].');
 t('the corpus build travels with it', trace.corpusAt, '2026-10-13T00:55:31.597Z');
 t('kind is unknown, not a guess', trace.kind, KIND_UNKNOWN);
@@ -88,7 +90,7 @@ const twoJudges = buildTrace({
 });
 t('the trace carries the second verdict', twoJudges.judge2, { answered: false, confidence: 'med', reasoning: 'medium' });
 t('the trace carries the disagreement flag', twoJudges.judgeDisagreement, true);
-t('the binding verdict is unchanged beside it', twoJudges.judge, { answered: true, confidence: 'high', reasoning: 'none', cited: [] });
+t('the binding verdict is unchanged beside it', twoJudges.judge, { answered: true, confidence: 'high', reasoning: 'none', cited: [], answer: '', from: null, exceptions: [], trace: null });
 // Which judge dissented and whether it was allowed to downgrade: the two fields
 // task-16's rule is measured from.
 t('the dissent and its effect are recorded', [twoJudges.judgeDissentFrom, twoJudges.judgeDowngrade], ['second', true]);

@@ -129,7 +129,19 @@ export function buildTrace(input) {
     signals: input.signals,
     counts: input.counts || { rules: 0, factions: 0 },
     findings: traceFindings(input.findings),
-    judge: { answered: !!(input.judge && input.judge.answered), confidence: (input.judge && input.judge.confidence) || '', reasoning: input.judgeReasoning || '', cited: citedPassages(input.judge) },
+    // task-24 (J4): the ruling's slots, so a trace can be read back as the page
+    // rendered it, and the trace check's own outcome (total claims, how many the
+    // cited passages did not carry) is measurable across the bank.
+    judge: {
+      answered: !!(input.judge && input.judge.answered),
+      confidence: (input.judge && input.judge.confidence) || '',
+      reasoning: input.judgeReasoning || '',
+      cited: citedPassages(input.judge),
+      answer: (input.judge && input.judge.answer) || '',
+      from: (input.judge && input.judge.from) || null,
+      exceptions: (input.judge && Array.isArray(input.judge.exceptions)) ? input.judge.exceptions : [],
+      trace: (input.judge && input.judge.trace) ? { total: input.judge.trace.total || 0, dropped: input.judge.trace.dropped || 0 } : null,
+    },
     // The second judge, and whether the two disagreed. The rate this exists to
     // make measurable is count(judgeDisagreement) / count(traces with judge2): a
     // question the binding judge accepted and the careful one refused is the

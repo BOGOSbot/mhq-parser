@@ -2644,10 +2644,15 @@ export function judgePrompt(question, passages, opts) {
   const why = french
     ? '- why: say which passage states what, and what is missing when it is not answered. Two or three sentences on one line, in French (the passages and the rule names quoted from them stay in English); it is shown to the reader in full, so do not trail off.'
     : '- why: say which passage states what, and what is missing when it is not answered. Two or three sentences on one line; it is shown to the reader in full, so do not trail off.';
-  const whyMust = french ? 'The "why" field is written in French. That is the field the reader reads.' : '';
+  const whyMust = french
+    ? 'The "why", "answer", "quote", "exceptions" and "missing" fields are written in French. The "quote" is the exception inside that rule: it is copied VERBATIM from its passage and therefore stays in the passage\'s English. That is the field the reader reads.'
+    : '';
+  // task-24 (J4): the answer is written as slots, not a paragraph - the line, the
+  // rule's own words under it, the passage they were copied from, the named rules
+  // that change the answer, and what the corpus does not cover when it refuses.
   const schema = french
-    ? '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "why": "la raison, en deux ou trois phrases"}'
-    : '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "why": "the reason, in two or three sentences"}';
+    ? '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "answer": "une phrase, dans les termes du lecteur", "quote": "des mots copi\u00e9s verbatim du passage nomm\u00e9 dans from, ou null", "from": 1, "exceptions": [3], "missing": null, "why": "la raison, en deux ou trois phrases"}'
+    : '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "answer": "one sentence, in the reader\'s terms", "quote": "words copied verbatim from the passage named in from, or null", "from": 1, "exceptions": [3], "missing": null, "why": "the reason, in two or three sentences"}';
   // The follow member is declared only when a hop is on offer: a judge asked for a
   // field it cannot use invents a value for it.
   const schemaOut = manifest.length ? schema.replace('"passages": [1,2],', '"passages": [1,2], "follow": {"passage": 1, "link": 2},') : schema;
@@ -2670,6 +2675,21 @@ export function judgePrompt(question, passages, opts) {
     '- confidence: how sure you are of that verdict. "high" when a passage states the rule outright, "med" when the passages are about the right subject but do not settle it, "low" when the retrieval looks off-topic or the question names something absent from the passages. Always give one of the three.',
     '- widen: only when answered is false, which half to search deeper next. "rules" if it is the core rules that are missing, "faction" if it is a datasheet, stratagem or enhancement, "both" if you cannot tell which. Always give one of the three.',
     '- passages: the numbers that carry the answer, best first; [] if none do.',
+    french
+      ? '- answer : une phrase qui r\u00e9pond \u00e0 la question dans les termes du lecteur, sans h\u00e9sitation et sans \u00ab le passage dit que \u00bb. C\'est la ligne que le lecteur lit ; la citation est le texte de la r\u00e8gle en dessous.'
+      : '- answer: one sentence that answers the question in the reader\'s terms, no hedging and no "the passage says". It is the line the reader reads; the quote is the rule\'s own words under it.',
+    french
+      ? '- quote : des mots copi\u00e9s VERBATIM du passage nomm\u00e9 dans "from", rien d\'autre - pas de paraphrase, pas de fusion de deux passages, pas de ponctuation ajout\u00e9e. null quand aucun passage ne dit la r\u00e8gle dans les mots du lecteur.'
+      : '- quote: words copied VERBATIM from the passage you name in "from" and nothing else - no paraphrase, no joining two passages, no added punctuation. null when no single passage states the rule in the reader\'s words.',
+    french
+      ? '- from : le num\u00e9ro du passage d\'o\u00f9 la citation a \u00e9t\u00e9 copi\u00e9e, ou null.'
+      : '- from: the passage number the quote was copied from, or null.',
+    french
+      ? '- exceptions : les num\u00e9ros des passages qui sont des r\u00e8gles nomm\u00e9es et qui changent la r\u00e9ponse (\u00ab sauf si ... \u00bb). [] quand aucune ne le fait.'
+      : '- exceptions: the numbers of any passages that are named rules changing the answer ("unless ..."). [] when none do.',
+    french
+      ? '- missing : seulement quand answered est false - ce que le corpus ne couvre pas, en une ou deux phrases. null quand answered est true.'
+      : '- missing: only when answered is false - what the corpus does not cover, in one or two sentences. null when answered is true.',
     why,
   ].join('\n');
 }
@@ -2731,6 +2751,90 @@ export function normalizeWiden(value) {
   return 'both';
 }
 
+// task-24 (J4): the trace check. The ruling is printed as the judge wrote it, and the
+// page's claim to soundness rests on every checkable phrase in it being present in
+// the passages the ruling itself names: the quote's own passage, the exceptions and
+// the cited passages. A figure the cited passage does not carry is a fabricated one,
+// and the reader is told rather than shown a confident wrong answer. Returns
+// { total, dropped, bad, quoteOk }: bad holds the offending tokens so the client can
+// strike them, and quoteOk is false when the quote is not in the passage it names.
+export function traceRuling(ruling, passages) {
+  const list = Array.isArray(passages) ? passages : [];
+  const r = ruling || {};
+  const text = p => String((p && (p.text || p.passage || p.excerpt)) || '');
+  const fold = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+  const nums = [];
+  const add = n => { if (Number.isInteger(n) && n >= 1 && n <= list.length && nums.indexOf(n) === -1) nums.push(n); };
+  add(r.from);
+  for (const n of (Array.isArray(r.exceptions) ? r.exceptions : [])) add(n);
+  for (const n of (Array.isArray(r.passages) ? r.passages : [])) add(n);
+  // Case-insensitive: a quoted stretch may open a sentence in the passage and be
+  // quoted mid-sentence in the answer, which is the same words.
+  const hay = fold(nums.map(n => text(list[n - 1])).join('\n')).toLowerCase();
+  const answer = String(r.answer || '');
+  const quote = String(r.quote || '');
+  const bad = [];
+  let total = 0;
+  for (const figure of (answer + ' ' + quote).match(/\b\d{2,}\b/g) || []) {
+    total += 1;
+    if (hay.indexOf(figure) === -1 && bad.indexOf(figure) === -1) bad.push(figure);
+  }
+  for (const span of answer.match(/["\u201c]([^"\u201d]{12,})["\u201d]/g) || []) {
+    const inner = fold(span.replace(/^["\u201c]|["\u201d]$/g, '')).toLowerCase();
+    total += 1;
+    if (inner && hay.indexOf(inner) === -1 && bad.indexOf(span) === -1) bad.push(span);
+  }
+  // The quote must be in the passage it NAMES. A truncated passage is not a
+  // fabrication, so a shared 40-character prefix counts as found - the same
+  // tolerance the approved mockup used.
+  let quoteOk = true;
+  if (quote) {
+    total += 1;
+    const own = fold(quote).toLowerCase();
+    const inOwn = r.from && list[r.from - 1] ? fold(text(list[r.from - 1])).toLowerCase() : '';
+    const probe = own.length > 40 ? own.slice(0, 40) : own;
+    quoteOk = !!inOwn && (inOwn.indexOf(own) !== -1 || inOwn.indexOf(probe) !== -1);
+    if (!quoteOk && bad.indexOf(quote) === -1) bad.push(quote);
+  }
+  return { total: total, dropped: bad.length, bad: bad, quoteOk: quoteOk };
+}
+
+// The ruling's slots, taken from one judge object. Split out of judgeAsk so the
+// fallbacks are a tested interface rather than a branch inside a network call:
+// - no answer means the empty string (the client falls back to the recommendation line)
+// - no quote, or a refusal, means null - and a refusal NEVER carries a quote
+// - from/exceptions are passage numbers of the list the judge was shown
+// - missing is for the refusal only; an answer does not explain what is absent
+// The trace is computed here, against the passages the ruling names, so `trace` and
+// the slots it describes cannot drift apart.
+export function rulingSlots(obj, answered, passages) {
+  const o = obj || {};
+  const list = Array.isArray(passages) ? passages : [];
+  const inRange = n => Number.isInteger(n) && n >= 1 && n <= list.length;
+  const from = inRange(parseInt(o.from, 10)) ? parseInt(o.from, 10) : null;
+  const exceptions = Array.isArray(o.exceptions)
+    ? o.exceptions.map(n => parseInt(n, 10)).filter(inRange).filter((n, i, a) => a.indexOf(n) === i)
+    : [];
+  const answer = String(o.answer || '').trim();
+  const quote = typeof o.quote === 'string' && o.quote.trim() ? o.quote.trim() : null;
+  const missing = typeof o.missing === 'string' && o.missing.trim() ? o.missing.trim() : null;
+  const ruling = {
+    answer: answer,
+    quote: answered ? quote : null,
+    from: answered ? from : null,
+    exceptions: answered ? exceptions : [],
+    passages: Array.isArray(o.passages) ? o.passages : [],
+  };
+  return {
+    answer: answer,
+    quote: ruling.quote,
+    from: ruling.from,
+    exceptions: ruling.exceptions,
+    missing: answered ? null : missing,
+    trace: traceRuling(ruling, list),
+  };
+}
+
 // One judge call: the prompt, the parse, and the one extra ask the verdict is worth.
 // Split out of judgeCoverage so the hop can run it twice on two lists.
 async function judgeAsk(question, passages, key, o, manifest) {
@@ -2755,12 +2859,23 @@ async function judgeAsk(question, passages, key, o, manifest) {
   // this and a blank must not read as certainty.
   let confidence = normalizeConfidence(obj.confidence);
   if (!confidence) confidence = answered ? 'med' : 'low';
+  const inRange = n => Number.isInteger(n) && n >= 1 && n <= passages.length;
+  const passageNumbers = Array.isArray(obj.passages) ? obj.passages.map(n => parseInt(n, 10)).filter(inRange) : [];
+  const slots = rulingSlots(Object.assign({}, obj, { passages: passageNumbers }), answered, passages);
   return {
     rulesQuestion: obj.rules_question !== false,
     answered,
     confidence,
     widen: normalizeWiden(obj.widen),
-    passages: Array.isArray(obj.passages) ? obj.passages.filter(n => Number.isInteger(n) && n >= 1 && n <= passages.length) : [],
+    passages: passageNumbers,
+    // task-24 (J4): the ruling's slots. answered:false never carries a usable quote,
+    // whatever the model wrote in the field.
+    answer: slots.answer,
+    quote: slots.quote,
+    from: slots.from,
+    exceptions: slots.exceptions,
+    missing: slots.missing,
+    trace: slots.trace,
     // Not sliced. A 160-character cap here cut the judge's reasoning mid-word,
     // and the reader was shown a verdict that stopped in the middle of the
     // sentence explaining it. What the judge says is the page's headline; it is
