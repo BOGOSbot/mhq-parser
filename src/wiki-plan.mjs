@@ -166,6 +166,42 @@ export function splitBody(text, budget) {
 // though that one then runs a little over - the corpus's own floor is 32
 // characters today and 77 on the rules half.
 export const MIN_PART = 80;
+// task-29: one record per unit in the READER's surfaces. A record the splitter cut
+// into '(1/2)' and '(2/2)' is one rule, split for the judge's passage window
+// (JUDGE_PASSAGE_CHARS); the corpus and the index keep the parts, because that is
+// what the judge and the embedder read. This reassembles them for display only:
+// the base heading (the part marker gone) and the parts' texts in order, each
+// part's built link block stripped so the seam is the rule's own words. The part
+// metadata cannot find the siblings (part/parts read 1/1 on every labelled chunk);
+// the heading's own (i/m) is the truth and the ids are <base>~i. A wiki-plan split
+// can leave the first part unlabelled - the sibling then says (2/2) and the group
+// is found by the id.
+export function mergeChunkParts(record, sections) {
+  if (!record) return record;
+  const list = Array.isArray(sections) ? sections : [];
+  const id = String(record.id || '');
+  const baseId = id.replace(/~\d+$/, '');
+  const marker = /^(.*?) \((\d+)\/(\d+)\)$/.exec(String(record.heading || '').trim());
+  let base = marker ? marker[1] : String(record.heading || '');
+  let of = marker ? parseInt(marker[3], 10) : 0;
+  if (!of) {
+    const sib = list.find(s => s && String(s.id || '').indexOf(baseId + '~') === 0 && /\(\d+\/\d+\)$/.test(String(s.heading || '')));
+    const mm = sib ? /^(.*?) \((\d+)\/(\d+)\)$/.exec(String(sib.heading)) : null;
+    if (mm) { base = mm[1]; of = parseInt(mm[3], 10); }
+  }
+  if (!(of > 1)) return record;
+  const byId = new Map();
+  for (const s of list) if (s && s.id) byId.set(s.id, s);
+  const parts = [];
+  for (let i = 1; i <= of; i++) {
+    const p = byId.get(baseId + '~' + i) || (i === 1 ? byId.get(baseId) : null);
+    if (p) parts.push(p);
+  }
+  if (parts.length < 2) return record;
+  const text = parts.map(p => stripBuiltBlock(p)).join('\n\n');
+  return Object.assign({}, record, { heading: base, title: base, part: 1, parts: 1, text: text, mergedFrom: parts.map(p => p.id) });
+}
+
 export function splitWithin(text, budget, min) {
   const floor = min === undefined ? MIN_PART : min;
   const out = [];

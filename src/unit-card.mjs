@@ -29,6 +29,7 @@
 import fs from 'fs';
 import path from 'path';
 import { csvDir, csvRows, htmlToText, trimAbilityTail } from './rules-corpus.mjs';
+import { mergeChunkParts } from './wiki-plan.mjs';
 
 const clean = s => htmlToText(String(s == null ? '' : s)).replace(/\s+/g, ' ').trim();
 
@@ -409,8 +410,12 @@ export function recordCard(id, opts) {
   const corpora = o.corpora || {};
   const byId = o.index || new Map(
     ([]).concat(corpora.rules || [], corpora.factions || []).map(r => [r.id, r]));
-  const rec = byId.get(String(id == null ? '' : id));
-  if (!rec) return null;
+  const raw = byId.get(String(id == null ? '' : id));
+  if (!raw) return null;
+  // task-29: a (1/2)/(2/2) part opens the whole record, named by its base heading -
+  // display only, the corpus keeps the parts for the judge and the index.
+  const sections = ([]).concat(corpora.rules || [], corpora.factions || [], corpora.rulings || []);
+  const rec = mergeChunkParts(raw, sections);
   const kind = rec.kind || '';
   // The CSV card is keyed by the bare datasheet id; the corpus record carries a
   // source prefix. `datasheet#X` and `unitrules#X` are the two halves of one

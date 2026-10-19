@@ -56,7 +56,9 @@ t('the French is untouched by the translation', feq.filter(r => r.text_en === r.
 ok('a translated record renders French under fr and English under en', (function () {
   const rec = feq.find(r => r.text_en);
   const fr = rulingBody(rec, 'fr'), en = rulingBody(rec, 'en');
-  return fr.indexOf(esc(rec.text)) !== -1 && fr.indexOf(esc(rec.text_en)) === -1 && en.indexOf(esc(rec.text_en)) !== -1 && en.indexOf('Machine translation, unreviewed') !== -1;
+  // task-29: the body carries no second translation commentary - the banner is the
+  // one place the fact lives, and it appears once.
+  return fr.indexOf(esc(rec.text)) !== -1 && fr.indexOf(esc(rec.text_en)) === -1 && en.indexOf(esc(rec.text_en)) !== -1 && en.indexOf('Machine translation, unreviewed') === -1 && en.indexOf('Translated from') === -1;
 })());
 ok('the default keeps the French and hides the English until the reader chooses it', (function () {
   const rec = feq.find(r => r.text_en);
@@ -103,7 +105,15 @@ t('no empty node was made for the five empty tabs', tree.files['tree/rulings/wtc
 // --- the provenance banner, in the shared fragment ----------------------------
 const banner = recordBody({ kind: 'ruling', text: 'Le texte', provenance: { source_id: 'wtc-40k-11th-faq', publisher: 'WTC', document: 'WTC 11th Edition FAQ 1.0', version: '1.0', retrieved_at: '2026-10-15T02:20:00+02:00', language: 'en', scope: 'game', translation: { from: 'fr', to: 'en', by: 'machine', reviewed: false, model: 'deepseek-v4.1-flash' } } }, {});
 ok('the record fragment carries the banner', banner.indexOf('Third-party ruling') !== -1 && banner.indexOf('Not Games Workshop rules text.') !== -1);
-ok('and the banner says a machine translated it and no human reviewed it', banner.indexOf('machine translation') !== -1 && banner.indexOf('not reviewed') !== -1 && banner.indexOf('no human has read') !== -1);
+// task-29: ONE translation line - the fact, and by what - and none of the old
+// commentary ('machine translation', 'not reviewed', 'no human has read').
+ok('the banner says it is a translation and by what, in one line', banner.indexOf('Translated from French by machine (deepseek-v4.1-flash)') !== -1 && banner.indexOf('no human has read') === -1 && banner.indexOf('not reviewed') === -1 && banner.indexOf('machine translation') === -1);
+// The line is written in the language the ruling is presented in: an en target
+// says it in English, a fr target in French.
+const bannerFr = recordBody({ kind: 'ruling', text: 'Texte', provenance: { source_id: 'x', publisher: 'P', document: 'D', version: '1', translation: { from: 'en', to: 'fr', by: 'machine', model: 'm-1' } } }, {});
+ok('and a French rendering says it in French', bannerFr.indexOf('Traduit de l\u2019anglais par machine (m-1).') !== -1 && bannerFr.indexOf('no human has read') === -1);
+const noTr = recordBody({ kind: 'ruling', text: 'Le texte', provenance: { source_id: 'wtc', publisher: 'WTC', document: 'D', version: '1', retrieved_at: '2026-10-15T02:20:00+02:00' } }, {});
+ok('and a ruling with no translation shows no translation line', noTr.indexOf('Translated from') === -1 && noTr.indexOf('Traduit de') === -1);
 ok('with the publisher, the document, the version and the date', banner.indexOf('WTC') !== -1 && banner.indexOf('WTC 11th Edition FAQ 1.0') !== -1 && banner.indexOf('version 1.0') !== -1 && banner.indexOf('2026-10-15') !== -1);
 ok('and the ruling text is escaped, never interpreted', recordBody({ kind: 'ruling', text: '<b>raw</b>', provenance: {} }, {}).indexOf('&lt;b&gt;raw&lt;/b&gt;') !== -1);
 

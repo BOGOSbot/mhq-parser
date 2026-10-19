@@ -28,7 +28,7 @@ import { linkify, esc } from './wikilinks.mjs';
 // block is stripped exactly from the record's own links array (task-72), and the SEE
 // ALSO block is stripped for display only when it names the record's own section links
 // (task-87).
-import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries } from './wiki-plan.mjs';
+import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries, mergeChunkParts } from './wiki-plan.mjs';
 
 // task-97: the CSV export's own columns. Only a record from a CSV source carries them, so only
 // there do they leave the prose - a rule whose text happens to say 'Type:' is not ours to cut.
@@ -333,11 +333,21 @@ function provenanceBanner(p) {
     p.language ? String(p.language).toUpperCase() : '',
     p.scope ? 'scope: ' + p.scope : '',
   ].filter(Boolean);
-  // A machine translation is never presented as a reviewed one: the banner
-  // carries the fact, the model and the 'no human has read it' flag.
+  // task-29 (Mandal, 2026-10-19): ONE line, not a commentary - the fact that this
+  // text is a translation, and by what. No 'not reviewed' and no 'no human has
+  // read': the ruling is a third party's words and the line says what it is.
   const tr = p.translation;
-  const translated = tr ? '<br><span class="wprov-mt">' + esc(String(tr.from || 'fr').toUpperCase()) + '\u2192' + esc(String(tr.to || 'en').toUpperCase())
-    + ' machine translation (' + esc(tr.model || 'unknown model') + '), <strong>not reviewed</strong> \u2014 no human has read this rendering of the ruling. The French is the source of record.</span>' : '';
+  const by = tr
+    ? (String(tr.by || '') === 'machine' || !tr.by ? 'machine' + (tr.model ? ' (' + tr.model + ')' : '') : String(tr.model || tr.by))
+    : '';
+  const langEn = c => ({ fr: 'French', en: 'English' })[String(c || '')] || String(c || '').toUpperCase();
+  const langFr = c => ({ fr: 'français', en: 'anglais' })[String(c || '')] || String(c || '').toUpperCase();
+  const to = String(tr && tr.to || 'en'), from = String(tr && tr.from || 'fr');
+  const translated = tr
+    ? '<br><span class="wprov-mt">' + (to === 'fr'
+      ? 'Traduit de l\u2019' + esc(langFr(from)) + ' par ' + esc(by) + '.'
+      : 'Translated from ' + esc(langEn(from)) + ' by ' + esc(by) + '.') + '</span>'
+    : '';
   return '<aside class="wprov" data-source="' + esc(p.source_id || '') + '"><strong>Third-party ruling</strong> \u2014 '
     + esc(bits.join(' \u00b7 ')) + '. <em>Not Games Workshop rules text.</em>' + translated + '</aside>';
 }
@@ -359,8 +369,11 @@ export function rulingBody(record, lang, opts) {
   const en = hasEn
     ? proseHtml(record.text_en, Object.assign({ lang: 'en' }, proseOpts))
     : fr;
+  // task-29: the banner carries THE one translation line; a second commentary in the
+  // body would be exactly what Mandal asked to remove. A missing English version is
+  // a different fact and still says so.
   const note = hasEn
-    ? '<p class="wlang-note">Machine translation, unreviewed \u2014 the French is the source of record.</p>'
+    ? ''
     : '<p class="wlang-note">No English translation yet \u2014 showing the French source.</p>';
   if (lang === 'en') return en + note;
   if (lang === 'fr') return fr;
@@ -704,6 +717,9 @@ function seeAlsoHtml(kids, o) {
 }
 export function recordBody(record, opts) {
   const o = opts || {};
+  // task-29: a (1/2)/(2/2) part renders the whole rule, once, under its base
+  // heading - display only (the corpus and the index keep the parts).
+  if (record && o.corpora) record = mergeChunkParts(record, ([]).concat(o.corpora.rules || [], o.corpora.factions || [], o.corpora.rulings || []));
   // The card prose gets the same links as the prose path, and the record's own id
   // is carried so it never links to itself.
   if (record && !o.selfId) o.selfId = record.id;

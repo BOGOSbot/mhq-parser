@@ -76,6 +76,35 @@ An index uses the same rule: a faction's index is one page per
 `floor((budget - 200) / 46) ≈ 39` entries, and the head page links to the later
 pages. 185 index pages cover the 24 factions.
 
+## One record in the reader's surfaces (task-29)
+
+**The split stays; the display merges.** The chunker cuts a section whose body
+passes `MAX_CHARS` (2,000, `src/rules-corpus.mjs:177`) at paragraph, then sentence,
+then word boundaries, and labels the parts `heading (i/m)` with ids `<base>~i`. The
+reader must not see the same rule twice: the ledger, the record view and the tree
+merge the parts of one group back into one record.
+
+Measured on the delivered corpus (2026-10-19): 1,739
+labelled chunk records over 864 id-groups (756 distinct base headings - **108 groups
+share a base heading with another group, so the merge keys on the id, never the
+text alone**); 1,356 delivered over 667 groups, 24.5% of the 6,248 records.
+**Every** labelled chunk carries `part 1 / parts 1` (0 exceptions), so the metadata
+cannot find the siblings; the heading's own `(i/m)` and the `~i` id can.
+
+**Is the split still needed? Yes, for the judge, not for the embedder.** BGE-M3's
+published window is 8,192 tokens; the longest delivered record is 4,093 characters
+(755 words, ~5.8 characters per word), so even at 2 tokens per word it is ~1,510
+tokens - 18% of the window. The budget the split actually serves is the judge's
+passage window, `JUDGE_PASSAGE_CHARS = 2,400` (`src/rules-corpus.mjs:2555`), which
+`MAX_CHARS` sits deliberately under: 444 of the 667 delivered groups exceed 2,400
+characters reassembled (58 exceed 4,000; the largest is 6,327). Merging at index
+time would hand the judge a passage over its window and would gain nothing
+measurable - the split loses no text, repeats no part text and overlaps nothing
+(the only repetition is the heading echo, 45 characters per member, 1.2% of the
+corpus). So: the corpus and the index keep the parts, and `mergeChunkParts`
+(`src/wiki-plan.mjs`) plus `mergeChunks` (`src/wiki-surface.js`) reassemble them
+for display only, at record-render and row-render time.
+
 ## The id-stability rule
 
 **This is the acceptance criterion that matters, and the FAQ promotion is why.**

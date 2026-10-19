@@ -1259,8 +1259,14 @@ function rulingLedger(findings, state, ctx, pending) {
     (judge.passages || []).forEach(add);
   }
   var order = heroOrder(findings, judge.passages || [], state, ctx);
+  // task-29: a merged row stands for every part it folded in, so a citation to
+  // either part keeps the record (and its mark) in the used list.
+  var rowNs = function (f) { return [f.n].concat(f.mergedNs || []); };
   var used = [];
-  for (var i = 0; i < order.length; i++) if (usedNums.indexOf(order[i].n) !== -1) used.push(order[i]);
+  for (var i = 0; i < order.length; i++) {
+    var ns = rowNs(order[i]);
+    for (var x = 0; x < ns.length; x++) if (usedNums.indexOf(ns[x]) !== -1) { used.push(order[i]); break; }
+  }
   // A refusal (or a not-a-question) cites nothing: the nearest three are shown in
   // full and the rest collapse like any other residue. Before the ruling exists
   // (pending) the rows are the ranked list the reader is watching arrive, so the
@@ -1278,7 +1284,7 @@ function rulingLedger(findings, state, ctx, pending) {
   card.appendChild(head);
   var ol = el('ol', 'cites');
   var quotedFrom = answered && judge.quote ? judge.from : null;
-  for (var k = 0; k < used.length; k++) ol.appendChild(ledgerUsedRow(used[k], state, ctx, used[k].n === quotedFrom));
+  for (var k = 0; k < used.length; k++) ol.appendChild(ledgerUsedRow(used[k], state, ctx, rowNs(used[k]).indexOf(quotedFrom) !== -1));
   card.appendChild(ol);
   if (rest.length) card.appendChild(ledgerResidue(rest, state, ctx));
   return card;
@@ -1387,6 +1393,51 @@ function sortedFindings(list) {
 }
 
 
+
+// --- task-29: one row per record (pure; extracted like the row display) ------
+// A record the splitter cut into (1/2)+(2/2) is one rule for the reader: both parts
+// can come back from one retrieval, and without this the ledger and the swipe order
+// show the same unit twice. Grouped by the BASE heading - the part marker is the
+// only trustworthy key (part/parts read 1/1 on every labelled chunk) - keeping the
+// best-ranked part and joining the excerpts. Ids are untouched: the row opens the
+// whole record through the display merge in recordBody/recordCard.
+function chunkBase(heading) {
+  var m = /^(.*?) \((\d+)\/(\d+)\)$/.exec(String(heading || '').trim());
+  return m ? m[1] : '';
+}
+function mergeChunks(list) {
+  var out = [], byKey = {};
+  for (var i = 0; i < (list || []).length; i++) {
+    var f = list[i];
+    var base = chunkBase(f.heading);
+    // The id is the group, not the heading: 108 delivered id-groups share a base
+    // heading with another group (756 distinct base headings over 864 groups), so
+    // keying on the text alone would fold two different records into one row. The
+    // id carries '~i' on every labelled chunk - the heading is only the fallback.
+    var idKey = String(f.id || '').replace(/~\d+$/, '');
+    var key = /~\d+$/.test(String(f.id || '')) ? 'i:' + idKey : (base ? 'h:' + base : 'i:' + idKey);
+    var prev = byKey[key];
+    if (!prev) {
+      if (base) {
+        var copy = {};
+        for (var k in f) copy[k] = f[k];
+        copy.heading = base;
+        byKey[key] = copy;
+        out.push(copy);
+      } else {
+        byKey[key] = f;
+        out.push(f);
+      }
+      continue;
+    }
+    if (base) prev.excerpt = (String(prev.excerpt || '') + ' ' + String(f.excerpt || '')).trim();
+    (prev.mergedIds = prev.mergedIds || []).push(f.id);
+    // The judge cites passage numbers, and it can cite the folded sibling: the row
+    // keeps every number it stands for so a citation is never lost to the merge.
+    (prev.mergedNs = prev.mergedNs || []).push(f.n);
+  }
+  return out;
+}
 
 function findingItem(f, prominent, cited, state, ctx) {
   var selectable = !!(state && state.selectable && !state.rerun);
@@ -1521,13 +1572,13 @@ function devPanel(f, state, ctx) {
       // only after the ruling - the old bordered card with its chips is never on
       // screen during a run. Before the verdict it lists the ranked passages;
       // after it, the cited ones. The marks and the re-ask footer ride under both.
-      var list = sortedFindings(state.findings || []);
+      var list = mergeChunks(sortedFindings(state.findings || []));
       host.appendChild(rulingLedger(list, state, ctx, !state.judge));
       if (state.selectable && !state.rerun) host.appendChild(rerankFooter(state, ctx));
       var pickFoot = pickRow(state, ctx);
       if (pickFoot) host.appendChild(pickFoot);
     },
-    findingOrder: function (findings, cited, state, ctx) { return heroOrder(findings, cited, state, ctx); },
+    findingOrder: function (findings, cited, state, ctx) { return heroOrder(mergeChunks(findings), cited, state, ctx); },
     displayTitle: displayTitle,
     shortName: shortName,
     // task-26: the one row display derivation, for the page's own source line.
