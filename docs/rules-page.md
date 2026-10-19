@@ -229,6 +229,17 @@ question box, grows while a correction is typed as well as when the card is
 drawn, and scrolls at the same 168px cap; the box and the button share the ask
 row's shape, and a phone too narrow for both wraps the button under the box
 rather than squeezing the text.
+**A correction clicked while a run is in flight is queued, not dropped.** The
+correction's send was writing the English into the question box and then calling
+ask(), whose first line refuses a second run - so mid-run the reader's own French
+was overwritten and the correction silently went nowhere. The send now leaves the
+question box alone and puts the text in one queue slot (a second click replaces
+the first); the card shows it - a dashed border, a *Queued* line under the box,
+and the status line saying the correction will be searched when this run
+finishes, in both languages. ask()'s finally takes the queued correction once the
+run has really ended and starts it with english: true, so exactly one new run
+follows, and the question box only then shows the corrected text. With no run in
+flight the click searches immediately, as before.
 
 **The ask and the correction are the same send button**: one `sendbtn` class,
 one up-arrow svg, a 44px target. The icon is the only visible label, so each

@@ -352,6 +352,24 @@ t('(2) no example prompts in either language table', [I18N.en.examples, I18N.fr.
 t('(2) the chip renderer is gone', [code.indexOf('renderExamples')].filter(x => x !== -1), []);
 ok('the translation re-ask grows the box', /growQuestion\(\);\s*\n\s*ask\(\{ question: text, english: true \}\)/.test(code));
 
+// task-22: a correction clicked while a run is in flight is queued, not pasted
+// into #q and dropped on ask()'s busy guard. The pins are the order that makes
+// that true: the busy branch returns BEFORE #q is written, there is one slot, the
+// queued state is drawn on the card, and ask()'s finally launches it.
+const trSend = code.slice(code.indexOf("send.addEventListener('click'"), code.indexOf('// This box holds English'));
+ok('the translation send checks the run before touching #q',
+  /if \(busy\) \{ queueCorrection\(text\); return; \}/.test(trSend) && trSend.indexOf('queueCorrection(text)') < trSend.indexOf("$('#q').value = text"));
+ok('one queued correction, a second click replacing the first',
+  /var PENDING = null;/.test(code) && /function queueCorrection\(question\) \{\s*\n\s*PENDING = \{ question: question, english: true \};/.test(code));
+ok('the queued correction keeps the English flag the card asked with',
+  /ask\(\{ question: queued\.question, english: queued\.english === true \}\)/.test(code));
+ok('the queue is launched only when the run finishes',
+  /finally \{[\s\S]{0,700}var queued = PENDING;[\s\S]{0,240}if \(queued\) \{[\s\S]{0,200}ask\(\{ question: queued\.question/.test(code));
+ok('the queued state is on the card, not only in the status line',
+  /function paintQueued\(\)/.test(code) && /t\('correctionQueuedCard'\)/.test(code) && /\.trqueue\{/.test(PAGE) && /\.trrow\.queued\{/.test(PAGE));
+ok('the queued status is stated in the reader\'s language', /correctionQueued: '/.test(PAGE) && /correctionQueuedCard: '/.test(PAGE));
+ok('ask() still refuses a second concurrent run', /async function ask\(over\) \{\s*\n\s*if \(busy\) return;/.test(code));
+
 const headerHtml = PAGE.slice(PAGE.indexOf('<header>'), PAGE.indexOf('</header>'));
 // The ask moved from the sticky header into the page body: the question is the page.
 const askHtml = PAGE.slice(PAGE.indexOf('<main>'), PAGE.indexOf('</main>'));

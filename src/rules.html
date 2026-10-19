@@ -479,6 +479,9 @@ a{color:var(--acc)}
 .trrow{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;border:1.5px solid var(--line);
   border-radius:16px;background:var(--panel);padding:6px 6px 6px 10px;box-shadow:var(--shadow)}
 .trrow:focus-within{border-color:var(--acc)}
+/* task-22: the queued state of a correction made while a run is in flight. */
+.trrow.queued{border-color:var(--acc);border-style:dashed}
+.trqueue{margin-top:6px;color:var(--acc);font:11.5px/1.4 var(--sans)}
 .trmark{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
   width:14px;height:44px;color:var(--dim);user-select:none}
 .trmark svg{width:12px;height:12px;transform:rotate(45deg)}
@@ -786,6 +789,8 @@ var I18N = {
     translationNote: 'Your question was not in English, so it was translated in full before searching. The index, the judge and the answer all read the English text below - correct it and search again if a name came out wrong.',
     translationButton: 'Search this English text',
     translationTooShort: 'that translation is too short to search',
+  correctionQueued: 'the correction will be searched when this run finishes',
+  correctionQueuedCard: 'Queued - searched when this run finishes',
     corpusBuilt: 'corpus built ',
     corpusToday: 'today',
     corpusYesterday: '1 day ago',
@@ -981,6 +986,8 @@ var I18N = {
     translationNote: 'Votre question n\u2019était pas en anglais : elle a été traduite en entier avant la recherche. L\u2019index, le juge et la réponse lisent le texte anglais ci-dessous — corrigez-le et relancez si un nom est mal traduit.',
     translationButton: 'Chercher ce texte anglais',
     translationTooShort: 'cette traduction est trop courte pour être cherchée',
+  correctionQueued: 'la correction sera cherchée à la fin de cette recherche',
+  correctionQueuedCard: 'En attente — cherchée à la fin de cette recherche',
     corpusBuilt: 'corpus construit le ',
     corpusToday: 'aujourd\u2019hui',
     corpusYesterday: 'il y a 1 jour',
@@ -1373,10 +1380,16 @@ function translationCard(tr) {
   send.addEventListener('click', function () {
     var text = (ta.value || '').trim();
     if (text.length < 3) { setStatus(t('translationTooShort'), 'err'); return; }
+    // task-22: while a run is in flight the correction is queued. Writing #q
+    // here was the bug: the reader's French was overwritten and the ask that
+    // followed was dropped on ask()'s own busy guard.
+    if (busy) { queueCorrection(text); return; }
     $('#q').value = text;
     growQuestion();
     ask({ question: text, english: true });
   });
+  // The queued state is drawn by paintQueued(); this only sizes the note.
+  if (PENDING) paintQueued();
   // This box holds English - the translation the pipeline actually ran - so its
   // microphone listens in English whatever language the page is in.
   var mic = el('button', 'mic');
@@ -2984,6 +2997,35 @@ wireVoice(document.getElementById('mic'), document.getElementById('q'), function
 
 // --- asking -----------------------------------------------------------------
 var busy = false;
+// task-22: a corrected translation clicked while a run is in flight is QUEUED,
+// not pasted into #q and dropped. One slot: a second click replaces the first.
+// It is launched from ask()'s finally, once the current run has really finished,
+// and #q is not touched until that launch (the reader's own question stays in
+// the box while the first run is still answering).
+var PENDING = null;
+
+function paintQueued() {
+  var slot = $('#trslot');
+  var row = document.querySelector('.trrow');
+  if (row) row.classList.toggle('queued', !!PENDING);
+  var note = document.getElementById('trqueue');
+  if (PENDING) {
+    if (!note) {
+      note = el('div', 'trqueue');
+      note.id = 'trqueue';
+      if (slot) slot.appendChild(note);
+    }
+    note.textContent = t('correctionQueuedCard');
+  } else if (note && note.parentNode) {
+    note.parentNode.removeChild(note);
+  }
+}
+
+function queueCorrection(question) {
+  PENDING = { question: question, english: true };
+  paintQueued();
+  setStatus(t('correctionQueued'), 'busy');
+}
 
 // ask() takes overrides from the translation card: the corrected English text
 // and the fact that it is already English, so the server neither detects nor
@@ -3103,6 +3145,17 @@ async function ask(over) {
     clearInterval(tick);
     busy = false;
     btn.disabled = false;
+    // task-22: the run is over, so a queued correction can search now. It is
+    // taken before ask() so a second click during THIS launch still queues
+    // against the new run rather than being lost.
+    var queued = PENDING;
+    PENDING = null;
+    paintQueued();
+    if (queued) {
+      $('#q').value = queued.question;
+      growQuestion();
+      ask({ question: queued.question, english: queued.english === true });
+    }
   }
 }
 
