@@ -3219,9 +3219,9 @@ async function ask(over) {
   setStatus(t('runningAsk'), 'busy');
   var t0 = performance.now();
   // A cold question reads real pages and takes ten to thirty seconds. A frozen
-  // button over a still line reads as broken, so the status counts.
-  // The bar carries the progress now, so this only counts seconds beside it.
-  setStatus('', '');
+  // button over a still line reads as broken, so the status counts. The bar
+  // carries the progress now, so this only counts seconds beside it - and the
+  // line is never cleared while the send is disabled (task-27).
   var tick = setInterval(function () {
     if (PDONE) return;
     var e = $('#pelapsed');
