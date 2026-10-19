@@ -295,6 +295,11 @@ details{border-color:var(--line)}
 .lname{display:block;font:600 16px/1.25 var(--serif);color:var(--ink);letter-spacing:-.01em}
 .lpath{font:11px/1.4 var(--mono);color:var(--dim);margin-top:4px;overflow-wrap:anywhere}
 .lmark{font:11px/1.4 var(--mono);color:var(--dim);margin-top:6px;opacity:.7}
+/* The ledger row is a row, not a button: no chrome, the whole width live. */
+.lrow{display:block;width:100%;text-align:left;background:none;border:0;padding:0;cursor:pointer;color:inherit}
+.lrow .lname{display:block}
+.lrow .lpath{display:block;margin-top:3px;font-size:10.5px}
+.fitem.cited .ftext{margin-top:8px}
 .fitem.cited{padding:11px 0 10px}
 .resid{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:6px;
   padding:13px 2px;border:0;border-top:1px solid var(--line);background:none;color:var(--dim);
