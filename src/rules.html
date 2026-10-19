@@ -2288,7 +2288,9 @@ function rulingBlock(judge, findings) {
     for (var k = 0; k < judge.exceptions.length; k++) {
       var ex = findFinding(findings, judge.exceptions[k]);
       if (!ex) continue;
-      var a = el('a', null, leafOf(ex.heading));
+      // task-26: the exception is a row name too, so a Q&A rule reads as its
+      // question here exactly as it does in the ledger.
+      var a = el('a', null, rowDisplayOf(ex.heading).name || leafOf(ex.heading));
       a.href = '#';
       (function (rec) { a.addEventListener('click', function (ev) { ev.preventDefault(); openPassage(rec); }); })(ex);
       links.push(a);

@@ -134,6 +134,55 @@
     if (!s || !/[A-Z]/.test(s) || s !== s.toUpperCase()) return s;
     return s.toLowerCase().replace(/(^|[\s\-\/(\u2019'])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); });
   }
+// --- task-23 row name (pure; tests/test-rules-page.mjs extracts this block) ---
+// A finding row must be titled with the RECORD, not with the section it hangs
+// under. The retrieval heading is a path whose leaf is the matched section, and a
+// Q&A / errata / '[ONE SHOT]' record hangs under the rule it answers about:
+// 'Muster Armies > Fill Your Army Roster > FAQ > If a rule says ...? > FALL-BACK
+// MOVE' is a record whose own name is the question, and three such records all
+// printed the same 'Fall-Back Move'. The tell is local to the path - a question
+// segment above the leaf (or a leaf that restates an earlier segment) - so the
+// name is that segment and the path stops before it. A heading whose leaf IS the
+// record's own name is untouched: a datasheet, 'FALL-BACK MOVE' itself, a rule.
+function rowName(parts) {
+  var list = (parts || []).map(function (p) { return String(p == null ? '' : p).trim(); });
+  if (!list.length) return { name: '', at: -1 };
+  var last = list.length - 1;
+  var i;
+  for (i = last - 1; i >= 0; i--) {
+    if (/\?$/.test(list[i]) || /^q\s*:/i.test(list[i])) return { name: list[i], at: i };
+  }
+  var low = list[last].toLowerCase();
+  for (i = last - 1; i >= 0; i--) {
+    if (list[i].toLowerCase() !== low) continue;
+    for (var k = i - 1; k >= 0; k--) {
+      if (list[k].toLowerCase() !== low) return { name: list[k], at: k };
+    }
+    break;
+  }
+  return { name: list[last], at: last };
+}
+// --- end task-23 row name ----------------------------------------------------
+
+// --- task-26 row display (pure; extracted with the task-23 block) -------------
+// Three surfaces ask the same two questions about a heading - what is this record
+// called, and where does its path stop - and the answer is task-23's rowName(parts).
+// This is the ONE place that turns it into display text, so the ledger, the tree
+// rows and the record header cannot drift apart again: the name gets shortName (the
+// task-25 kind strip, then displayTitle), and the path is the segments BEFORE the
+// name. shortName runs AFTER the pick, never before: rowName reads the raw segments,
+// and stripping a marker first could hide the tell.
+function pathParts(heading) {
+  return String(heading || '').split(' > ').filter(Boolean);
+}
+function rowDisplay(headingOrParts) {
+  var parts = Array.isArray(headingOrParts) ? headingOrParts.map(function (p) { return String(p == null ? '' : p).trim(); }) : pathParts(headingOrParts);
+  var r = rowName(parts);
+  var at = r.at >= 0 ? r.at : parts.length - 1;
+  return { name: shortName(r.name), path: parts.slice(0, at), at: at };
+}
+// --- end task-26 row display --------------------------------------------------
+
   // A snippet cut at the cap gets a marker: 'MAXIMU' with nothing after it reads
   // as the rule's own typo rather than as an excerpt.
   function cut(text, n) {
@@ -1313,54 +1362,7 @@ function sortedFindings(list) {
   return out;
 }
 
-// --- task-23 row name (pure; tests/test-rules-page.mjs extracts this block) ---
-// A finding row must be titled with the RECORD, not with the section it hangs
-// under. The retrieval heading is a path whose leaf is the matched section, and a
-// Q&A / errata / '[ONE SHOT]' record hangs under the rule it answers about:
-// 'Muster Armies > Fill Your Army Roster > FAQ > If a rule says ...? > FALL-BACK
-// MOVE' is a record whose own name is the question, and three such records all
-// printed the same 'Fall-Back Move'. The tell is local to the path - a question
-// segment above the leaf (or a leaf that restates an earlier segment) - so the
-// name is that segment and the path stops before it. A heading whose leaf IS the
-// record's own name is untouched: a datasheet, 'FALL-BACK MOVE' itself, a rule.
-function rowName(parts) {
-  var list = (parts || []).map(function (p) { return String(p == null ? '' : p).trim(); });
-  if (!list.length) return { name: '', at: -1 };
-  var last = list.length - 1;
-  var i;
-  for (i = last - 1; i >= 0; i--) {
-    if (/\?$/.test(list[i]) || /^q\s*:/i.test(list[i])) return { name: list[i], at: i };
-  }
-  var low = list[last].toLowerCase();
-  for (i = last - 1; i >= 0; i--) {
-    if (list[i].toLowerCase() !== low) continue;
-    for (var k = i - 1; k >= 0; k--) {
-      if (list[k].toLowerCase() !== low) return { name: list[k], at: k };
-    }
-    break;
-  }
-  return { name: list[last], at: last };
-}
-// --- end task-23 row name ----------------------------------------------------
 
-// --- task-26 row display (pure; extracted with the task-23 block) -------------
-// Three surfaces ask the same two questions about a heading - what is this record
-// called, and where does its path stop - and the answer is task-23's rowName(parts).
-// This is the ONE place that turns it into display text, so the ledger, the tree
-// rows and the record header cannot drift apart again: the name gets shortName (the
-// task-25 kind strip, then displayTitle), and the path is the segments BEFORE the
-// name. shortName runs AFTER the pick, never before: rowName reads the raw segments,
-// and stripping a marker first could hide the tell.
-function pathParts(heading) {
-  return String(heading || '').split(' > ').filter(Boolean);
-}
-function rowDisplay(headingOrParts) {
-  var parts = Array.isArray(headingOrParts) ? headingOrParts.map(function (p) { return String(p == null ? '' : p).trim(); }) : pathParts(headingOrParts);
-  var r = rowName(parts);
-  var at = r.at >= 0 ? r.at : parts.length - 1;
-  return { name: shortName(r.name), path: parts.slice(0, at), at: at };
-}
-// --- end task-26 row display --------------------------------------------------
 
 function findingItem(f, prominent, cited, state, ctx) {
   var selectable = !!(state && state.selectable && !state.rerun);
