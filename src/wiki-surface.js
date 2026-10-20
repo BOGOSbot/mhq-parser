@@ -472,7 +472,13 @@ function rowDisplay(headingOrParts) {
         r.parts.forEach(function (p) {
           var pb = el('button', 'sv-hit-part');
           pb.type = 'button';
-          pb.textContent = /unitrules/.test(p.kind) ? 'the keyword list' : displayTitle(p.title);
+          // The label says what the record IS, not which kind it came from: a chunked
+          // keyword list has one list and a continuation, and two buttons both reading
+          // 'the keyword list' look like a duplicate row (measured in the 390x844 shot).
+          var chunk = /~(\d+)$/.exec(p.id);
+          pb.textContent = /unitrules/.test(p.kind) && !(chunk && Number(chunk[1]) > 1)
+            ? 'the keyword list'
+            : (chunk && Number(chunk[1]) > 1 ? 'part ' + chunk[1] : displayTitle(p.title));
           pb.addEventListener('click', function () { openHit(p); });
           parts.appendChild(pb);
         });
