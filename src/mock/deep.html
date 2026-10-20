@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eeefe8">
+<link rel="icon" href="data:,">
+<title>Deep search - prototype</title>
+<style>
+:root{
+  --bg:#eeefe8; --panel:#fbfbf6; --line:#d2d4c7; --txt:#191a1d; --dim:#5e6468;
+  --acc:#22386b; --ok:#2c6a45; --warn:#87530f; --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --serif:"Charter","Iowan Old Style","Sitka Text",Cambria,Georgia,serif; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--acc)}
+.wrap{max-width:460px;margin:0 auto;padding:14px 16px 60px}
+h1{font:600 14px/1.35 var(--sans);color:var(--dim);margin:0 0 10px}
+.ask{display:flex;gap:8px}
+.ask input{flex:1 1 auto;min-width:0;font:15px var(--sans);padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--txt)}
+.ask button{flex:0 0 auto;padding:0 14px;border:1px solid var(--acc);background:var(--acc);color:var(--panel);border-radius:12px;font:600 13px var(--sans);cursor:pointer}
+.ask button:disabled{opacity:.5}
+.state{font:12px/1.5 var(--mono);color:var(--dim);margin:10px 0 0;min-height:18px}
+.q{font:13.5px/1.45 var(--sans);color:var(--dim);margin:14px 0 0}
+.rline{font:500 16.5px/1.45 var(--sans);color:var(--txt);margin:8px 0 0}
+.rquote{font:15.5px/1.5 var(--serif);color:var(--txt);margin:10px 0 0;padding:0 0 0 12px;border-left:2px solid var(--acc)}
+.rsrc{margin:7px 0 0;font:11px/1.4 var(--mono);color:var(--dim);padding-left:14px}
+.rex{margin:9px 0 0;font:13px/1.55 var(--sans);color:var(--dim);padding-left:14px}
+h2{font:600 15px/1.3 var(--serif);color:var(--dim);margin:26px 0 2px}
+.cnt{font:11px/1.4 var(--mono);color:var(--dim);margin-left:8px}
+.ch{margin:15px 0 0}
+.chname{font:600 12.5px/1.4 var(--mono);color:var(--acc)}
+.chname .n{color:var(--dim);font-weight:400}
+.rec{margin:6px 0 0;padding:0 0 0 11px;border-left:1px solid var(--line)}
+.recname{font:600 14.5px/1.3 var(--serif);color:var(--txt)}
+.recwhy{font:12.5px/1.5 var(--sans);color:var(--dim);margin:2px 0 0}
+.probe{padding:9px 0 8px;border-top:1px solid var(--line)}
+.probe:first-child{border-top:0}
+.pt{font:600 13px var(--sans);color:var(--txt)}
+.pv{font:11.5px/1.45 var(--mono);color:var(--dim);margin-top:3px}
+.pv.hit{color:var(--ok)}
+.pv.none{color:var(--warn)}
+.note{margin:28px 0 0;font:11.5px/1.5 var(--sans);color:var(--dim);border-top:1px solid var(--line);padding-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Deep search — the answer, the map, and what was swept</h1>
+<div class="ask">
+  <input id="q" value="Can a unit shoot after it Fell Back?" autocomplete="off">
+  <button id="go">Sweep</button>
+</div>
+<div class="state" id="state">idle</div>
+<div id="out"></div>
+<p class="note">The ruling, the findings and the map come from the real <code>/rules/ask</code> on this box. The sweep is real too and needs no model: the question's own content words are matched against the words the findings actually matched, and every word nothing answered is probed with a lexical search over the whole corpus. That is the absence half — it names what it checked and what it found.</p>
+</div>
+<script>
+var $ = function (s) { return document.querySelector(s); };
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function state(s) { $('#state').textContent = s; }
+function segs(h) { return String(h || '').split(' > ').map(function (x) { return x.trim(); }).filter(Boolean); }
+function leaf(h) { var p = segs(h); return p.length ? p[p.length - 1] : ''; }
+function first(h) { var p = segs(h); return p.length ? p[0] : ''; }
+
+var STOP = {};
+('a an and are as at be been but by can could did do does for from had has have how if in into is it its may must no not of on or should so than that the their them then there these they this to unit units was were what when where which while who whose why will with would your you does do').split(' ').forEach(function (w) { STOP[w] = 1; });
+function contentWords(q) {
+  var raw = String(q || '').toLowerCase().replace(/[^a-z0-9'\- ]+/g, ' ').split(/\s+/);
+  var out = [], seen = {};
+  for (var i = 0; i < raw.length; i++) {
+    var w = raw[i].replace(/^['\-]+|['\-]+$/g, '');
+    if (w.length < 3 || STOP[w] || seen[w]) continue;
+    seen[w] = 1; out.push(w);
+  }
+  return out;
+}
+// a term counts as covered when a finding matched it or a word of it (fell / falling / fall)
+function sameWord(a, b) {
+  if (a === b) return true;
+  var n = Math.min(a.length, b.length, 5);
+  return n >= 3 && a.slice(0, n) === b.slice(0, n);
+}
+function cleanLine(f) {
+  var t = String(f.excerpt || f.passage || '').replace(/\s+/g, ' ').trim();
+  var h = String(f.heading || '').split(' > ').pop();
+  if (h && t.toLowerCase().indexOf(h.toLowerCase()) === 0) t = t.slice(h.length).replace(/^[\s\-:–—]+/, '');
+  t = t.replace(/\bType:\s*[^A-Z]*?(?=Turn:|Phase:|Ability|$)/g, '').replace(/\bTurn:\s*[^A-Z]*?(?=Phase:|Ability|$)/g, '');
+  t = t.replace(/^[\s\-:–—]+/, '');
+  var m = t.match(/^.{40,150}?[.!?](?=\s|$)/);
+  if (m) t = m[0];
+  return t.slice(0, 165);
+}
+function groupOf(f) {
+  var s = segs(f.heading);
+  if (s.length > 1) return s[0];
+  if (f.faction) return 'Faction rules — ' + f.faction;
+  if (f.kind) return 'Rules — ' + f.kind;
+  return 'Other rules';
+}
+
+async function sweep() {
+  var q = $('#q').value.trim();
+  if (!q) return;
+  $('#go').disabled = true; $('#out').innerHTML = '';
+  state('asking the corpus...');
+  var t0 = Date.now(), ask;
+  try {
+    var r = await fetch('/api/rules/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question: q, answerLang: 'en' }) });
+    ask = await r.json();
+  } catch (e) { state('ask failed: ' + e.message); $('#go').disabled = false; return; }
+  var f = ask.findings || [], j = ask.judge || {};
+  state(f.length + ' passages in ' + ((Date.now() - t0) / 1000).toFixed(1) + 's — sweeping the words nothing answered');
+
+  var covered = {};
+  for (var i = 0; i < f.length; i++) {
+    var mt = f[i].matchedTerms || [];
+    for (var k = 0; k < mt.length; k++) covered[String(mt[k]).toLowerCase()] = 1;
+  }
+  var words = contentWords(ask.asked || q), gaps = [];
+  for (var w = 0; w < words.length; w++) {
+    var hit = false;
+    for (var c in covered) { if (sameWord(words[w], c)) { hit = true; break; } }
+    if (!hit) gaps.push(words[w]);
+  }
+
+  var order = [], by = {};
+  for (var n = 0; n < f.length; n++) {
+    var g = groupOf(f[n]);
+    if (!by[g]) { by[g] = []; order.push(g); }
+    by[g].push(f[n]);
+  }
+
+  var out = [];
+  out.push('<p class="q">&ldquo;' + esc(q) + '&rdquo;</p>');
+  if (j.answer) {
+    out.push('<p class="rline">' + esc(j.answer) + '</p>');
+    if (j.quote) out.push('<blockquote class="rquote">' + esc(j.quote) + '</blockquote>');
+    var src = null;
+    for (var s = 0; s < f.length; s++) if (f[s].n === j.from) src = f[s];
+    if (src) out.push('<p class="rsrc">' + esc(leaf(src.heading)) + (segs(src.heading).length > 1 ? '<span style="margin-left:7px">' + esc(segs(src.heading).slice(0, -1).join(' > ')) + '</span>' : '') + '</p>');
+    if (j.exceptions && j.exceptions.length) {
+      var ex = [];
+      for (var e = 0; e < j.exceptions.length; e++) { for (var x = 0; x < f.length; x++) if (f[x].n === j.exceptions[e]) ex.push(esc(leaf(f[x].heading))); }
+      if (ex.length) out.push('<p class="rex">unless ' + ex.join(' &middot; ') + '</p>');
+    }
+  } else out.push('<p class="q">no ruling</p>');
+
+  out.push('<h2>The map<span class="cnt">' + f.length + ' passages, ' + order.length + ' chapters</span></h2>');
+  for (var o = 0; o < order.length; o++) {
+    out.push('<div class="ch"><div class="chname">' + esc(order[o]) + ' <span class="n">' + by[order[o]].length + '</span></div>');
+    for (var p = 0; p < by[order[o]].length; p++) {
+      var rec = by[order[o]][p];
+      out.push('<div class="rec"><div class="recname">' + esc(leaf(rec.heading)) + '</div><div class="recwhy">' + esc(cleanLine(rec)) + '</div></div>');
+    }
+    out.push('</div>');
+  }
+
+  out.push('<h2>Swept<span class="cnt">' + gaps.length + ' of ' + words.length + ' words nothing answered</span></h2>');
+  if (!gaps.length) out.push('<div class="probe"><div class="pt">every word of the question is in a passage above</div><div class="pv hit">nothing left to check</div></div>');
+  for (var g2 = 0; g2 < gaps.length; g2++) out.push('<div class="probe" id="probe-' + g2 + '"><div class="pt">' + esc(gaps[g2]) + '</div><div class="pv">checking...</div></div>');
+  $('#out').innerHTML = out.join('');
+
+  for (var g3 = 0; g3 < gaps.length; g3++) {
+    var node = document.getElementById('probe-' + g3).querySelector('.pv');
+    try {
+      var fr = await fetch('/api/rules/find?q=' + encodeURIComponent(gaps[g3]));
+      var fj = await fr.json(), rows = fj.rows || [];
+      if (rows.length) { node.className = 'pv hit'; node.textContent = 'checked — ' + rows.length + ' openable, closest: ' + rows.slice(0, 2).map(function (z) { return z.title; }).join(' / '); }
+      else if (fj.total) { node.className = 'pv'; node.textContent = 'checked — ' + fj.total + ' records mention it, none openable'; }
+      else { node.className = 'pv none'; node.textContent = 'checked — nothing in the corpus mentions it'; }
+    } catch (e) { node.textContent = 'check failed: ' + e.message; }
+  }
+  state('done in ' + ((Date.now() - t0) / 1000).toFixed(1) + 's');
+  $('#go').disabled = false;
+}
+$('#go').addEventListener('click', sweep);
+$('#q').addEventListener('keydown', function (e) { if (e.key === 'Enter') sweep(); });
+</script>
+</body>
+</html>
