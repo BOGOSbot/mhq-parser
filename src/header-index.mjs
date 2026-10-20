@@ -279,8 +279,8 @@ function rankCmp(a, b) {
 // (they do not link to each other: both are children of the faction index page). The
 // datasheet is the head because it is what a reader searching a unit name wants, and
 // it is the one the payload has a slug for. The rows it swallowed travel in 'parts',
-// so the drawer can still reach the keyword list and the halves - a row that hides a
-// record without a way back would be the same defect wearing a smaller list.
+// so what a row stands for is stated rather than implied - task-60 removed the chips
+// that used to render them (the card already holds the keyword list), not the record.
 export function unitKey(row) {
   const id = String((row && row.id) || '');
   const m = /^(datasheet|unitrules)#([0-9]+)(?:~\d+)?$/.exec(id);

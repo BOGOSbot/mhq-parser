@@ -92,16 +92,6 @@ a{color:var(--sv-acc)}
 .sv-hits-ask{display:inline-block;margin-top:10px;color:var(--sv-acc);font:600 13px var(--sv-sans);
   text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--sv-acc) 40%,transparent);padding-bottom:1px}
 
-/* task-58: the records a folded row stands for - a unit's keyword list, the halves
-   of a chunked unit. One tap each, and they read as a footnote to the row rather
-   than as more results: the row count is the units, not the records. */
-.sv-hit-parts{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0 16px 10px;
-  border-bottom:1px solid var(--sv-line);margin-top:-8px}
-.sv-hit-parts-l{color:var(--sv-dim);font:11.5px/1.4 var(--sv-sans)}
-.sv-hit-part{border:1px solid var(--sv-line);border-radius:999px;background:var(--sv-panel);
-  color:var(--sv-acc);font:600 12px/1 var(--sv-sans);padding:7px 10px;min-height:30px;cursor:pointer}
-.sv-hit-part:hover{background:var(--sv-panel2)}
-
 /* --- one record, opened in the tree --------------------------------------- */
 .sv-inline{margin:0 0 8px;padding:12px 14px 6px;background:var(--sv-panel);
   border-bottom:1px solid var(--sv-line);border-radius:0;animation:sv-in .16s ease-out}

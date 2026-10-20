@@ -104,11 +104,16 @@ ok('and a datasheet with no keyword list is a row of its own', noTwin.total === 
   }
   ok('every unit name still reaches its own records', lost <= 10);
 }
-// The client: the row and the records it stands for are the same act, so one
-// function opens both, and the wire carries the parts.
-ok('the wire carries the records a row stands for', /parts: \(r\.parts \|\| \[\]\)\.map\(function \(p\) \{/.test(fs.readFileSync(path.join(ROOT, 'src', 'header-index.mjs'), 'utf8')));
-ok('one function opens a row or one of its records', client.indexOf('function openHit(r)') !== -1 && /b\.addEventListener\('click', function \(\) \{ openHit\(r\); \}\)/.test(client));
-ok('a folded record is a button, not a sentence', client.indexOf("pb.addEventListener('click', function () { openHit(p); })") !== -1);
+// task-60, Mandal: 'neither should exist: clicking the unit already holds the cards.'
+// The chip led to the same card - measured over all 1,768 unitrules/datasheet pairs,
+// every keyword and every ability the raw record holds renders on the datasheet's card.
+// The FOLD stays and the wire still names what it folded; the AFFORDANCE is gone, so
+// the client must not render one.
+ok('the wire still names the records a row stands for', /parts: \(r\.parts \|\| \[\]\)\.map\(function \(p\) \{/.test(fs.readFileSync(path.join(ROOT, 'src', 'header-index.mjs'), 'utf8')));
+ok('a row still opens the record it names', client.indexOf('function openHit(r)') !== -1 && /b\.addEventListener\('click', function \(\) \{ openHit\(r\); \}\)/.test(client));
+ok('the client renders no parts chips', client.indexOf('sv-hit-part') === -1 && client.indexOf('sv-hit-parts') === -1);
+ok('and no \u2018also\u2019 line', client.indexOf("'also'") === -1);
+ok('the parts CSS is gone with them', css.indexOf('sv-hit-part') === -1);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

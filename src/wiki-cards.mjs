@@ -120,11 +120,8 @@ export const CARD_CSS = [
   '.wcard-ability-name { font-weight:600; }',
   '.wcard-ability-text { margin:.15rem 0 0; }',
   '.wcard-ability-link { display:inline-block; margin-top:.2rem; font-size:.82rem; }',
-  // task-41: the unit card's own section index - the same idea as the record outline,
-  // for the class that already has structure and no way to reach a part of it.
-  '.wcard-index { margin:0 0 .8rem; padding:.4rem .65rem; border:1px solid var(--line, rgba(128,128,128,.2)); border-radius:10px; background:var(--chip, rgba(128,128,128,.06)); }',
-  '.wcard-index ol { display:flex; flex-wrap:wrap; gap:.2rem .9rem; margin:0; padding-left:1.1rem; }',
-  '.wcard-index a { font-size:.88rem; }',
+  // task-62: the card's own section index and its wc-N anchors are gone (see cardHtml).
+  // The record OUTLINE above a wall of text keeps its own paper, below.
   // task-41: the record's own outline, and the sections it points at. Same paper as the
   // rest: a quiet list at the top so a 2,000-character rule has something to aim at.
   '.woutline { margin:0 0 .6rem; padding:.4rem .65rem; border:1px solid var(--line, rgba(128,128,128,.2)); border-radius:10px; background:var(--chip, rgba(128,128,128,.06)); }',
@@ -333,22 +330,17 @@ function cardHtml(card, o) {
     parts.push('<p class="wcard-foot">' + esc(foot.join(' \u00b7 '))
       + (card.url ? (foot.length ? ' \u00b7 ' : '') + '<a href="' + esc(card.url) + '">Wahapedia</a>' : '') + '</p>');
   }
-  // task-41: a datasheet or unitrules card is 2.7 screens and the reader who came for
-  // one ability landed at the top of it. Every section keeps its heading and takes an
-  // anchor, and the index above them is one tap to the part they came for. Additive:
-  // nothing is hidden, no section is collapsed behind a click.
-  let wc = 0;
-  const sections = [];
-  const body = parts.join('').replace(/<h2 class="wcard-h">([\s\S]*?)<\/h2>/g, function (m, title) {
-    wc += 1;
-    sections.push({ id: 'wc-' + wc, title: title });
-    return '<h2 class="wcard-h" id="wc-' + wc + '">' + title + '</h2>';
-  });
-  const index = sections.length > 2
-    ? '<nav class="wcard-index" aria-label="Sections of this unit"><ol>'
-      + sections.map(s => '<li><a href="#' + s.id + '">' + s.title + '</a></li>').join('') + '</ol></nav>'
-    : '';
-  return '<section class="wcard" data-card="unit">' + index + body + '</section>';
+  // task-62, Mandal: 'the numbered index inside the unit sheet is a jump list: the jump
+  // list itself is cluttering. We don't need it, swipe is fine.' He is right: every card
+  // has the same sections in the same order, so an index of them names nothing the reader
+  // cannot see by scrolling, and it cost a screen of the 2.7 the card already is. The
+  // headings stay - they are the structure, and the record OUTLINE above a wall of text
+  // is a different thing (it names sections unique to that record, see proseHtml).
+  //
+  // The wc-N anchors went with the index: the only href ever pointing at them was its own,
+  // so they are dead by the same measurement (tests/test-record-outline.mjs asserts it).
+  const body = parts.join('');
+  return '<section class="wcard" data-card="unit">' + body + '</section>';
 }
 
 // --- the record body --------------------------------------------------------

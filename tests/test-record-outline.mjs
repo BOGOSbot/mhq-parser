@@ -49,16 +49,24 @@ ok('a table block is not split at all', n4.length === 1 && titles(n4).length ===
 const n5 = splitBlocks('- first bullet\n- second bullet');
 ok('a bullet run stays one block', n5.length === 1 && titles(n5).length === 0);
 
-// --- the unit card's own index (task-41, the second half) ---------------------
-// A datasheet is 2.7 screens and the reader who came for one ability landed at the
-// top of it. The sections keep their headings and take anchors, and the index above
-// them is one tap to the part they came for.
-const cardRec = all.find(r => r.kind === 'unitrules');
+// --- the unit card's jump list is GONE (task-62) ------------------------------
+// Mandal: 'the jump list itself is cluttering. We don't need it, swipe is fine.'
+// Every card has the same sections in the same order, so an index of them named
+// nothing the reader could not see by scrolling, and it cost a screen at the top.
+// What stays is the structure itself: the headings, in order, with no anchors -
+// the wc-N ids existed only for the index's own hrefs, so they are dead too.
+const cardRec = all.find(r => r.kind === 'unitrules' && isDelivered(r));
 const cardHtml = recordBody(cardRec, { href: id => '#' + id });
-const cardHrefs = [...cardHtml.matchAll(/href="#(wc-\d+)"/g)].map(m => m[1]);
-ok('a unit card carries a section index', cardHtml.indexOf('wcard-index') !== -1 && cardHrefs.length >= 5);
-ok('every index entry points at a section in the same fragment', cardHrefs.every(h => cardHtml.indexOf('id="' + h + '"') !== -1));
-ok('and every section keeps its own heading', (cardHtml.match(/class="wcard-h" id="wc-\d+"/g) || []).length === cardHrefs.length);
+ok('a unit card carries no jump list', cardHtml.indexOf('wcard-index') === -1);
+ok('and no wc- anchors survive it', cardHtml.indexOf('wc-') === -1);
+ok('every card section still carries its heading', (cardHtml.match(/class="wcard-h"/g) || []).length >= 5);
+ok('and the headings keep their order', /Models<\/h2>[\s\S]*Ranged weapons<\/h2>[\s\S]*Abilities<\/h2>[\s\S]*Keywords<\/h2>/.test(cardHtml));
+ok('the card still opens on its content, not on an index', cardHtml.indexOf('<section class="wcard" data-card="unit">') === 0 && cardHtml.indexOf('wcard-index') === -1);
+// The record OUTLINE is a different thing and is untouched: it names sections that
+// are unique to a wall of text, which is the problem it was built for.
+const wallRec = all.find(r => r.kind === 'faction-rule' && isDelivered(r) && recordBody(r).indexOf('woutline') !== -1);
+ok('the record outline on a wall of text is unchanged', !!wallRec && recordBody(wallRec).indexOf('woutline') !== -1);
+ok('and it still points at real sections', [...recordBody(wallRec).matchAll(/href="#(wb-\d+)"/g)].every(m => recordBody(wallRec).indexOf('id="' + m[1] + '"') !== -1));
 
 // --- the counts, recomputed over the shipped corpus ---------------------------
 const pool = [];

@@ -461,29 +461,12 @@ function rowDisplay(headingOrParts) {
       // row itself, because it has a page either way. A row is never a dead end.
       b.addEventListener('click', function () { openHit(r); });
       box.appendChild(b);
-      // task-58: one unit is one row (src/header-index.mjs folds the datasheet and
-      // its keyword list, and the chunks of either, under the CSV row they share).
-      // The records the fold swallowed are named rather than lost: a unit's keyword
-      // list is a different question from its statline, and a chunked unit reads in
-      // more than one part. One tap opens any of them.
-      if (r.parts && r.parts.length) {
-        var parts = el('div', 'sv-hit-parts');
-        parts.appendChild(el('span', 'sv-hit-parts-l', 'also'));
-        r.parts.forEach(function (p) {
-          var pb = el('button', 'sv-hit-part');
-          pb.type = 'button';
-          // The label says what the record IS, not which kind it came from: a chunked
-          // keyword list has one list and a continuation, and two buttons both reading
-          // 'the keyword list' look like a duplicate row (measured in the 390x844 shot).
-          var chunk = /~(\d+)$/.exec(p.id);
-          pb.textContent = /unitrules/.test(p.kind) && !(chunk && Number(chunk[1]) > 1)
-            ? 'the keyword list'
-            : (chunk && Number(chunk[1]) > 1 ? 'part ' + chunk[1] : displayTitle(p.title));
-          pb.addEventListener('click', function () { openHit(p); });
-          parts.appendChild(pb);
-        });
-        box.appendChild(parts);
-      }
+      // task-60, Mandal: 'neither should exist: clicking the unit already holds the
+      // cards.' The row opens the unit CARD, and the card is built from the CSV row the
+      // datasheet and the keyword-list record share - measured over all 1,768 pairs, every
+      // keyword and every ability the unitrules record holds renders on the datasheet's
+      // card, and 1,714 of them render the identical fragment. So a chip to the raw record
+      // led to the same card, or to less. The fold stays (task-58); the affordance goes.
     });
     if (!rows.length && !(state.hits && state.hits.failed)) {
       var empty = el('div', 'sv-hits-empty', 'Try the name alone \u2014 \u201cTyrannofex\u201d, \u201cRapid Ingress\u201d \u2014 or ask it as a question.');
@@ -969,12 +952,13 @@ function rowDisplay(headingOrParts) {
       while (node && node !== d) {
         if (node.tagName === 'A' && node.getAttribute) {
           if (node.classList && node.classList.contains('wlink')) { a = node; break; }
-          // task-41: the record's own anchors - the outline above a wall (wb-) and the unit
-          // card's section index (wc-). They are inside the drawer, and the page's hash
-          // router would take the tap for a record address and empty the panel, so the
-          // drawer keeps them: the section is scrolled to, and the address never changes.
+          // task-41: the record's own outline anchors (wb-) are inside the drawer, and the
+          // page's hash router would take the tap for a record address and empty the panel,
+          // so the drawer keeps them: the section is scrolled to, the address never changes.
+          // task-62 removed the unit card's jump list and the anchors that only it used,
+          // so the outline's wb- ids are the whole set now.
           var h = String(node.getAttribute('href') || '');
-          if (/^#(?:wb|wc)-\d+$/.test(h)) { own = h.slice(1); break; }
+          if (/^#wb-\d+$/.test(h)) { own = h.slice(1); break; }
         }
         node = node.parentNode;
       }
