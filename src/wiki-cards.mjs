@@ -116,6 +116,18 @@ export const CARD_CSS = [
   '.wcard-ability-name { font-weight:600; }',
   '.wcard-ability-text { margin:.15rem 0 0; }',
   '.wcard-ability-link { display:inline-block; margin-top:.2rem; font-size:.82rem; }',
+  // task-41: the record's own outline, and the sections it points at. Same paper as the
+  // rest: a quiet list at the top so a 2,000-character rule has something to aim at.
+  '.woutline { margin:0 0 .6rem; padding:.4rem .65rem; border:1px solid var(--line, rgba(128,128,128,.2)); border-radius:10px; background:var(--chip, rgba(128,128,128,.06)); }',
+  '.woutline ol { margin:0; padding-left:1.1rem; }',
+  '.woutline li { margin:.15rem 0; }',
+  '.woutline a { font-size:.92rem; }',
+  // A section costs its heading, not a reflow: the wall split must not make the record
+  // longer than the chrome it saves.
+  '.wblock { margin:0; }',
+  '.wblock-h { font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); margin:.7rem 0 .15rem; }',
+  '.wblock:first-of-type .wblock-h { margin-top:.25rem; }',
+  '.wblock .wprose:last-child p:last-child { margin-bottom:.35rem; }',
   // task-91: a SEE ALSO child is its own container under the rule it belongs to.
   '.wseealso-list { margin:.7rem 0 0; }',
   '.wseealso { margin:.25rem 0; }',
@@ -371,10 +383,10 @@ export function rulingBody(record, lang, opts) {
   // A third party's ruling is read, not parsed either: the same prose renderer, with the
   // language carried so the French is not read as English.
   const proseOpts = { selfId: record && record.id, href: o.href, selfHeading: record && record.heading, cap: o.cap, state: o.state };
-  const fr = proseHtml(record && record.text, Object.assign({ lang: 'fr' }, proseOpts));
+  const fr = bodyHtml(record && record.text, Object.assign({ lang: 'fr' }, proseOpts));
   const hasEn = !!(record && record.text_en && String(record.text_en).trim());
   const en = hasEn
-    ? proseHtml(record.text_en, Object.assign({ lang: 'en' }, proseOpts))
+    ? bodyHtml(record.text_en, Object.assign({ lang: 'en' }, proseOpts))
     : fr;
   // task-29: the banner carries THE one translation line; a second commentary in the
   // body would be exactly what Mandal asked to remove. A missing English version is
@@ -417,6 +429,147 @@ function fieldLines(line) {
   return segs.filter(Boolean);
 }
 
+// --- task-41: the record's own structure -----------------------------------------
+// The worst records are one unbroken wall: 60 of 69 faction rules and 119 of 154
+// rulings render as a single <p>. The structure is still in the stored text - the
+// source's sub-headings survived the scrape as runs of capitals ('PSYCHIC TEST
+// SEQUENCE', 'DESTINY'S RUIN (PSYCHIC)'), an ability run as 'Ability: NAME - text',
+// and a paragraph break as a run of two or more spaces. Read them back, and give the
+// record a short outline so a 1,982-character rule has a label to aim at.
+const HEAD_CAPS = /^([A-Z][A-Z0-9'\u2019\-]*(?:[ \/(\[)\]]+[A-Z0-9][A-Z0-9'\u2019\-]*){0,5})\s+(?=[A-Z0-9(\u201c"])/;
+const HEAD_ABILITY = /^Ability:\s*([^\-\u2013\u2014]{3,60}?)\s+[-\u2013\u2014]\s+(\S[\s\S]*)$/;
+// A label line ('ELIGIBLE IF: ...', 'MAXIMUM DISTANCE: ...') is a field, not a section:
+// its own shape is fieldLines() and the card's row table.
+const LABEL_LINE = /^[A-Z][A-Z0-9'\u2019 \/\-]{2,44}:\s/;
+// A long line still hides its sections: the source's sub-headings open after a
+// sentence end ('... by following the sequence below. PSYCHIC TEST SEQUENCE Roll 2D6 ...').
+const CAPS_AFTER_STOP = /(?<=[.!?])\s+(?=[A-Z][A-Z0-9'\u2019\-]*(?:[ \/(\[)\]]+[A-Z0-9][A-Z0-9'\u2019\-]*){1,5}\b)/g;
+// A caps run is a heading only where it OPENS a piece (a sentence end or the start of
+// one), so the keywords inside a sentence ('each time a THOUSAND SONS model is
+// selected') stay prose.
+function headOf(piece) {
+  const s = String(piece || '').trim();
+  if (LABEL_LINE.test(s)) return null;
+  const ab = HEAD_ABILITY.exec(s);
+  if (ab) return { title: ab[1].trim(), body: ab[2] };
+  const m = HEAD_CAPS.exec(s);
+  if (!m) return null;
+  const title = m[1].trim();
+  const rest = s.slice(m[0].length);
+  // A field label is not a section: 'ELIGIBLE IF: ...' and 'MAXIMUM DISTANCE: ...'
+  // already have their own shape (fieldLines, the card's row table).
+  if (rest.charAt(0) === ':') return null;
+  if (FIELD_LABELS.test(title + ':')) { FIELD_LABELS.lastIndex = 0; return null; }
+  FIELD_LABELS.lastIndex = 0;
+  // A heading names something and is followed by its text; a two-word shout with
+  // nothing after it is the end of a sentence, not a section.
+  if (rest.length < 20) return null;
+  if (title.replace(/[^A-Za-z]/g, '').length < 3) return null;
+  return { title: title, body: rest };
+}
+// task-85 D4: the shaper wrote a link index into some records' text; the card rendered
+// it as raw '- faction: faction-tyr' bullets. Drop those lines, keyed on the five known
+// kinds - never on the pattern, because '- Combat Disembark: ...' is real content that
+// starts the same way.
+const LINK_INDEX = /^- (?:section|faction|card|index|rule): /;
+// A first line that is the record's own name, id or breadcrumb is not a sentence: the
+// page has already printed it as the title, and printing it twice reads as a duplicate.
+// task-81 (D): the exact match missed the shape that actually repeats the name in the
+// body - '<NAME> - <subtitle>', e.g. 'ADVANCE MOVE - core movement ability' - which is
+// what every core ability and every mislabelled stratagem opens with. Drop the first
+// line when it opens with the name and a separator and stays short (<= 90 chars), so a
+// real sentence that happens to start with the name is never eaten. Render-only: the
+// stored text is untouched. One rule, read by proseHtml and by bodyHtml.
+export function bodyLines(text, opts) {
+  const o = opts || {};
+  const all = String(text == null ? '' : text).replace(/\r/g, '').split('\n');
+  const first = all.length ? all[0].trim() : '';
+  const crumbs = String(o.selfHeading || '').split(' > ').filter(Boolean);
+  const names = [o.selfHeading, o.selfId, crumbs.length ? crumbs[crumbs.length - 1] : ''].filter(Boolean);
+  const quoted = n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const shortEcho = names.some(n => first.length <= 90 && new RegExp('^' + quoted(n) + '\\s*[-\u2013\u2014:]\\s').test(first));
+  // o.stripped says the caller has already taken the echo line out (bodyHtml renders
+  // each block through proseHtml, and a block whose first line is the record's own name
+  // must not lose it a second time).
+  if (!o.stripped && first && (names.indexOf(first) !== -1 || shortEcho)) all.shift();
+  return all.filter(l => !LINK_INDEX.test(l.trim()));
+}
+
+// Two aligned columns, or a run of short lines: that is a table, not prose. The
+// splitter and the prose renderer share the one predicate, so a block the splitter
+// would shred is never a block it touches.
+function isTableBlock(b) {
+  if (b.length < 2) return false;
+  if (b.filter(l => /\S {2,}\S/.test(l)).length >= 2) return true;
+  return b.length >= 3 && b.every(l => l.length <= 44);
+}
+
+// The blocks of one record, in reading order: { title, text }. An untitled piece keeps
+// its own text, and consecutive untitled pieces are one block. A table block, and a
+// bullet run, stay whole - proseHtml already knows that shape.
+export function splitBlocks(text) {
+  const src = String(text == null ? '' : text).split('\n');
+  const blocks = [];
+  const push = function (title, body) {
+    const t = String(body == null ? '' : body).trim();
+    if (!t && !title) return;
+    blocks.push({ title: String(title || '').trim(), text: t });
+  };
+  for (const para of src.join('\n').split(/\n{2,}/)) {
+    if (!para.trim()) continue;
+    const li = para.replace(/\r/g, '').split('\n');
+    if (isTableBlock(li) || /^\s*[-*]\s+/m.test(para)) { push('', para); continue; }
+    for (const line of li) {
+      for (const piece of line.split(/\s{2,}/)) {
+        for (const part of piece.split(CAPS_AFTER_STOP)) {
+          const s = part.trim();
+          if (!s) continue;
+          const head = headOf(s);
+          if (head) push(head.title, head.body);
+          else push('', s);
+        }
+      }
+    }
+  }
+  return blocks;
+}
+
+// The record's own text with its outline. One named block is a label, not a structure:
+// below two, the body renders exactly as it always did, byte for byte.
+export function bodyHtml(text, opts) {
+  const o = opts || {};
+  const render = typeof o.render === 'function' ? o.render : proseHtml;
+  const lines = bodyLines(text, o);
+  const src = lines.join('\n');
+  const blocks = splitBlocks(src);
+  const named = blocks.filter(b => b.title).length;
+  // An outline needs two names. The block path also serves the WALL: a body with no
+  // blank-line paragraphs of its own (119 of 154 rulings, 87% of faction rules) whose
+  // single <p> is really several pieces - the split is the whole win there, and the
+  // outline is what it adds when the pieces have names.
+  const wall = !/\n\s*\n/.test(src) && blocks.length >= 2;
+  if (named < 2 && !wall) return render(text, o);
+  const blockOpts = Object.assign({}, o, { stripped: true });
+  const parts = [];
+  const outline = [];
+  let n = 0;
+  for (const b of blocks) {
+    if (b.title) {
+      n += 1;
+      const id = 'wb-' + n;
+      // One entry per name: the detachment's keyword run repeats 'SHADOW LEGION'.
+      if (outline.indexOf(b.title) === -1) outline.push(b.title);
+      parts.push('<section class="wblock"><h3 class="wblock-h" id="' + id + '">' + esc(b.title) + '</h3>'
+        + (b.text ? render(b.text, blockOpts) : '') + '</section>');
+    } else if (b.text) {
+      parts.push(render(b.text, blockOpts));
+    }
+  }
+  const nav = outline.length > 1 ? '<nav class="woutline" aria-label="In this record"><ol>'
+    + outline.map((t, i) => '<li><a href="#wb-' + (i + 1) + '">' + esc(t) + '</a></li>').join('') + '</ol></nav>' : '';
+  return nav + parts.join('');
+}
+
 // The rule body as prose. The stored text is a flat transcription: paragraphs separated
 // by blank lines, '- ' bullets, tables pasted as runs of spaces, and the record's own
 // breadcrumb as its first line. Printing it inside one <pre> kept every line break and
@@ -429,47 +582,21 @@ export function proseHtml(text, opts) {
   // A ruling keeps its language: it is the source of record and a screen reader should
   // not read French as English.
   const langAttr = o.lang ? ' lang="' + esc(o.lang) + '"' : '';
-  const all = String(text == null ? '' : text).replace(/\r/g, '').split('\n');
-  // A first line that is the record's own name, id or breadcrumb is not a sentence: the
-  // page has already printed it as the title, and printing it twice reads as a duplicate.
-  const first = all.length ? all[0].trim() : '';
-  const crumbs = String(o.selfHeading || '').split(' > ').filter(Boolean);
-  const names = [o.selfHeading, o.selfId, crumbs.length ? crumbs[crumbs.length - 1] : ''].filter(Boolean);
-  // task-81 (D): the exact match above missed the shape that actually repeats the
-  // name in the body - '<NAME> - <subtitle>', e.g. 'ADVANCE MOVE - core movement
-  // ability' - which is what every core ability and every mislabelled stratagem
-  // opens with. Drop the first line when it opens with the name and a separator and
-  // stays short (<= 90 chars), so a real sentence that happens to start with the
-  // name is never eaten. Render-only: the stored text is untouched.
-  const quoted = n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const shortEcho = names.some(n => first.length <= 90 && new RegExp('^' + quoted(n) + '\\s*[-\u2013\u2014:]\\s').test(first));
-  if (first && (names.indexOf(first) !== -1 || shortEcho)) all.shift();
+  const all = bodyLines(text, o);
   const blocks = [];
   let cur = [];
-  // task-85 D4: the shaper wrote a link index into some records' text; the card
-  // rendered it as raw '- faction: faction-tyr' bullets. Drop those lines, keyed on
-  // the five known kinds - never on the pattern, because '- Combat Disembark: ...'
-  // is real content that starts the same way.
-  const LINK_INDEX = /^- (?:section|faction|card|index|rule): /;
   for (const line of all) {
-    if (LINK_INDEX.test(line.trim())) continue;
     if (line.trim()) cur.push(line);
     else if (cur.length) { blocks.push(cur); cur = []; }
   }
   if (cur.length) blocks.push(cur);
-  // Two aligned columns, or a run of short lines: that is a table, not prose.
-  const isTable = b => {
-    if (b.length < 2) return false;
-    if (b.filter(l => /\S {2,}\S/.test(l)).length >= 2) return true;
-    return b.length >= 3 && b.every(l => l.length <= 44);
-  };
   const parts = [];
   for (const b of blocks) {
     if (b.every(l => /^\s*[-*]\s+/.test(l))) {
       parts.push('<ul class="wlist">' + b.map(l => '<li>' + link(l.replace(/^\s*[-*]\s+/, '')) + '</li>').join('') + '</ul>');
       continue;
     }
-    if (isTable(b)) { parts.push('<pre class="wtable">' + link(b.join('\n')) + '</pre>'); continue; }
+    if (isTableBlock(b)) { parts.push('<pre class="wtable">' + link(b.join('\n')) + '</pre>'); continue; }
     // Linked line by line, never after joining: linkify escapes what it is given, so a
     // <br> spliced in first would come out as text. Field labels split a line into
     // its own lines first, then each line is linked and the <br>s are joined between
@@ -654,9 +781,13 @@ function shapeHtml(text, opts) {
 
   // task-97: the CSV's own columns are metadata, not the book's words. The shape detection
   // above still reads them (they are how a card is classified); the rendered prose does not.
-  if (!shape) return proseHtml(csv ? stripTurnPhase(stripCsvColumns(srcBefore)) : srcBefore, opts) + legendHtml + (srcAfter ? proseHtml(csv ? stripTurnPhase(stripCsvColumns(srcAfter)) : srcAfter, opts) : '');
+  if (!shape) return bodyHtml(csv ? stripTurnPhase(stripCsvColumns(srcBefore)) : srcBefore, opts) + legendHtml + (srcAfter ? bodyHtml(csv ? stripTurnPhase(stripCsvColumns(srcAfter)) : srcAfter, opts) : '');
   // task-89: the plain fallback - no head, no table, the CSV fragment gone, ALL CAPS styled.
-  if (shape.family === 'ability-plain') return capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(srcBefore)), opts)) + legendHtml + (srcAfter ? capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(srcAfter)), opts)) : '');
+  if (shape.family === 'ability-plain') {
+    const plain = t => capsHtml(proseHtml(t, opts));
+    const plainOpts = Object.assign({ render: plain }, opts);
+    return bodyHtml(stripTurnPhase(stripCsvColumns(srcBefore)), plainOpts) + legendHtml + (srcAfter ? bodyHtml(stripTurnPhase(stripCsvColumns(srcAfter)), plainOpts) : '');
+  }
   // task-40: a header-only family (detachment, army rule) has no type chip of its own.
   const head = shape.family === 'header' ? '' : (shape.family === 'stratagem'
     ? '<div class="svl-head svl-strat"><span class="svl-cp">' + esc(shape.cp) + '</span><span class="svl-type">' + esc(shape.type) + '</span></div>'
@@ -689,7 +820,7 @@ function shapeHtml(text, opts) {
   if (leftover && rows.length) rows[rows.length - 1][1] = (rows[rows.length - 1][1] + ' ' + leftover).replace(/\s+/g, ' ').trim();
   const body = rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + cell(r[1]) + '</td></tr>'; }).join('');
   const table = body ? '<table class="svl-rows">' + body + '</table>' : '';
-  return head + table + legendHtml + proseHtml(csv ? stripTurnPhase(stripCsvColumns(rest)) : stripTurnPhase(rest), opts);
+  return head + table + legendHtml + bodyHtml(csv ? stripTurnPhase(stripCsvColumns(rest)) : stripTurnPhase(rest), opts);
 }
 
 // task-91/94: the SEE ALSO block's CHILD entries become containers of their own, with the

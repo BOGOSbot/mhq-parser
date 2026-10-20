@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cardFor, recordBody, recordShape, proseHtml, CARD_KINDS } from '../src/wiki-cards.mjs';
+import { bodyLines, cardFor, recordBody, recordShape, proseHtml, splitBlocks, CARD_KINDS } from '../src/wiki-cards.mjs';
 import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries } from '../src/wiki-plan.mjs';
 import { markWargearText } from '../src/wargear-marks.mjs';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
@@ -15,7 +15,17 @@ const all = readAllCorpus();
 const fam = { stratagem: 0, ability: 0, other: 0 };
 const byKind = {};
 const abilities = [], stratagems = [];
-let identical = 0, changed = 0, skipped = 0, seeAlsoChanged = 0, csvChanged = 0; const mismatches = [];
+let identical = 0, changed = 0, skipped = 0, seeAlsoChanged = 0, csvChanged = 0, wallChanged = 0; const mismatches = [];
+// task-41: the wall split is a third intended class of change - a record whose body is
+// one unbroken paragraph now renders as its own pieces, with an outline when the pieces
+// have names. Same two conditions bodyHtml uses.
+const wallSplit = r => {
+  const lines = bodyLines(stripSeeAlso({ text: markWargearText(stripBuiltBlock(r)), links: r.links }), { selfId: r.id, selfHeading: r.heading });
+  const src = lines.join('\n');
+  const blocks = splitBlocks(src);
+  const named = blocks.filter(b => b.title).length;
+  return named >= 2 || (!/\n\s*\n/.test(src) && blocks.length >= 2);
+};
 // task-97: the CSV's own columns ('Type:', 'CP:', 'Turn: Phase: ...') are metadata, not the
 // book's words, and they leave the reader's prose now - a second intended class of change.
 const hasCsvCols = r => /^\s*(?:Type|CP)\s*:/m.test(String(r.text)) || /^\s*Turn:\s+Phase:/m.test(String(r.text)) ||
@@ -51,7 +61,12 @@ for (const r of all) {
   if (cardOrRuling) { skipped++; continue; }
   if (seeAlsoEntries(r).some(e => e.child)) seeAlsoChanged++;
   if (hasCsvCols(r)) csvChanged++;
-  if (now === old) { identical++; byKind[kind].identical++; } else { changed++; byKind[kind].changed++; if (mismatches.length < 5) mismatches.push(r.id); }
+  if (now === old) { identical++; byKind[kind].identical++; } else {
+    changed++; byKind[kind].changed++;
+    const seeAlso = seeAlsoEntries(r).some(e => e.child), csv = hasCsvCols(r);
+    if (!seeAlso && !csv && wallSplit(r)) wallChanged++;
+    if (!seeAlso && !csv && !wallSplit(r) && mismatches.length < 5) mismatches.push(r.id);
+  }
 }
 console.log('records ' + all.length + ' | stratagem ' + fam.stratagem + ' | ability ' + fam.ability + ' | other ' + fam.other);
 console.log('changed ' + changed + ' | byte-identical ' + identical + ' | card/ruling skipped ' + skipped);
@@ -84,7 +99,9 @@ t('every stratagem keeps its CP badge', stratagems.filter(r => { const s = recor
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 // task-91: a record with a SEE ALSO CHILD entry now renders it as a container under the
 // body, so those records change by design. Everything else stays byte-identical.
-t('only the SEE ALSO containers and the CSV-column strips changed outside the two families', changed - fam.stratagem - fam.ability, seeAlsoChanged + csvChanged);
+// task-41 added the third class: the wall split (an outline, or a one-paragraph body
+// rendered as its own pieces).
+t('only the SEE ALSO containers, the CSV-column strips and the wall splits changed outside the two families', changed - fam.stratagem - fam.ability, seeAlsoChanged + csvChanged + wallChanged);
 // The rule that files a record with no Type: it must carry the rows at line starts.
 // An empty Type with nothing to show is never an ability (the 6 Aeldari today).
 t('an ability either carries a Type line or carries the rows',
