@@ -1,4 +1,4 @@
-import { readAllCorpus, indexedSections, scopeIndex, scopeKeywords, scopeLookup, entityKeywords, retrieveDual } from '../src/rules-corpus.mjs';
+import { readAllCorpus, indexedSections, scopeIndex, scopeKeywords, scopeLookup, entityKeywords, retrieveDual, findingFor, judgePrompt, passageCaps, passageTruncation } from '../src/rules-corpus.mjs';
 
 // task-65: the scope leg. A rule scoped to a KEYWORD ('one friendly ASTRA MILITARUM
 // VEHICLE model') is reachable FROM that keyword, because the two records that must
@@ -56,6 +56,47 @@ ok('a question with no entity scopes nothing', scopeLookup('What is a Hazard Rol
   ok('the retriever\u2019s own head keeps its place', (withLeg.all || [])[0].id === (without.all || [])[0].id);
   const plain = await retrieveDual('What is a Hazard Roll?', { corpus: all, rulesCorpus: rules, factionsCorpus: factions, mode: 'fast', topK: 10, jevSkip: true });
   ok('a question with no entity adds no scope records', (plain.all || []).every(x => x.leg !== 'scope'));
+}
+
+
+// --- task-67: the scope record's budget in the judge's prompt ------------------
+// The leg's records reached the widened findings and were then CUT by the prompt's
+// per-passage budget: at the widest pass (63 passages) each got 952 characters, and the
+// Enginseer's record is 1,374 with its answer at 1,043, so the judge read the ability's
+// opening and never its effect. A record the leg found now gets its full length; the
+// rest of the list shares what is left.
+{
+  const many = Array.from({ length: 63 }, (_, i) => ({ id: 'r' + i, text: 'x'.repeat(1400), scope: i === 0 || i === 1 }));
+  const caps = passageCaps(many, {});
+  ok('a scope record gets its full length', caps[0] === 2400 && caps[1] === 2400);
+  ok('the rest of the list shares what is left', caps[2] < 2400 && caps[2] >= 400);
+  ok('and the total stays inside the prompt budget', caps.reduce((a, b) => a + b, 0) <= 60000);
+  const plain = passageCaps(many.map(p => ({ id: p.id, text: p.text })), {});
+  ok('with no scope record every passage is treated the same', new Set(plain).size === 1);
+  const uniform = passageCaps(many, { perPassage: 2400, totalChars: 60000 });
+  ok('an explicit perPassage pins one budget for every passage', uniform.every(c => c === uniform[0]));
+  const t = passageTruncation(many, {});
+  ok('the truncation count is published', t.passages === 63 && t.cut === 61 && t.dropped > 0);
+  const none = passageTruncation([{ text: 'short', scope: true }, { text: 'short' }], {});
+  ok('a list that fits is not counted as cut', none.cut === 0 && none.dropped === 0);
+}
+// The prompt itself: the scope record's text is whole, and the finding carries the mark.
+{
+  const all2 = readAllCorpus();
+  const rules2 = all2.filter(r => r.set === 'rules');
+  const factions2 = all2.filter(r => r.set === 'factions');
+  const dual = await retrieveDual('Can a baneblade have an invulnerable save?', { corpus: all2, rulesCorpus: rules2, factionsCorpus: factions2, mode: 'fast', topK: 30, jevSkip: true, scopeLeg: true });
+  const findings = (dual.all || []).map((s, i) => findingFor(s, i + 1));
+  const eng = findings.find(f => f.id === 'unitrules#000001396');
+  ok('the scope record is marked on the finding', !!eng && eng.scope === true);
+  const prompt = judgePrompt('Can a baneblade have an invulnerable save?', findings, {});
+  ok('the prompt carries the scope record\u2019s answer, not just its opening', /that VEHICLE model has a 4\+ invulnerable save/.test(prompt));
+  const caps2 = passageCaps(findings, {});
+  ok('the scope record is not truncated in the prompt', String(eng.text).length <= caps2[findings.indexOf(eng)]);
+  const before = passageTruncation(findings, { perPassage: 2400, totalChars: 60000 });
+  const after = passageTruncation(findings, {});
+  ok('the cut count is reported for both budgets', before.cut > 0 && after.cut > 0);
+  console.log('truncation: uniform cap ' + before.cut + ' passages cut / ' + before.dropped + ' chars dropped; scope-full ' + after.cut + ' cut / ' + after.dropped + ' dropped');
 }
 
 console.log(pass + ' passed, ' + fail + ' failed');

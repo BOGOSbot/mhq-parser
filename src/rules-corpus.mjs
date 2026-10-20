@@ -2952,6 +2952,46 @@ export function isCapabilityQuestion(question) {
   return CAPABILITY_RE.test(String(question || ''));
 }
 
+// The character each passage gets in the judge's prompt. A long list must not starve
+// each passage, and a long passage must not starve the rest of the list - so the budget
+// is divided. task-67 measured what that division costs: at the widest pass (63 passages)
+// each gets 952 characters, and the Astra Militarum Tech-Priest Enginseer's record is
+// 1,374 with its answer at character 1,043, so the judge read the ability's opening and
+// never its effect, and answered no. Holding the passage list fixed and raising only the
+// cap flipped the answer to yes.
+//
+// A record the SCOPE LEG found is therefore given its FULL length: the leg exists because
+// that record is the answer to a question whose subject it never names, and a budget that
+// cuts it is the same defect in a different place. The rest of the list shares what is
+// left, so the cost lands on the passages that are not the leg's. An explicit perPassage
+// still wins, so a measurement can pin one budget for every passage.
+export function passageCaps(passages, opts) {
+  const o = opts || {};
+  const per = o.perPassage || JUDGE_PASSAGE_CHARS;
+  const total = o.totalChars || JUDGE_TOTAL_CHARS;
+  const list = passages || [];
+  const n = Math.max(1, list.length);
+  const shared = Math.max(400, Math.min(per, Math.floor(total / n)));
+  if (o.perPassage) return list.map(() => shared);
+  const full = list.filter(p => p && p.scope === true).length;
+  if (!full) return list.map(() => shared);
+  const rest = Math.max(1, n - full);
+  const other = Math.max(400, Math.min(per, Math.floor((total - full * per) / rest)));
+  return list.map(p => (p && p.scope === true) ? per : other);
+}
+
+// How many passages the budget cuts, and how many characters it drops: the cost of the
+// division, published so it is visible rather than assumed (task-67 asks for it).
+export function passageTruncation(passages, opts) {
+  const caps = passageCaps(passages, opts);
+  let cut = 0, dropped = 0;
+  (passages || []).forEach((p, i) => {
+    const len = String((p && p.text) || '').length;
+    if (len > caps[i]) { cut += 1; dropped += len - caps[i]; }
+  });
+  return { passages: (passages || []).length, cut: cut, dropped: dropped, caps: caps };
+}
+
 export function judgePrompt(question, passages, opts) {
   const o = opts || {};
   const per = o.perPassage || JUDGE_PASSAGE_CHARS;
@@ -2959,9 +2999,9 @@ export function judgePrompt(question, passages, opts) {
   // Empty unless the caller enabled the hop, so the prompt the page already sends
   // is byte-identical when the feature is off.
   const manifest = o.manifest || [];
-  // A long list must not starve each passage, and a long passage must not starve
-  // the rest of the list.
-  const cap = Math.max(400, Math.min(per, Math.floor(total / Math.max(1, passages.length))));
+  // Per-passage budgets: the scope leg's records get their full length, the rest share
+  // what is left (see passageCaps).
+  const caps = passageCaps(passages, o);
   // The passages stay in the corpus's English; the verdict is read by the reader
   // and is therefore written in the page's language. The rule names quoted inside
   // it are still the rule names.
@@ -2997,7 +3037,7 @@ export function judgePrompt(question, passages, opts) {
     'Question: ' + question,
     '',
     'Retrieved passages:',
-    passages.map((p, i) => passageForJudge(p, i, cap)).join('\n\n'),
+    passages.map((p, i) => passageForJudge(p, i, caps[i])).join('\n\n'),
     manifestLines(manifest).join('\n'),
     '',
     'Judge only what is written above, not what you know about the game.',
@@ -4398,6 +4438,10 @@ export function findingFor(section, n) {
     // simply carries no provenance.
     rank: section.rank || 0,
     leg: section.leg || '',
+    // task-67: the scope leg's own record, marked so the judge prompt can give it its
+    // full length. scopeKeys is set by scopeLookup (the keywords it matched); a finding
+    // built by hand carries none and is treated like any other.
+    scope: Array.isArray(section.scopeKeys) && section.scopeKeys.length > 0,
     vectorRank: section.vectorRank || 0,
     vectorScore: section.vectorScore,
     lexicalRank: section.lexicalRank || 0,
