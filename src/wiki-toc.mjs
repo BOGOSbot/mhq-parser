@@ -177,7 +177,7 @@ function stripSuffix(s) {
   for (let prev; p !== prev; ) { prev = p; p = p.replace(/\s*\([^)]*\)\s*$/, '').trim(); }
   return p;
 }
-function detachmentName(r) {
+export function detachmentName(r) {
   const m = /Detachment:\s*(.+)/.exec(String(r.text || ''));
   return m ? stripSuffix(m[1]) : null;
 }
@@ -275,7 +275,7 @@ export function updateRuleNumber(r) {
   return m ? m[1] : '';
 }
 
-function nodeSlug(s) {
+export function nodeSlug(s) {
   const base = String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
   return base || 'node';
 }

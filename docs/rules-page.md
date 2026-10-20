@@ -38,7 +38,10 @@ functionality document for that page; the army-list parser has its own in
   answer (`searchHeadings` in `src/header-index.mjs`, cap 40). Each row carries
   the payload slug so a tap opens the record, and a row the payload has no page
   for is dropped. No model, no embedding, no payload download - a phone asks and
-  gets rows.
+  gets rows. `&legends=1` widens the gate to the Legends book as well, and it is
+  a REQUEST parameter, never a global: the rows it returns must resolve against a
+  payload the asking page actually holds, and one reader's setting must not decide
+  another reader's results.
 - **The phonetic leg (task-18).** A transcript that spells a name wrong kills the
   literal search, because every word must be in the heading. `src/phonetic.mjs`
   keys every word on both sides with the note's English-leaning phonetic spelling
@@ -211,7 +214,36 @@ name, so `find fuegan` and `trouve fuegan` search like `fuegan`, through the
 same mechanical French tables. A mention - a heading that is a sentence, a
 question or an FAQ entry - is never a result: the drawer offers names, not
 sentences. The tree keeps filtering under the request, and a stale answer cannot
-overwrite a newer query. A row carries its kind and book (`Datasheet · Aeldari`)
+overwrite a newer query.
+
+### Warhammer Legends is a setting, and never a source (task-44)
+
+Mandal's rule, exactly: **a Warhammer Legends record is never embedded** - it is
+not in the vector index and it cannot reach the semantic leg of an ask, in any
+setting. Everything else follows the switch in the settings sheet, which is
+per-device (`localStorage`, `mhq.rules.legends`), off by default, and visible on
+screen: the state word under the switch, and a `Legends on` badge in the drawer
+head, which is where the records it changes actually live.
+
+Off, nothing of the book is fetched. `index.json` names three branches and the
+Legends payload is not one of them, so a reader who never turns it on downloads
+zero extra bytes; the 958 Legends records are excluded by `isLegendsRecord`
+(`src/rules-corpus.mjs`), the same predicate the index build, the tree and the
+query path read. On, the client fetches `index/legends.json` once and puts the
+branch at the head of the list: the records are browsable, searchable and
+readable like any other, and they are still excluded from `indexedSections()`, so
+no ask can cite one either way. The banner above a filtered record says why it is
+out - Warhammer Legends, the pack line, or the named tenth-edition rule - and
+that label rides in the fragment whatever the setting is, because a direct id
+still answers (Mandal: label them, never 404).
+
+The bake (`src/wiki-payload.mjs`) writes the book as three files:
+`index/legends.json` (the tree), `content/legends.json` (the records) and
+`index/legends-slugs.json` (the id-to-slug map, 66 KB against the content's
+1.4 MB, which is all the search and the record route read). No route changed: the
+payload route already accepts `index/<b>.json` and `content/<book>.json`, and a
+slug carries its own book, so `legends--<name>-<hash>` resolves cold like any
+other address. A row carries its kind and book (`Datasheet · Aeldari`)
 and opens the record over the tree on the same back stack a body link uses. An
 empty list says so and offers the other act: *Ask it instead*, which closes the
 drawer and puts the words in the question box.

@@ -48,7 +48,7 @@ import { findRows, lookupRecord, searchHeadings } from './header-index.mjs';
 import { devHtml, devState } from './dev-report.mjs';
 // Slice 2, additive: the dev route and the surface's static files. The flip in
 // slice 4 wires the surface into rules.html; nothing here touches it.
-import { assetStamp, dataDir as surfaceDataDir, surfaceAsset, surfacePage, surfaceSlugMap } from './wiki-surface.mjs';
+import { assetStamp, dataDir as surfaceDataDir, legendsSlugMap, surfaceAsset, surfacePage, surfaceSlugMap } from './wiki-surface.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // The process's own birth time, published by /dev: a src/ file newer than this is
@@ -1036,16 +1036,25 @@ async function handleRulesLookup(req, res, u) {
 // drawer can open a record by.
 async function handleRulesFind(req, res, u) {
   const q = String((u && u.searchParams.get('q')) || '').trim();
+  // task-44: the Legends setting is a REQUEST parameter, never a global. The rows it
+  // returns must be openable against a payload the asking page actually holds, and the
+  // page holds the Legends book only when its reader turned the setting on - the same
+  // reader's tree fetched it. A global would let one reader's setting decide another's
+  // results, and a stale tab would offer rows its own payload cannot resolve.
+  const legends = String((u && u.searchParams.get('legends')) || '') === '1';
   let out;
   try {
     // task-35: every delivered match becomes a row (it carries its id, and the drawer
     // opens a slugged record from the payload or a slugless one from its own page), and
     // a filtered record is not in the product's search at all. The count is the rows'
     // own count, so the drawer can never report a match it cannot show.
-    out = findRows(q, { slugs: surfaceSlugMap(), delivered: deliveredIds(), cap: 40 });
+    const delivered = deliveredIds();
+    const legendIds = legends ? legendsSlugMap() : null;
+    const allow = legendIds ? (id => delivered.has(id) || legendIds.has(id)) : null;
+    out = findRows(q, { slugs: surfaceSlugMap(), delivered: delivered, allow: allow, cap: 40 });
   }
   catch (e) { return fail(res, 500, 'search failed: ' + String((e && e.message) || e)); }
-  return json(res, 200, { ok: true, q, total: out.total, rows: out.rows });
+  return json(res, 200, { ok: true, q, legends: legends, total: out.total, rows: out.rows });
 }
 
 // task-17: the voice route. MediaRecorder audio in, one English question out.

@@ -49,7 +49,9 @@ ok('a filtered record leaves both the rows and the count', filteredOut.total ===
 const capped = findRows('battle', { cap: 2 });
 ok('a capped list still counts the whole match', capped.rows.length <= 2 && capped.total >= 3);
 ok('a slug is carried when the payload has one, and its absence is not a drop', rowsFor('voice of command').rows.every(r => typeof r.slug === 'string' && !!r.id));
-ok('the route answers through findRows, with the payload slug and the delivered set', /findRows\(q, \{ slugs: surfaceSlugMap\(\), delivered: deliveredIds\(\), cap: 40 \}\)/.test(server));
+// task-44 re-anchored this pin: the route resolves the delivered set once and passes
+// the Legends gate (a request parameter) beside it.
+ok('the route answers through findRows, with the payload slug and the delivered set', /findRows\(q, \{ slugs: surfaceSlugMap\(\), delivered: delivered, allow: allow, cap: 40 \}\)/.test(server));
 ok('the route no longer drops a row for having no slug', !/\.filter\(r => r\.slug\)/.test(server));
 ok('the client searches our route', client.indexOf("CFG.find || '/rules/find'") !== -1);
 ok('typing debounces into one request', /setTimeout\(function \(\) \{ runSearch\(q\); \}, 180\)/.test(client));

@@ -30,11 +30,12 @@ ok('nor the pack line, nor the tenth-edition rule', pack.concat(tenth).every(r =
 ok('the indexed set is the delivered set minus the navigation pages', indexed.size === delivered.filter(r => r.kind !== 'index').length);
 ok('and the delivered count is unchanged by any of this', delivered.length === 6327);
 
-// the default costs nothing: the shipped tree has no Legends branch.
+// task-44 moved the payload's own contract to tests/test-legends.mjs, which pins the
+// OFF state (index.json names three books and no Legends payload) and the ON state (the
+// branch, the content, every record reachable) in one place. What stays here is the
+// corpus predicate and the banner, which is this file's job.
 const index = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-data', 'index.json'), 'utf8'));
-ok('the shipped index has no legends branch', (index.branches || []).every(b => String(b.b).indexOf('legend') === -1));
-const books = fs.readdirSync(path.join(ROOT, 'workspace', 'wiki-data', 'content'));
-ok('no content book is a Legends book', books.every(b => b.indexOf('legend') === -1));
+ok('the default reader is still handed exactly three books', (index.branches || []).length === 3);
 
 // the direct id still answers, and the label rides in the fragment.
 const leg = legends[0];

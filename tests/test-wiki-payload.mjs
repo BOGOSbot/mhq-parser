@@ -92,7 +92,13 @@ ok('(e) the biggest payload is named', !!stats.biggest.name);
 const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => d.isDirectory() ? walk(path.join(dir, d.name)) : [path.join(dir, d.name)]);
 const written = walk(OUT).map(f => path.relative(OUT, f).replace(/\\/g, '/'));
 t('(f) no .html, no map.json, no legacy.json', written.filter(f => /\.html$/.test(f) || /(^|\/)map\.json$/.test(f) || /(^|\/)legacy\.json$/.test(f)), []);
-t('(g) the file count is index + one per branch + one per book + the rows file', written.length, 1 + index.branches.length + books.length + 1);
+// task-44 added exactly three files, and this pin names them rather than absorbing
+// them: the Legends branch, its content book, and the ids-only slug map the search
+// and the record route read. None of the three is named by index.json, so the default
+// reader never fetches one (tests/test-legends.mjs pins that half).
+const LEGENDS_FILES = ['index/legends.json', 'content/legends.json', 'index/legends-slugs.json'];
+t('(g) the file count is index + one per branch + one per book + the rows file + the Legends three', written.length, 1 + index.branches.length + books.length + 1 + LEGENDS_FILES.length);
+t('(g) and the Legends three are the only files beyond that count', LEGENDS_FILES.filter(f => written.indexOf(f) === -1), []);
 t('(g) and it is the count the stats report', written.length, stats.fileCount);
 
 // (h) the branch row carries a drawer line -------------------------------------

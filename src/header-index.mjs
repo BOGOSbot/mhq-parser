@@ -260,13 +260,22 @@ function rankCmp(a, b) {
 // A filtered record (Legends, the pack line) is not in the product's search at all -
 // Mandal cut it for the search cost, and the count must not advertise it either.
 // total is the delivered match count, rows is the capped list the drawer shows.
+//
+// task-44: `allow` is the caller's own gate, used INSTEAD of the delivered set when it
+// is given. The Legends setting is per device, so the route must be able to answer for
+// one page with the Legends book open and for another without it in the same process -
+// a global here would be one reader's setting deciding another reader's results.
 export function findRows(query, opts) {
   const o = opts || {};
   const cap = Math.max(Number(o.cap) || 40, 1);
   const out = searchHeadings(query, { limit: 100 });
   const slugs = o.slugs || new Map();
   const delivered = o.delivered || null;
-  const matched = (out.rows || []).filter(function (r) { return !delivered || delivered.has(String(r.id)); });
+  const allow = typeof o.allow === 'function' ? o.allow : null;
+  const matched = (out.rows || []).filter(function (r) {
+    const id = String(r.id);
+    return allow ? allow(id) : (!delivered || delivered.has(id));
+  });
   return {
     q: String(query == null ? '' : query),
     total: matched.length,
