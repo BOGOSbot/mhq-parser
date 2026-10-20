@@ -55,6 +55,22 @@ t('the split lane resolves it to the parts the corpus has', resolveExpectation('
 ok('both parts are delivered', resolveExpectation('unitrules#000002541', ix).parts.every(id => delivered.has(id)));
 t('the split lane never widens to a fuzzy match', resolveExpectation('unitrules#0000025', ix).via, 'missing');
 t('an exact id still resolves to itself', resolveExpectation('core-rules#Battle-shock-Rolls', ix).via, 'exact');
+// task-53: two expectations were corrected by hand because the records they named did
+// not answer their question. A WRONG expectation still RESOLVES, so the guard above
+// cannot catch a regression here; these pins do. Each names the record that answers,
+// and the two that did not, so the fix cannot drift back.
+const byQ = q => bank.questions.find(x => x.q === q);
+const advance = byQ('What does the Advance move do?');
+const scoring = byQ('How do I score points at the end of a battle round?');
+ok('the Advance move question names the ADVANCE MOVE record', advance.expect.some(e => /ADVANCE-MOVE$/.test(e)));
+ok('and no longer names the parent section or Selecting Modes', advance.expect.indexOf('core-rules#3.-End-of-Movement-Phase') === -1 && advance.expect.indexOf('rules-appendix#Selecting-Modes') === -1);
+ok('the scoring question names the record that says how VP is scored', scoring.expect.indexOf('event-companion#Determine-Mission') !== -1);
+ok('and no longer names Secured Objectives as the answer to scoring', scoring.expect.indexOf('core-rules#Secured-Objectives') === -1 && scoring.expect.indexOf('event-companion#Warhammer-Event-Mission-Sequence') === -1);
+ok('both carry the reason they changed', !!advance.fixed && !!scoring.fixed && /2026-10-20/.test(advance.fixed) && /2026-10-20/.test(scoring.fixed));
+ok('the bank file records the change at the top', /2026-10-20/.test(String(bank.fixed || '')) && /wrong/.test(String(bank.fixed || '')));
+const advanceRec = all.find(s => String(s.id).indexOf('core-rules#') === 0 && /ADVANCE-MOVE$/.test(String(s.id)));
+ok('the ADVANCE MOVE record is in the corpus', !!advanceRec);
+ok('and its own text is the move', !!advanceRec && /MAXIMUM DISTANCE/.test(String(advanceRec.text)) && /Advance roll/.test(String(advanceRec.text)));
 
 // The resolution is harness-side only: the retrieval path must not import it,
 // so commit 1 cannot have changed what a retriever returns.
