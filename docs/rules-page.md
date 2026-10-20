@@ -607,6 +607,22 @@ without the Embarking rule ever being shown to the judge:
   40,000-character state evenly across however many candidates it is given,
   instead of a flat 700 characters sliced at 40k, which used to ask Jev about
   passages it could not see.
+- **The rerank asks ONE comparative question per half (task-47).** It used to ask
+  an absolute yes/no per candidate and sort the answers. Mandal: *'Is jev truly bad
+  at this, or are we using it wrong?'* Measured on the 33-question bank against the
+  same candidates and corpus: noul 18/26/26/27, MRR .622; **choice 20/27/29/30, MRR
+  .698**; the retrieval order 15/26/28/29, .582. The choice shape is the product
+  default and it does it with **2 sub-questions a question instead of ~134** (2 HTTP
+  calls either way), median 443 ms a call against 584 ms. `RULES_JEV_SHAPE=noul`, or
+  `shape` in the request body, asks for the old shape for a before/after.
+  `orderByChoice` ranks by probability and **a tie keeps the retrieval order**, so
+  the rerank can only move a candidate up. The question offers a `none` criterion
+  ('none of these passages states the rule that answers it') and it is **recorded but
+  never acted on**: sorting the probabilities anyway measured better than falling
+  back to the retrieval order when the model picks it (per-half MRR .711 against
+  .676), so a gate on `none` would lose. Do not build one. The full measurement,
+  including the per-half view and the faction probe, is
+  `workspace/rerank/choice-arm-2026-10-20.md`.
 - **Anchoring does not depend on the reranker.** Four measured Jev calls ranked
   Embarking 10th-12th out of 80 - right on the cut - so `entityAnchors` matches
   the words the question and its translation name against heading first words
