@@ -1737,6 +1737,17 @@ const server = http.createServer(async (req, res) => {
       // so the one place a half-landed rebuild, a stale id or a query against the
       // wrong namespace becomes visible is here.
       vectors: await vectorState(),
+      // task-63: which brand icons this process is serving. The fallback answers
+      // 200 by design, so a deploy whose archive forgot img/ looked like a working
+      // page with a lost favicon for a whole day - every route was 200 and every
+      // check passed. The sizes are published so a verification can assert them
+      // instead of trusting the status code.
+      brand: {
+        favicon: ICON_32 ? 'img/favicon-32.png' : 'fallback',
+        faviconBytes: (ICON_32 || ICON).length,
+        appleTouchIcon: ICON_180 ? 'img/apple-touch-icon.png' : 'fallback',
+        appleTouchIconBytes: (ICON_180 || ICON_32 || ICON).length,
+      },
     });
   }
   // The diagnostics surface: read-only, for us, not linked from the reader's nav.

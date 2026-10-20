@@ -29,9 +29,13 @@ long idle can take longer while the container resumes.
 ## First deploy
 
 1. **Archive the app.** The corpus and the baked payloads are untracked, so a git
-   clone is not enough: `tar -czf mhq-deploy.tgz src workspace/rules-corpus
+   clone is not enough: `tar -czf mhq-deploy.tgz src img workspace/rules-corpus
    workspace/wiki-data` (12.7 MB gzipped, 41 MB inside the box). The archive's
    `sha256` is checked inside the box after the parts are joined.
+   **img/ is not optional**: `src/server.mjs` reads `img/favicon-32.png` and
+   `img/apple-touch-icon.png` at boot, and a missing file falls back to a 119-byte
+   placeholder that answers 200. An archive without `img/` deploys a page whose
+   favicon is silently wrong, which is what task-63 exists for.
 2. **Create the box.**
    `box create --runtime node --size small --name mhq-rules --no-repl --no-use --json --network-policy allow-all`
 3. **Upload.** `box files upload` refuses the 12.7 MB archive ("exceeds maximum
@@ -51,6 +55,12 @@ long idle can take longer while the container resumes.
 7. **Publish the port.** `box public-url 3000 --basic-auth --json` returns the URL
    and the generated user/password. One URL per port; recreating it overwrites the
    old credentials.
+8. **Check the brand icons, not just the status code.** A 200 is not evidence: the
+   fallback answers 200 too. `node src/deploy-check.mjs <url>` fetches `/health`,
+   `/favicon.png`, `/favicon.ico` and `/apple-touch-icon.png`, and fails unless the
+   bytes are the real files' (2,620 and 32,093) and `/health` says so. Run it against
+   the public URL after every deploy; it is the check that would have caught task-63
+   on the first deploy rather than the tenth.
 
 ## Refresh the app after a change
 

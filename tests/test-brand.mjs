@@ -57,8 +57,29 @@ t('the 32x32 asset is 32x32', pngSize(icon32), { w: 32, h: 32 });
 t('the touch asset is 180x180', pngSize(icon180), { w: 180, h: 180 });
 ok('both assets carry the PNG signature', icon32.slice(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) && icon180.slice(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])));
 const serverSrc = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
+const deploySrc = fs.readFileSync(path.join(ROOT, 'src', 'deploy-check.mjs'), 'utf8');
 ok('the server reads the icons once at boot', /readIcon\('favicon-32\.png'\)/.test(serverSrc) && /readIcon\('apple-touch-icon\.png'\)/.test(serverSrc));
 ok('and keeps the inline ICO as the fallback', /const ICON = Buffer\.from\(/.test(serverSrc) && /ICON_32 \|\| ICON/.test(serverSrc) && /ICON_180 \|\| ICON_32 \|\| ICON/.test(serverSrc));
+
+
+// --- task-63: the deploy check, and the fallback that hid it -------------------
+// The favicon was 'lost' on the live page for a day while every check passed: the
+// fallback answers 200 by design, so a deploy whose archive forgot img/ served the
+// 119-byte placeholder and nothing said so. The check asserts BYTES, not status.
+ok('the deploy check reads the two brand icons', /favicon-32\.png/.test(deploySrc) && /apple-touch-icon\.png/.test(deploySrc));
+ok('it refuses the placeholder by name', /the placeholder is being served/.test(deploySrc) && /favicon !== 'fallback'/.test(deploySrc));
+ok('it fetches all three icon routes', ['/favicon.png', '/favicon.ico', '/apple-touch-icon.png'].every(r => deploySrc.indexOf("'" + r + "'") !== -1));
+ok('it compares byte counts, not just the status', /bytes === want\.length/.test(deploySrc));
+ok('and it exits non-zero on a failure', /process\.exitCode = 1/.test(deploySrc));
+// /health publishes what the process is actually serving, so a deployment can say
+// 'fallback' out loud instead of looking healthy.
+ok('/health carries the brand field', /brand: \{/.test(serverSrc) && /faviconBytes/.test(serverSrc) && /appleTouchIconBytes/.test(serverSrc));
+ok('and names the fallback when it is serving it', /favicon: ICON_32 \? 'img\/favicon-32\.png' : 'fallback'/.test(serverSrc));
+// The recipe is the thing that forgot img/ in the first place.
+const deployDoc = fs.readFileSync(path.join(ROOT, 'docs', 'deploy.md'), 'utf8');
+ok('the deploy recipe archives img/', /tar -czf mhq-deploy\.tgz src img /.test(deployDoc));
+ok('and says why it is not optional', /img\/ is not optional/.test(deployDoc));
+ok('and points at the check', /node src\/deploy-check\.mjs/.test(deployDoc));
 
 // --- the three endpoints, byte for byte --------------------------------------
 const child = await boot(PORT);
