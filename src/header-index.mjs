@@ -265,6 +265,54 @@ function rankCmp(a, b) {
 // is given. The Legends setting is per device, so the route must be able to answer for
 // one page with the Legends book open and for another without it in the same process -
 // a global here would be one reader's setting deciding another reader's results.
+// --- one unit is one row -----------------------------------------------------
+// task-58, Mandal: 'if I search for enginseer in the wiki bar there are 1 militarum
+// and 1 mechanicus entries (correct) + 3 unitrules entries.' A unit reaches the
+// corpus as TWO records: a datasheet (the statline and the wargear) and a unitrules
+// record (the keyword list and the abilities), both built from the same CSV row and
+// sharing its number - measured over the delivered corpus, all 1,768 unitrules have
+// a datasheet twin, and each of the twins answers the same name. The search matched
+// both, so every unit was listed twice; a unit the importer also chunked ('(1/2)')
+// was listed once per chunk as well.
+//
+// The fold keys on the CSV row number, which is what the two records have in common
+// (they do not link to each other: both are children of the faction index page). The
+// datasheet is the head because it is what a reader searching a unit name wants, and
+// it is the one the payload has a slug for. The rows it swallowed travel in 'parts',
+// so the drawer can still reach the keyword list and the halves - a row that hides a
+// record without a way back would be the same defect wearing a smaller list.
+export function unitKey(row) {
+  const id = String((row && row.id) || '');
+  const m = /^(datasheet|unitrules)#([0-9]+)(?:~\d+)?$/.exec(id);
+  return m ? 'unit:' + m[2] : '';
+}
+function foldUnitRows(rows) {
+  const groups = new Map();
+  const order = [];
+  for (const r of rows) {
+    const key = unitKey(r);
+    if (!key) { order.push({ key: '', row: r }); continue; }
+    if (!groups.has(key)) { groups.set(key, []); order.push({ key: key, row: null }); }
+    groups.get(key).push(r);
+  }
+  const out = [];
+  for (const entry of order) {
+    if (!entry.key) { out.push(entry.row); continue; }
+    const group = groups.get(entry.key);
+    // The datasheet leads; among several (a chunked datasheet, or a twin the Legends
+    // gate admitted) the one the payload can open leads, and otherwise the highest
+    // ranked - never the lowest by accident.
+    const head = group.find(function (r) { return r.kind === 'datasheet' && r.slug; })
+      || group.find(function (r) { return r.kind === 'datasheet'; })
+      || group[0];
+    const parts = group.filter(function (r) { return r !== head; });
+    const row = Object.assign({}, head);
+    if (parts.length) row.parts = parts.map(function (r) { return { id: r.id, kind: r.kind, title: r.title, slug: r.slug || '' }; });
+    out.push(row);
+  }
+  return out;
+}
+
 export function findRows(query, opts) {
   const o = opts || {};
   const cap = Math.max(Number(o.cap) || 40, 1);
@@ -272,10 +320,10 @@ export function findRows(query, opts) {
   const slugs = o.slugs || new Map();
   const delivered = o.delivered || null;
   const allow = typeof o.allow === 'function' ? o.allow : null;
-  const matched = (out.rows || []).filter(function (r) {
+  const matched = foldUnitRows((out.rows || []).filter(function (r) {
     const id = String(r.id);
     return allow ? allow(id) : (!delivered || delivered.has(id));
-  });
+  }));
   return {
     q: String(query == null ? '' : query),
     total: matched.length,
@@ -289,6 +337,12 @@ export function findRows(query, opts) {
         crumbs: r.crumbs,
         phonetic: r.phonetic === true,
         heard: r.heard || [],
+        // task-58: the records this row stands for, each one openable by its own
+        // slug (or its own id when the payload has none). Empty for every row that
+        // is one record, so the wire shape only grows where the fold happened.
+        parts: (r.parts || []).map(function (p) {
+          return { id: p.id, kind: p.kind, title: p.title, slug: slugs.get(p.id) || p.slug || '' };
+        }),
       };
     }),
   };

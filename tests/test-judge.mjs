@@ -1,5 +1,6 @@
+import fs from 'node:fs';
 import {
-  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, judgePrompt, judgeStrength, normalizeConfidence, normalizeWiden, parseJsonObject, reconcileVerdicts, termCount, termPresent, widenPlan, writerEnabled,
+  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, isCapabilityQuestion, judgePrompt, judgeStrength, normalizeConfidence, normalizeWiden, parseJsonObject, reconcileVerdicts, termCount, termPresent, widenPlan, writerEnabled,
 } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
@@ -184,6 +185,46 @@ t('the French prompt says it in the schema as well', /"why": "la raison/.test(pr
 t('and gives it its own line', /The "why", "answer", "quote", "exceptions" and "missing" fields are written in French/.test(promptFr), true);
 t('the English prompt still carries the English schema', /"why": "the reason, in two or three sentences"/.test(promptEn), true);
 t('the French prompt keeps the passages untouched', promptFr.indexOf('Until the end of the turn') !== -1, true);
+
+
+// --- task-56: the scope of a negative ---------------------------------------
+// Mandal's first-day warning, measured on the Box: 'Can a baneblade have an
+// invulnerable save?' was answered 'No, a Baneblade does not have an invulnerable
+// save' from the datasheet's statline. A datasheet cannot show that nothing else
+// grants one, and the corpus holds the Tech-Priest Enginseer's Omnissiah's Blessing
+// (an ASTRA MILITARUM VEHICLE gets a 4+ invulnerable save, and a Baneblade is one).
+// The rule is task-51's absence copy applied to the verdict: a no is a claim about
+// the records the judge was shown, never about the corpus.
+t('a capability question is recognised', isCapabilityQuestion('Can a baneblade have an invulnerable save?'), true);
+t('a permission question is too', isCapabilityQuestion('Can I shoot into a melee that my own unit is in?'), true);
+t('and a plain what-does-it-do question is not', isCapabilityQuestion('What does the Advance move do?'), false);
+t('nor is a how-many question', isCapabilityQuestion('How many points does a Space Marine Captain cost?'), false);
+t('a does-it-have question is one', isCapabilityQuestion('Does armour of contempt have a rule for a 2+ save?'), true);
+t('a does-it-work question is one on its verb', isCapabilityQuestion('Does armour of contempt work on a 2+ save in 11th edition?'), false);
+t('and the bank question it comes from is caught by can', isCapabilityQuestion('Can a monster or vehicle shoot while it is stuck in combat?'), true);
+t('the predicate is case-insensitive', isCapabilityQuestion('CAN A BANEBLADE HAVE AN INVULNERABLE SAVE?'), true);
+t('nothing is not a capability question', isCapabilityQuestion(''), false);
+const capPassages = [{ set: 'factions', heading: 'Baneblade', text: 'Model Baneblade: M 12" T 13 Sv 2+ W 24 Ld 7+ OC 8' }];
+const capPlain = judgePrompt('Can a baneblade have an invulnerable save?', capPassages);
+const capScoped = judgePrompt('Can a baneblade have an invulnerable save?', capPassages, { scoped: true });
+t('the ordinary prompt does not carry the scope rule', /scoped to what you were shown/.test(capPlain), false);
+t('the scoped prompt does', /This question asks whether something is possible or permitted/.test(capScoped), true);
+t('and it names the wording to use', /none of the records I was given grants/.test(capScoped), true);
+t('it forbids a claim about what the unit has', /must never state what a unit has or does not have/.test(capScoped), true);
+t('it says a datasheet is not evidence about the rest', /it is not evidence about what an army rule, a stratagem or another unit can grant/.test(capScoped), true);
+t('it still demands a yes when a record grants it', /Answer yes outright when one of the records grants it/.test(capScoped), true);
+t('it asks what would settle the question instead of asserting absence', /name the kind of record that would settle it if it exists/.test(capScoped), true);
+t('it says the answer usually hangs on a keyword', /usually names a KEYWORD/.test(capScoped), true);
+t('and it refuses to soften the scoped no into vagueness', /it is not a hedge and it must not be softened into vagueness/.test(capScoped), true);
+t('the scope rule is added, never swapped in: the rest of the prompt is intact', capScoped.indexOf('Judge only what is written above') !== -1 && capScoped.indexOf('"why": "the reason, in two or three sentences"') !== -1, true);
+t('the passages are untouched by the scope rule', capScoped.indexOf('Sv 2+') !== -1, true);
+// The scope travels with the QUESTION, not with the caller: the page, the CLI and
+// the sweep all ask the same question and must all get the same discipline.
+{
+  const src = fs.readFileSync(new URL('../src/rules-corpus.mjs', import.meta.url), 'utf8');
+  t('the judge call reads the question for the scope', /const scoped = o\.scoped === undefined \? isCapabilityQuestion\(question\) : o\.scoped === true;/.test(src), true);
+  t('and passes it into the prompt', /judgePrompt\(question, passages, Object\.assign\(\{\}, o, \{ manifest: manifest \|\| \[\], scoped \}\)\)/.test(src), true);
+}
 
 // --- the escalation policy --------------------------------------------------
 const at = n => ({

@@ -416,6 +416,12 @@ function rowDisplay(headingOrParts) {
       .then(function (j) { if (state.searchQ !== q) return; state.hits = j; renderHits(q); })
       .catch(function () { if (state.searchQ !== q) return; state.hits = { rows: [], failed: true }; renderHits(q); });
   }
+  // task-58: one row opens the record it names - or, for a folded row, one of the
+  // records it stands for. Same act, so it is one function.
+  function openHit(r) {
+    if (r.slug) { recordBySlug(r.slug).then(function (rec) { if (rec) showInDrawer(rec, true); }); return; }
+    showInDrawer({ id: r.id, kind: r.kind, slug: '', title: r.title, heading: r.title }, true);
+  }
   function renderHits(q) {
     var box = treeEl();
     if (!box) return;
@@ -453,11 +459,25 @@ function rowDisplay(headingOrParts) {
       // task-35: a slugged record comes from the wiki payload; a delivered record with
       // no tree address (a faction rule, a stratagem, a unitrules half) opens from the
       // row itself, because it has a page either way. A row is never a dead end.
-      b.addEventListener('click', function () {
-        if (r.slug) { recordBySlug(r.slug).then(function (rec) { if (rec) showInDrawer(rec, true); }); return; }
-        showInDrawer({ id: r.id, kind: r.kind, slug: '', title: r.title, heading: r.title }, true);
-      });
+      b.addEventListener('click', function () { openHit(r); });
       box.appendChild(b);
+      // task-58: one unit is one row (src/header-index.mjs folds the datasheet and
+      // its keyword list, and the chunks of either, under the CSV row they share).
+      // The records the fold swallowed are named rather than lost: a unit's keyword
+      // list is a different question from its statline, and a chunked unit reads in
+      // more than one part. One tap opens any of them.
+      if (r.parts && r.parts.length) {
+        var parts = el('div', 'sv-hit-parts');
+        parts.appendChild(el('span', 'sv-hit-parts-l', 'also'));
+        r.parts.forEach(function (p) {
+          var pb = el('button', 'sv-hit-part');
+          pb.type = 'button';
+          pb.textContent = /unitrules/.test(p.kind) ? 'the keyword list' : displayTitle(p.title);
+          pb.addEventListener('click', function () { openHit(p); });
+          parts.appendChild(pb);
+        });
+        box.appendChild(parts);
+      }
     });
     if (!rows.length && !(state.hits && state.hits.failed)) {
       var empty = el('div', 'sv-hits-empty', 'Try the name alone \u2014 \u201cTyrannofex\u201d, \u201cRapid Ingress\u201d \u2014 or ask it as a question.');

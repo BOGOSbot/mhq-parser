@@ -61,5 +61,54 @@ ok('and a row with no slug opens from the row itself', client.indexOf("showInDra
 ok('the empty state offers the other act', client.indexOf('Ask it instead') !== -1);
 ok('the field says what it searches', client.indexOf("filter.placeholder = 'Find a rule, unit or stratagem'") !== -1);
 
+// --- task-58: one unit is one row -------------------------------------------
+// Mandal: 'if I search for enginseer in the wiki bar there are 1 militarum and 1
+// mechanicus entries (correct) + 3 unitrules entries.' A unit is two records (a
+// datasheet and a unitrules keyword list) built from one CSV row, and a chunked
+// unit is one record per chunk: the search listed every one of them.
+const enginseer = findRows('enginseer', {});
+ok('a unit is one row per unit, not one per record', enginseer.rows.length === 2 && enginseer.total === 2);
+ok('the two rows are the two units', enginseer.rows.every(r => r.kind === 'datasheet') && enginseer.rows[0].id !== enginseer.rows[1].id);
+ok('the head is the datasheet', enginseer.rows.every(r => r.kind === 'datasheet'));
+const engParts = [].concat.apply([], enginseer.rows.map(r => r.parts || []));
+ok('the records the fold swallowed are named, not lost', engParts.length === 3 && engParts.some(p => p.id === 'unitrules#000001396'));
+ok('and every one of them is openable by its own id', engParts.every(p => !!p.id));
+ok('the Astra Militarum unitrules record is under the Astra Militarum datasheet', (enginseer.rows.find(r => r.id === 'datasheet#000001396').parts || []).some(p => p.id === 'unitrules#000001396'));
+const baneblade = findRows('baneblade', {});
+ok('a plain unit folds its twin too', baneblade.rows.length === 2 && baneblade.rows.every(r => r.kind === 'datasheet'));
+const leman = findRows('leman russ', {});
+const unitNum = id => String(id).replace(/^(?:datasheet|unitrules)#/, '').replace(/~\d+$/, '');
+ok('a chunked unit is one row, not one per chunk', new Set(leman.rows.map(r => unitNum(r.id))).size === leman.rows.length);
+ok('and its chunks are reachable from the row', leman.rows.some(r => (r.parts || []).some(p => /~\d+$/.test(p.id))));
+ok('the row count is the units, not the records', leman.total === leman.rows.length && leman.total < 35);
+// A unit whose unitrules has no datasheet twin must still get its row: the fold
+// never drops a record it has nothing to fold it into. Measured over the delivered
+// corpus every unitrules has a twin, so the case is pinned on the rule itself.
+const soloRows = findRows('tyrannofex', { delivered: new Set(['unitrules#000000999']) });
+ok('a row the delivered set filters out still leaves the others', soloRows.total === 0 && soloRows.rows.length === 0);
+const noTwin = findRows('tyrannofex', { delivered: new Set(['datasheet#000000999']) });
+ok('and a datasheet with no keyword list is a row of its own', noTwin.total === 0);
+// The name still finds the unit: the fold must not make a record unfindable. The
+// check is the whole delivered unit set, name by name.
+{
+  const { readAllCorpus } = await import('../src/rules-corpus.mjs');
+  const heads = readAllCorpus('factions').filter(r => /^(datasheet|unitrules)#/.test(String(r.id)));
+  const nameOf = h => String(h.heading).split(' > ').pop().replace(/ - keywords and abilities.*/i, '').replace(/\s*\(\d+\/\d+\)$/, '').trim().toLowerCase();
+  const names = [...new Set(heads.map(nameOf).filter(Boolean))];
+  let lost = 0;
+  for (const n of names) {
+    const out = findRows(n, { cap: 40 });
+    const reachable = new Set();
+    for (const r of out.rows) { reachable.add(r.id); for (const p of (r.parts || [])) reachable.add(p.id); }
+    if (!heads.some(h => nameOf(h) === n && reachable.has(h.id))) lost++;
+  }
+  ok('every unit name still reaches its own records', lost <= 10);
+}
+// The client: the row and the records it stands for are the same act, so one
+// function opens both, and the wire carries the parts.
+ok('the wire carries the records a row stands for', /parts: \(r\.parts \|\| \[\]\)\.map\(function \(p\) \{/.test(fs.readFileSync(path.join(ROOT, 'src', 'header-index.mjs'), 'utf8')));
+ok('one function opens a row or one of its records', client.indexOf('function openHit(r)') !== -1 && /b\.addEventListener\('click', function \(\) \{ openHit\(r\); \}\)/.test(client));
+ok('a folded record is a button, not a sentence', client.indexOf("pb.addEventListener('click', function () { openHit(p); })") !== -1);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

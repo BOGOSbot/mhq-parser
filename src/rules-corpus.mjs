@@ -2925,6 +2925,33 @@ export function passageForJudge(p, i, cap) {
   return head + note + '\n' + full.slice(0, cap);
 }
 
+// --- a negative about what is possible --------------------------------------
+// task-56, Mandal's first-day warning: 'we need to be careful of the confidently
+// wrong answer.' Asked 'Can a baneblade have an invulnerable save?', the judge was
+// shown the datasheet, saw that its statline grants none, and answered 'No, a
+// Baneblade does not have an invulnerable save.' A datasheet cannot show that
+// NOTHING ELSE grants one, and the corpus holds the Tech-Priest Enginseer's
+// Omnissiah's Blessing, which gives an ASTRA MILITARUM VEHICLE a 4+ invulnerable
+// save while a Baneblade is exactly that. The judge was not wrong about what it
+// read; it was wrong about the reach of a no.
+//
+// The rule is the sweep's absence copy (task-51) applied to the verdict: a
+// negative about CAPABILITY is a claim about the records the judge was shown,
+// never about the corpus. 'None of the records I was given grants one' is true
+// and useful; 'the unit has no invulnerable save' is a claim about 7,390 records
+// that a single retrieval never established.
+//
+// The pattern is deliberately narrow. It fires on permission and capability
+// questions - can/could/may/is it possible, does it have, is there a way - and
+// stays out of 'what does X do', where a plain answer is what the reader wants
+// and a scope note would only be hedging. A question whose honest answer is no
+// still gets a plain no; what changes is that the no says what was read.
+export const CAPABILITY_RE = /\b(can|could|may|possible|allowed|permitted|able to|is there (?:a|any) way|(?:does|do|did)\b.{0,40}?\b(?:have|has|get|gets|gain|gains|benefit|benefits)\b|(?:is|are|was|were)\b.{0,40}?\b(?:able|allowed|permitted)\b)\b/i;
+
+export function isCapabilityQuestion(question) {
+  return CAPABILITY_RE.test(String(question || ''));
+}
+
 export function judgePrompt(question, passages, opts) {
   const o = opts || {};
   const per = o.perPassage || JUDGE_PASSAGE_CHARS;
@@ -2975,6 +3002,15 @@ export function judgePrompt(question, passages, opts) {
     '',
     'Judge only what is written above, not what you know about the game.',
     'A passage marked TRUNCATED has more text that is not shown; if the rule could be in the unseen part, say so in "why" instead of concluding it is absent.',
+    o.scoped === true
+      ? [
+        'This question asks whether something is possible or permitted, and that changes what a no may claim.',
+        '- The answer must never state what a unit has or does not have. A datasheet shows what that datasheet lists; it is not evidence about what an army rule, a stratagem or another unit can grant. The wording is "none of the records I was given grants ..." - a statement about the records in front of you, not about the unit or the game.',
+        '- Answer yes outright when one of the records grants it, and name that record. When none does, the scoped no is the answer; it is not a hedge and it must not be softened into vagueness.',
+        '- In "why", name the kind of record that would settle it if it exists, so the reader can see what was and was not checked.',
+        '- In "missing", state the search that would settle it. A rule that permits something usually names a KEYWORD (VEHICLE, INFANTRY, CHARACTER, PSYKER, TITANIC) rather than the unit, so say which keyword the answer would hang on.',
+      ].join('\n')
+      : '',
     'Reply with JSON only:',
     schemaOut,
     whyMust,
@@ -3150,7 +3186,12 @@ export function rulingSlots(obj, answered, passages) {
 // Split out of judgeCoverage so the hop can run it twice on two lists.
 async function judgeAsk(question, passages, key, o, manifest) {
   const callOpts = o.reasoning === undefined ? { json: true } : { json: true, reasoning: o.reasoning };
-  const prompt = judgePrompt(question, passages, Object.assign({}, o, { manifest: manifest || [] }));
+  // task-56: a capability question gets the scoped-negative rule, and the scope
+  // travels with the QUESTION rather than with the caller - the page, the CLI and
+  // the sweep all ask the same question and must all get the same discipline. An
+  // explicit o.scoped wins either way, so a measurement can force one arm.
+  const scoped = o.scoped === undefined ? isCapabilityQuestion(question) : o.scoped === true;
+  const prompt = judgePrompt(question, passages, Object.assign({}, o, { manifest: manifest || [], scoped }));
   // task-31: the reasoning verdict is the slow, unbounded step. Bound it, and when
   // it does not come back ask the same prompt without reasoning - a judge that
   // answered without thinking beats a run that died thinking. Measured on the fast
