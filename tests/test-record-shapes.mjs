@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bodyLines, cardFor, recordBody, recordShape, proseHtml, splitBlocks, CARD_KINDS } from '../src/wiki-cards.mjs';
+import { exclusionReason } from '../src/rules-corpus.mjs';
 import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries } from '../src/wiki-plan.mjs';
 import { markWargearText } from '../src/wargear-marks.mjs';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
@@ -15,7 +16,7 @@ const all = readAllCorpus();
 const fam = { stratagem: 0, ability: 0, other: 0 };
 const byKind = {};
 const abilities = [], stratagems = [];
-let identical = 0, changed = 0, skipped = 0, seeAlsoChanged = 0, csvChanged = 0, wallChanged = 0; const mismatches = [];
+let identical = 0, changed = 0, skipped = 0, seeAlsoChanged = 0, csvChanged = 0, wallChanged = 0, excludedChanged = 0; const mismatches = [];
 // task-41: the wall split is a third intended class of change - a record whose body is
 // one unbroken paragraph now renders as its own pieces, with an outline when the pieces
 // have names. Same two conditions bodyHtml uses.
@@ -63,9 +64,10 @@ for (const r of all) {
   if (hasCsvCols(r)) csvChanged++;
   if (now === old) { identical++; byKind[kind].identical++; } else {
     changed++; byKind[kind].changed++;
-    const seeAlso = seeAlsoEntries(r).some(e => e.child), csv = hasCsvCols(r);
+    const seeAlso = seeAlsoEntries(r).some(e => e.child), csv = hasCsvCols(r), excl = exclusionReason(r) !== '';
     if (!seeAlso && !csv && wallSplit(r)) wallChanged++;
-    if (!seeAlso && !csv && !wallSplit(r) && mismatches.length < 5) mismatches.push(r.id);
+    if (excl && !seeAlso && !csv && !wallSplit(r)) excludedChanged++;
+    if (!seeAlso && !csv && !wallSplit(r) && !excl && mismatches.length < 5) mismatches.push(r.id);
   }
 }
 console.log('records ' + all.length + ' | stratagem ' + fam.stratagem + ' | ability ' + fam.ability + ' | other ' + fam.other);
@@ -101,7 +103,9 @@ function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').
 // body, so those records change by design. Everything else stays byte-identical.
 // task-41 added the third class: the wall split (an outline, or a one-paragraph body
 // rendered as its own pieces).
-t('only the SEE ALSO containers, the CSV-column strips and the wall splits changed outside the two families', changed - fam.stratagem - fam.ability, seeAlsoChanged + csvChanged + wallChanged);
+// task-44 added the fourth: a filtered record (Legends, the pack line, the named
+// tenth-edition rule) now carries a banner naming why it is not in the search.
+t('only the SEE ALSO containers, the CSV strips, the wall splits and the exclusion banners changed outside the two families', changed - fam.stratagem - fam.ability, seeAlsoChanged + csvChanged + wallChanged + excludedChanged);
 // The rule that files a record with no Type: it must carry the rows at line starts.
 // An empty Type with nothing to show is never an ability (the 6 Aeldari today).
 t('an ability either carries a Type line or carries the rows',
