@@ -1725,6 +1725,35 @@ function devPanel(f, state, ctx) {
   return box;
 }
 
+  // task-49: ONE row per check, not per attempt. A check the judge could not settle
+  // is re-run once on its own words (see sweepChecks), so the event carries two
+  // entries for it - and printing both read as a contradiction ('did not settle it'
+  // above 'nothing in the corpus') and made the footer count rows that were the same
+  // check twice. This collapses them: the LAST attempt is the outcome, the earlier
+  // ones only make `attempts` > 1. Pure, so the test can extract it.
+  function sweepRows(sweep) {
+    var s = sweep || {};
+    var byN = {};
+    var order = [];
+    (s.checks || []).forEach(function (c, i) {
+      var n = (c && c.n) || (i + 1);
+      if (!byN[n]) { byN[n] = { n: n, what: '', verdict: '', id: '', attempts: 0 }; order.push(n); }
+      var row = byN[n];
+      row.attempts += 1;
+      row.what = String((c && (c.what || c.query)) || '');
+      row.verdict = (c && c.verdict) || 'unresolved';
+      row.id = (c && c.id) || '';
+    });
+    return order.map(function (n) { return byN[n]; });
+  }
+  function sweepSaid(row) {
+    var said = row.verdict === 'absent' ? 'nothing in the corpus'
+      : row.verdict === 'answered' ? ((row.id || '') + ' answers it')
+      : 'the search did not settle it';
+    // The retry stays visible, as a detail on the one row it belongs to.
+    if (row.attempts > 1) said += ' \u00b7 re-run on its own words';
+    return said;
+  }
   // task-43: the sweep, UNDER the ruling and the ranked ledger, never instead of them.
   // A deep run's judge named the checks it would still run to be sure nothing was
   // missing; each was run for real and the judge said what it found. The reader gets
@@ -1733,29 +1762,38 @@ function devPanel(f, state, ctx) {
   // that - and this list is an addition beneath them.
   function sweepList(state) {
     var s = state.sweep;
-    if (!s || !s.checks || !s.checks.length) return null;
+    if (!s) return null;
+    var rows = sweepRows(s);
     var box = el('section', 'sv-sweep');
     box.appendChild(el('h2', 'sv-sweep-h', 'Checked for what is missing'));
+    // task-49: the sweep RAN and the judge named nothing. Saying nothing at all left
+    // the reader unable to tell 'I looked and there was nothing to check' from 'nobody
+    // looked', and only the first is a claim we can make.
+    if (!rows.length) {
+      box.appendChild(el('p', 'sv-sweep-none', 'Nothing to check \u2014 the passages settle it.'));
+      box.appendChild(el('p', 'sv-sweep-foot', 'Checked 0'));
+      return box;
+    }
     var list = el('div', 'sv-sweep-list');
-    s.checks.forEach(function (c) {
+    rows.forEach(function (r) {
       var row = el('div', 'sv-sweep-row');
-      row.setAttribute('data-verdict', c.verdict || 'unresolved');
-      row.appendChild(el('span', 'sv-sweep-what', String(c.what || c.query || '')));
-      var said = c.verdict === 'absent' ? 'nothing in the corpus'
-        : c.verdict === 'answered' ? ((c.id || '') + ' answers it')
-        : 'the search did not settle it';
-      row.appendChild(el('span', 'sv-sweep-said', said));
+      row.setAttribute('data-verdict', r.verdict);
+      row.setAttribute('data-attempts', String(r.attempts));
+      row.appendChild(el('span', 'sv-sweep-what', r.what));
+      row.appendChild(el('span', 'sv-sweep-said', sweepSaid(r)));
       list.appendChild(row);
     });
     box.appendChild(list);
     // The bounds are part of the answer, not a debug line: a sweep that stopped on its
-    // budget has NOT finished looking, and the reader is owed that.
+    // budget has NOT finished looking, and the reader is owed that. The counts come
+    // from the SAME rows the list was built from, so they cannot disagree with it.
     var stopped = s.stopped === 'budget' ? 'stopped on its time budget'
       : s.stopped === 'rounds' ? 'stopped at its round limit'
       : s.stopped === 'calls' ? 'stopped at its call limit'
       : s.stopped === 'failed' ? 'could not run'
       : '';
-    var foot = el('p', 'sv-sweep-foot', 'Checked ' + s.checks.length + ' \u00b7 ' + (s.absent || []).length + ' with nothing in the corpus' + (stopped ? ' \u00b7 ' + stopped : ''));
+    var absent = rows.filter(function (r) { return r.verdict === 'absent'; }).length;
+    var foot = el('p', 'sv-sweep-foot', 'Checked ' + rows.length + ' \u00b7 ' + absent + ' with nothing in the corpus' + (stopped ? ' \u00b7 ' + stopped : ''));
     box.appendChild(foot);
     return box;
   }

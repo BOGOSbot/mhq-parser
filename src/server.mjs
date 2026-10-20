@@ -1361,8 +1361,13 @@ async function handleRulesAsk(req, res) {
     // Deep only, and only when the judge actually answered the question: a sweep on a
     // refusal would be checking for what the corpus already said it does not hold.
     // Every bound is passed in and reported back, so a stopped loop says why.
-    const sweepRun = (mode.sweep && judge && judge.answered === true && Array.isArray(judge.checks) && judge.checks.length)
-      ? sweepChecks(asked, judge.checks, {
+    //
+    // task-49: the event is emitted even when the judge named NOTHING to check. That
+    // is a result - 'I looked and there was nothing to check' - and rendering nothing
+    // left the reader unable to tell it from 'nobody looked'. sweepChecks reports it
+    // as stopped 'nothing-to-check' with an empty list.
+    const sweepRun = (mode.sweep && judge && judge.answered === true)
+      ? sweepChecks(asked, judge.checks || [], {
         key: keys.fast,
         lang: answerLang,
         // The budget is the SWEEP's own clock, not the ask's: the judge and the second

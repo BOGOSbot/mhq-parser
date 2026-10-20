@@ -109,7 +109,9 @@ const manyRounds = await sweepChecks('q', [{ what: 'whether shooting is allowed 
   ask: async () => { asked3++; return JSON.stringify({ checks: [{ n: 1, id: null, absent: false, why: 'still unsure' }] }); },
 }));
 ok('the rounds bound stops the loop and is reported', manyRounds.stopped === 'rounds' && manyRounds.rounds === 2 && asked3 === 2);
-ok('and every round it ran is recorded, unresolved', manyRounds.checks.length === 2 && manyRounds.unresolved === 2 && manyRounds.absent.length === 0);
+// task-49 re-anchored this pin: `checks` is every ATTEMPT (both rounds are recorded
+// for the trace) and `unresolved` counts the FINAL view, which is one entry per check.
+ok('and every round it ran is recorded, unresolved', manyRounds.checks.length === 2 && manyRounds.final.length === 1 && manyRounds.unresolved === 1 && manyRounds.absent.length === 0);
 // (5) the calls bound is reported too.
 let asked4 = 0;
 const manyCalls = await sweepChecks('q', [{ what: 'whether shooting is allowed at all', query: 'shooting' }], loopOpts({
@@ -120,6 +122,7 @@ ok('the calls bound stops the loop and is reported', manyCalls.stopped === 'call
 // (5b) a check the judge cannot settle is re-run on the CLAIM's own words, not on the
 //      same query: the same search would return the same list.
 let asked5 = 0;
+let asked6 = 0;
 const rephrased = await sweepChecks('q', [{ what: 'whether shooting is allowed after falling back', query: 'shooting' }], loopOpts({
   rounds: 2, calls: 5,
   ask: async prompt => { asked5++; return JSON.stringify({ checks: [{ n: 1, id: null, absent: false, why: 'unsure' }] }); },
@@ -143,6 +146,50 @@ const answeredRun = await sweepChecks('q', [{ what: 'a', query: 'fall back shoot
 ok('a check the judge resolved with a record is answered', answeredRun.checks[0].verdict === 'answered' && !!answeredRun.checks[0].id);
 ok('and it is not counted absent', answeredRun.absent.length === 0 && answeredRun.answered === 1);
 
+// --- task-49: one row per check, and silence that says so ---------------------
+// (9) an empty checks list is a RESULT, not a silence: the judge answered and named
+//     nothing to check, and the event says so with a reason.
+const nothing = await sweepChecks('q', [], loopOpts({ ask: async () => { throw new Error('must not be called'); } }));
+ok('no checks is reported as nothing-to-check, not as an empty stop', nothing.stopped === 'nothing-to-check');
+ok('and it ran no round and no call', nothing.rounds === 0 && nothing.calls === 0);
+ok('its final view is empty and so is its absence list', nothing.final.length === 0 && nothing.absent.length === 0);
+// (10) a retried check is ONE check: `checks` keeps every attempt for the trace and
+//      `final` carries one entry per check with the LAST outcome.
+const retried = await sweepChecks('q', [{ what: 'whether shooting is allowed after falling back', query: 'shooting' }], loopOpts({
+  rounds: 2, calls: 5,
+  ask: async prompt => (asked6++ === 0)
+    ? JSON.stringify({ checks: [{ n: 1, id: null, absent: false, why: 'unsure' }] })
+    : JSON.stringify({ checks: [{ n: 1, id: null, absent: true, why: 'nothing there' }] }),
+}));
+ok('the event keeps every attempt', retried.checks.length === 2);
+ok('and the final view has ONE entry for the retried check', retried.final.length === 1);
+ok('carrying the LAST outcome', retried.final[0].verdict === 'absent');
+ok('and the number of attempts it took', retried.final[0].attempts === 2);
+ok('the absence list counts the check once', retried.absent.length === 1);
+// (11) the renderer collapses by the same key, so a retried check cannot print twice.
+//      Extracted from the client, the way tests/test-rules-page.mjs extracts rowName.
+const SURFACE = read('src/wiki-surface.js');
+const fnSrc = name => { const at = SURFACE.indexOf('function ' + name + '('); if (at === -1) return ''; let depth = 0; for (let i = SURFACE.indexOf('{', at); i < SURFACE.length; i++) { if (SURFACE[i] === '{') depth++; else if (SURFACE[i] === '}') { depth--; if (!depth) return SURFACE.slice(at, i + 1); } } return ''; };
+const sweepRows = new Function(fnSrc('sweepRows') + '; return sweepRows;')();
+const sweepSaid = new Function(fnSrc('sweepSaid') + '; return sweepSaid;')();
+const collapsed = sweepRows({ checks: [
+  { n: 1, what: 'the D6 threshold', verdict: 'unresolved' },
+  { n: 2, what: 'another thing', verdict: 'absent' },
+  { n: 1, what: 'the D6 threshold', verdict: 'absent' },
+] });
+ok('the renderer shows one row per check', collapsed.length === 2);
+ok('with the last outcome on the retried one', collapsed[0].verdict === 'absent' && collapsed[0].attempts === 2);
+ok('and the untouched one keeps its own', collapsed[1].verdict === 'absent' && collapsed[1].attempts === 1);
+ok('the retry is named as a detail on that row only', sweepSaid(collapsed[0]).indexOf('re-run on its own words') !== -1 && sweepSaid(collapsed[1]).indexOf('re-run') === -1);
+ok('a check with no n falls back to its position', sweepRows({ checks: [{ what: 'a', verdict: 'absent' }, { what: 'b', verdict: 'absent' }] }).length === 2);
+ok('an empty event collapses to no rows', sweepRows({ checks: [] }).length === 0 && sweepRows(null).length === 0);
+// The empty case and the footer, as source: the count comes from the rows drawn.
+ok('an empty sweep says nothing was to be checked', SURFACE.indexOf('Nothing to check') !== -1 && /sv-sweep-none/.test(SURFACE));
+ok('the footer counts the rows it drew, not the attempts', /Checked ' \+ rows\.length/.test(SURFACE) && !/Checked ' \+ s\.checks\.length/.test(SURFACE));
+ok('and the absent count comes from the same rows', /rows\.filter\(function \(r\) \{ return r\.verdict === 'absent'; \}\)\.length/.test(SURFACE));
+// The event still carries every attempt for the trace, so nothing is lost.
+ok('the event keeps the attempts and adds the final view', /checks: all, final: final/.test(read('src/rules-corpus.mjs')));
+ok('and the server emits the sweep even with nothing to check', /mode\.sweep && judge && judge\.answered === true\)/.test(read('src/server.mjs')) && !/judge\.checks\.length\)\s*$/.test(read('src/server.mjs').slice(read('src/server.mjs').indexOf('const sweepRun'), read('src/server.mjs').indexOf('const sweepRun') + 200)));
 // --- the mode and the wiring ------------------------------------------------
 ok('deep is the mode that sweeps', !!ASK_MODES.deep.sweep && ASK_MODES.fast.sweep === undefined);
 ok('the deep bounds are the ones the card names', ASK_MODES.deep.sweep.rounds === 2 && ASK_MODES.deep.sweep.checksPerRound === 4 && ASK_MODES.deep.sweep.calls === 2);

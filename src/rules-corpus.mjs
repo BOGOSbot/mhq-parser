@@ -3297,6 +3297,9 @@ export async function runChecks(checks, opts) {
   for (const c of list) {
     const query = String((c && c.query) || '').trim();
     const what = String((c && c.what) || query);
+    // task-49: the check's own number rides through, so a check that is re-run in a
+    // later round is still the SAME check and the reader sees one row for it.
+    const n = (c && Number(c.n)) || 0;
     // The lexical leg is a grep and costs nothing; the vector leg is a network call.
     // Both run: the sweep's claim is about the corpus, and one leg missing a record
     // the other finds is exactly the case that would make an 'absent' wrong.
@@ -3309,7 +3312,7 @@ export async function runChecks(checks, opts) {
       const vec = await vector(query, limit);
       hits = lex.concat(vec.filter(h => !seen.has(h.id))).slice(0, limit);
     } catch (e) { ran = false; error = String((e && e.message) || e); }
-    out.push({ what: what, query: query, ran: ran, hits: hits, verdict: '', id: '', why: '', error: error });
+    out.push({ n: n, what: what, query: query, ran: ran, hits: hits, verdict: '', id: '', why: '', error: error });
   }
   return out;
 }
@@ -3394,8 +3397,10 @@ export async function sweepChecks(question, checks, opts) {
   const all = [];
   let calls = 0;
   let round = 0;
-  let stopped = '';
-  let pending = normalizeChecks(checks, perRound);
+  // 'nothing-to-check' is a real ending and it is the one the reader needs told
+  // apart from 'nobody looked' (task-49): the judge answered and named nothing.
+  let stopped = 'nothing-to-check';
+  let pending = normalizeChecks(checks, perRound).map((c, i) => ({ n: i + 1, what: c.what, query: c.query }));
   while (pending.length) {
     if (round >= maxRounds) { stopped = 'rounds'; break; }
     if (calls >= maxCalls) { stopped = 'calls'; break; }
@@ -3454,16 +3459,28 @@ export async function sweepChecks(question, checks, opts) {
     // same query would return the same list and the round would cost a phone seconds
     // for nothing, which is why the loop does not simply repeat itself.
     const next = unresolved
-      .map(c => ({ what: c.what, query: String(c.what || '').trim() }))
+      .map(c => ({ n: c.n, what: c.what, query: String(c.what || '').trim() }))
       .filter(c => normalizeChecks([c], 1).length);
     if (!next.length) { stopped = 'nothing-new'; break; }
     pending = next;
   }
+  // task-49: `checks` keeps EVERY attempt, in order, so the trace can see that a
+  // check was re-run and why; `final` is one entry per check carrying the LAST
+  // outcome, which is what the reader is shown. The footer's count is final.length
+  // and the rows come from the same array, so they cannot disagree.
+  const attempts = {};
+  const byN = new Map();
+  all.forEach((c, i) => {
+    const n = c.n || (i + 1);
+    attempts[n] = (attempts[n] || 0) + 1;
+    byN.set(n, Object.assign({}, c, { n: n }));
+  });
+  const final = [...byN.values()].sort((a, b) => a.n - b.n).map(c => Object.assign({}, c, { attempts: attempts[c.n] || 1 }));
   return {
-    rounds: round, checks: all, calls: calls, ms: Date.now() - started,
-    absent: all.filter(c => c.verdict === 'absent').map(c => c.what),
-    answered: all.filter(c => c.verdict === 'answered').length,
-    unresolved: all.filter(c => c.verdict === 'unresolved').length,
+    rounds: round, checks: all, final: final, calls: calls, ms: Date.now() - started,
+    absent: final.filter(c => c.verdict === 'absent').map(c => c.what),
+    answered: final.filter(c => c.verdict === 'answered').length,
+    unresolved: final.filter(c => c.verdict === 'unresolved').length,
     stopped: stopped,
     bounds: { rounds: maxRounds, checksPerRound: perRound, budgetMs: budgetMs, calls: maxCalls },
   };
