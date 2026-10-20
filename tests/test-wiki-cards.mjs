@@ -43,7 +43,9 @@ ok('the card is a section, not a text block', dsHtml.indexOf('<section class="wc
 ok('the text is NOT dumped a second time', dsHtml.indexOf('<pre class="text">') === -1);
 const c = card;
 t('one identity line: role and faction', /<p class="wcard-line">.*wcard-role">Battleline<.*wcard-faction">Adeptus Custodes</.test(dsHtml), true);
-const modelBlock = dsHtml.slice(dsHtml.indexOf('wcard-models'), dsHtml.indexOf('Ranged weapons'));
+// task-41: the card carries a section index now, so the words 'Ranged weapons' appear
+// above the models table too - the slice ends on the weapons TABLE, not on its title.
+const modelBlock = dsHtml.slice(dsHtml.indexOf('wcard-models'), dsHtml.indexOf('wcard-weapons'));
 const modelNames = (modelBlock.match(/<tr class="wcard-name"><th scope="rowgroup"/g) || []).length;
 t('a stat line per model', modelNames, c.models.length);
 ok('the model header carries the stats', ['M', 'T', 'Sv', 'W', 'Ld', 'OC'].every(k => dsHtml.indexOf('<th scope="col">' + k + '</th>') !== -1));
