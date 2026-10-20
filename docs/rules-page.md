@@ -559,6 +559,32 @@ the same row; the older no-key short path (37.9 / 69 / 86.2 / 86.2 exact, MRR
 The cost side is real either way: a round trip per half per pass on a free tier
 that throttles. `RULES_JEV_GATEWAY=openrouter` is the paid fallback.
 
+**The fallback is automatic (task-45).** The free route is tried first, always, and
+a QUOTA answer (HTTP 429, or a `FreeUsageLimitError` body at any status) moves that
+call down a chain to OpenRouter's paid decisions route; so does a failure (a
+timeout, a 5xx, a body with no answers), because the paid route exists to make the
+reader's rerank happen. Only the LAST gateway's failure degrades the list to
+unranked order, and the page says so rather than showing a degraded order as the
+full one. `RULES_JEV_GATEWAY` still pins one gateway by name and is the only way to
+get the paid route alone.
+
+Two things about the money, stated so nobody assumes otherwise:
+
+- **The price is a measured average, not an invoice.** The spend ledger uses the
+gateway's own `usage.cost` when the body carries one (OpenRouter does; a real call
+measured $0.0000142) and falls back to `RULES_JEV_PRICE_PER_CALL`, default
+**$0.0004** - the average from a 486-call paid run. A paid call whose body carries
+no cost is booked at that average, so the total is an estimate to within the
+spread of prompt sizes.
+- **The cap is per process-day and does not survive a restart.**
+`RULES_JEV_DAILY_CAP_USD` (default **$1.00**) is enforced against an in-memory
+ledger that rolls at UTC midnight and resets when the process restarts. A restart
+forgets the day's spend and the cap starts again; nothing is persisted. That is
+acceptable for the beta, and it is not a billing control.
+
+`/health` publishes the ledger (`jev`), the call counts (`jevCalls`) and the chain's
+per-gateway call counts; `/dev` renders a *Jev gateways* table.
+
 **Three states of one path, differing only in whether the call happened.** No
 key (or `--rerank off`) runs anchoring, head protection and clarification with no
 call at all; a key whose call fails (a 429) runs them on the fusion order, and
