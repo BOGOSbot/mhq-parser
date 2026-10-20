@@ -404,7 +404,11 @@ console.log('retriever ' + RETRIEVER + '  |  questions ' + rows.length + '  (gra
   + (MANGLED ? '  |  MANGLED text (' + path.basename(QUESTIONS_PATH) + ', ' + (bank.model || 'unknown model') + ', no glossary)' : '') + (RETRIEVER === 'vector' ? '  ns ' + (NAMESPACE || '(default)') + [FUSION, QUERY_MODE, WEIGHTING].filter(Boolean).map(v => ' ' + v).join('') : '  net ' + NET) + (SPLIT_HALVES ? '  per-side ' + PER_SIDE + '  w ' + VECTOR_WEIGHT + '  protect ' + PROTECT_VECTOR + (QUERY_MODE ? '  ' + QUERY_MODE : '') : '')
   + (RETRIEVER === 'gate' ? '  gate ' + GATE + (GATE === 'lexical' ? ' margin ' + GATE_MARGIN : '') : '')
   + (RETRIEVER === 'dense+phonetic' ? '  phonetic ' + PHONETIC_MODE + ' w ' + PHONETIC_WEIGHT : '')
-  + (RERANK_OFF ? '  rerank off' : '  rerank ' + rerankArm()) + (NO_KEY ? '  no key' : '')
+  // task-47: the rerank's question SHAPE changes what this arm retrieves, so the
+  // header records it. The recorded sweeps in docs/rules-page.md were taken in the
+  // noul shape, which is still reachable with RULES_JEV_SHAPE=noul; a fresh run that
+  // does not say which shape it used is not comparable to them.
+  + (RERANK_OFF ? '  rerank off' : '  rerank ' + rerankArm() + ' shape ' + (process.env.RULES_JEV_SHAPE || 'choice')) + (NO_KEY ? '  no key' : '')
   + (RULES_NS !== 'rules' || FACTIONS_NS !== 'factions' ? '  ns ' + RULES_NS + '/' + FACTIONS_NS : ''));
 if (resolveNotes.length) {
   console.log('');
