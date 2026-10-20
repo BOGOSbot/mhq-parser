@@ -1728,7 +1728,7 @@ function devPanel(f, state, ctx) {
   // task-49: ONE row per check, not per attempt. A check the judge could not settle
   // is re-run once on its own words (see sweepChecks), so the event carries two
   // entries for it - and printing both read as a contradiction ('did not settle it'
-  // above 'nothing in the corpus') and made the footer count rows that were the same
+  // above the absence line) and made the footer count rows that were the same
   // check twice. This collapses them: the LAST attempt is the outcome, the earlier
   // ones only make `attempts` > 1. Pure, so the test can extract it.
   function sweepRows(sweep) {
@@ -1741,13 +1741,22 @@ function devPanel(f, state, ctx) {
       var row = byN[n];
       row.attempts += 1;
       row.what = String((c && (c.what || c.query)) || '');
+      // task-51: the words the search actually used, so the row can show which search
+      // was run next to what it was looking for.
+      row.query = String((c && c.query) || '');
       row.verdict = (c && c.verdict) || 'unresolved';
       row.id = (c && c.id) || '';
     });
     return order.map(function (n) { return byN[n]; });
   }
   function sweepSaid(row) {
-    var said = row.verdict === 'absent' ? 'nothing in the corpus'
+    // task-51: an absence is a statement about the SEARCH, not about the corpus. The
+    // hand check (task-50) read 22 of the 52 absences and found 3 FALSE, so the old
+    // sentence was wrong about one check in seven and claimed a completeness that a
+    // two-leg search over a bounded net never established. The copy says what the sweep
+    // did. It must not become vague either: the reader is still told the search found
+    // nothing, and the wording it searched with is printed under it.
+    var said = row.verdict === 'absent' ? 'I searched and found nothing'
       : row.verdict === 'answered' ? ((row.id || '') + ' answers it')
       : 'the search did not settle it';
     // The retry stays visible, as a detail on the one row it belongs to.
@@ -1788,6 +1797,13 @@ function devPanel(f, state, ctx) {
       row.setAttribute('data-attempts', String(r.attempts));
       row.appendChild(el('span', 'sv-sweep-what', r.what));
       row.appendChild(el('span', 'sv-sweep-said', sweepSaid(r)));
+      // task-51: which search was run. Printed only when it adds something to the claim
+      // above it, so a row never repeats itself; on a re-run the final search IS the
+      // claim's own words, and that is what it shows.
+      var searched = String(r.query || '').trim();
+      if (searched && searched.toLowerCase() !== String(r.what || '').trim().toLowerCase()) {
+        row.appendChild(el('span', 'sv-sweep-query', 'searched for: ' + searched));
+      }
       list.appendChild(row);
     });
     box.appendChild(list);
@@ -1800,7 +1816,7 @@ function devPanel(f, state, ctx) {
       : s.stopped === 'failed' ? 'could not run'
       : '';
     var absent = rows.filter(function (r) { return r.verdict === 'absent'; }).length;
-    var foot = el('p', 'sv-sweep-foot', 'Checked ' + rows.length + ' \u00b7 ' + absent + ' with nothing in the corpus' + (stopped ? ' \u00b7 ' + stopped : ''));
+    var foot = el('p', 'sv-sweep-foot', 'Checked ' + rows.length + ' \u00b7 ' + absent + ' where the search found nothing' + (stopped ? ' \u00b7 ' + stopped : ''));
     box.appendChild(foot);
     return box;
   }

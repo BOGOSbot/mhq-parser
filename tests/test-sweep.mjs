@@ -181,6 +181,23 @@ ok('the renderer shows one row per check', collapsed.length === 2);
 ok('with the last outcome on the retried one', collapsed[0].verdict === 'absent' && collapsed[0].attempts === 2);
 ok('and the untouched one keeps its own', collapsed[1].verdict === 'absent' && collapsed[1].attempts === 1);
 ok('the retry is named as a detail on that row only', sweepSaid(collapsed[0]).indexOf('re-run on its own words') !== -1 && sweepSaid(collapsed[1]).indexOf('re-run') === -1);
+// --- task-51: the absence says what the SEARCH did, not what the corpus holds ------
+// The hand check read 22 of the 52 absences and found 3 FALSE, so the old sentence
+// claimed a completeness a two-leg search never established. These pins hold the copy
+// to the search and stop it drifting back to a claim about the corpus.
+const absentRow = { n: 1, what: 'whether any rule modifies the base hazard roll', query: 'hazard roll difficulty', verdict: 'absent', id: '', attempts: 1 };
+const saidAbsent = sweepSaid(absentRow);
+ok('an absence says the search found nothing', saidAbsent.indexOf('I searched and found nothing') !== -1);
+ok('and it does NOT claim the corpus does not hold it', saidAbsent.indexOf('corpus') === -1 && saidAbsent.indexOf('nothing applies') === -1 && saidAbsent.indexOf('no other rule') === -1);
+ok('a closed check still names its record', sweepSaid({ verdict: 'answered', id: 'core-rules#X', attempts: 1 }) === 'core-rules#X answers it');
+ok('an unsettled check still says so', sweepSaid({ verdict: 'unresolved', attempts: 1 }) === 'the search did not settle it');
+ok('the source has no reader-facing corpus claim left', SURFACE.indexOf('nothing in the corpus') === -1 && SURFACE.indexOf('with nothing in the corpus') === -1);
+ok('the footer counts searches that found nothing', /where the search found nothing/.test(SURFACE));
+ok('the row prints the wording the search used', /searched for: /.test(SURFACE) && /row\.query/.test(SURFACE) && /searched\.toLowerCase\(\) !== String\(r\.what/.test(SURFACE));
+ok('sweepRows carries the query through', sweepRows({ checks: [{ n: 1, what: 'a claim', query: 'the search', verdict: 'absent' }] })[0].query === 'the search');
+// The task-49 failure branch is untouched and still distinct from the absence copy.
+ok('the failed branch still says it could not run', SURFACE.indexOf('Could not check') !== -1 && /var failed = s\.stopped === 'failed'/.test(SURFACE));
+ok('and the failure copy is not the absence copy', SURFACE.indexOf('Could not check') !== SURFACE.indexOf('I searched and found nothing'));
 ok('a check with no n falls back to its position', sweepRows({ checks: [{ what: 'a', verdict: 'absent' }, { what: 'b', verdict: 'absent' }] }).length === 2);
 ok('an empty event collapses to no rows', sweepRows({ checks: [] }).length === 0 && sweepRows(null).length === 0);
 // The empty case and the footer, as source: the count comes from the rows drawn.
