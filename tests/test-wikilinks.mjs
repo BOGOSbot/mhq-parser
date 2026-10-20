@@ -1,9 +1,14 @@
 import { readAllCorpus } from '../src/rules-corpus.mjs';
-import { buildLinkMap, linkify, linkMap, isDistinctive, stripSuffix, esc } from '../src/wikilinks.mjs';
+import { buildLinkMap, linkify, linkMap, esc } from '../src/wikilinks.mjs';
 
 // task-66: the general wikilink rule. These pin the discipline, not the counts:
 // one escaper, unique targets, barred prose-verbs, href resolved before use,
 // first occurrence only, no self-link, capped, index pages plain.
+// task-42 moved the NAME SOURCE to the heading index and the CONFIDENCE rule to the
+// book's own spelling (a single word links in its keyword form only, and only where
+// the text capitalises it): the predicates that used to live here (stripSuffix,
+// isDistinctive) are gone, and the new rule is pinned in tests/test-link-rules.mjs.
+// A multi-word name still links in either case; the WTC ruling below is the witness.
 let pass = 0, fail = 0;
 function t(name, got, want) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
@@ -11,8 +16,8 @@ function t(name, got, want) {
 }
 function ok(name, got) { t(name, !!got, true); }
 
-t('the suffix stripper removes the parenthetical and the colon tail', [stripSuffix('ARCANE GENETIC ALCHEMY (Adeptus Custodes)'), stripSuffix('Set Up: first')], ['ARCANE GENETIC ALCHEMY', 'Set Up']);
-t('a generic word alone is not distinctive', [isDistinctive('Stratagem'), isDistinctive('Unit'), isDistinctive('Divine Intervention')], [false, false, true]);
+// task-42: the two predicates this file used to pin live in the heading index and in
+// the map's own build now; their rule is pinned in tests/test-link-rules.mjs.
 
 const all = readAllCorpus();
 const map = buildLinkMap(all);

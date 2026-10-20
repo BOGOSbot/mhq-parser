@@ -21,6 +21,10 @@
     branches: null, branch: null, cache: {}, open: {}, rows: {}, rowsCache: {}, rowsLoading: {}, filter: '',
     hits: null, searchQ: '', searchTimer: null,
     mode: 'none', record: null, from: '', answer: null, icons: {},
+    // task-42: the drawer's own history entries - how many the reader can still go
+    // back through (dhist), and the records a back step left behind, so the browser's
+    // forward button can put them back (dfwd).
+    dhist: 0, dfwd: [],
   };
   
   function $(id) { return document.getElementById(id); }
@@ -206,9 +210,15 @@ function rowDisplay(headingOrParts) {
   }
 
   // --- the drawer -----------------------------------------------------------
-  function drawerOpen(want) {
+  function drawerOpen(want, noHistory) {
     var d = $('sv-drawer'), t = toggleEl();
     if (!d) return;
+    var was = d.classList.contains('sv-open');
+    // task-42: an open drawer is the first layer of the trail, so it gets a history
+    // entry of its own, and closing it takes every entry of ours back in one step -
+    // the hardware back that follows leaves the page instead of replaying the trail.
+    if (!noHistory && want && !was) historyPush(0);
+    if (!noHistory && !want && was && state.dhist) { try { history.go(-state.dhist); } catch (e) {} }
     d.classList.toggle('sv-open', !!want);
     d.setAttribute('aria-hidden', want ? 'false' : 'true');
     // The drawer is the page while it is open: the page's own header hides, so
@@ -721,6 +731,39 @@ function rowDisplay(headingOrParts) {
   // and the back button said 'Open the wiki'. A link now stays in the drawer and opens the
   // record it points at, on a stack, so a chain of links reads like a path.
   function drawerStack() { if (!state.dstack) state.dstack = []; return state.dstack; }
+  // task-42: the trail is the browser's own history, so the Android back button walks
+  // it. Every push onto the stack pushes ONE history entry carrying the depth it
+  // reached (the URL never changes), and popstate draws the drawer back to the depth
+  // its entry names - so the hardware back and the drawer's own back button are the
+  // same step. state.dhist counts the entries of ours the reader can still go back
+  // through; seq is the entry's own index among them.
+  function historyPush(depth) {
+    var seq = state.dhist || 0;
+    try { history.pushState({ sv: 'drawer', n: depth, seq: seq }, '', location.href); state.dhist = seq + 1; } catch (e) {}
+  }
+  function panelTop() { var p = drawerPanel(); return p ? p.scrollTop : 0; }
+  // The place the reader had reached in the record they are leaving stays with the
+  // entry, so the back step restores it (task-107's shape, one level up).
+  function saveEntryTop(entry) {
+    var stack = drawerStack();
+    var e = entry || (stack.length ? stack[stack.length - 1] : null);
+    if (e) e.top = panelTop();
+  }
+  function stashStack() {
+    var stack = drawerStack();
+    while (stack.length) { saveEntryTop(); state.dfwd.unshift(stack.pop()); }
+  }
+  // Draw the drawer at depth n: n records on the stack, 0 is the tree, -1 the drawer
+  // itself closed. Idempotent, and the one place a depth is applied.
+  function setDepth(n) {
+    var stack = drawerStack();
+    if (n < 0) { stashStack(); hideDrawerRecord(); drawerOpen(false, true); return; }
+    if (!n) { stashStack(); hideDrawerRecord(); return; }
+    drawerOpen(true, true);
+    while (stack.length > n) { saveEntryTop(); state.dfwd.unshift(stack.pop()); }
+    while (stack.length < n && state.dfwd.length) stack.push(state.dfwd.shift());
+    if (stack.length) showInDrawer(stack[stack.length - 1].rec, false);
+  }
   function drawerPanel() {
     var d = $('sv-drawer');
     if (!d) return null;
@@ -747,16 +790,23 @@ function rowDisplay(headingOrParts) {
     var d = $('sv-drawer'), panel = drawerPanel(), tree = treeEl();
     if (!d || !panel || !record) return;
     var stack = drawerStack();
-    if (push !== false) stack.push(record);
-    // Save the tree's place only while it is still visible: a hidden tree reports 0, so
-    // saving on every step of a chain would overwrite the place the reader left.
-    if (tree && push !== false && !d.classList.contains('sv-reading')) state.treeScroll = tree.scrollTop;
+    if (push !== false) {
+      saveEntryTop();
+      // Save the tree's place only while it is still visible: a hidden tree reports 0, so
+      // saving on every step of a chain would overwrite the place the reader left.
+      if (tree && !d.classList.contains('sv-reading')) state.treeScroll = tree.scrollTop;
+      stack.push({ rec: record, top: 0 });
+      historyPush(stack.length);
+    } else if (!stack.length) {
+      stack.push({ rec: record, top: 0 });
+    }
+    var top = stack.length ? stack[stack.length - 1].top : 0;
     d.classList.add('sv-reading');
     panel.removeAttribute('hidden');
     panel.textContent = '';
     var back = el('button', 'sv-back sv-drawer-back');
     back.type = 'button';
-    back.textContent = '\u2190 ' + (stack.length > 1 ? titleOf(stack[stack.length - 2]) : (state.doorChapter || 'Wiki'));
+    back.textContent = '\u2190 ' + (stack.length > 1 ? titleOf(stack[stack.length - 2].rec) : (state.doorChapter || 'Wiki'));
     back.addEventListener('click', function (ev) { ev.preventDefault(); drawerBack(); });
     panel.appendChild(back);
     panel.appendChild(el('h2', 'sv-drawer-title', displayTitle(titleOf(record))));
@@ -765,8 +815,8 @@ function rowDisplay(headingOrParts) {
     var body = el('div', 'sv-inline-body');
     body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
     panel.appendChild(body);
-    panel.scrollTop = 0;
-    if (state.rows[record.id]) { body.innerHTML = faceHtml(record.id) + state.rows[record.id]; wireFaces(body); return; }
+    panel.scrollTop = top;
+    if (state.rows[record.id]) { body.innerHTML = faceHtml(record.id) + state.rows[record.id]; wireFaces(body); panel.scrollTop = top; return; }
     fetch(REC + '?id=' + encodeURIComponent(record.id) + '&format=html', { credentials: 'same-origin' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
       .then(function (html) {
@@ -775,15 +825,18 @@ function rowDisplay(headingOrParts) {
           if (!panel.contains(body)) return;
           body.innerHTML = faceHtml(record.id) + html;
           wireFaces(body);
+          panel.scrollTop = top;
         });
       })
       .catch(function () { body.textContent = 'The record could not be loaded.'; });
   }
+  // task-42: the drawer's own back button takes the step the hardware back takes - the
+  // history entry is the trail, and popstate draws the drawer down to the depth that
+  // entry names. With no entry of ours left the step is drawn here.
   function drawerBack() {
+    if (state.dhist) { try { history.back(); return; } catch (e) {} }
     var stack = drawerStack();
-    stack.pop();
-    if (!stack.length) { hideDrawerRecord(); return; }
-    showInDrawer(stack[stack.length - 1], false);
+    setDepth(stack.length ? stack.length - 1 : -1);
   }
   function hideDrawerRecord() {
     var d = $('sv-drawer'), panel = $('sv-drawer-record'), tree = treeEl();
@@ -1127,7 +1180,15 @@ function rowDisplay(headingOrParts) {
     if (close) close.addEventListener('click', function () { drawerOpen(false); });
     if (form) form.addEventListener('submit', function (ev) { ev.preventDefault(); ask(); });
     if (filter) filter.addEventListener('input', function () { state.filter = String(filter.value || '').trim().toLowerCase(); renderTree(); searchLater(); });
-    window.addEventListener('popstate', function () { if (!fromHash()) closePage(); });
+    window.addEventListener('popstate', function (ev) {
+      // task-42: our own entries first - back pops the drawer's trail; landing off the
+      // trail closes the drawer and leaves the page alone, and only a step with no
+      // drawer layer above it falls through to the page's own back.
+      var st = ev && ev.state;
+      if (st && st.sv === 'drawer') { state.dhist = st.seq + 1; setDepth(st.n); return; }
+      if (state.dhist) { state.dhist = 0; setDepth(-1); return; }
+      if (!fromHash()) closePage();
+    });
     window.addEventListener('hashchange', function () { fromHash(); });
     drawerOpen(drawerWanted());
     fromHash();

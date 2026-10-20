@@ -24,7 +24,9 @@ ok('the click no longer navigates the page', /ev\.preventDefault\(\)/.test(wire)
 ok('the link resolves by slug and opens in the drawer', /recordBySlug\(slug\)/.test(wire) && /showInDrawer\(rec, true\)/.test(wire));
 
 ok('the drawer has a record panel', /function drawerPanel\(\)/.test(surface) && /id = 'sv-drawer-record'/.test(surface));
-ok('back pops the stack, and the last pop returns to the tree', /function drawerBack\(\)/.test(surface) && /stack\.pop\(\)/.test(surface) && /hideDrawerRecord\(\)/.test(surface));
+// task-42: the pop moved into setDepth(), the one place a depth is applied, and the
+// drawer's own back button goes through the history (tests/test-drawer-history.mjs).
+ok('back pops the stack, and the last pop returns to the tree', /function drawerBack\(\)/.test(surface) && /function setDepth\(n\)/.test(surface) && /stack\.pop\(\)/.test(surface) && /hideDrawerRecord\(\)/.test(surface));
 ok('the tree keeps its place across the chain', /state\.treeScroll = tree\.scrollTop/.test(surface) && /tree\.scrollTop = state\.treeScroll/.test(surface));
 ok('the handler is wired at boot', /wireDrawerLinks\(\);/.test(surface));
 ok('closing the drawer returns to the tree', /else hideDrawerRecord\(\);/.test(surface));

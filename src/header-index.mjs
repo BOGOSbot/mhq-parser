@@ -166,7 +166,7 @@ function hrefFor(rec) {
 // A split part says '(1/2)' and a unitrules twin says '- keywords and abilities':
 // both are markers on the same record, not names, and leaving them in made a
 // lookup for a unit ambiguous with its own twin. The tree strips the same two.
-const cleanMarker = s => String(s)
+export const cleanMarker = s => String(s)
   .replace(/\s*\(\d+\/\d+\)$/, '')
   .replace(/\s*-\s*keywords and abilities(\s*\(\d+\/\d+\))?$/i, '')
   .trim();
@@ -235,7 +235,7 @@ export function phoneticIndex(entries) {
 // ability card that repeats it; a stratagem beats nothing else here (an index
 // page or a datasheet only answers when it is the name). Unknown kinds last.
 const KIND_ORDER = ['rule', 'stratagem', 'faction-rule', 'ability', 'datasheet', 'detachment', 'enhancement', 'unitrules', 'index', 'card'];
-function kindRank(kind) {
+export function kindRank(kind) {
   const i = KIND_ORDER.indexOf(kind);
   return i === -1 ? KIND_ORDER.length : i;
 }

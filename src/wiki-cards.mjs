@@ -198,7 +198,7 @@ function abilityRow(a, o) {
   return {
     name: a.name || '',
     type: a.type || '',
-    text: a.description ? '<span class="wcard-ability-text">' + linkify(a.description, { selfId: o.selfId, href: o.href })
+    text: a.description ? '<span class="wcard-ability-text">' + linkify(a.description, { selfId: o.selfId, href: o.href, cap: o.cap, state: o.state })
       + (a.truncated ? ' <span class="wcard-note">(cut short)</span>' : '') + '</span>' : '',
     // task-93: the link is labelled with the UNIT'S OWN ability name, not the title of the
     // record it resolves to. That title is a heading path ('Attached Units > Forming Attached
@@ -367,10 +367,10 @@ function provenanceBanner(p) {
 // out loud rather than an empty body.
 export function rulingBody(record, lang, opts) {
   const o = opts || {};
-  const link = t => linkify(t, { selfId: record && record.id, href: o.href });
+  const link = t => linkify(t, { selfId: record && record.id, href: o.href, cap: o.cap, state: o.state });
   // A third party's ruling is read, not parsed either: the same prose renderer, with the
   // language carried so the French is not read as English.
-  const proseOpts = { selfId: record && record.id, href: o.href, selfHeading: record && record.heading };
+  const proseOpts = { selfId: record && record.id, href: o.href, selfHeading: record && record.heading, cap: o.cap, state: o.state };
   const fr = proseHtml(record && record.text, Object.assign({ lang: 'fr' }, proseOpts));
   const hasEn = !!(record && record.text_en && String(record.text_en).trim());
   const en = hasEn
@@ -425,7 +425,7 @@ function fieldLines(line) {
 // keeps its monospace shape, in its own scrolling box.
 export function proseHtml(text, opts) {
   const o = opts || {};
-  const link = t => linkify(t, { selfId: o.selfId, href: o.href, cap: o.cap });
+  const link = t => linkify(t, { selfId: o.selfId, href: o.href, cap: o.cap, state: o.state });
   // A ruling keeps its language: it is the source of record and a screen reader should
   // not read French as English.
   const langAttr = o.lang ? ' lang="' + esc(o.lang) + '"' : '';
@@ -666,6 +666,12 @@ function shapeHtml(text, opts) {
   // ('... during this usage of this Stratagem: [IGNORES COVER], ...' continues EFFECT) - the
   // CSV cuts the value at the next label-shaped word, so the tail used to sit in the prose
   // away from the field it belongs to.
+  // task-42: the field VALUES are where a stratagem or an ability names another rule
+  // ('WHEN: Your opponent's Movement phase, when an enemy unit ends a fall-back
+  // move.'), so they take the same link pass as the prose; the labels stay plain.
+  const cell = function (t) {
+    return linkify(t, { selfId: opts && opts.selfId, href: opts && opts.href, cap: opts && opts.cap, state: opts && opts.state });
+  };
   const rows = shape.rows.map(function (r) { return [r[0], r[1]]; });
   const rx = function (s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
   let leftover = '';
@@ -681,7 +687,7 @@ function shapeHtml(text, opts) {
     return '';
   }).filter(function (l) { return l !== ''; }).join('\n');
   if (leftover && rows.length) rows[rows.length - 1][1] = (rows[rows.length - 1][1] + ' ' + leftover).replace(/\s+/g, ' ').trim();
-  const body = rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('');
+  const body = rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + cell(r[1]) + '</td></tr>'; }).join('');
   const table = body ? '<table class="svl-rows">' + body + '</table>' : '';
   return head + table + legendHtml + proseHtml(csv ? stripTurnPhase(stripCsvColumns(rest)) : stripTurnPhase(rest), opts);
 }
@@ -755,7 +761,8 @@ function seeAlsoHtml(kids, o) {
   const parts = kids.map(function (k) {
     const label = (k.num ? k.num + ' ' : '') + k.title;
     if (!k.kid) return '<p class="wseealso-miss">' + esc(label) + '</p>';
-    const body = proseHtml(k.full, { selfId: o.selfId, href: o.href, cap: 40, selfHeading: k.kid.heading });
+    // Each child is a record of its own, so it gets its own link budget (task-42).
+    const body = proseHtml(k.full, { selfId: o.selfId, href: o.href, cap: 12, selfHeading: k.kid.heading, state: { used: new Set(), count: 0 } });
     // task-40: the children are records of their own, already reachable from the tree,
     // so printing them open welds them into the parent (core-rules#Units-and-Models was
     // 1,029 characters of its own text and 8,480 rendered). Closed by default: the
@@ -772,6 +779,10 @@ export function recordBody(record, opts) {
   // The card prose gets the same links as the prose path, and the record's own id
   // is carried so it never links to itself.
   if (record && !o.selfId) o.selfId = record.id;
+  // task-42: one link budget per RECORD, not per fragment: the prose, the legend, the
+  // ability rows and the field table all draw on the same 12 links and on the same
+  // "first mention only" set, so a record cannot become a wall of blue.
+  if (!o.state) o.state = { used: new Set(), count: 0 };
   // task-87: the two display-only strips happen once, here. The stored text keeps both
   // blocks; the vector sees them and the corpus is unchanged.
   const kids = seeAlsoKids(record, o);
@@ -791,16 +802,16 @@ export function recordBody(record, opts) {
   // Mandal's point is that it is not a stratagem, so the layout wins over the card.
   // Only records the classifier claims are affected; every other card is untouched.
   if (recordShape(text, record && record.heading, record && record.kind)) {
-    return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading, csvSource: record && record.source, csvKind: record && record.kind }) + tail;
+    return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 12, state: o.state, selfHeading: record && record.heading, csvSource: record && record.source, csvKind: record && record.kind }) + tail;
   }
   const card = cardFor(record, o);
   if (card) return banner + cardHtml(card, o) + tail;
   // An index page carpeted in links is worse than an index with none: kind
   // 'index' keeps its text plain (cap 0).
-  const cap = record && record.kind === 'index' ? 0 : 40;
+  const cap = record && record.kind === 'index' ? 0 : 12;
   // task-78 B: the two labelled families get their own layout; every other record
   // takes the same proseHtml call, with the same options, as before - byte-identical.
-  return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: cap, selfHeading: record && record.heading, csvSource: record && record.source, csvKind: record && record.kind }) + tail;
+  return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: cap, state: o.state, selfHeading: record && record.heading, csvSource: record && record.source, csvKind: record && record.kind }) + tail;
 }
 
 export default { CARD_KINDS, CARD_CSS, cardIndex, abilityTarget, cardFor, proseHtml, recordBody, rulingBody, recordShape };

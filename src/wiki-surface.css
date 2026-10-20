@@ -127,6 +127,12 @@ a{color:var(--sv-acc)}
 .sv-drawer-meta{color:var(--sv-dim);font:11.5px/1.4 var(--sv-sans);margin:0 0 16px;
   text-transform:uppercase;letter-spacing:.04em}
 .sv-drawer-record .sv-inline-body{font:16px/1.65 var(--sv-serif)}
+/* task-42: a rule name inside a record's text is a one-tap link, and the quiet
+   underline is the whole affordance - the sentence keeps its ink, the reference is
+   marked. The model is the reader's own a.uabname.ulink. */
+.wlink{color:var(--sv-acc);text-decoration:underline;
+  text-decoration-color:color-mix(in srgb,var(--sv-acc) 45%,transparent);text-underline-offset:2px}
+.wlink:active{text-decoration-color:var(--sv-acc);background:color-mix(in srgb,var(--sv-acc) 10%,transparent)}
 
 /* --- the dev surface's own page (surfacePage) ----------------------------- */
 .sv-top{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--sv-line);
