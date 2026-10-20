@@ -1725,6 +1725,41 @@ function devPanel(f, state, ctx) {
   return box;
 }
 
+  // task-43: the sweep, UNDER the ruling and the ranked ledger, never instead of them.
+  // A deep run's judge named the checks it would still run to be sure nothing was
+  // missing; each was run for real and the judge said what it found. The reader gets
+  // the one thing a fast answer cannot give: a statement of what was looked for and
+  // not found. The findings are not regrouped - Mandal rejected the map for exactly
+  // that - and this list is an addition beneath them.
+  function sweepList(state) {
+    var s = state.sweep;
+    if (!s || !s.checks || !s.checks.length) return null;
+    var box = el('section', 'sv-sweep');
+    box.appendChild(el('h2', 'sv-sweep-h', 'Checked for what is missing'));
+    var list = el('div', 'sv-sweep-list');
+    s.checks.forEach(function (c) {
+      var row = el('div', 'sv-sweep-row');
+      row.setAttribute('data-verdict', c.verdict || 'unresolved');
+      row.appendChild(el('span', 'sv-sweep-what', String(c.what || c.query || '')));
+      var said = c.verdict === 'absent' ? 'nothing in the corpus'
+        : c.verdict === 'answered' ? ((c.id || '') + ' answers it')
+        : 'the search did not settle it';
+      row.appendChild(el('span', 'sv-sweep-said', said));
+      list.appendChild(row);
+    });
+    box.appendChild(list);
+    // The bounds are part of the answer, not a debug line: a sweep that stopped on its
+    // budget has NOT finished looking, and the reader is owed that.
+    var stopped = s.stopped === 'budget' ? 'stopped on its time budget'
+      : s.stopped === 'rounds' ? 'stopped at its round limit'
+      : s.stopped === 'calls' ? 'stopped at its call limit'
+      : s.stopped === 'failed' ? 'could not run'
+      : '';
+    var foot = el('p', 'sv-sweep-foot', 'Checked ' + s.checks.length + ' \u00b7 ' + (s.absent || []).length + ' with nothing in the corpus' + (stopped ? ' \u00b7 ' + stopped : ''));
+    box.appendChild(foot);
+    return box;
+  }
+
   // task-80: the findings renderer lives here, not on the page. The page keeps the
   // i18n, the record dialog, the ask transport and the reader's marks; it calls in
   // with a ctx carrying those helpers, so there is exactly one implementation.
@@ -1737,6 +1772,8 @@ function devPanel(f, state, ctx) {
       // after it, the cited ones. The marks and the re-ask footer ride under both.
       var list = mergeChunks(sortedFindings(state.findings || []));
       host.appendChild(rulingLedger(list, state, ctx, !state.judge));
+      var swept = sweepList(state);
+      if (swept) host.appendChild(swept);
       if (state.selectable && !state.rerun) host.appendChild(rerankFooter(state, ctx));
       var pickFoot = pickRow(state, ctx);
       if (pickFoot) host.appendChild(pickFoot);

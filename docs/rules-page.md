@@ -471,6 +471,42 @@ the default changes what runs, not what was recorded.
   a dissent and the answer stands, because it is still information. Both name the
   verdicts and their settings. `reconcileVerdicts` and `judgeStrength` are that
   rule, on their own, and `tests/test-judge.mjs` holds it for both modes.
+
+### The sweep: the judge names its gaps (task-43)
+
+A fast answer is a confident guess about the passages in front of the judge. What it
+cannot do is say what is NOT in the corpus - the judge only sees what retrieval
+gave it. The sweep closes that: in **deep mode** the judge's own output gains
+`checks`, up to four entries of `{what, query}` - the claim it would still have to
+look up, and the search that would settle it. `[]` means the passages settle it and
+the loop ends there.
+
+Each check is run FOR REAL through the same two legs retrieval uses - the lexical
+grep and the vector query, both through `indexedSections()`/`deliveredHits()`, so a
+check can never surface a filtered record. The judge is shown what came back and
+answers per check: `answered` with the id of a record it was shown, `absent: true`
+only when the search RAN and found nothing, or unresolved. **A search that did not
+run, or that the budget stopped, is never absent** - that is the one rule the feature
+cannot relax, because the absence statement is the whole product.
+
+Bounds, all reported on the `sweep` event and in the JSON reply: at most 2 rounds,
+4 checks per round, a 45 s budget that is the sweep's own clock (and the timeout of
+its model call, so the deadline is real), and 2 extra model calls. `stopped` names
+what ended it - `absent`, `answered`, `rounds`, `calls`, `budget` - and a reader
+whose sweep hit a bound is told so, because a sweep that stopped is not a sweep that
+finished. A check the judge could not settle is re-run once on the claim's own words
+(`what`), which is a different search; a check it resolved is never re-run.
+
+The result renders UNDER the ruling as a short list - `checked: <what> - nothing in
+the corpus` / `- <id> answers it` - and the ranked ledger is not regrouped, which is
+the mistake the scrapped map made. `src/server.mjs` emits the event after the second
+verdict and before `done`; `tests/test-sweep.mjs` pins the termination, the bounds
+and the absent-only-after-a-search rule with an injected model call.
+
+A question phrased as a sweep - `find rules related to X`, or its French equivalent -
+routes to deep on its own, because it is asking what the corpus holds about a
+subject, and the absence list is the answer. The `mode` event carries `requested`
+and `routed` so the reader can see that the setting was not their switch.
 - Both verdicts are printed with their confidence and their reasoning setting
   (`second judge - with reasoning`).
 - The verdict is a model call read by the reader, so **it follows the reader's

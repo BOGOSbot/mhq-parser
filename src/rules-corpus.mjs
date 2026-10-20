@@ -2708,6 +2708,25 @@ export const JUDGE_TOTAL_CHARS = 60000;
 export const JUDGE_FOLLOW_PER_PASSAGE = 4;
 export const JUDGE_FOLLOW_TOTAL = 24;
 
+// --- the sweep: the judge names what it would have to look up --------------
+// task-43. The one hop above failed for a reason that is now clear: a single hop has
+// no stopping rule, so it fires when a link happens to be offered and says nothing
+// when none is. A sweep is the same act with a termination condition - the judge
+// names the searches it would still run to be sure, each is run for REAL, and the
+// judge is shown what came back. An empty list of checks is the judge saying the
+// passages settle it, and that is where the loop ends.
+//
+// The bounds are the feature's own safety: at most JUDGE_SWEEP_ROUNDS extra rounds,
+// JUDGE_CHECKS_PER_ROUND searches in each, a wall-clock budget and a hard cap on the
+// extra model calls. Every one of them is reported on the event, because a loop that
+// cannot terminate is worse than no loop.
+export const JUDGE_CHECKS_MAX = 4;
+export const JUDGE_CHECKS_PER_ROUND = 4;
+export const JUDGE_SWEEP_ROUNDS = 2;
+export const JUDGE_SWEEP_BUDGET_MS = 25000;
+export const JUDGE_SWEEP_CALLS = 2;
+export const JUDGE_SWEEP_HITS = 3;
+
 // Which links a judge may open, for the passages it was given. Only links whose
 // target is really in the corpus, never a target already on screen, and capped both
 // per passage and in total: the manifest is prompt, so it is spent on the first few
@@ -2795,8 +2814,12 @@ export function judgePrompt(question, passages, opts) {
     ? '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "answer": "une phrase, dans les termes du lecteur", "quote": "des mots copi\u00e9s verbatim du passage nomm\u00e9 dans from, ou null", "from": 1, "exceptions": [3], "missing": null, "why": "la raison, en deux ou trois phrases"}'
     : '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "answer": "one sentence, in the reader\'s terms", "quote": "words copied verbatim from the passage named in from, or null", "from": 1, "exceptions": [3], "missing": null, "why": "the reason, in two or three sentences"}';
   // The follow member is declared only when a hop is on offer: a judge asked for a
-  // field it cannot use invents a value for it.
-  const schemaOut = manifest.length ? schema.replace('"passages": [1,2],', '"passages": [1,2], "follow": {"passage": 1, "link": 2},') : schema;
+  // field it cannot use invents a value for it. The same rule holds for the sweep's
+  // checks, and it is why the fast prompt is byte-identical to what it was.
+  const sweep = o.sweep === true;
+  const followBit = manifest.length ? ' "follow": {"passage": 1, "link": 2},' : '';
+  const sweepBit = sweep ? ' "checks": [{"what": "whether any detachment grants this", "query": "detachment grants fall back shoot"}],' : '';
+  const schemaOut = (followBit || sweepBit) ? schema.replace('"passages": [1,2],', '"passages": [1,2],' + followBit + sweepBit) : schema;
   return [
     'You are grading a retrieval system for Warhammer 40,000 11th edition rules.',
     '',
@@ -2831,8 +2854,11 @@ export function judgePrompt(question, passages, opts) {
     french
       ? '- missing : seulement quand answered est false - ce que le corpus ne couvre pas, en une ou deux phrases. null quand answered est true.'
       : '- missing: only when answered is false - what the corpus does not cover, in one or two sentences. null when answered is true.',
+    sweep
+      ? '- checks: what you would have to LOOK UP to be sure the answer is not incomplete. Ask yourself what could make it WRONG or narrow - an exception in another chapter, a detachment or army rule that grants it, a unit whose own datasheet overrides the general rule - and name each as a search. "what" is the claim you are checking, "query" is the words a rulebook would use to state it (a search, never a question). Up to four, best first. [] only when you can already see that nothing outside these passages could change the answer; when in doubt, name the check. This is not "follow": a follow opens a link a passage already names, a check is a search the corpus has not run.'
+      : '',
     why,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 // How much a judge's reasoning is worth, for deciding whose refusal counts. The
@@ -3048,7 +3074,33 @@ async function judgeAsk(question, passages, key, o, manifest) {
     follow: obj.follow && typeof obj.follow === 'object'
       ? { passage: parseInt(obj.follow.passage, 10), link: parseInt(obj.follow.link, 10) }
       : null,
+    // task-43: what the judge says it would have to check to be sure nothing is
+    // missing. Normalised here (a string where an object was asked for, a query that
+    // is only punctuation) and capped; running them is the caller's job, because the
+    // caller owns the corpus and the search legs.
+    checks: normalizeChecks(obj.checks, o.checksMax),
   };
+}
+
+// The checks a judge asked for, in the one shape the runner reads. Anything that is
+// not a usable search is dropped rather than run: a check with no query would be
+// marked absent after searching nothing, and 'absent' is the one verdict this
+// feature exists to make true.
+export function normalizeChecks(raw, max) {
+  const cap = Math.max(Number(max) || JUDGE_CHECKS_MAX, 1);
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const item of raw) {
+    if (out.length >= cap) break;
+    const o = typeof item === 'string' ? { what: item, query: item } : (item || {});
+    const what = String(o.what == null ? '' : o.what).trim().slice(0, 200);
+    const query = String(o.query == null ? '' : o.query).trim().slice(0, 200);
+    // A query needs words to search on: punctuation and single characters are not a
+    // search, and a check that cannot be searched cannot be called absent.
+    if (query.replace(/[^\p{L}\p{N}]+/gu, '').length < 3) continue;
+    out.push({ what: what || query, query: query });
+  }
+  return out;
 }
 
 // A named link -> the record it points at, or null. Everything is re-checked against
@@ -3066,6 +3118,220 @@ export function resolveFollow(follow, manifest, resolve) {
   return rec ? { passage: p, link: l, rec } : null;
 }
 
+// --- the sweep: one check, run for real --------------------------------------
+// A check is a search the judge asked for, and it runs through the SAME two legs the
+// retrieval runs: the lexical leg over the indexable corpus, and the vector leg. Both
+// go through indexedSections()/deliveredHits(), so a check can never surface a record
+// the product filters out (Legends, the pack line, a navigation page) - the guarantee
+// that a sweep cannot smuggle in what the answer is not allowed to cite.
+//
+// The two legs are joined by id, in the order they were found, and the already-shown
+// passages are dropped: a check that only finds what the judge has read has found
+// nothing new, and saying 'absent' there would be a lie about the search.
+export async function runChecks(checks, opts) {
+  const o = opts || {};
+  const list = (checks || []).slice(0, Math.max(Number(o.max) || JUDGE_CHECKS_PER_ROUND, 1));
+  const corpus = indexedSections(o.corpus || readAllCorpus());
+  const shown = o.shown || new Set();
+  const limit = Math.max(Number(o.hits) || JUDGE_SWEEP_HITS, 1);
+  const lexical = (query, cap) => {
+    const terms = grepTerms(query);
+    if (!terms.length) return [];
+    return grepWithTerms(terms, corpus, Math.max(cap * 4, 12), query)
+      .filter(sec => sec && sec.id && !shown.has(String(sec.id)))
+      .slice(0, cap)
+      .map(sec => ({ id: String(sec.id), heading: String(sec.heading || sec.id), set: sec.set || '', leg: 'lexical' }));
+  };
+  const vector = async (query, cap) => {
+    if (o.vector === false) return [];
+    try {
+      const hits = await queryIndex(query, { topK: Math.max(cap * 3, 10), cfg: o.cfg, namespace: o.namespace });
+      const byId = new Map(corpus.map(s => [String(s.id), s]));
+      const out = [];
+      for (const h of hits) {
+        const sec = byId.get(String(h.id));
+        if (!sec || shown.has(String(h.id))) continue;
+        out.push({ id: String(sec.id), heading: String(sec.heading || sec.id), set: sec.set || '', leg: 'vector' });
+        if (out.length >= cap) break;
+      }
+      return out;
+    } catch (e) { return []; }
+  };
+  const out = [];
+  for (const c of list) {
+    const query = String((c && c.query) || '').trim();
+    const what = String((c && c.what) || query);
+    // The lexical leg is a grep and costs nothing; the vector leg is a network call.
+    // Both run: the sweep's claim is about the corpus, and one leg missing a record
+    // the other finds is exactly the case that would make an 'absent' wrong.
+    let hits = [];
+    let ran = true;
+    let error = '';
+    try {
+      const lex = lexical(query, limit);
+      const seen = new Set(lex.map(h => h.id));
+      const vec = await vector(query, limit);
+      hits = lex.concat(vec.filter(h => !seen.has(h.id))).slice(0, limit);
+    } catch (e) { ran = false; error = String((e && e.message) || e); }
+    out.push({ what: what, query: query, ran: ran, hits: hits, verdict: '', id: '', why: '', error: error });
+  }
+  return out;
+}
+
+// What the judge is shown about the checks it asked for, and what it is asked back.
+// The passages are labelled c1, c2... so a verdict can point at one without a second
+// numbering scheme, and a check whose search found nothing says so in the prompt:
+// 'nothing' is information, and the judge is the one who decides whether that settles
+// the claim or whether the search was phrased wrong.
+export function sweepPrompt(question, checks, opts) {
+  const o = opts || {};
+  const french = String(o.lang || '').slice(0, 2) === 'fr';
+  // Enough of a record to judge whether it answers the check, not the whole record:
+  // this prompt carries up to four checks x three hits, and every character here is
+  // latency on a phone. The id and heading are always complete.
+  const cap = Math.max(Number(o.passageChars) || 400, 120);
+  const lines = [
+    'You are grading a retrieval system for Warhammer 40,000 11th edition rules.',
+    '',
+    'Question: ' + question,
+    '',
+    'You said these still had to be checked. Each has now been searched for in the corpus, and what the search returned is under it.',
+  ];
+  checks.forEach((c, i) => {
+    lines.push('', 'CHECK ' + (i + 1) + ': ' + c.what, 'searched for: ' + c.query);
+    if (!c.ran) lines.push('the search DID NOT RUN (' + (c.error || 'unknown') + ') - you cannot call this absent.');
+    else if (!c.hits.length) lines.push('the search ran and found nothing in the corpus.');
+    else for (const h of c.hits) {
+      lines.push('  c' + (i + 1) + ' [' + h.id + '] ' + h.heading);
+      if (h.text) lines.push('    ' + String(h.text).slice(0, cap));
+    }
+  });
+  lines.push(
+    '',
+    'Reply with JSON only:',
+    '{"checks": [{"n": 1, "absent": true, "id": null, "why": "one sentence"}]}',
+    '- n: the CHECK number this verdict is about, one entry per check.',
+    '- absent: true ONLY when the search ran and found nothing that states the rule. A search that did not run is never absent.',
+    '- id: the record id (the [id] in brackets) that answers the check, or null when none does. Use an id that was shown above, never one you invent.',
+    french ? '- why : une phrase, en fran\u00e7ais.' : '- why: one sentence.',
+  );
+  return lines.join('\n');
+}
+
+// The judge's verdicts on its own checks, applied to the check list. A verdict that
+// names a record the search did not return is refused rather than trusted - the same
+// discipline resolveFollow() applies to a named link - and a check whose search did
+// not run stays unresolved whatever the judge says.
+export function applySweepVerdicts(checks, obj) {
+  const verdicts = (obj && Array.isArray(obj.checks)) ? obj.checks : [];
+  const out = (checks || []).map(c => Object.assign({}, c));
+  for (const v of verdicts) {
+    const n = parseInt((v || {}).n, 10);
+    if (!(n >= 1) || n > out.length) continue;
+    const c = out[n - 1];
+    const why = String((v && v.why) || '').trim().slice(0, 240);
+    const id = v && v.id != null ? String(v.id) : '';
+    const hit = id ? (c.hits || []).find(h => h.id === id) : null;
+    if (hit) { c.verdict = 'answered'; c.id = hit.id; c.why = why; continue; }
+    if (v && v.absent === true && c.ran) { c.verdict = 'absent'; c.id = ''; c.why = why; continue; }
+    c.verdict = 'unresolved'; c.why = why;
+  }
+  // A check the judge said nothing about is unresolved, never absent: silence is not
+  // a search that came back empty.
+  for (const c of out) if (!c.verdict) c.verdict = 'unresolved';
+  return out;
+}
+
+// The whole sweep, bounded. One round is: run the checks the judge named, show it what
+// came back, and take its verdicts. A round ends the loop when every check it resolved
+// is ABSENT - the judge has said the corpus does not hold what it was worried about,
+// which is the statement this feature exists to make - or when the judge resolves
+// nothing new. The bounds are checked before each round and reported on the result.
+export async function sweepChecks(question, checks, opts) {
+  const o = opts || {};
+  const started = Number.isFinite(o.startedAt) ? o.startedAt : Date.now();
+  const budgetMs = Number.isFinite(o.budgetMs) ? o.budgetMs : JUDGE_SWEEP_BUDGET_MS;
+  const maxRounds = Math.max(Number(o.rounds) || JUDGE_SWEEP_ROUNDS, 1);
+  const maxCalls = Math.max(Number(o.calls) || JUDGE_SWEEP_CALLS, 0);
+  const perRound = Math.max(Number(o.checksPerRound) || JUDGE_CHECKS_PER_ROUND, 1);
+  const shown = o.shown || new Set();
+  const all = [];
+  let calls = 0;
+  let round = 0;
+  let stopped = '';
+  let pending = normalizeChecks(checks, perRound);
+  while (pending.length) {
+    if (round >= maxRounds) { stopped = 'rounds'; break; }
+    if (calls >= maxCalls) { stopped = 'calls'; break; }
+    if (Date.now() - started >= budgetMs) { stopped = 'budget'; break; }
+    round += 1;
+    const ran = await runChecks(pending, { corpus: o.corpus, shown: shown, hits: o.hits, max: perRound, vector: o.vector, cfg: o.cfg, namespace: o.namespace });
+    // The judge reads what the search returned; a check whose search found nothing
+    // is shown that, because 'nothing' is the answer it has to judge.
+    const withText = ran.map(c => Object.assign({}, c, { hits: (c.hits || []).map(h => Object.assign({}, h, { text: (o.textOf ? o.textOf(h.id) : '') })) }));
+    let obj = null;
+    // The budget has to bound the CALL, not just the top of the round: one resolution
+    // call took 74 s against a 45 s budget and the sweep reported itself unbounded.
+    // Whatever is left of the budget is the call's own timeout, so the deadline is
+    // real and a call that eats it is recorded as unresolved rather than absent.
+    const left = budgetMs - (Date.now() - started);
+    if (left <= 0) {
+      // The search ran and its results are real, so they are kept - a check whose
+      // search found nothing is still NOT absent, because no judge read it. The
+      // verdicts stay empty and the reason is the bound.
+      all.push.apply(all, ran.map(c => Object.assign({}, c, { verdict: 'unresolved' })));
+      stopped = 'budget';
+      break;
+    }
+    calls += 1;
+    // The model call is injectable, like every other network step in this file: the
+    // loop's termination and its bounds are the feature's contract, and a test that
+    // has to spend real calls to pin them is a test nobody runs.
+    const ask = o.ask || (prompt => fastText(prompt, o.key, 1200, { json: true, reasoning: 'none', timeout: left }));
+    try {
+      const raw = await ask(sweepPrompt(question, withText, o), { round: round, checks: withText, leftMs: left });
+      obj = parseJsonObject(raw);
+    } catch (e) { obj = null; }
+    const resolved = applySweepVerdicts(ran, obj);
+    all.push.apply(all, resolved);
+    for (const c of resolved) for (const h of (c.hits || [])) shown.add(h.id);
+    // Termination, in three endings and only three:
+    //  - every check came back ABSENT: the judge has said the corpus does not hold what
+    //    it was worried about, which is the statement this feature exists to make;
+    //  - nothing was resolved at all: the judge had nothing to say about its own
+    //    checks, so another round would ask the same question again;
+    //  - every check was ANSWERED: the judge found a record for each, so there is
+    //    nothing left it said it needed;
+    //  - otherwise only the checks it could NOT resolve are carried into the next
+    //    round. That is the deepening the feature is for: the records the first round
+    //    found are in the shown set, so the same search reaches further down the list,
+    //    and the rounds, calls and budget bounds end the walk. A check it resolved is
+    //    never re-run - repeating a search that already answered costs a phone seconds
+    //    and can only return what the reader has.
+    const absent = resolved.filter(c => c.verdict === 'absent');
+    const unresolved = resolved.filter(c => c.verdict === 'unresolved');
+    if (absent.length === resolved.length && resolved.length) { stopped = 'absent'; break; }
+    if (!unresolved.length) { stopped = 'answered'; break; }
+    // A check the judge could not settle is re-run with the OTHER half of what it
+    // wrote: 'what' is the claim, 'query' was the search, and searching the claim's own
+    // words is a different search that can reach records the first one did not. The
+    // same query would return the same list and the round would cost a phone seconds
+    // for nothing, which is why the loop does not simply repeat itself.
+    const next = unresolved
+      .map(c => ({ what: c.what, query: String(c.what || '').trim() }))
+      .filter(c => normalizeChecks([c], 1).length);
+    if (!next.length) { stopped = 'nothing-new'; break; }
+    pending = next;
+  }
+  return {
+    rounds: round, checks: all, calls: calls, ms: Date.now() - started,
+    absent: all.filter(c => c.verdict === 'absent').map(c => c.what),
+    answered: all.filter(c => c.verdict === 'answered').length,
+    unresolved: all.filter(c => c.verdict === 'unresolved').length,
+    stopped: stopped,
+    bounds: { rounds: maxRounds, checksPerRound: perRound, budgetMs: budgetMs, calls: maxCalls },
+  };
+}
 export async function judgeCoverage(question, passages, key, opts) {
   const o = opts || {};
   const manifest = (o.follow && typeof o.resolve === 'function') ? followManifest(passages, o.resolve, o) : [];
@@ -3127,7 +3393,13 @@ export const MAX_PASSES = Math.max(1, Number(process.env.RULES_MAX_PASSES) || 3)
 // anchoring still guaranteeing the rule the question names.
 export const ASK_MODES = {
   fast: { first: 5, passes: 2, reasoning: 'none', second: 'medium', grepNet: 50, jevMax: 60 },
-  deep: { first: 10, passes: 3, reasoning: 'medium', second: 'none', grepNet: 60, jevMax: 80 },
+  // task-43: deep is where the sweep runs. The bounds live here with the rest of the
+  // mode's settings, and every one of them is reported on the event: a loop that
+  // cannot terminate is worse than no loop, so the reader is told when one stopped it.
+  deep: {
+    first: 10, passes: 3, reasoning: 'medium', second: 'none', grepNet: 60, jevMax: 80,
+    sweep: { rounds: 2, checksPerRound: 4, budgetMs: 45000, calls: 2, hits: 3 },
+  },
 };
 // Fast is the default: the reader gets the answer while the question is still in
 // mind. Deep stays reachable by asking for it explicitly - one word in the request

@@ -391,6 +391,18 @@ body.sheetopen{overflow:hidden}
 .sheetmeta{color:var(--dim);font:11.5px/1.5 var(--mono);margin:18px 0 0}
 @media (min-width:760px){.sheet-head,.sheet-body{width:100%;max-width:640px;margin:0 auto}}
 
+/* task-43: the sweep, under the ruling. Quiet on purpose: it is a statement about
+   what is NOT in the answer, so it must not compete with the findings above it. */
+.sv-sweep{margin:14px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px}
+.sv-sweep-h{font:600 11px/1.3 var(--sans);letter-spacing:.04em;text-transform:uppercase;
+  color:var(--dim);margin:0 0 7px}
+.sv-sweep-row{display:flex;flex-direction:column;gap:2px;padding:6px 0;border-top:1px solid var(--line)}
+.sv-sweep-row:first-child{border-top:0}
+.sv-sweep-what{font:13px/1.35 var(--sans);color:var(--ink)}
+.sv-sweep-said{font:11.5px/1.35 var(--sans);color:var(--dim)}
+.sv-sweep-row[data-verdict="absent"] .sv-sweep-said{color:var(--acc)}
+.sv-sweep-foot{color:var(--dim);font:11px/1.4 var(--mono);margin:8px 0 0}
+
 /* --- unit card: a datasheet, one-handed ------------------------------------ */
 .unitcard .uname{font:600 21px/1.2 var(--serif);color:var(--ink)}
 .unitcard h3{font:600 11px/1.3 var(--sans);letter-spacing:.04em;text-transform:uppercase;
@@ -740,6 +752,7 @@ var I18N = {
   heroDevHide: 'hide the passage',
   doorQuick: 'Quick',
   doorBook: 'In the book',
+  runningSweep: 'Checking what the ruling leaves out\u2026',
   settingsTitle: 'Settings',
   settingsClose: 'Close',
   voiceSetting: 'Voice',
@@ -951,6 +964,7 @@ var I18N = {
   heroDevHide: 'masquer le passage',
   doorQuick: 'Rapide',
   doorBook: 'Dans le livre',
+  runningSweep: 'Vérification de ce que le jugement laisse de côté…',
   settingsTitle: 'Réglages',
   settingsClose: 'Fermer',
   voiceSetting: 'Voix',
@@ -2743,7 +2757,7 @@ function setStageActive(name) {
 // the reader cannot see.
 var STAGE_RUNNING = {
   translate: 'runningTranslate', retrieve: 'runningRetrieve', judge: 'runningJudge',
-  answer: 'runningAnswer', widen: 'runningRetrieve', second: 'runningSecond'
+  answer: 'runningAnswer', widen: 'runningRetrieve', second: 'runningSecond', sweep: 'runningSweep'
 };
 function stageRunning(name) {
   var k = STAGE_RUNNING[name];
@@ -2894,6 +2908,10 @@ function applyEvent(ev, state) {
       // carries the sentence until the review lands.
       if (state.findings.length) {
         state.secondPending = true;
+        // task-43: a deep run's judge may have named checks to run, and the sweep lands
+        // last. The segment is added here so the reader sees the run is still looking;
+        // a fast run never emits one and the bar skips straight past it.
+        if (ev.judge && ev.judge.checks && ev.judge.checks.length) addStage('sweep', 'judge');
         addStage('second', 'judge');
         setStageActive('second');
       }
@@ -2915,6 +2933,15 @@ function applyEvent(ev, state) {
     setStatus(t('judgeIn') + (ev.elapsedMs / 1000).toFixed(1) + 's - ' + (no ? t('judgeNo') : t('judgeYes')), no ? 'warn' : 'ok');
     // The run is still busy: the review is what it is busy on now.
     if (state.secondPending) stageRunning('second');
+    return;
+  }
+  if (ev.type === 'sweep') {
+    // task-43: the deep run's absence list. It rides in the state and the findings
+    // renderer draws it under the ledger, so the ranking the reader is looking at is
+    // never touched by it.
+    state.sweep = ev.sweep || null;
+    doneStage('sweep');
+    refresh(state);
     return;
   }
   if (ev.type === 'reconcile') {

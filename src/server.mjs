@@ -36,7 +36,7 @@ import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, deliveredIds, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
+import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, deliveredIds, dontKnowAnswer, sweepChecks, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { MAX_VOICE_BYTES, transcribeClip, voiceFormatOf } from './voice.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 // task-78: the asset route reads the corpus's asset tree; the import is its own line so
@@ -1205,7 +1205,15 @@ async function handleRulesAsk(req, res) {
     // Which setting the reader chose. Read here rather than further down so the
     // card branch below can put it in the trace; the event itself is still sent
     // only on the prose path, where the setting actually changes what runs.
-    const modeName = askMode(body.mode);
+    //
+    // task-43: a question phrased as a SWEEP ('find rules related to X') routes to deep
+    // on its own. That phrasing is not asking one thing, it is asking what the corpus
+    // holds about a subject - the absence statement is the answer - so the fast setting
+    // would be answering a different question. The reader is told: the mode event says
+    // which setting ran, and `routed` says it was not their switch that chose it.
+    const requested = askMode(body.mode);
+    const sweepPhrased = !body.mode && /^\s*(?:find|show|list|search|cherche|trouve|montre|liste)\b[^?]*\b(?:rules?|r[eè]gles?)\b[^?]*\b(?:related|about|linked|around|sur|li[eé]es?|concernant)\b/i.test(question);
+    const modeName = sweepPhrased ? 'deep' : requested;
     const mode = ASK_MODES[modeName];
 
     // A unit card is rendered here, before anything is searched, and it is
@@ -1267,7 +1275,7 @@ async function handleRulesAsk(req, res) {
     // The reader picks the setting: fast asks the judge not to reason and takes
     // a narrower, shallower search; deep lets it think and looks wider for
     // longer. Both keep the anchoring, which is what makes the fast setting safe.
-    emit({ type: 'mode', mode: modeName, first: mode.first, passes: mode.passes, reasoning: mode.reasoning || 'model default', elapsedMs: Date.now() - started });
+    emit({ type: 'mode', mode: modeName, requested: requested, routed: sweepPhrased ? 'sweep' : '', first: mode.first, passes: mode.passes, reasoning: mode.reasoning || 'model default', elapsedMs: Date.now() - started });
     // A manual rerank: the reader's own selection IS the retrieval. The ids are
     // resolved against both halves in the order sent, they become the findings,
     // and the judge's verdict on them is binding exactly as it is on a searched
@@ -1299,7 +1307,9 @@ async function handleRulesAsk(req, res) {
       passes: mode.passes,
       // The verdict is shown to the reader, so both judges write it in the
       // reader's language; the passages stay as the corpus writes them.
-      judgeOpts: { reasoning: mode.reasoning, lang: answerLang },
+      // task-43: the sweep clause rides in the judge's own prompt, so the judge that
+      // produces the checks is the judge that ruled - one call, not a second opinion.
+      judgeOpts: { reasoning: mode.reasoning, lang: answerLang, sweep: !!mode.sweep },
       dual: {
         rulesCorpus: corpora().rules,
         factionsCorpus: corpora().factions,
@@ -1333,6 +1343,35 @@ async function handleRulesAsk(req, res) {
 
     const judge = outcome.judge;
     const payload = toPayload(outcome.findings);
+
+    // task-43: the deep sweep. The judge named the checks it would still run to be sure
+    // nothing was missing; each one is run for REAL through the same two legs the
+    // retrieval uses, and the judge is shown what came back. It starts here, after the
+    // binding verdict, so the ruling and the ranked ledger are untouched by it - the
+    // sweep is an addition UNDER them, and it can only ever add absence statements and
+    // records, never reorder what the reader is already looking at.
+    //
+    // Deep only, and only when the judge actually answered the question: a sweep on a
+    // refusal would be checking for what the corpus already said it does not hold.
+    // Every bound is passed in and reported back, so a stopped loop says why.
+    const sweepRun = (mode.sweep && judge && judge.answered === true && Array.isArray(judge.checks) && judge.checks.length)
+      ? sweepChecks(asked, judge.checks, {
+        key: keys.fast,
+        lang: answerLang,
+        // The budget is the SWEEP's own clock, not the ask's: the judge and the second
+        // verdict have already run, and a clock started at the top of the request would
+        // stop the loop before its first search.
+        startedAt: Date.now(),
+        corpus: readAllCorpus(),
+        shown: new Set(payload.map(f => f.id)),
+        textOf: id => { const sec = corpusById().get(id); return sec ? String(sec.text || '') : ''; },
+        rounds: mode.sweep.rounds,
+        checksPerRound: mode.sweep.checksPerRound,
+        budgetMs: mode.sweep.budgetMs,
+        calls: mode.sweep.calls,
+        hits: mode.sweep.hits,
+      }).catch(e => ({ rounds: 0, checks: [], calls: 0, ms: 0, absent: [], answered: 0, unresolved: 0, stopped: 'failed', error: String((e && e.message) || e), bounds: mode.sweep }))
+      : null;
     // task-75: the TAIL - the candidates the cut did not take, in the order the
     // same retrieval ranked them and deliberately UNJUDGED. No extra retrieval:
     // outcome.dual.all is the pre-cut list the judged findings came from. Both
@@ -1472,13 +1511,17 @@ async function handleRulesAsk(req, res) {
     if (!writerOn) {
       await secondRun;
       emitSecond();
+      // The sweep lands last, under the ruling and the ledger it does not touch, and
+      // the second verdict is awaited before it so the page's clocks stay honest.
+      const sweep = sweepRun ? await sweepRun : null;
+      if (sweep) emit({ type: 'sweep', sweep, elapsedMs: Date.now() - started });
       trace('', {});
       const elapsedMs = Date.now() - started;
       if (stream) {
         emit({ type: 'done', elapsedMs, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, answer: '', writer: false, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, sweep, answer: '', writer: false, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
     }
 
     // The judge has already run; the answer waits on it rather than racing it,
@@ -1536,6 +1579,8 @@ async function handleRulesAsk(req, res) {
     // reader keeps the fast answer and a later contradiction is information.
     await secondRun;
     emitSecond();
+    const sweep = sweepRun ? await sweepRun : null;
+    if (sweep) emit({ type: 'sweep', sweep, elapsedMs: Date.now() - started });
 
     trace(answer, { declined: writerDeclined });
     if (stream) {
@@ -1543,7 +1588,7 @@ async function handleRulesAsk(req, res) {
       return res.end();
     }
     return json(res, 200, {
-      question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, answer,
+      question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, sweep, answer,
       judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom,
       counts, steps, elapsedMs: Date.now() - started, mode: modeName, writer: writerOn,
       unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,
