@@ -24,6 +24,7 @@ import { buildUnitCard, resolveRecordLinks } from './unit-card.mjs';
 // task-66: one escaper and one linkifier for the whole card and prose path.
 import { linkify, esc } from './wikilinks.mjs';
 import { looksFrench } from './lang-detect.mjs';
+import { exclusionReason } from './rules-corpus.mjs';
 // The corpus's own link block and the page's terminal 'SEE ALSO' list ride inside the
 // stored text (they are what the vector sees). Neither is the reader's text: the link
 // block is stripped exactly from the record's own links array (task-72), and the SEE
@@ -83,6 +84,8 @@ export const CARD_CSS = [
   // the page and the ask dialog share it. Loud enough to not be mistaken for GW
   // text, quiet enough not to shout on every card.
   '.wprov { margin:.2rem 0 .9rem; padding:.5rem .6rem; border-left:3px solid var(--line); background:var(--chip); font-size:.8rem; color:var(--dim); }',
+  // task-44: a filtered record's banner reads as a warning, not as provenance.
+  '.wprov-excl { border-left-color:var(--warn, #a8641e); color:var(--ink); }',
   '.wprov strong { color:var(--ink); }',
   '.wprov-mt { color:var(--dim); }',
   // The language switch: the French is the source of record and shows by default;
@@ -952,7 +955,13 @@ export function recordBody(record, opts) {
   // for a record with no card still shows the wargear lines, so it takes the same
   // marks as the card. Idempotent, and the corpus bytes are untouched.
   const text = markWargearText(dropChildEchoes(stripSeeAlso({ text: stripBuiltBlock(record), links: record && record.links }), kids));
-  const banner = record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '';
+  // task-44: a record the product filters out - Legends, the pack line, the named
+  // tenth-edition rule - is still reachable by its own id. It is labelled, in the same
+  // voice as the third-party ruling banner, and never 404s.
+  const excluded = exclusionReason(record);
+  const banner = (record && record.kind === 'ruling' ? provenanceBanner(record.provenance) : '')
+    + (excluded ? '<p class="wprov wprov-excl" data-type="excluded"><strong>Not used in matched play.</strong> '
+      + 'This is a ' + esc(excluded) + ' record: it is not part of this corpus\u2019s search and it never answers a question.</p>' : '');
   // task-96: a numbered group whose own body is empty ('02.02.01 Modifiers') hands the
   // content to the unnumbered sub-headings that follow it.
   const bodyOnly = String(text).split('\n').slice(1).join('\n').trim();

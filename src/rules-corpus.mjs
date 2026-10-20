@@ -960,6 +960,17 @@ export function deliveredSections(sections) {
   return (sections || []).filter(isDelivered);
 }
 
+// task-44: WHY a record is not delivered, named so the render can say it out loud. The
+// direct-id route still answers for these records - Mandal's call: label them, never
+// 404 - and a reader who lands on one must know why it is not in the search.
+export function exclusionReason(record) {
+  if (!record) return '';
+  if (isLegendsRecord(record)) return 'Warhammer Legends';
+  if (String(record.edition == null ? '' : record.edition) === '0') return 'the pack line (edition 0)';
+  if (TENTH_EDITION_RULE_IDS.has(String(record.id || ''))) return 'tenth edition';
+  return '';
+}
+
 // task-32 C: kind 'index' pages are navigation - a faction's name list with no rules
 // text, 296,563 characters that all sit over the judge's passage window - and every
 // card name in the corpus has one competing with the card itself. They stay in the
