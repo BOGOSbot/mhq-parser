@@ -104,7 +104,9 @@ ok('the card CSS never lets a table force the page wide', /\.wcard-scroll \{ ove
 ok('and the cells wrap rather than push', /\.wcard-table th, \.wcard-table td \{[^}]*overflow-wrap:anywhere/.test(CARD_CSS));
 
 // --- task-76 (5): a field run breaks before its labels, display only ---------
-const fb = byId.get('core-stratagem#000010850002');
+// task-33: the 2026-10-19 export drops the duplicate core-stratagem 000010850002; the
+// twin it keeps (000010811005) carries the same FALL-BACK MOVE text.
+const fb = byId.get('core-stratagem#000010811005');
 const adv = byId.get('core-stratagem#000010851002');
 const fbText = String(fb.text);
 // task-78 B: FALL-BACK MOVE is a move ability now, so the label-run contract is tested
