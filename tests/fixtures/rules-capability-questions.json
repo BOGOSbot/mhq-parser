@@ -1,0 +1,196 @@
+{
+  "version": 1,
+  "created": "2026-10-21 (task-64): the capability bank. Every question is of the shape 'can X do Y', and every one is built from the corpus rather than from imagination - the answer record and the decoy were found by searching for sentences that grant the capability (see workspace/t64-scan.mjs). The 33-question bank measures retrieval; this one measures APPLICABILITY: whether the record the judge rests on actually reaches the subject of the question.",
+  "note": "Fields: q, kind, answer (the record that ACTUALLY applies, or null when the honest answer is no and no single record is the answer), decoy (a record that grants the same capability to something else - the record a judge cites when it does not check the scope), yes (the honest answer), reason (why, so a later reader can check the bank rather than trust it), scope (the phrase in the record that decides applicability). scopeSource names the record the scope phrase is quoted from when the question's honest answer is no and the rule that decides it is a general one rather than a record about the subject.",
+  "questions": [
+    {
+      "q": "Can a baneblade have an invulnerable save?",
+      "kind": "capability",
+      "yes": true,
+      "answer": [
+        "unitrules#000001396"
+      ],
+      "decoy": [
+        "unitrules#000001580~2",
+        "unitrules#000000854~2"
+      ],
+      "scope": "one friendly Astra Militarum Vehicle model within 3\" of this model",
+      "reason": "The Astra Militarum Tech-Priest Enginseer's Omnissiah's Blessing gives 'that VEHICLE model' a 4+ invulnerable save, and a Baneblade is an Astra Militarum Vehicle. The Baneblade's own datasheet lists no InSv, which is what makes the negative look safe. DECOYS: the Tech-priest Manipulus's Defend the Divine Work gives a 4+ invulnerable save to 'all models in this model's unit' and a Manipulus cannot join a Baneblade; the Onager Dunecrawler's Emanatus Force Field gives one to an ADEPTUS MECHANICUS BATTLELINE model, which a Baneblade is not. This is Mandal's own case and the model for the bank."
+    },
+    {
+      "q": "Can a baneblade use the Onager Dunecrawler's Emanatus Force Field?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000000854~2"
+      ],
+      "scope": "a friendly ADEPTUS MECHANICUS BATTLELINE model wholly within 6\"",
+      "reason": "The aura reaches ADEPTUS MECHANICUS BATTLELINE models only. A Baneblade is ASTRA MILITARUM and not BATTLELINE, so the aura cannot apply however close it stands. An honest no that a decoy-shaped record could turn into a yes."
+    },
+    {
+      "q": "Does a Tech-priest Manipulus give its own unit an invulnerable save?",
+      "kind": "capability",
+      "yes": true,
+      "answer": [
+        "unitrules#000001580~2"
+      ],
+      "decoy": [],
+      "scope": "all models in this model’s unit",
+      "reason": "Defend the Divine Work: 'until the end of the phase, all models in this model's unit have a 4+ invulnerable save'. The scope is the Manipulus's own unit, so it applies. A judge that treats every '4+ invulnerable save' sentence as interchangeable answers this one right by accident - it is in the bank to separate that from the Baneblade case."
+    },
+    {
+      "q": "Can an Einhyr Champion have a 4+ invulnerable save?",
+      "kind": "capability",
+      "yes": true,
+      "answer": [
+        "unitrules#000002595~3"
+      ],
+      "decoy": [
+        "unitrules#000002598~3"
+      ],
+      "scope": "the bearer",
+      "reason": "Weavefield Crest: 'The bearer has a 4+ invulnerable save'. The scope is the bearer, and the Einhyr Champion is the bearer. DECOY: the Hearthkyn Warriors' Weavefield Crest gives 'models in the bearer's unit' a 5+ invulnerable save - a different scope and a different value, and a judge that reads 'Weavefield Crest' as one thing will cite the wrong one."
+    },
+    {
+      "q": "Can a Kahl have an invulnerable save from its Rampart Crest?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000002594~3"
+      ],
+      "scope": "while the bearer is leading a unit, models in that unit",
+      "reason": "Rampart Crest gives a 5+ invulnerable save to 'models in that unit' while the bearer is LEADING a unit - the Kahl is the leader, not a model in the unit it leads, so the crest does not save the Kahl itself. The same record is the answer to 'does a unit led by a Kahl get a 5+ invulnerable save?', which is the pair of questions this entry exists for."
+    },
+    {
+      "q": "Does a unit led by a Kahl have a 5+ invulnerable save?",
+      "kind": "capability",
+      "yes": true,
+      "answer": [
+        "unitrules#000002594~3"
+      ],
+      "decoy": [],
+      "scope": "While the bearer is leading a unit",
+      "reason": "The other half of the Rampart Crest pair. Yes, and the answer record is the same one the previous question must NOT use."
+    },
+    {
+      "q": "Can a Hearthkyn Warriors unit have a 5+ invulnerable save?",
+      "kind": "capability",
+      "yes": true,
+      "answer": [
+        "unitrules#000002598~3"
+      ],
+      "decoy": [
+        "unitrules#000002595~3"
+      ],
+      "scope": "Models in the bearer’s unit",
+      "reason": "The Hearthkyn Warriors' Weavefield Crest gives 'models in the bearer's unit' a 5+ invulnerable save. DECOY: the Einhyr Champion's Weavefield Crest gives the bearer alone a 4+ - same name, narrower scope, different value."
+    },
+    {
+      "q": "Does an Autarch have the Scouts ability?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000000577~2",
+        "unitrules#000001553~2"
+      ],
+      "scope": "while this model is leading a Striking Scorpions unit",
+      "reason": "The Autarch's own keywords carry no Scouts; the ability grants it only 'while this model is leading a Striking Scorpions unit', which is a condition on the game state, not a keyword the Autarch always has. DECOY: the Ministorum Priest's Holy Mission gives Scouts 6\" to a DOMINION SQUAD it is attached to - the same shape, another unit."
+    },
+    {
+      "q": "Does a Ministorum Priest have the Scouts ability?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000001553~2"
+      ],
+      "scope": "if this model is attached to a DOMINION SQUAD",
+      "reason": "Holy Mission grants the Scouts 6\" ability to the priest only when it is attached to a Dominion Squad during the Declare Battle Formations step - a conditional grant, not a keyword. A judge that reads the grant as the priest's own answers yes."
+    },
+    {
+      "q": "Can a Sanctifiers unit be set up in ambush with the Scouts ability?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000004074~2"
+      ],
+      "scope": "if a MINISTORUM PRIEST or INQUISITOR model is attached to this unit",
+      "reason": "The Sanctifiers grant Scouts 6\" to an attached MINISTORUM PRIEST or INQUISITOR model - the grant runs the other way, and the unit itself does not have Scouts. The decoy is the same record read without its direction."
+    },
+    {
+      "q": "Can a Starweaver's passengers shoot?",
+      "kind": "capability",
+      "yes": true,
+      "answer": [
+        "unitrules#000002541~1"
+      ],
+      "decoy": [],
+      "scope": "units embarked within this TRANSPORT",
+      "reason": "Firing Deck lets embarked passengers shoot through the transport. The answer record is the Starweaver's own keyword list, which carries the Firing Deck entry - the third task-57 question in the 33-bank expects this record, so the bank shares one case with the retrieval set on purpose."
+    },
+    {
+      "q": "Can a Wraithguard unit shoot after it Fell Back?",
+      "kind": "capability",
+      "yes": true,
+      "answer": [
+        "unitrules#000000597"
+      ],
+      "decoy": [
+        "unitrules#000000852~2"
+      ],
+      "scope": "This unit is eligible to shoot in a turn in which it Fell Back",
+      "reason": "War Construct states it outright for this unit. DECOY: the Ironstrider Ballistarii's Elevated Strider says the same for a different unit - both are real grants, and the question is which one the question's subject is. The core rule (FALL-BACK MOVE) says a unit that Fell Back is not eligible to shoot, which is the honest no for every unit without such a rule."
+    },
+    {
+      "q": "Can an Astra Militarum infantry squad shoot after it Fell Back?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000000597",
+        "unitrules#000000852~2"
+      ],
+      "scope": "not eligible to shoot",
+      "reason": "FALL-BACK MOVE makes a unit that Fell Back ineligible to shoot, and no Astra Militarum infantry datasheet in the corpus carries a grant. The decoys are two real grants that belong to other units - the exact citation a judge reaches for when it does not check the subject.",
+      "scopeSource": "core-rules#Movement-Phase->-3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
+    },
+    {
+      "q": "Can a Deathstrike shoot after it moved?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000000699"
+      ],
+      "scope": "only if it Remained Stationary this turn",
+      "reason": "The Deathstrike missile can only be fired if the bearer Remained Stationary. NO RECORD IS THE ANSWER: the no comes from a restriction inside the unit's own keyword list ('can only shoot with this weapon ... only if it Remained Stationary this turn'), which is the record named as the decoy-shaped evidence rather than a record that states the rule. It is in the bank to test whether a no survives when the evidence names the subject itself."
+    },
+    {
+      "q": "Does a unit have to Remain Stationary to fire a Hazardous weapon?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000000699"
+      ],
+      "scope": "Remained Stationary",
+      "reason": "Hazardous weapons have no such restriction. The corpus holds no [HAZARDOUS] keyword definition record - only the hazard-roll procedure and FAQ entries - and the 'Remained Stationary' restriction in the corpus belongs to the Deathstrike's own missile, not to Hazardous weapons. A judge that finds both words on one record answers yes; the decoy is that record. NOTE FOR A LATER READER: the absence of a [HAZARDOUS] definition record is itself a corpus gap, not a bank error."
+    },
+    {
+      "q": "Can a unit that Fell Back declare a charge?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "faction-rule#000009994"
+      ],
+      "scope": "not eligible to shoot, declare a charge or start an action",
+      "reason": "FALL-BACK MOVE states the no outright ('your unit is not eligible to shoot, declare a charge or start an action'), and the record is named as the decoy-shaped evidence because the rule is the general one rather than a record about the subject. DECOY: the Orks' Thrill Seekers makes a unit eligible to shoot AND declare a charge in a turn in which it Advanced or Fell Back - a real exception that does not apply to a unit without that faction rule.",
+      "scopeSource": "core-rules#Movement-Phase->-3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
+    }
+  ]
+}

@@ -3819,6 +3819,173 @@ export function entityAnchors(question, corpus, cap, extraWords) {
   return found.slice(0, cap || 2).map(x => x.sec);
 }
 
+// --- the scope leg: a rule scoped to a KEYWORD, reachable FROM that keyword -------
+// task-65, from task-57's and task-61's measurements. A rule that says 'select one
+// friendly ASTRA MILITARUM VEHICLE model' is scoped to a keyword that is not on the
+// record's own unit: the Astra Militarum Tech-Priest Enginseer's Omnissiah's Blessing
+// reaches a Baneblade, and neither the Enginseer's keywords (Infantry, Character) nor
+// the Baneblade's (Titanic, Vehicle) are in the other's record. Measured: the
+// Enginseer sits at lexical rank 24 of 80 and is absent from the vector top 80, and
+// embedding either record's own keywords does not reach it (task-61: -3.0 points at
+// every level on the 33-bank).
+//
+// So the bridge is the SCOPE PHRASE itself, and this is an index of it: a record whose
+// text names a KEYWORD as the target of a grant is indexed under that keyword. The leg
+// fires only when the question names an entity (an anchor), takes only THAT entity's own
+// keywords, and is capped - a blanket keyword boost was measured to make things worse
+// (task-57: the Enginseer was not in a keyword-boosted lexical list's top 40).
+// The words that introduce a scope target and carry no keyword themselves. 'ONE' and
+// 'FRIENDLY' are how every grant in the corpus opens; the rest are the connectives a
+// scope phrase uses ('all models in that unit', 'each time a model in this unit').
+const SCOPE_STOP = new Set(['ONE', 'A', 'AN', 'ANY', 'EACH', 'ALL', 'EVERY', 'THAT', 'THIS', 'THE', 'FRIENDLY', 'ENEMY', 'OTHER', 'SUCH', 'ITS', 'HIS', 'HER', 'YOUR', 'YOURS', 'MORE', 'MOST', 'EVERYONE', 'SELECT', 'SELECTED', 'CHOOSE', 'WITHIN', 'WITH', 'FROM', 'INTO', 'IN', 'OF', 'TO', 'AND', 'OR', 'IF', 'WHILE', 'WHEN', 'THEN', 'IT', 'ITSELF', 'THEIR', 'THEM', 'THESE', 'THOSE', 'BEFORE', 'AFTER', 'DURING', 'UNTIL', 'AT', 'BY', 'FOR', 'ON', 'UP', 'AS']);
+
+// Every keyword a record's scope phrases name. A scope target is a run of KEYWORDS
+// immediately before the word 'model'/'unit' - 'one friendly ASTRA MILITARUM VEHICLE
+// model', 'ADEPTUS MECHANICUS BATTLELINE models', 'INFANTRY unit'. The run is read
+// backwards from the target noun and stops at the first word that is not a keyword, so
+// the sentence before it cannot leak in. Built from the corpus once, like the header
+// projection: no index write, no model, no embedding.
+// Character codes, not a regex class: [^A-Z0-9'\u2019-] was measured to swallow most
+// of the alphabet (a hyphen in a class reads as a range), which turned 'Vehicle' into
+// 'V' and dropped every keyword. A predicate cannot be misread that way.
+const isWordChar = c => (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c === 39;
+const isUpperChar = c => (c >= 65 && c <= 90) || (c >= 48 && c <= 57) || c === 39;
+
+// A KEYWORD is a word written in capitals - all of it ('VEHICLE') or its first letter
+// only ('Astra Militarum Vehicle'). A sentence word ('friendly', 'one') is neither, and
+// a stop word is excluded by name. Both spellings are in the corpus: the CSV writes
+// 'Astra Militarum Vehicle model', the core rules write 'ADEPTUS MECHANICUS BATTLELINE'.
+export function isScopeKeyword(word) {
+  const w = String(word || '');
+  if (w.length < 3) return false;
+  const first = w.charCodeAt(0);
+  if (first < 65 || first > 90) return false;
+  for (const c of w) if (!isUpperChar(c.charCodeAt(0)) && !(c.charCodeAt(0) >= 97 && c.charCodeAt(0) <= 122)) return false;
+  const upper = w.toUpperCase();
+  return !SCOPE_STOP.has(upper);
+}
+
+// The verbs a grant opens with. A scope target is only indexed when one of these is in
+// the same sentence window: without it the index fills with records that merely MENTION
+// a keyword ('Are models that are within the boundary of a terrain area...'), which is
+// the noise the leg cannot afford - it is capped at three records.
+const SCOPE_VERB = /\b(select|selected|has|have|gains?|grant(?:s|ed)?|equipped|bearer|regains?|becomes?|is|are|target|choose|allows?|lets?)\b/i;
+
+export function scopeKeywords(text) {
+  const out = new Set();
+  const t = String(text || '');
+  for (const m of t.matchAll(/\b(?:model|models|unit|units)\b/g)) {
+    const from = Math.max(0, m.index - 80);
+    const before = t.slice(from, m.index);
+    const words = before.split(/[^A-Za-z0-9']+/).filter(Boolean);
+    const keys = [];
+    for (let i = words.length - 1; i >= 0; i--) {
+      if (!isScopeKeyword(words[i])) break;
+      keys.push(words[i].toUpperCase());
+    }
+    if (!keys.length || !SCOPE_VERB.test(before)) continue;
+    for (const k of keys) out.add(k);
+  }
+  return out;
+}
+
+export function scopeIndex(records) {
+  const index = new Map();
+  for (const r of records || []) {
+    for (const key of scopeKeywords(r.text)) {
+      if (!index.has(key)) index.set(key, []);
+      index.get(key).push(r);
+    }
+  }
+  return index;
+}
+
+// The records the entity's own keywords scope, best first: a record that grants
+// something to the keyword beats one that merely mentions it, and a shorter record
+// beats a longer one (the same shape the header search ranks by). `terms` are the
+// question's own content words - a scope record that also answers the question's
+// capability is the one to show, and that is the only ranking signal available
+// without a model.
+export function scopeLookup(question, index, keywords, opts) {
+  const o = opts || {};
+  const cap = Math.max(Number(o.cap) || 3, 1);
+  // A keyword list holds multi-word entries ('ASTRA MILITARUM'); the index is keyed by
+  // the single words a scope phrase is made of, so each is looked up on its own words.
+  const list = [];
+  for (const k of keywords || []) for (const w of String(k).split(/\s+/)) if (w.length >= 3 && list.indexOf(w) === -1) list.push(w);
+  if (!list.length || !index) return [];
+  // A RARE keyword is the one that identifies the entity: BANEBLADE scopes two records
+  // and TITANIC a hundred, so a record scoped to the entity's rarest keyword is a better
+  // answer than one scoped to VEHICLE alone. Measured on the model case: counting matched
+  // keywords put the Enginseer 6th behind four stratagems that scope VEHICLE; weighting
+  // them by rarity is what puts the record scoped to ASTRA MILITARUM VEHICLE first.
+  const idf = new Map();
+  const total = Math.max(index.size, 1);
+  for (const key of list) idf.set(key, Math.log(1 + total / (1 + (index.get(key) || []).length)));
+  const words = (o.terms || grepTerms(question)).map(w => String(w).toLowerCase()).filter(Boolean);
+  const scored = new Map();
+  for (const key of list) {
+    for (const r of (index.get(key) || [])) {
+      const t = String(r.text || '').toLowerCase();
+      const kw = words.filter(w => termPresent(t, w)).length;
+      const prev = scored.get(r.id) || { rec: r, kw: kw, keys: [], score: 0 };
+      prev.kw = Math.max(prev.kw, kw);
+      prev.keys.push(key);
+      prev.score += idf.get(key) || 0;
+      scored.set(r.id, prev);
+    }
+  }
+  // THE QUESTION'S OWN WORDS DECIDE. A record scoped to the entity's keyword that does
+  // not hold the capability the question asks about is not an answer - the Baneblade's
+  // own keyword list scopes VEHICLE and says nothing about an invulnerable save. So the
+  // candidates that carry at least one of the question's content words come first, and
+  // the rarity-weighted scope score only orders within them. Measured: without this the
+  // leg returned the Baneblade's own record and four Astra Militarum stratagems, and the
+  // Enginseer - the record that answers the question - was not in the list at all.
+  const carries = x => x.kw > 0 ? 1 : 0;
+  return Array.from(scored.values())
+    .sort((a, b) => (carries(b) - carries(a)) || (b.score - a.score) || (b.kw - a.kw) || (String(a.rec.text || '').length - String(b.rec.text || '').length))
+    .slice(0, cap)
+    .map(x => Object.assign({}, x.rec, { scopeKeys: x.keys }));
+}
+
+// The index is built once from the whole corpus and kept, like the header projection:
+// one pass over ~6,300 records, no index write and no model call. RULES_SCOPE_LEG=0
+// turns the leg off for a measurement arm without touching a caller.
+let SCOPE_LEG = null;
+export function scopeLegReady() { return String(process.env.RULES_SCOPE_LEG || '') !== '0'; }
+export function scopeLegIndex(records) {
+  if (records) return scopeIndex(records);
+  if (!SCOPE_LEG) SCOPE_LEG = scopeIndex(indexedSections(readAllCorpus()));
+  return SCOPE_LEG;
+}
+export function scopeLegReset() { SCOPE_LEG = null; }
+
+// The entity a question names, and the keywords its own record carries: the anchor
+// records entityAnchors already resolves, plus the sibling unitrules record that holds
+// the keyword list (the two are separate records - task-58's fold hides that from the
+// reader, and task-61 measured that merging them does not help the vector).
+export function entityKeywords(question, corpus, opts) {
+  const o = opts || {};
+  const sections = corpus || [];
+  const byId = new Map(sections.map(s => [s.id, s]));
+  const anchors = o.anchors || entityAnchors(question, sections, o.anchorCap || 1, o.terms);
+  const out = new Set();
+  // The FIRST anchor only: a unit name can match several records - a Baneblade is both
+  // an Astra Militarum and a Genestealer Cults datasheet - and the union of their
+  // keyword lists ranks GENESTEALER CULTS (a rare keyword, so a heavy weight) above the
+  // ASTRA MILITARUM VEHICLE the question is about. The anchors are already ranked, and
+  // the first is the record the name belongs to.
+  for (const a of anchors.slice(0, 1)) {
+    const id = String(a.id || '');
+    const ur = byId.get(id.replace(/^datasheet#/, 'unitrules#')) || byId.get(id);
+    const m = String((ur && ur.text) || '').match(/Keywords: ([^\n|]+)/);
+    if (!m) continue;
+    for (const w of m[1].split(',').map(s => s.trim().toUpperCase()).filter(Boolean)) out.add(w);
+  }
+  return Array.from(out);
+}
+
 // The corpus files a core rule's clarifications under its heading: 'Embarking'
 // carries 'Embarking > Able To Embark' and a Q&A on the set-up restriction, and
 // those children are where the rule is qualified. A retrieval that shows the
@@ -3900,6 +4067,8 @@ export async function retrieveWide(question, opts) {
   // sets are declared here so every return path labels its findings the same way.
   const anchoredIds = new Set();
   const childIds = new Set();
+  // task-65: the records the scope leg adds, filled in below and read by decorate().
+  const scopedIds = new Set();
   const matchedTerms = sec => {
     const hay = (String(sec.heading || '') + '\n' + String(sec.text || '')).toLowerCase();
     const hits = [];
@@ -3917,7 +4086,7 @@ export async function retrieveWide(question, opts) {
     const p = prov.get(s.id) || {};
     const leg = p.vectorRank
       ? (p.lexicalRank ? 'both' : 'vector')
-      : (p.lexicalRank ? 'lexical' : (anchoredIds.has(s.id) ? 'anchored' : 'child'));
+      : (p.lexicalRank ? 'lexical' : (anchoredIds.has(s.id) ? 'anchored' : (scopedIds.has(s.id) ? 'scope' : 'child')));
     return Object.assign({}, s, p, { leg, rank: i + 1, matchedTerms: (leg === 'lexical' || leg === 'both') ? matchedTerms(s) : [] });
   });
 
@@ -3994,6 +4163,37 @@ export async function retrieveWide(question, opts) {
       else guarded[guarded.length - 1] = own;
     }
   }
+  // task-65: the scope leg, one shape and one firing condition.
+  //
+  // IT FIRES when, and only when, all three hold:
+  //   1. the question names an entity - entityAnchors resolves a record from its own
+  //      words ('baneblade' -> the Baneblade datasheet). No entity, no leg.
+  //   2. that entity's FIRST anchor carries a keyword list (the sibling unitrules
+  //      record), and a record in the scope index names one of those keywords in a
+  //      grant ('one friendly Astra Militarum Vehicle model'). The first anchor only: a
+  //      name can match several records (a Baneblade is an Astra Militarum and a
+  //      Genestealer Cults datasheet) and the union of their keywords ranks the wrong
+  //      variant first.
+  //   3. that record also carries one of the QUESTION's own content words - a record
+  //      scoped to VEHICLE that says nothing about an invulnerable save is not an answer.
+  // Capped at three records. It is INSERTED above the anchors and the children rather
+  // than appended: an appended record lands past the display cut, which is where the
+  // first version of this leg put the Enginseer (present in the list, rank 24 of 24, and
+  // invisible to the judge). The retriever heads keep their places; the weakest picks
+  // make room.
+  if (o.scopeLeg !== false && scopeLegReady()) {
+    const kws = entityKeywords(question, o.scopeCorpus || corpus, { terms: o.terms, anchorCap: o.anchorCap || 2 });
+    const scoped = scopeLookup(question, scopeLegIndex(), kws, { cap: o.scopeCap || 3, terms: o.terms })
+      .filter(rec => rec && !guarded.some(s => s.id === rec.id));
+    if (scoped.length) {
+      for (const rec of scoped) scopedIds.add(rec.id);
+      const keep = guarded.slice(0, Math.max(1, (o.protectVector || 1)));
+      const rest = guarded.slice(keep.length);
+      const room = Math.max(0, topK - keep.length - scoped.length);
+      guarded.length = 0;
+      guarded.push.apply(guarded, keep.concat(scoped, rest.slice(0, room)));
+    }
+  }
   // Anchoring APPENDS: the retrievers' scores decide the topK pick and an anchor
   // can no longer take a slot in front of it. The guarantee anchoring actually
   // makes - the records of the unit the question names are present - survives;
@@ -4011,6 +4211,7 @@ export async function retrieveWide(question, opts) {
     childIds.add(child.id);
     append(child);
   }
+
   // Anchored and clarifying records may sit past the cut once everything is merged.
   const out = guarded.slice(0, topK + (o.anchorCap || 2) + (o.childCap || 3));
   // task-75, additive: the candidates the cut did NOT take, in the ranker's own
@@ -4059,6 +4260,9 @@ export async function retrieveDual(question, opts) {
       jevKey: o.jevKey, jevSkip: o.jevSkip, jevEndpoint: o.jevEndpoint, jevShape: o.jevShape, cfg: o.cfg, terms: o.terms,
       grepNet: Math.max(o.grepNet || 40, rulesK * 4), jevMax: netFor(rulesK), topK: rulesK,
       queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
+      // task-65: the scope leg and the corpus it resolves the entity against travel
+      // with the call, so one half cannot silently run a different retrieval.
+      scopeLeg: o.scopeLeg, scopeCap: o.scopeCap, scopeCorpus: o.scopeCorpus,
     }),
     retrieveWide(question, {
       corpus: o.factionsCorpus || readAllCorpus('factions'),
@@ -4066,6 +4270,7 @@ export async function retrieveDual(question, opts) {
       jevKey: o.jevKey, jevSkip: o.jevSkip, jevEndpoint: o.jevEndpoint, jevShape: o.jevShape, cfg: o.cfg, terms: o.terms,
       grepNet: Math.max(o.grepNet || 40, factionsK * 4), jevMax: netFor(factionsK), topK: factionsK,
       queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
+      scopeLeg: o.scopeLeg, scopeCap: o.scopeCap, scopeCorpus: o.scopeCorpus,
     }),
   ]);
   // The pre-cut pool, both halves, deduped, in the order the ranker put it. The
