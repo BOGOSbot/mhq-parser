@@ -1771,6 +1771,12 @@ function devPanel(f, state, ctx) {
       // screen during a run. Before the verdict it lists the ranked passages;
       // after it, the cited ones. The marks and the re-ask footer ride under both.
       var list = mergeChunks(sortedFindings(state.findings || []));
+      // task-45: a list that was NOT reranked is not the same list, and the reader is
+      // told rather than shown a degraded order as if it were the full one. The state
+      // carries it from the findings event (the server's own rerank report).
+      if (state.rerank && state.rerank.state === 'degraded') {
+        host.appendChild(el('p', 'sv-degraded', 'Showing retrieval order: the reranker did not answer, so these passages are not ranked.'));
+      }
       host.appendChild(rulingLedger(list, state, ctx, !state.judge));
       var swept = sweepList(state);
       if (swept) host.appendChild(swept);

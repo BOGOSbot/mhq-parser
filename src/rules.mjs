@@ -128,8 +128,8 @@ export const JUDGE_REASONING_TIMEOUT_MS = Number(process.env.RULES_JUDGE_REASONI
 // published). Explicit RULES_JEV_ENDPOINT / RULES_JEV_MODEL still win over the
 // gateway choice, but the key follows the gateway, not the endpoint override.
 const JEV_GATEWAYS = {
-  opencode: { endpoint: 'https://opencode.ai/zen/v1/systemone', model: 'jev-1.13-free', keyName: 'OPENCODE_GO_API_KEY' },
-  openrouter: { endpoint: 'https://openrouter.ai/api/alpha/decisions', model: '~typesafe/jev-latest', keyName: 'OPENROUTER_API_KEY' },
+  opencode: { name: 'opencode', free: true, endpoint: 'https://opencode.ai/zen/v1/systemone', model: 'jev-1.13-free', keyName: 'OPENCODE_GO_API_KEY' },
+  openrouter: { name: 'openrouter', free: false, endpoint: 'https://openrouter.ai/api/alpha/decisions', model: '~typesafe/jev-latest', keyName: 'OPENROUTER_API_KEY' },
 };
 const JEV_GATEWAY = JEV_GATEWAYS[String(process.env.RULES_JEV_GATEWAY || 'opencode').toLowerCase()] || JEV_GATEWAYS.opencode;
 export const JEV_ENDPOINT = process.env.RULES_JEV_ENDPOINT || JEV_GATEWAY.endpoint;
@@ -138,6 +138,104 @@ export const JEV_MODEL = process.env.RULES_JEV_MODEL || JEV_GATEWAY.model;
 // The active gateway's credential name, so key reads follow the route instead
 // of assuming the free tier's key.
 export function jevKeyName() { return JEV_GATEWAY.keyName; }
+
+// --- the gateway chain (task-45) --------------------------------------------
+// Mandal: 'The free should be default, but we should auto fallback to paid.'
+// The free tier is a rolling quota window whose retry-afters have measured from
+// 69 s to 85,923 s, and a reader who hits it gets a degraded answer with no
+// explanation - worse than paying a fraction of a cent. So a request walks this
+// chain, in order, and a QUOTA answer (429 / FreeUsageLimitError) moves it to the
+// next gateway. The paid route is never tried first, and never when the free one
+// answered.
+//
+// RULES_JEV_GATEWAY still pins one gateway by name, and it is the ONLY way to get
+// the paid route alone (the fallback would otherwise re-add the free one in front
+// of it). Explicit RULES_JEV_ENDPOINT/RULES_JEV_MODEL still replace the first
+// entry's transport, because a harness points those at a stub.
+const JEV_PINNED = String(process.env.RULES_JEV_GATEWAY || '').toLowerCase();
+export function jevChain() {
+  const pinned = JEV_GATEWAYS[JEV_PINNED];
+  if (pinned) {
+    const first = process.env.RULES_JEV_ENDPOINT || process.env.RULES_JEV_MODEL
+      ? Object.assign({}, pinned, { endpoint: process.env.RULES_JEV_ENDPOINT || pinned.endpoint, model: process.env.RULES_JEV_MODEL || pinned.model })
+      : pinned;
+    return [first];
+  }
+  const first = Object.assign({}, JEV_GATEWAYS.opencode, {
+    endpoint: process.env.RULES_JEV_ENDPOINT || JEV_GATEWAYS.opencode.endpoint,
+    model: process.env.RULES_JEV_MODEL || JEV_GATEWAYS.opencode.model,
+  });
+  return [first, JEV_GATEWAYS.openrouter];
+}
+
+// A gateway is 'quota' when it is telling us we have used our allowance, not when
+// it is broken. Only a quota answer moves down the chain: a timeout has already
+// spent its wall-clock budget and retrying it on a second gateway would double the
+// reader's wait for the same silence, and a 5xx or a malformed answer is a real
+// fault that a second gateway does not fix - those are reported as failures, which
+// is what the caller's no-rerank fallback is for.
+export function gatewayVerdict(status, body) {
+  const s = Number(status) || 0;
+  if (s === 429) return 'quota';
+  const text = typeof body === 'string' ? body : JSON.stringify(body || '');
+  if (/FreeUsageLimit|free usage limit|rate.?limit/i.test(text)) return 'quota';
+  if (s >= 500) return 'error';
+  if (s === 0) return 'timeout';
+  if (s >= 400) return 'error';
+  return 'ok';
+}
+
+// What the paid fallback costs, and the ceiling on it. Measured price: about
+// $0.20 for 486 calls, roughly $0.0004 a call; one question's rerank is a handful
+// of calls. The cap is a DAILY one (RULES_JEV_DAILY_CAP_USD, default $1.00): when
+// it is reached the paid route is not tried, the rerank degrades to no-rerank, and
+// the caller says so rather than failing the answer.
+export const JEV_PRICE_PER_CALL = Number(process.env.RULES_JEV_PRICE_PER_CALL || '0.0004');
+export const JEV_DAILY_CAP_USD = Number(process.env.RULES_JEV_DAILY_CAP_USD || '1.00');
+const JEV_LEDGER = { day: '', calls: {}, cost: 0, last: '' };
+function ledgerDay() { return new Date().toISOString().slice(0, 10); }
+function ledgerRoll() {
+  const d = ledgerDay();
+  if (JEV_LEDGER.day !== d) { JEV_LEDGER.day = d; JEV_LEDGER.calls = {}; JEV_LEDGER.cost = 0; JEV_LEDGER.last = ''; }
+}
+// One served call. `cost` comes from the gateway's own usage block when it sends
+// one (OpenRouter does) and falls back to the measured per-call price when it does
+// not (the free tier never charges).
+export function noteJevCall(gateway, cost) {
+  ledgerRoll();
+  const g = String(gateway || 'unknown');
+  JEV_LEDGER.calls[g] = (JEV_LEDGER.calls[g] || 0) + 1;
+  JEV_LEDGER.cost += Number.isFinite(cost) && cost > 0 ? cost : (g === 'opencode' ? 0 : JEV_PRICE_PER_CALL);
+  JEV_LEDGER.last = g;
+}
+// A test seam, the same shape routeStatsReset has: the cap is enforced against this
+// ledger, and a test that has to spend a real dollar to see the cap bite is a test
+// nobody runs. Cost is settable so the over-cap branch is reachable.
+export function jevSpendReset(costUsd) {
+  ledgerRoll();
+  JEV_LEDGER.calls = {};
+  JEV_LEDGER.cost = Number.isFinite(costUsd) && costUsd > 0 ? costUsd : 0;
+  JEV_LEDGER.last = '';
+}
+export function jevSpend() {
+  ledgerRoll();
+  return {
+    day: JEV_LEDGER.day,
+    calls: Object.assign({}, JEV_LEDGER.calls),
+    costUsd: Math.round(JEV_LEDGER.cost * 1e6) / 1e6,
+    capUsd: JEV_DAILY_CAP_USD,
+    pricePerCall: JEV_PRICE_PER_CALL,
+    remainingUsd: Math.max(0, Math.round((JEV_DAILY_CAP_USD - JEV_LEDGER.cost) * 1e6) / 1e6),
+    capped: JEV_LEDGER.cost >= JEV_DAILY_CAP_USD,
+    lastGateway: JEV_LEDGER.last,
+  };
+}
+// Whether a gateway may be tried at all. The free one always may; a paid one only
+// while the day's spend is under the cap.
+export function gatewayAllowed(gateway) {
+  if (!gateway || gateway.free) return true;
+  return jevSpend().costUsd < JEV_DAILY_CAP_USD;
+}
 
 // One edition, named once. The corpus holds exactly one edition, because two
 // editions answer the same question with different rules and mixing them is not
@@ -238,7 +336,7 @@ export function anchorFor(heading) {
 export default {
   RULES_EDITION, RULES_EDITION_LABEL, editionOf, anchorFor,
   credential, credentials, credentialFromFile, credentialsPath, keyState,
-  JEV_ENDPOINT, JEV_MODEL,
+  JEV_ENDPOINT, JEV_MODEL, jevChain, gatewayVerdict, jevSpend, jevSpendReset, noteJevCall, gatewayAllowed,
   MODEL_ENDPOINT, MODEL, modelKeyName, modelCredential, modelReady,
   FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_REASONING, MODEL_TIMEOUT_MS,
   fastKeyName, fastCredential, fastReady, RulesError,

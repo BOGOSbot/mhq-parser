@@ -35,8 +35,8 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
-import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, deliveredIds, dontKnowAnswer, sweepChecks, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
+import { RulesError, credential, fastCredential, jevKeyName, jevSpend, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
+import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, deliveredIds, dontKnowAnswer, jevCalls as jevCallStats, sweepChecks, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { MAX_VOICE_BYTES, transcribeClip, voiceFormatOf } from './voice.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 // task-78: the asset route reads the corpus's asset tree; the import is its own line so
@@ -1330,6 +1330,9 @@ async function handleRulesAsk(req, res) {
         emit({
           type: 'findings', findings: toPayload(found), counts, terms, steps,
           attempt, plan, escalated: attempt > 0, elapsedMs: Date.now() - started,
+          // task-45: whether the rerank ran, and on which gateway. The page shows a
+          // degraded list as degraded.
+          rerank: dual && dual.rerank ? dual.rerank : null,
         });
       },
       onJudge: ({ judge, final, attempt }) => {
@@ -1692,6 +1695,11 @@ const server = http.createServer(async (req, res) => {
       // bodies under load, so a page that looks like one call per step may be
       // making two - this is where a deployment sees it.
       route: routeStats(),
+      // task-45: which gateway served the Jev calls and what the paid fallback has
+      // spent today, against its cap. The reader does not need this; the operator
+      // does, and it is the only place the free-versus-paid split is visible.
+      jev: jevSpend(),
+      jevCalls: jevCallStats(),
       // Which edition the page answers for. It is a deployment decision, not a
       // detail: 10th and 11th give different answers to the same question.
       rulesEdition: rulesEdition,

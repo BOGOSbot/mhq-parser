@@ -41,7 +41,7 @@ import http from 'http';
 import https from 'https';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_ENDPOINT, MODEL, MODEL_REASONING, MODEL_TIMEOUT_MS, JUDGE_REASONING_TIMEOUT_MS, JEV_ENDPOINT, JEV_MODEL, anchorFor, credential } from './rules.mjs';
+import { FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_ENDPOINT, MODEL, MODEL_REASONING, MODEL_TIMEOUT_MS, JUDGE_REASONING_TIMEOUT_MS, JEV_ENDPOINT, JEV_MODEL, anchorFor, credential, gatewayAllowed, gatewayVerdict, jevChain, noteJevCall } from './rules.mjs';
 import { TRACE_RETENTION_MONTHS, sweepTraces } from './rules-traces.mjs';
 // task-34: the flat passage text gets the wargear marks at display time - the corpus
 // bytes are untouched, the finding's excerpt and the passage sheet are not bare.
@@ -2130,6 +2130,9 @@ export async function jevRank(question, candidates, key, opts) {
   try {
     const ranked = await jevRankOnce(question, top, key, o);
     JEV_CALLS.rerank.answered++;
+    // The gateway that served this half (task-45), read by the caller for the
+    // degraded-versus-ranked report. A property on the array keeps the signature.
+    ranked.gateway = o.gateway || '';
     return ranked;
   } catch (e) {
     JEV_CALLS.rerank.failed++;
@@ -2137,6 +2140,77 @@ export async function jevRank(question, candidates, key, opts) {
   }
 }
 
+// --- the gateway chain: free first, paid on a quota answer (task-45) ---------
+// Every Jev call in this file goes through here, so there is one place that knows
+// which gateway served a call, one place that counts the spend, and one place the
+// fallback decision lives. The chain is walked in order and a QUOTA answer moves to
+// the next gateway; a timeout, a 5xx and a malformed body do not (see
+// gatewayVerdict in src/rules.mjs for why).
+//
+// The key is per gateway, read by name from the credential store - the caller passes
+// the key for the FIRST gateway only when it is pinned to one (a harness, an eval arm
+// with a stub endpoint), which is the `key` argument.
+const JEV_TRANSPORT_TIMEOUT_MS = 60000;
+async function jevPost(body, gateway, key, timeoutMs) {
+  const res = await new Promise((resolve, reject) => {
+    const u = new URL(gateway.endpoint);
+    // The protocol the endpoint names: a custom RULES_JEV_ENDPOINT may be plain
+    // http, and a local test gateway is.
+    const req = (u.protocol === 'http:' ? http : https).request({ method: 'POST', hostname: u.hostname, port: u.port || undefined, path: u.pathname, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, r => {
+      const chunks = []; r.on('data', d => chunks.push(d));
+      r.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        let obj = null;
+        try { obj = JSON.parse(text); } catch { /* an error page, not an answer set */ }
+        resolve({ status: r.statusCode, obj, text });
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(timeoutMs || JEV_TRANSPORT_TIMEOUT_MS, () => req.destroy(new Error('jev timed out')));
+    req.end(body);
+  });
+  return res;
+}
+// One decision request, walked down the chain. Returns the first gateway that
+// ANSWERED (a body with answers) or throws naming every gateway it tried and why.
+// The body is rebuilt per gateway because the model id belongs to the gateway.
+async function jevChainCall(makeBody, opts) {
+  const o = opts || {};
+  const chain = o.chain || jevChain();
+  const tried = [];
+  // A QUOTA answer (429 / FreeUsageLimitError) moves down the chain - that is the
+  // case Mandal named. So does a FAILURE (a timeout, a 5xx, a body with no answers):
+  // the paid route exists to make the reader's rerank happen, and a free route that
+  // timed out is exactly when paying for one call is worth it. The distinction that
+  // matters is the LAST gateway's failure: that is what the caller's no-rerank
+  // fallback turns into unranked order, and it is reported as such.
+  for (const gateway of chain) {
+    if (!gatewayAllowed(gateway)) { tried.push(gateway.name + ': over the daily cap'); continue; }
+    const key = o.key && chain.length === 1 ? o.key : (credential(gateway.keyName) || o.key || '');
+    if (!key) { tried.push(gateway.name + ': no key'); continue; }
+    let res = null;
+    try { res = await jevPost(makeBody(gateway.model), gateway, key, o.timeoutMs); }
+    catch (e) {
+      // A transport error is a timeout or a socket failure: counted as an attempt
+      // that failed, never as a quota answer, and never retried on the next gateway.
+      tried.push(gateway.name + ': ' + String((e && e.message) || e));
+      if (o.onAttempt) o.onAttempt({ gateway: gateway.name, verdict: 'timeout', status: 0 });
+      if (!gateway.free) break;   // the paid route failed: nothing after it to try
+      continue;
+    }
+    const verdict = gatewayVerdict(res.status, res.text);
+    if (o.onAttempt) o.onAttempt({ gateway: gateway.name, verdict: verdict, status: res.status });
+    if (verdict === 'ok' && res.obj && res.obj.answers) {
+      noteJevCall(gateway.name, res.obj && res.obj.usage && res.obj.usage.cost);
+      return { gateway: gateway.name, obj: res.obj, res: res };
+    }
+    tried.push(gateway.name + ': HTTP ' + res.status + (verdict === 'quota' ? ' (quota)' : ''));
+    if (!gateway.free) break;   // the paid route failed: nothing after it to try
+  }
+  const err = new Error('jev: no gateway answered (' + tried.join('; ') + ')');
+  err.tried = tried;
+  throw err;
+}
 // Every attempt is counted where it leaves and every answer where it arrives;
 // a call that throws is an attempt and a failure, never an answer. The wrapper
 // exists so the counting cannot drift back above the request again.
@@ -2159,30 +2233,22 @@ async function jevRankOnce(question, top, key, o) {
   const state = 'Question: ' + question + '\n\nCandidate passages:\n\n' + top.map((c, i) =>
     'PASSAGE ' + i + ' - ' + c.heading + (c.ruleId ? ' (' + c.ruleId + ')' : '') + '\n' + String(c.text).slice(0, per)
   ).join('\n\n');
-  const body = JSON.stringify({ model: JEV_MODEL, state, questions });
-  const res = await new Promise((resolve, reject) => {
-    const u = new URL(o.endpoint || JEV_ENDPOINT);
-    // The protocol the endpoint names: a custom RULES_JEV_ENDPOINT may be plain
-    // http, and a local test gateway is.
-    const req = (u.protocol === 'http:' ? http : https).request({ method: 'POST', hostname: u.hostname, port: u.port || undefined, path: u.pathname, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, r => {
-      const chunks = []; r.on('data', d => chunks.push(d));
-      r.on('end', () => {
-        const text = Buffer.concat(chunks).toString('utf8');
-        let obj = null;
-        try { obj = JSON.parse(text); } catch { /* an error page, not an answer set */ }
-        resolve({ status: r.statusCode, obj, text });
-      });
-    });
-    req.on('error', reject); req.setTimeout(60000, () => req.destroy(new Error('jev timed out'))); req.end(body);
+  // task-45: the chain, not one endpoint. Free first; a quota answer (429 /
+  // FreeUsageLimitError) falls through to the paid route for THIS call and the rest
+  // of the request, and the ledger records which gateway served it and what it cost.
+  // o.endpoint is a harness override and pins the chain to that one transport.
+  const chain = o.chain || (o.endpoint
+    ? [Object.assign({}, jevChain()[0], { endpoint: o.endpoint, name: (jevChain()[0] || {}).name || 'custom', free: false })]
+    : jevChain());
+  const out = await jevChainCall(model => JSON.stringify({ model: model, state, questions }), {
+    key: key, chain: chain, timeoutMs: o.timeoutMs, onAttempt: o.onAttempt,
   });
-  if (!res) throw new Error('jev returned nothing');
-  // The free tier answers rate limits with a JSON error body that has no
-  // answers field, which used to surface as the useless 'jev returned no
-  // answers'. Name the wall instead.
-  if (res.status === 429) throw new Error('jev rate limited (HTTP 429, free tier) - try again later');
-  if (!res.obj || !res.obj.answers) throw new Error('jev returned no answers: HTTP ' + res.status + ' ' + String(res.text || '').slice(0, 120));
+  const answers = out.obj.answers;
+  // Which gateway actually served it rides back on the options object, so jevRank's
+  // return stays the array every caller already destructures.
+  o.gateway = out.gateway;
   return top.map((c, i) => {
-    const a = res.obj.answers['p' + i];
+    const a = answers['p' + i];
     return Object.assign({ jev: a && typeof a.noul === 'number' ? a.noul : 0 }, c);
   }).sort((a, b) => b.jev - a.jev);
 }
@@ -2293,24 +2359,24 @@ export async function gateHalf(question, key, opts) {
 }
 
 async function gateHalfOnce(question, key, o) {
-  const body = JSON.stringify({
-    model: JEV_MODEL,
-    state: 'A reader asks a Warhammer 40,000 11th edition rules question. The corpus has two halves: the core rules (how the game works for every army) and faction rules (what one army\'s own units and cards do).',
-    questions: gatePrompt(question),
-  });
-  const res = await new Promise((resolve, reject) => {
-    const u = new URL(o.endpoint || JEV_ENDPOINT);
-    const req = (u.protocol === 'http:' ? http : https).request({ method: 'POST', hostname: u.hostname, port: u.port || undefined, path: u.pathname, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, r => {
-      const c = []; r.on('data', d => c.push(d));
-      r.on('end', () => resolve({ status: r.statusCode, text: Buffer.concat(c).toString('utf8') }));
+  const gateState = 'A reader asks a Warhammer 40,000 11th edition rules question. The corpus has two halves: the core rules (how the game works for every army) and faction rules (what one army\'s own units and cards do).';
+  // The same chain as the ranker (task-45): the gate is a Jev call too, and a quota
+  // answer on it used to leave the run half-routed for no reason the reader could see.
+  // o.endpoint is a harness override and pins the chain to that one transport.
+  const chain = o.endpoint
+    ? [Object.assign({}, jevChain()[0], { endpoint: o.endpoint, name: (jevChain()[0] || {}).name || 'custom', free: false })]
+    : jevChain();
+  let gateOut = null;
+  try {
+    gateOut = await jevChainCall(model => JSON.stringify({ model: model, state: gateState, questions: gatePrompt(question) }), {
+      key: key, chain: chain, timeoutMs: o.timeoutMs, onAttempt: o.onAttempt,
     });
-    req.on('error', reject);
-    req.setTimeout(o.timeoutMs || 60000, () => req.destroy(new Error('jev timed out')));
-    req.end(body);
-  });
-  if (res.status !== 200) return { half: '', confidence: null, error: 'jev HTTP ' + res.status };
-  let obj = null;
-  try { obj = JSON.parse(res.text); } catch { return { half: '', confidence: null, error: 'jev returned non-JSON' }; }
+  } catch (e) {
+    // The gate is built to say nothing rather than guess, so a chain that ran out is
+    // an abstention with a reason - never a thrown error the caller has to catch.
+    return { half: '', confidence: null, error: String((e && e.message) || e), gateway: '' };
+  }
+  const obj = gateOut.obj;
   const a = obj && obj.answers && obj.answers.half;
   const choice = a && a.choice;
   return {
@@ -3736,13 +3802,23 @@ export async function retrieveWide(question, opts) {
   // skipped; o.jevSkip is how a caller that holds a key asks for the zero-call
   // arm, and it lands on the same list a no-key deployment gets.
   let ranked = null;
+  // task-45: whether the rerank actually ran, and on which gateway. The reader is
+  // owed the difference between a ranked list and the fusion order: 'degraded' is
+  // reported on the result and shown on the page, never silently swapped in.
+  let rerankStatus = { state: 'skipped', gateway: '', reason: '' };
   const rerankArmName = rerankArm();
   if (!o.jevSkip && rerankArmName !== 'off') {
     try {
       if (rerankArmName === 'cf') {
         ranked = await cfRank(question, merged, credential('CLOUDFLARE_API_TOKEN'), { max: o.jevMax || 80 });
+        if (ranked && ranked.length) rerankStatus = { state: 'ranked', gateway: 'cf', reason: '' };
       } else if (o.jevKey) {
+        // The gateway that served it comes back with the ranking, so the operator can
+        // see free-versus-paid per half without a second lookup.
         ranked = await jevRank(question, merged, o.jevKey, { max: o.jevMax || 80, endpoint: o.jevEndpoint });
+        if (ranked && ranked.length) rerankStatus = { state: 'ranked', gateway: ranked.gateway || '', reason: '' };
+      } else {
+        rerankStatus = { state: 'skipped', gateway: '', reason: 'no key' };
       }
     } catch (e) {
       // The ranker is a free-tier call one shared budget away from a 429, and it
@@ -3751,6 +3827,7 @@ export async function retrieveWide(question, opts) {
       // the rank fusion itself - what the two retrievers already agree on. A
       // measurement arm turns that fallback into a stop instead of a mixed row;
       // the page never sets the flag.
+      rerankStatus = { state: 'degraded', gateway: '', reason: String((e && e.message) || e).slice(0, 200) };
       if (jevStrict()) throw e;
     }
   }
@@ -3807,6 +3884,7 @@ export async function retrieveWide(question, opts) {
   const rest = (ranked || merged).filter(s => s.id && !shownIds.has(s.id)).slice(0, 30);
   const result = decorate(out);
   result.rest = decorate(rest);
+  result.rerank = rerankStatus;
   return result;
 }
 
@@ -3861,7 +3939,13 @@ export async function retrieveDual(question, opts) {
     restSeen.add(s.id);
     tail.push(s);
   }
-  return { rules, factions, all: rules.concat(factions), tail, plan: { rules: rulesK, factions: factionsK } };
+  // task-45: the rerank state of each half, so the run can say out loud when a list
+  // was NOT ranked (a chain that ran out, or a day over the paid cap).
+  const rerank = (rules.rerank && rules.rerank.state === 'ranked') || (factions.rerank && factions.rerank.state === 'ranked')
+    ? { state: (rules.rerank && rules.rerank.state === 'degraded') || (factions.rerank && factions.rerank.state === 'degraded') ? 'degraded' : 'ranked',
+      rules: rules.rerank || null, factions: factions.rerank || null }
+    : { state: (rules.rerank && rules.rerank.state) || (factions.rerank && factions.rerank.state) || 'skipped', rules: rules.rerank || null, factions: factions.rerank || null };
+  return { rules, factions, all: rules.concat(factions), tail, plan: { rules: rulesK, factions: factionsK }, rerank };
 }
 
 // --- compiling, with the findings still cited -------------------------------

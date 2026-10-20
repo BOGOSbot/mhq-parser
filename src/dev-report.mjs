@@ -20,7 +20,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ALL_SOURCES, corpusDir, deliveredSections, namespaceFor, rangeIds, readAllCorpus, routeStats } from './rules-corpus.mjs';
+import { ALL_SOURCES, corpusDir, deliveredSections, jevCalls, namespaceFor, rangeIds, readAllCorpus, routeStats } from './rules-corpus.mjs';
+import { jevSpend } from './rules.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -78,6 +79,9 @@ export async function devState(opts) {
     namespaces: namespaces,
     rebuilds: lastRebuilds(o.corpusDir || corpusDir()),
     route: routeStats(),
+    // task-45: the Jev gateway chain - which gateway served the calls, and what the
+    // paid fallback has spent today against its cap.
+    jev: { spend: jevSpend(), calls: jevCalls() },
     code: code,
     bootedAt: bootedAt,
   };
@@ -132,6 +136,21 @@ export function devHtml(state) {
     + '<h2>Model route since boot</h2><table><tr><th>calls</th><th class="n">empty</th><th class="n">empty rate</th><th class="n">retries</th><th class="n">recovered</th><th class="n">truncated</th></tr>'
     + '<tr><td>' + route.calls + '</td><td>' + route.empty + '</td><td>' + route.empty_rate + '%</td><td>' + route.retries + '</td><td>' + route.recovered + '</td><td>' + route.truncated + '</td></tr></table>'
     + (byRoute ? '<table><tr><th>route</th><th class="n">calls</th><th class="n">empty</th><th class="n">retries</th><th class="n">recovered</th></tr>' + byRoute + '</table>' : '')
+    // task-45: the Jev gateway chain. Which gateway served each call and what the
+    // paid fallback has spent today, against its cap - the only place the
+    // free-versus-paid split is visible.
+    + '<h2>Jev gateways</h2>'
+    + (function () {
+      const j = state.jev || {};
+      const spend = j.spend || {};
+      const calls = j.calls || {};
+      const per = Object.entries(spend.calls || {}).map(([k, v]) => '<tr><td>' + esc(k) + '</td><td class="n">' + v + '</td></tr>').join('');
+      return '<table><tr><th>gateway</th><th class="n">calls served</th></tr>' + (per || '<tr><td>(none yet)</td><td class="n">0</td></tr>') + '</table>'
+        + '<table><tr><th>spend today</th><td>$' + Number(spend.costUsd || 0).toFixed(4) + ' of $' + Number(spend.capUsd || 0).toFixed(2) + (spend.capped ? ' - CAP HIT, the paid route is off until tomorrow' : '') + '</td></tr>'
+        + '<tr><th>price per paid call</th><td>$' + Number(spend.pricePerCall || 0).toFixed(4) + '</td></tr>'
+        + '<tr><th>rerank calls</th><td>' + ((calls.rerank && calls.rerank.answered) || 0) + ' answered, ' + ((calls.rerank && calls.rerank.failed) || 0) + ' failed</td></tr>'
+        + '<tr><th>gate calls</th><td>' + ((calls.gate && calls.gate.answered) || 0) + ' answered, ' + ((calls.gate && calls.gate.failed) || 0) + ' failed</td></tr></table>';
+    })()
     + '<h2>Code / process</h2><table>'
     + '<tr><th>process booted</th><td>' + esc(new Date(state.bootedAt).toISOString()) + '</td></tr>'
     + '<tr><th>newest src file</th><td>' + esc(code.name || '') + ' at ' + esc(code.at ? new Date(code.at).toISOString() : '') + '</td></tr>'

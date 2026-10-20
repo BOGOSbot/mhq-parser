@@ -2935,6 +2935,7 @@ function applyEvent(ev, state) {
     if (state.secondPending) stageRunning('second');
     return;
   }
+  if (ev.type === 'findings' && ev.rerank) state.rerank = ev.rerank;
   if (ev.type === 'sweep') {
     // task-43: the deep run's absence list. It rides in the state and the findings
     // renderer draws it under the ledger, so the ranking the reader is looking at is
