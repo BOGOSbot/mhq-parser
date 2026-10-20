@@ -533,6 +533,37 @@ ok('the voice button is icon only, named by aria-label and tooltip',
 ok('the question microphone types into the question box in the page language',
   /wireVoice\(document\.getElementById\('mic'\), document\.getElementById\('q'\), function \(\) \{\s*\n\s*return LANG === 'fr' \? 'fr-FR' : 'en-GB';/.test(code)
   && code.indexOf('speechLocale') === -1);
+
+// --- task-36: the landing page's find box ------------------------------------
+// Mandal asked for a lexical search box on the landing page that sends to the wiki with
+// its search pre-filled. The design rule that matters: it is a DOOR, not a second
+// pipeline, so the page owns the box and the drawer owns the field, the search and the
+// route. These pins hold that split.
+const findHtml = PAGE.slice(PAGE.indexOf('<section class="findwrap">'), PAGE.indexOf('</section>', PAGE.indexOf('<section class="findwrap">')));
+ok('the landing page carries the find box with its own field, mic and send',
+  findHtml.indexOf('id="fq"') !== -1 && findHtml.indexOf('id="fmic"') !== -1 && findHtml.indexOf('id="fgo"') !== -1);
+ok('and a line saying what it does', /class="findhint" id="findhint"/.test(findHtml));
+ok('it sits after the ask composer and before the browse links',
+  PAGE.indexOf('class="askwrap"') < PAGE.indexOf('class="findwrap"') && PAGE.indexOf('class="findwrap"') < PAGE.indexOf('id="intro"'));
+ok('the find microphone is the same voice path and the same language switch',
+  /wireVoice\(document\.getElementById\('fmic'\), document\.getElementById\('fq'\), function \(\) \{\s*\n\s*return LANG === 'fr' \? 'fr-FR' : 'en-GB';/.test(code));
+ok('and it has no box to grow, so its grow callback is a no-op', /\}, function \(\) \{\}\);/.test(code));
+// The handoff: the page passes the typed name to the drawer and does nothing else.
+ok('submitting hands the name to the drawer', /WIKI_SURFACE_API\.find\) window\.WIKI_SURFACE_API\.find\(name\)/.test(code));
+// The page must not grow its own route for this: the drawer owns /rules/find, and the
+// only URL the page builds for a find is none at all. (The page does carry a comment
+// naming the route, and it has its own /rules/lookup?q= for the instant lookup, so the
+// test is about the FIND BLOCK rather than about the file.)
+ok('the find block builds no URL of its own', code.slice(code.indexOf('function wireFind'), code.indexOf('function wireFind') + 800).indexOf('http') === -1);
+ok('and the find path fetches nothing of its own', code.slice(code.indexOf('function wireFind'), code.indexOf('function wireFind') + 700).indexOf('fetch(') === -1);
+ok('an empty submit keeps the reader in the box', /if \(!name\) \{ if \(box\) box\.focus\(\); return; \}/.test(code));
+// Four strings, both languages: the existing parity test would catch a missing key, and
+// this catches a key that is in the tables but never painted.
+for (const k of ['findPlaceholder', 'find', 'findVoice', 'findHint']) {
+  ok('the find box has ' + k + ' in both languages', !!I18N.en[k] && !!I18N.fr[k]);
+}
+ok('and applyLang paints all four', /t\('findPlaceholder'\)/.test(code) && /paintSend\(fgo, t\('find'\)\)/.test(code) && /paintMic\(fmic, t\('findVoice'\)\)/.test(code) && /t\('findHint'\)/.test(code));
+ok('the find send is not the page second filled button', /\.findwrap button\.sendbtn\{[^}]*background:var\(--panel2\)/.test(PAGE));
 ok('the language switch sits in the top bar, not under the question',
   headerHtml.indexOf('id="lang"') !== -1 && PAGE.indexOf('id="lang"') < PAGE.indexOf('<form id="f">'));
 ok('the wiki box reaches the ask pipeline', /function askFromQuery\(\)/.test(code) && /\[\?&\]q=\(\[\^&\]\*\)/.test(code) && /box\.value = text;\s*\n\s*growQuestion\(\);\s*\n\s*ask\(\);/.test(code));

@@ -96,6 +96,21 @@ textarea#q, textarea.trbox{flex:1 1 auto;min-width:0;min-height:40px;max-height:
   color:var(--txt);border:0;padding:10px 0 11px;margin:0;font:16px/1.5 var(--sans);line-height:1.5;
   resize:none;overflow-y:auto;outline:none}
 textarea#q::placeholder, textarea.trbox::placeholder{color:var(--dim);opacity:1}
+/* task-36: finding a thing by NAME is a different act from asking a question, so it
+   is a second box rather than a mode of the first. Same card language, one step
+   quieter: a single-line field, no mode dial, and a line saying what it does. The ask
+   composer stays the page's primary control and keeps the filled send button. */
+.findwrap{margin:16px 0 0}
+form#ff{display:block;margin:0}
+.findwrap .field{border-radius:14px;padding:4px 7px 4px 13px}
+/* The ask composer keeps the page's only filled send button, so the door into the
+   wiki reads as the second act it is. */
+.findwrap button.sendbtn{background:var(--panel2);color:var(--acc);border:1px solid var(--line)}
+.findwrap button.sendbtn:hover{background:var(--panel);border-color:var(--acc)}
+input#fq{flex:1 1 auto;min-width:0;background:none;color:var(--txt);border:0;padding:9px 0;
+  margin:0;font:15px/1.4 var(--sans);outline:none}
+input#fq::placeholder{color:var(--dim);opacity:1}
+.findhint{color:var(--dim);font:11.5px/1.4 var(--sans);margin:6px 2px 0}
 select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
   border-radius:9px;padding:9px 8px;font:13px var(--sans)}
 select:focus{outline:none;border-color:var(--acc)}
@@ -592,6 +607,23 @@ details pre{background:var(--bg);border:1px solid var(--line);border-radius:10px
     </div>
     <div id="progress" class="progress hidden"><div class="psegs" id="psegs"></div><span id="pelapsed" class="pelapsed"></span></div>
   </section>
+  <!-- task-36: Mandal asked for this by name - 'a lexical search box (with voice),
+       sending to the wiki with search box pre-filled... the semantic search is fancy
+       and useful when you don't know what to look for, but slow and unreliable when
+       you do'. It is a DOOR: submitting it opens the wiki drawer with the drawer's own
+       field already filled in and its results already listed, on the drawer's own
+       /rules/find route. No second pipeline, no model call. -->
+  <section class="findwrap">
+    <form id="ff">
+      <div class="field">
+        <input id="fq" type="search" spellcheck="false" autocomplete="off"
+               placeholder="Find a rule by name">
+        <button type="button" id="fmic" class="mic" title="Find by voice" aria-label="Find by voice"></button>
+        <button id="fgo" type="submit" class="sendbtn"></button>
+      </div>
+    </form>
+    <p class="findhint" id="findhint">Opens the wiki with the search already filled in.</p>
+  </section>
   <div id="intro">
     <!-- Finding a rule by name is one act; browsing the whole book is the other.
          The three books are one tap away, not hidden behind the drawer button. -->
@@ -682,6 +714,10 @@ var I18N = {
     placeholder: 'Ask a rules question — e.g. can a unit shoot after it Fell Back?',
     ask: 'Ask',
     voice: 'Voice',
+    findPlaceholder: 'Find a rule by name',
+    find: 'Find',
+    findVoice: 'Find by voice',
+    findHint: 'Opens the wiki with the search already filled in.',
     langTitle: 'Page and answer language',
     keyMissingStatus: 'a key is not set — the corpus can be searched but not answered',
     statusAskFirst: 'Ask a question first.',
@@ -895,6 +931,10 @@ var I18N = {
   fr: {
     navparse: 'Parseur',
     placeholder: 'Posez une question de règles — ex. une unité peut-elle tirer après avoir battu en retraite ?',
+    findPlaceholder: 'Trouver une règle par son nom',
+    find: 'Trouver',
+    findVoice: 'Trouver à la voix',
+    findHint: 'Ouvre le wiki avec la recherche déjà remplie.',
     ask: 'Demander',
     voice: 'Voix',
     langTitle: 'Langue de la page et de la réponse',
@@ -1252,6 +1292,11 @@ function applyLang() {
   var q = $('#q'); if (q) q.setAttribute('placeholder', t('placeholder'));
   var go = $('#go'); if (go) paintSend(go, t('ask'));
   var mb = $('#mic'); if (mb) paintMic(mb, t('voice'));
+  // task-36: the find box's own four strings, so the box is not English on a French page.
+  var fq = $('#fq'); if (fq) fq.setAttribute('placeholder', t('findPlaceholder'));
+  var fgo = $('#fgo'); if (fgo) paintSend(fgo, t('find'));
+  var fmic = $('#fmic'); if (fmic) paintMic(fmic, t('findVoice'));
+  var fh = $('#findhint'); if (fh) fh.textContent = t('findHint');
   var ls = $('#lang'); if (ls) ls.setAttribute('title', t('langTitle'));
   var rt = $('#retention'); if (rt) rt.textContent = t('retention');
   var fr = $('#footrepo'); if (fr) { fr.title = t('footRepo'); fr.setAttribute('aria-label', t('footRepo')); }
@@ -3211,6 +3256,35 @@ function wireVoice(mic, box, locale, grow) {
 wireVoice(document.getElementById('mic'), document.getElementById('q'), function () {
   return LANG === 'fr' ? 'fr-FR' : 'en-GB';
 }, growQuestion);
+
+// task-36: the find box's microphone is the SAME voice path and the same language
+// switch, because it is the same reader on the same phone. What differs is the intent:
+// this box wants a NAME, not a question, and the server-side transcription prompt is
+// already the right one for that - it carries the 40k glossary and says 'use the
+// official English term for every game term the glossary lists' and 'if a name is not
+// in the glossary, keep the sound you heard; never replace a name with a common word
+// that looks like it'. There is no per-box hint parameter in transcribeClip, so the
+// intent is carried by the box's own placeholder and labels rather than by a second
+// transcription prompt, which would change what the model hears with no measurement
+// behind it. The grow callback is a no-op: this field is one line by design.
+wireVoice(document.getElementById('fmic'), document.getElementById('fq'), function () {
+  return LANG === 'fr' ? 'fr-FR' : 'en-GB';
+}, function () {});
+
+// The submit is a door into the drawer, not a second search: the drawer fills its own
+// field and runs its own /rules/find. A refused or empty value leaves the reader in the
+// box they were already in.
+(function wireFind() {
+  var form = document.getElementById('ff');
+  if (!form) return;
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var box = document.getElementById('fq');
+    var name = box ? String(box.value || '').trim() : '';
+    if (!name) { if (box) box.focus(); return; }
+    if (window.WIKI_SURFACE_API && window.WIKI_SURFACE_API.find) window.WIKI_SURFACE_API.find(name);
+  });
+})();
 
 // --- asking -----------------------------------------------------------------
 var busy = false;

@@ -29,6 +29,21 @@ ok('(J) no document.write and no second body renderer', js.body.indexOf('documen
 try { new Function(js.body); ok('(J) the script compiles in a real JS engine', true); } catch (e) { ok('(J) the script compiles in a real JS engine', false); }
 ok('(J) the adapter is not a client: it holds no TOC_JS-style string', fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.mjs'), 'utf8').indexOf('TOC_JS') === -1);
 
+// (K) task-36: the landing page's find box enters through the drawer's own door.
+// The page types a name and calls find(); the DRAWER owns the field, the search and
+// the route, so there is no second pipeline and no second endpoint to keep in step.
+ok('(K) the surface exposes find for the landing page', js.body.indexOf('find: function (q)') !== -1);
+ok('(K) find opens the drawer', /find: function \(q\)[\s\S]{0,700}drawerOpen\(true\)/.test(js.body));
+ok('(K) find fills the drawer own search field', /find: function \(q\)[\s\S]{0,700}\$\('sv-filter'\)/.test(js.body) && /find: function \(q\)[\s\S]{0,700}box\.value = name/.test(js.body));
+ok('(K) find runs the drawer own search', /find: function \(q\)[\s\S]{0,900}runSearch\(name\)/.test(js.body));
+// The index draw would replace the hits, so the search must wait for it: drawerOpen
+// returns openIndex()'s promise and find chains on it. Both halves are pinned.
+ok('(K) drawerOpen returns the index promise', /if \(want\) \{ var opened = openIndex\(\); searchLater\(\); return opened; \}/.test(js.body));
+ok('(K) and find chains the search on it', /Promise\.resolve\(drawerOpen\(true\)\)\.then/.test(js.body));
+// The only route either box uses.
+ok('(K) the search route is still the drawer single /rules/find', js.body.indexOf("var FIND = CFG.find || '/rules/find'") !== -1 && js.body.indexOf('FIND + ') !== -1);
+ok('(K) and find adds no endpoint of its own', !/find: function \(q\)[\s\S]{0,900}fetch\(/.test(js.body));
+
 // (C) no tap lands on an empty pane: every leaf node in a branch payload has rows.
 const payloadDir = dataDir();
 const branches = JSON.parse(fs.readFileSync(path.join(payloadDir, 'index.json'), 'utf8')).branches;

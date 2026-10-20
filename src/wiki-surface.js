@@ -296,7 +296,11 @@ function rowDisplay(headingOrParts) {
     document.body.classList.toggle('sv-drawer-open', !!want);
     if (t) t.setAttribute('aria-expanded', want ? 'true' : 'false');
     try { localStorage.setItem(DRAWER_KEY, want ? '1' : '0'); } catch (e) {}
-    if (want) { openIndex(); searchLater(); }
+    // task-36: the promise matters to the landing page's find box. openIndex() draws
+    // the tree when its fetch lands, which would overwrite a search's hits if the
+    // search ran first, so a caller that wants to fill the field and search has to
+    // wait for it. Returning it changes nothing for the toggle.
+    if (want) { var opened = openIndex(); searchLater(); return opened; }
     else hideDrawerRecord();
   }
   function drawerWanted() { try { return localStorage.getItem(DRAWER_KEY) === '1'; } catch (e) { return false; } }
@@ -1859,6 +1863,24 @@ function devPanel(f, state, ctx) {
     // task-44: the settings sheet's Legends switch, and the state it paints.
     setLegends: setLegends,
     legendsOn: legendsOn,
+    // task-36: the landing page's find box. A door, not a second pipeline: it opens the
+    // drawer, puts the name in the drawer's OWN field and runs the drawer's OWN search,
+    // which is /rules/find - the only route either box uses, with no model call. The
+    // search waits for the index load, because that draw would otherwise replace the
+    // hits, and it is the undebounced path: the reader already pressed a button.
+    find: function (q) {
+      var name = String(q == null ? '' : q).trim();
+      if (!name) return false;
+      ensureChrome();
+      var box = $('sv-filter');
+      if (box) box.value = name;
+      state.filter = name.toLowerCase();
+      Promise.resolve(drawerOpen(true)).then(function () {
+        runSearch(name);
+        if (box) { try { box.focus(); } catch (e) { /* no focus in this browser */ } }
+      });
+      return true;
+    },
   };
   window.WIKI_SURFACE_LOADED = true;
   }
