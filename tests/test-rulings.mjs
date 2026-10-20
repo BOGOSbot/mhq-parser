@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { readAllCorpus, csvQuotedRows, buildRulingsCorpus, deliveredSections } from '../src/rules-corpus.mjs';
 import { wikiTree } from '../src/wiki-toc.mjs';
 import { recordBody, rulingBody } from '../src/wiki-cards.mjs';
+import { looksFrench } from '../src/lang-detect.mjs';
 
 // The card escapes the text it puts in HTML; the French is full of apostrophes,
 // so a plain indexOf on the raw string would fail on the escaping, not on the
@@ -68,6 +69,23 @@ ok('the default keeps the French and hides the English until the reader chooses 
 ok('a record with no translation falls back to the French and says so', (function () {
   const html = rulingBody({ id: 'feq11-x', text: 'Le texte francais' }, 'en');
   return html.indexOf('Le texte francais') !== -1 && html.indexOf('No English translation yet') !== -1;
+})());
+// task-41: 120 of the 154 rulings have no English version and their SOURCE is English
+// (the WTC writes in English), so the pane labelled French held English text and a
+// screen reader read it as French. The source is labelled as what it is.
+ok('an English source is not printed as French', (function () {
+  const html = rulingBody({ id: 'wtc11-x', text: 'The rules for Sequencing in the Core Rules are only used when more than 1 reaction would happen.' });
+  return html.indexOf('lang="en"') !== -1 && html.indexOf('lang="fr"') === -1 && html.indexOf('source is English') !== -1;
+})());
+ok('a French source keeps its French pane and the missing-translation note', (function () {
+  const html = rulingBody({ id: 'feq11-y', text: 'Lorsqu’une unité est choisie pour tirer, elle peut le faire.' });
+  return html.indexOf('lang="fr"') !== -1 && html.indexOf('No English translation yet') !== -1 && html.indexOf('source is English') === -1;
+})());
+ok('and the real corpus splits the way the audit counted it', (function () {
+  const delivered = rulings.filter(r => !r.provenance || !r.provenance.source_id || true);
+  const noEn = delivered.filter(r => !(r.text_en && String(r.text_en).trim()));
+  const english = noEn.filter(r => !looksFrench(r.text));
+  return noEn.length === 120 && english.length >= 110 && english.length <= 120;
 })());
 const csvWtc = new Map(csvQuotedRows(fs.readFileSync(path.join(STAGE, 'wtc-11-faq-1.0.normalised.csv'), 'utf8')).map(r => [r.id, r.text]));
 const csvFeq = new Map(csvQuotedRows(fs.readFileSync(path.join(STAGE, 'feq-11-faq.normalised.csv'), 'utf8')).map(r => [r.id, r.text]));

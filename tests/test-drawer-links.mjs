@@ -29,6 +29,9 @@ ok('the drawer has a record panel', /function drawerPanel\(\)/.test(surface) && 
 ok('back pops the stack, and the last pop returns to the tree', /function drawerBack\(\)/.test(surface) && /function setDepth\(n\)/.test(surface) && /stack\.pop\(\)/.test(surface) && /hideDrawerRecord\(\)/.test(surface));
 ok('the tree keeps its place across the chain', /state\.treeScroll = tree\.scrollTop/.test(surface) && /tree\.scrollTop = state\.treeScroll/.test(surface));
 ok('the handler is wired at boot', /wireDrawerLinks\(\);/.test(surface));
+// task-41: the record's own anchors - the outline (wb-) and the unit card's index (wc-)
+// - are kept by the same handler: the page's hash router would empty the panel.
+ok('the drawer keeps the record\u2019s own anchors', /\^#\(\?:wb\|wc\)-\\d\+\$/.test(surface) && /scrollIntoView\(\{ block: 'start' \}\)/.test(surface));
 ok('closing the drawer returns to the tree', /else hideDrawerRecord\(\);/.test(surface));
 
 ok('the panel covers the tree while reading', /\.sv-drawer\.sv-reading \.sv-filter,\.sv-drawer\.sv-reading \.sv-tree\{display:none\}/.test(css));

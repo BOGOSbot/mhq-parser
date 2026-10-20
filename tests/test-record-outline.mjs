@@ -49,6 +49,17 @@ ok('a table block is not split at all', n4.length === 1 && titles(n4).length ===
 const n5 = splitBlocks('- first bullet\n- second bullet');
 ok('a bullet run stays one block', n5.length === 1 && titles(n5).length === 0);
 
+// --- the unit card's own index (task-41, the second half) ---------------------
+// A datasheet is 2.7 screens and the reader who came for one ability landed at the
+// top of it. The sections keep their headings and take anchors, and the index above
+// them is one tap to the part they came for.
+const cardRec = all.find(r => r.kind === 'unitrules');
+const cardHtml = recordBody(cardRec, { href: id => '#' + id });
+const cardHrefs = [...cardHtml.matchAll(/href="#(wc-\d+)"/g)].map(m => m[1]);
+ok('a unit card carries a section index', cardHtml.indexOf('wcard-index') !== -1 && cardHrefs.length >= 5);
+ok('every index entry points at a section in the same fragment', cardHrefs.every(h => cardHtml.indexOf('id="' + h + '"') !== -1));
+ok('and every section keeps its own heading', (cardHtml.match(/class="wcard-h" id="wc-\d+"/g) || []).length === cardHrefs.length);
+
 // --- the counts, recomputed over the shipped corpus ---------------------------
 const pool = [];
 for (const h of ['rules', 'factions', 'rulings']) for (const r of readAllCorpus(h)) if (isDelivered(r)) pool.push(r);

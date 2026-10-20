@@ -23,6 +23,7 @@
 import { buildUnitCard, resolveRecordLinks } from './unit-card.mjs';
 // task-66: one escaper and one linkifier for the whole card and prose path.
 import { linkify, esc } from './wikilinks.mjs';
+import { looksFrench } from './lang-detect.mjs';
 // The corpus's own link block and the page's terminal 'SEE ALSO' list ride inside the
 // stored text (they are what the vector sees). Neither is the reader's text: the link
 // block is stripped exactly from the record's own links array (task-72), and the SEE
@@ -116,6 +117,11 @@ export const CARD_CSS = [
   '.wcard-ability-name { font-weight:600; }',
   '.wcard-ability-text { margin:.15rem 0 0; }',
   '.wcard-ability-link { display:inline-block; margin-top:.2rem; font-size:.82rem; }',
+  // task-41: the unit card's own section index - the same idea as the record outline,
+  // for the class that already has structure and no way to reach a part of it.
+  '.wcard-index { margin:0 0 .8rem; padding:.4rem .65rem; border:1px solid var(--line, rgba(128,128,128,.2)); border-radius:10px; background:var(--chip, rgba(128,128,128,.06)); }',
+  '.wcard-index ol { display:flex; flex-wrap:wrap; gap:.2rem .9rem; margin:0; padding-left:1.1rem; }',
+  '.wcard-index a { font-size:.88rem; }',
   // task-41: the record's own outline, and the sections it points at. Same paper as the
   // rest: a quiet list at the top so a 2,000-character rule has something to aim at.
   '.woutline { margin:0 0 .6rem; padding:.4rem .65rem; border:1px solid var(--line, rgba(128,128,128,.2)); border-radius:10px; background:var(--chip, rgba(128,128,128,.06)); }',
@@ -324,7 +330,22 @@ function cardHtml(card, o) {
     parts.push('<p class="wcard-foot">' + esc(foot.join(' \u00b7 '))
       + (card.url ? (foot.length ? ' \u00b7 ' : '') + '<a href="' + esc(card.url) + '">Wahapedia</a>' : '') + '</p>');
   }
-  return '<section class="wcard" data-card="unit">' + parts.join('') + '</section>';
+  // task-41: a datasheet or unitrules card is 2.7 screens and the reader who came for
+  // one ability landed at the top of it. Every section keeps its heading and takes an
+  // anchor, and the index above them is one tap to the part they came for. Additive:
+  // nothing is hidden, no section is collapsed behind a click.
+  let wc = 0;
+  const sections = [];
+  const body = parts.join('').replace(/<h2 class="wcard-h">([\s\S]*?)<\/h2>/g, function (m, title) {
+    wc += 1;
+    sections.push({ id: 'wc-' + wc, title: title });
+    return '<h2 class="wcard-h" id="wc-' + wc + '">' + title + '</h2>';
+  });
+  const index = sections.length > 2
+    ? '<nav class="wcard-index" aria-label="Sections of this unit"><ol>'
+      + sections.map(s => '<li><a href="#' + s.id + '">' + s.title + '</a></li>').join('') + '</ol></nav>'
+    : '';
+  return '<section class="wcard" data-card="unit">' + index + body + '</section>';
 }
 
 // --- the record body --------------------------------------------------------
@@ -391,6 +412,15 @@ export function rulingBody(record, lang, opts) {
   // task-29: the banner carries THE one translation line; a second commentary in the
   // body would be exactly what Mandal asked to remove. A missing English version is
   // a different fact and still says so.
+  // task-41: 120 of the 154 rulings have no English version AND their source is
+  // English (the WTC writes in English), so the pane labelled French held English text
+  // and a screen reader read it as French. The source is labelled as what it is.
+  const sourceIsFrench = hasEn || looksFrench(record && record.text);
+  if (!sourceIsFrench) {
+    const only = '<p class="wlang-note">This ruling\u2019s source is English \u2014 there is no French version.</p>';
+    const body = lang === 'en' ? en : proseHtml(record && record.text, Object.assign({ lang: 'en' }, proseOpts));
+    return '<div class="wlang"><div class="wlang-body wlang-en" lang="en">' + body + only + '</div></div>';
+  }
   const note = hasEn
     ? ''
     : '<p class="wlang-note">No English translation yet \u2014 showing the French source.</p>';

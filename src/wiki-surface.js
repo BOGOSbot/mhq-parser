@@ -855,10 +855,24 @@ function rowDisplay(headingOrParts) {
     if (!d || d.svLinksWired) return;
     d.svLinksWired = true;
     d.addEventListener('click', function (ev) {
-      var node = ev.target, a = null;
+      var node = ev.target, a = null, own = null;
       while (node && node !== d) {
-        if (node.tagName === 'A' && node.classList && node.classList.contains('wlink')) { a = node; break; }
+        if (node.tagName === 'A' && node.getAttribute) {
+          if (node.classList && node.classList.contains('wlink')) { a = node; break; }
+          // task-41: the record's own anchors - the outline above a wall (wb-) and the unit
+          // card's section index (wc-). They are inside the drawer, and the page's hash
+          // router would take the tap for a record address and empty the panel, so the
+          // drawer keeps them: the section is scrolled to, and the address never changes.
+          var h = String(node.getAttribute('href') || '');
+          if (/^#(?:wb|wc)-\d+$/.test(h)) { own = h.slice(1); break; }
+        }
         node = node.parentNode;
+      }
+      if (own) {
+        ev.preventDefault();
+        var target = document.getElementById(own);
+        if (target && target.scrollIntoView) target.scrollIntoView({ block: 'start' });
+        return;
       }
       if (!a) return;
       var slug = String(a.getAttribute('href') || '').replace(/^#/, '');

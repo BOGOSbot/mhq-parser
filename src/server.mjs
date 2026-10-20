@@ -883,10 +883,9 @@ function wikiFileFor(id) {
 
 // A cheap guess, only used when the client does not say. The page sends its
 // own answer, because the voice control already knows which language it
-// listened for.
-export function looksFrench(text) {
-  return /[àâçéèêëîïôûùüÿœ]|\b(le|la|les|des|une|un|est|que|qui|pour|avec|sur|dans|je|peut|doit|figurine|unité|règle|test|combien)\b/i.test(String(text));
-}
+// listened for. It lives in its own module because the record renderer labels a
+// ruling's own pane with it too (task-41).
+export { looksFrench } from './lang-detect.mjs';
 
 // A thumb on one answer. The vote is written into the trace record it belongs to,
 // by question id, and only when traces are on: the record exists whether or not
