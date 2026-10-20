@@ -70,7 +70,10 @@ ok('the phonetic map is built from the heading projection', phoneticIndexSize(ph
 // The route says how a row was found: a phonetic row carries the heard spelling,
 // so the drawer (and this test) can tell a misheard name from a literal match.
 const SERVER = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
-ok('the find route serves the phonetic flag and the heard spelling', /phonetic: r\.phonetic === true, heard: r\.heard \|\| \[\]/.test(SERVER) && /total: \(out\.total \|\| 0\) \+ \(out\.phonetic \|\| 0\)/.test(SERVER));
+// task-35: the route's row shape moved into findRows(), so the flag and the heard
+// spelling are pinned where they now live, and the route is pinned to that function.
+const HEADER = fs.readFileSync(path.join(ROOT, 'src', 'header-index.mjs'), 'utf8');
+ok('the find route serves the phonetic flag and the heard spelling', /phonetic: r\.phonetic === true/.test(HEADER) && /heard: r\.heard \|\| \[\]/.test(HEADER) && /findRows\(q, \{ slugs: surfaceSlugMap\(\), delivered: deliveredIds\(\), cap: 40 \}\)/.test(SERVER));
 
 // The real corpus, not a toy: the two traps the note names.
 const trapIndex = phoneticIndex();

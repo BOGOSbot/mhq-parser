@@ -36,7 +36,7 @@ import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
+import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, deliveredIds, dontKnowAnswer, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { MAX_VOICE_BYTES, transcribeClip, voiceFormatOf } from './voice.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 // task-78: the asset route reads the corpus's asset tree; the import is its own line so
@@ -44,7 +44,7 @@ import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceS
 import { corpusDir } from './rules-corpus.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
 import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
-import { lookupRecord, searchHeadings } from './header-index.mjs';
+import { findRows, lookupRecord, searchHeadings } from './header-index.mjs';
 import { devHtml, devState } from './dev-report.mjs';
 // Slice 2, additive: the dev route and the surface's static files. The flip in
 // slice 4 wires the surface into rules.html; nothing here touches it.
@@ -1038,21 +1038,15 @@ async function handleRulesLookup(req, res, u) {
 async function handleRulesFind(req, res, u) {
   const q = String((u && u.searchParams.get('q')) || '').trim();
   let out;
-  try { out = searchHeadings(q, { limit: 40 }); }
+  try {
+    // task-35: every delivered match becomes a row (it carries its id, and the drawer
+    // opens a slugged record from the payload or a slugless one from its own page), and
+    // a filtered record is not in the product's search at all. The count is the rows'
+    // own count, so the drawer can never report a match it cannot show.
+    out = findRows(q, { slugs: surfaceSlugMap(), delivered: deliveredIds(), cap: 40 });
+  }
   catch (e) { return fail(res, 500, 'search failed: ' + String((e && e.message) || e)); }
-  const slugs = surfaceSlugMap();
-  const rows = (out.rows || [])
-    .map(r => ({
-      slug: slugs.get(r.id) || '', title: r.title, kind: r.kind, tier: r.tier, crumbs: r.crumbs,
-      // task-18: a row the phonetic leg found carries how it was heard. The
-      // drawer renders it like any other row; the flag is there for the reader
-      // (and for the test) to see that a misheard name, not a literal match,
-      // is what answered.
-      phonetic: r.phonetic === true, heard: r.heard || [],
-    }))
-    .filter(r => r.slug);
-  // The pre-filter count, so a capped list can say how many matched in all.
-  return json(res, 200, { ok: true, q, total: (out.total || 0) + (out.phonetic || 0) || rows.length, rows });
+  return json(res, 200, { ok: true, q, total: out.total, rows: out.rows });
 }
 
 // task-17: the voice route. MediaRecorder audio in, one English question out.

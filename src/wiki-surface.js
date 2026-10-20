@@ -356,8 +356,12 @@ function rowDisplay(headingOrParts) {
       b.appendChild(meta);
       // A row opens the record it names, over the tree, with the same back stack
       // a link inside a record uses: finding a rule and reading it are one tap.
+      // task-35: a slugged record comes from the wiki payload; a delivered record with
+      // no tree address (a faction rule, a stratagem, a unitrules half) opens from the
+      // row itself, because it has a page either way. A row is never a dead end.
       b.addEventListener('click', function () {
-        recordBySlug(r.slug).then(function (rec) { if (rec) showInDrawer(rec, true); });
+        if (r.slug) { recordBySlug(r.slug).then(function (rec) { if (rec) showInDrawer(rec, true); }); return; }
+        showInDrawer({ id: r.id, kind: r.kind, slug: '', title: r.title, heading: r.title }, true);
       });
       box.appendChild(b);
     });

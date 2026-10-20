@@ -253,6 +253,38 @@ function rankCmp(a, b) {
 // is the same in-memory projection, so a search costs no payload, no model and
 // no embedding: on a phone it is a keypress and a round trip to our own server.
 // A mention (a sentence or FAQ heading) never appears: only canonical entries.
+// task-35: the drawer's search rows, in one function so the count and the rows cannot
+// disagree. Every DELIVERED match becomes a row and carries its id: the drawer opens a
+// slugged record from the payload and a slugless one (a faction rule, a stratagem, a
+// unitrules half) from its own page, so a row the reader cannot open is not a result.
+// A filtered record (Legends, the pack line) is not in the product's search at all -
+// Mandal cut it for the search cost, and the count must not advertise it either.
+// total is the delivered match count, rows is the capped list the drawer shows.
+export function findRows(query, opts) {
+  const o = opts || {};
+  const cap = Math.max(Number(o.cap) || 40, 1);
+  const out = searchHeadings(query, { limit: 100 });
+  const slugs = o.slugs || new Map();
+  const delivered = o.delivered || null;
+  const matched = (out.rows || []).filter(function (r) { return !delivered || delivered.has(String(r.id)); });
+  return {
+    q: String(query == null ? '' : query),
+    total: matched.length,
+    rows: matched.slice(0, cap).map(function (r) {
+      return {
+        id: r.id,
+        slug: slugs.get(r.id) || '',
+        title: r.title,
+        kind: r.kind,
+        tier: r.tier,
+        crumbs: r.crumbs,
+        phonetic: r.phonetic === true,
+        heard: r.heard || [],
+      };
+    }),
+  };
+}
+
 export function searchHeadings(query, opts) {
   const o = opts || {};
   const limit = Math.min(Math.max(Number(o.limit) || 40, 1), 100);

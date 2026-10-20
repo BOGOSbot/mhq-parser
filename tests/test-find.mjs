@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { searchHeadings } from '../src/header-index.mjs';
+import { findRows, searchHeadings } from '../src/header-index.mjs';
 
 // The drawer's search: finding an entry by name, across every book, from the
 // heading projection the lookup router already keeps in memory. These are the
@@ -36,12 +36,26 @@ const server = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
 const client = fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.js'), 'utf8');
 const css = fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.css'), 'utf8');
 ok('the route exists', server.indexOf("u.pathname === '/rules/find'") !== -1 && server.indexOf('handleRulesFind') !== -1);
-ok('the route answers from the heading index, with the payload slug', /searchHeadings\(q, \{ limit: 40 \}\)/.test(server) && /slugs = surfaceSlugMap\(\)/.test(server) && /slug: slugs.get\(r.id\)/.test(server));
-ok('a row without a slug is dropped, because it cannot be opened', /\.filter\(r => r\.slug\)/.test(server));
+// task-35: the count and the rows are one function's output. Every delivered match is a
+// row and carries its id; a filtered record is not in the search at all, so the drawer
+// can never report a match it cannot show.
+const rowsFor = q => findRows(q, {});
+const unitRows = rowsFor('tyrannofex');
+ok('every row carries the id it opens by', unitRows.rows.length >= 1 && unitRows.rows.every(r => !!r.id));
+ok('the count is the rows it can show', unitRows.total === unitRows.rows.length);
+const keepOne = new Set(unitRows.rows.slice(0, 1).map(r => r.id));
+const filteredOut = findRows('tyrannofex', { delivered: keepOne });
+ok('a filtered record leaves both the rows and the count', filteredOut.total === 1 && filteredOut.rows.length === 1 && filteredOut.rows[0].id === [...keepOne][0]);
+const capped = findRows('battle', { cap: 2 });
+ok('a capped list still counts the whole match', capped.rows.length <= 2 && capped.total >= 3);
+ok('a slug is carried when the payload has one, and its absence is not a drop', rowsFor('voice of command').rows.every(r => typeof r.slug === 'string' && !!r.id));
+ok('the route answers through findRows, with the payload slug and the delivered set', /findRows\(q, \{ slugs: surfaceSlugMap\(\), delivered: deliveredIds\(\), cap: 40 \}\)/.test(server));
+ok('the route no longer drops a row for having no slug', !/\.filter\(r => r\.slug\)/.test(server));
 ok('the client searches our route', client.indexOf("CFG.find || '/rules/find'") !== -1);
 ok('typing debounces into one request', /setTimeout\(function \(\) \{ runSearch\(q\); \}, 180\)/.test(client));
 ok('a stale answer cannot overwrite a newer query', /if \(state.searchQ !== q\) return;/.test(client));
 ok('a hit opens the record it names', /recordBySlug\(r.slug\)\.then\(function \(rec\) \{ if \(rec\) showInDrawer\(rec, true\); \}\)/.test(client));
+ok('and a row with no slug opens from the row itself', client.indexOf("showInDrawer({ id: r.id, kind: r.kind, slug: '', title: r.title, heading: r.title }, true)") !== -1);
 ok('the empty state offers the other act', client.indexOf('Ask it instead') !== -1);
 ok('the field says what it searches', client.indexOf("filter.placeholder = 'Find a rule, unit or stratagem'") !== -1);
 
