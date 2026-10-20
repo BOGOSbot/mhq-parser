@@ -99,7 +99,12 @@ export const CARD_CSS = [
   '.wcard-table { width:100%; border-collapse:collapse; font-size:.82rem; table-layout:fixed; }',
   '.wcard-table th, .wcard-table td { border-bottom:1px solid var(--line); padding:.3rem .2rem; text-align:center; vertical-align:top; overflow-wrap:anywhere; }',
   '.wcard-table thead th { font-weight:600; color:var(--dim); font-size:.72rem; letter-spacing:.03em; }',
-  '.wcard-table td:first-child, .wcard-table th[scope=row], .wcard-table th[scope=rowgroup] { text-align:left; }',
+  // task-39: the name cell is a th[scope=row] (name as a first column) or a
+  // th[scope=rowgroup] (name on its own row). A td:first-child is a VALUE cell - the M
+  // of the models row - and must be centred like every other stat.
+  '.wcard-table th[scope=row], .wcard-table th[scope=rowgroup] { text-align:left; }',
+  // task-39: the base size is one value ('120x92'), never a broken token.
+  '.wcard-models td:last-child { white-space:nowrap; }',
   '.wcard-table th[scope=rowgroup] { font-weight:600; color:var(--ink); }',
   '.wcard-note { font-weight:400; color:var(--dim); }',
   '.wcard-abilitylist { list-style:none; padding-left:0; margin:.35rem 0; }',
@@ -481,7 +486,29 @@ export function proseHtml(text, opts) {
 // empty Type cannot be told from a missing field, so they take a layout only when the
 // content actually carries the ability rows (MAXIMUM DISTANCE / WHEN / EFFECT).
 const SHAPE_ROWS = ['MAXIMUM DISTANCE', 'WHEN', 'TARGET', 'EFFECT'];
-const SHAPE_ROW_LINE = /^\s*(?:Type|CP|Maximum Distance|When|Target|Effect)\s*:/i;
+// task-40: a detachment's own header labels are rows too, so their line leaves the prose.
+const SHAPE_ROW_LINE = /^\s*(?:Type|CP|Maximum Distance|When|Target|Effect|Detachment points|Force disposition)\s*:/i;
+// task-40: the detachment header, in the export's own labels. The two pairs are fused
+// onto one line with 2+ spaces in 252 of 274 detachments; the same helper reads one pair
+// per line when the export writes it that way.
+const DETACHMENT_HEADER = ['Detachment points', 'Force disposition'];
+function headerPairs(t) {
+  const out = [];
+  const seen = new Set();
+  for (const line of String(t == null ? '' : t).split(/\r?\n/)) {
+    const s = line.trim();
+    if (!s || !/^[A-Z][A-Za-z ]{2,30}:\s*\S/.test(s)) continue;
+    for (const part of s.split(/\s{2,}(?=[A-Z][A-Za-z ]{2,30}:\s)/)) {
+      const m = /^([A-Z][A-Za-z ]{2,30}):\s*(.+)$/.exec(part.trim());
+      if (!m) continue;
+      const k = m[1].trim();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push([k, m[2].trim()]);
+    }
+  }
+  return out;
+}
 function shapeGrab(text, label, inline) {
   // Type and CP decide the family, so they must start a line: an inline match would
   // file datasheet prose as an ability. The row labels may sit mid-line after the
@@ -513,7 +540,7 @@ function turnPhaseRows(t) {
   return out;
 }
 
-export function recordShape(text, heading) {
+export function recordShape(text, heading, kindOf) {
   const t = String(text == null ? '' : text);
   const type = shapeGrab(t, 'Type');
   const cp = shapeGrab(t, 'CP');
@@ -536,6 +563,21 @@ export function recordShape(text, heading) {
   // The label must be one the record actually carries: its own Type, or the phase its
   // heading chains to. A record with no Type is not given an invented 'Ability'.
   if (type === '' && cp === '' && strictRows) return { family: 'ability', type: phaseLabel(heading), cp: '', rows: rows };
+  // task-40: the detachment header (points, force disposition) and a CSV army rule's
+  // Type/Turn/Phase become the same .svl-rows table a stratagem gets, so the reader can
+  // find the cost and the disposition by eye. The body stays prose; the structural split
+  // of the body is task-41.
+  const kind = String(kindOf == null ? '' : kindOf).toLowerCase();
+  if (kind === 'detachment') {
+    const header = headerPairs(t).filter(function (r) { return DETACHMENT_HEADER.indexOf(r[0]) !== -1; });
+    if (header.length) return { family: 'header', type: '', cp: '', rows: header };
+  }
+  if (kind === 'faction-rule') {
+    const header = turnPhaseRows(t);
+    const ruleType = shapeGrab(t, 'Type');
+    if (ruleType) header.unshift(['Type', ruleType]);
+    if (header.length) return { family: 'header', type: '', cp: '', rows: header };
+  }
   return null;
 }
 // task-89: 'Turn:   Phase: Ability "Shoot"' is CSV navigation metadata, not a rule.
@@ -589,7 +631,7 @@ function legendOf(text, heading, kind) {
 }
 function shapeHtml(text, opts) {
   const csv = !!opts && CSV_SOURCES.indexOf(String(opts.csvSource || '')) !== -1;
-  const shape = recordShape(text, opts && opts.selfHeading);
+  const shape = recordShape(text, opts && opts.selfHeading, opts && opts.csvKind);
   // The builder's own label line ('NAME - Aeldari stratagem') is the heading the card
   // already carries: an echo (Mandal, 2026-10-18). Dropped for display only.
   const label = /^[^\n]*\s-\s[^\n]*(?:stratagem|ability|army rule|enhancement|detachment)\s*$/i;
@@ -615,9 +657,10 @@ function shapeHtml(text, opts) {
   if (!shape) return proseHtml(csv ? stripTurnPhase(stripCsvColumns(srcBefore)) : srcBefore, opts) + legendHtml + (srcAfter ? proseHtml(csv ? stripTurnPhase(stripCsvColumns(srcAfter)) : srcAfter, opts) : '');
   // task-89: the plain fallback - no head, no table, the CSV fragment gone, ALL CAPS styled.
   if (shape.family === 'ability-plain') return capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(srcBefore)), opts)) + legendHtml + (srcAfter ? capsHtml(proseHtml(stripTurnPhase(stripCsvColumns(srcAfter)), opts)) : '');
-  const head = shape.family === 'stratagem'
+  // task-40: a header-only family (detachment, army rule) has no type chip of its own.
+  const head = shape.family === 'header' ? '' : (shape.family === 'stratagem'
     ? '<div class="svl-head svl-strat"><span class="svl-cp">' + esc(shape.cp) + '</span><span class="svl-type">' + esc(shape.type) + '</span></div>'
-    : '<div class="svl-head svl-ability">' + (shape.type ? '<span class="svl-type">' + esc(shape.type) + '</span>' : '') + '</div>';
+    : '<div class="svl-head svl-ability">' + (shape.type ? '<span class="svl-type">' + esc(shape.type) + '</span>' : '') + '</div>');
   // task-92: the table takes the labels it models, and only those fragments leave the
   // prose. task-99: a remainder left on a line the table took CONTINUES the row it followed
   // ('... during this usage of this Stratagem: [IGNORES COVER], ...' continues EFFECT) - the
@@ -713,7 +756,11 @@ function seeAlsoHtml(kids, o) {
     const label = (k.num ? k.num + ' ' : '') + k.title;
     if (!k.kid) return '<p class="wseealso-miss">' + esc(label) + '</p>';
     const body = proseHtml(k.full, { selfId: o.selfId, href: o.href, cap: 40, selfHeading: k.kid.heading });
-    return '<details class="wseealso" open><summary>' + esc(label) + '</summary>' + body + '</details>';
+    // task-40: the children are records of their own, already reachable from the tree,
+    // so printing them open welds them into the parent (core-rules#Units-and-Models was
+    // 1,029 characters of its own text and 8,480 rendered). Closed by default: the
+    // reader opens the one they want.
+    return '<details class="wseealso"><summary>' + esc(label) + '</summary>' + body + '</details>';
   });
   return parts.length ? '<div class="wseealso-list">' + parts.join('') + '</div>' : '';
 }
@@ -743,7 +790,7 @@ export function recordBody(record, opts) {
   // 'stratagem' and had a stratagem card; its Type line says Movement Ability, and
   // Mandal's point is that it is not a stratagem, so the layout wins over the card.
   // Only records the classifier claims are affected; every other card is untouched.
-  if (recordShape(text, record && record.heading)) {
+  if (recordShape(text, record && record.heading, record && record.kind)) {
     return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 40, selfHeading: record && record.heading, csvSource: record && record.source, csvKind: record && record.kind }) + tail;
   }
   const card = cardFor(record, o);

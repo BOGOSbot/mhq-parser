@@ -252,6 +252,14 @@ export function decodeEntities(s) {
 
 // Block ends become newlines, everything else becomes a space. Tables survive
 // as runs of cells rather than collapsing into one line of noise.
+// task-40: Wahapedia's CSV exports carry their page-template placeholders inline - '$FAQ$'
+// is the one that reaches us, standing where their page renders an FAQ link, and 39
+// records carried the literal marker into the reader's page (faction-rule#000008466 among
+// them). It is not rules text: named and stripped at the ingest, not at display.
+export function stripWahapediaMarkers(text) {
+  return String(text == null ? '' : text).replace(/\$[A-Z][A-Z0-9_]*\$/g, ' ');
+}
+
 export function htmlToText(html) {
   const text = String(html)
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -267,7 +275,10 @@ export function htmlToText(html) {
     .replace(/<div class="cruD([1-6])"><\/div>/gi, '$1')
     .replace(/<\/(p|div|li|tr|h[1-6]|table|ul|ol|blockquote|section|article)>/gi, '\n')
     .replace(/<[^>]+>/g, ' ');
-  return decodeEntities(text)
+  // task-40: Wahapedia's page-template placeholders ('$FAQ$') are not rules text, and
+  // the shape stage reads the same CSVs through its own clean() - so the strip lives in
+  // the converter both of them call, named and exported above.
+  return stripWahapediaMarkers(decodeEntities(text))
     .replace(/[ \t\u00a0]+/g, ' ')
     .replace(/ *\n */g, '\n')
     .replace(/\n{3,}/g, '\n\n')

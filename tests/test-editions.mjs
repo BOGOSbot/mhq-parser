@@ -17,10 +17,10 @@ t('every record carries a numeric edition', all.filter(r => !/^\d+$/.test(String
 // task-33: the 2026-10-19 export re-tags the 15 '<faction> (Warhammer Legends)' source
 // rows to edition 11, so edition 0 is down to the 121 records the export still calls
 // 0 (the Forge World / pack line) and edition 11 carries 7,267.
-t('the distribution (154 rulings and 19 ability definitions are edition 11 too; task-13 removed ten edition-11 records)', editionCounts(all), { 0: 121, 10: 3, 11: 7267 });
+t('the distribution (154 rulings and 19 ability definitions are edition 11 too; task-13 removed ten edition-11 records)', editionCounts(all), { 0: 120, 10: 3, 11: 7267 });
 // task-33: the Legends rows are edition 11 now, so the edition-0 set is the Forge World
 // pack alone - the Legends records are filtered by the name rule instead.
-t('edition 0 is the Forge World / pack line, every kind (task-33)', tally(all.filter(r => String(r.edition) === '0')), { datasheet: 41, unitrules: 80 });
+t('edition 0 is the Forge World / pack line, every kind (task-33; task-40: one part merged)', tally(all.filter(r => String(r.edition) === '0')), { datasheet: 41, unitrules: 79 });
 t('edition 10 is the two leftover 10th-edition datasheets and their half', tally(all.filter(r => String(r.edition) === '10')), { datasheet: 2, unitrules: 1 });
 // The join resolves by the record's own id, not by a name in its text:
 const fx = id => editionOf({ id: id, kind: String(id).split('#')[0] }, '11');
@@ -57,7 +57,7 @@ t('a normal stratagem is not', isLegendsRecord({ id: 'stratagem#000008931007', k
 // stratagems, 4 enhancements, 1 faction rule); 942 of them are edition 11, which is
 // exactly why the name rule exists - none is delivered.
 const legends = all.filter(isLegendsRecord);
-t('the adopted corpus has 959 Legends records and none is delivered', [legends.length, legends.filter(isDelivered).length], [959, 0]);
+t('the adopted corpus has 958 Legends records and none is delivered', [legends.length, legends.filter(isDelivered).length], [958, 0]);
 t('assignEditions stamps a whole list', assignEditions([{ id: 'datasheet#000000882', kind: 'datasheet' }], '11')[0].edition, '11');
 
 // --- Boarding Actions is out of scope ----------------------------------------

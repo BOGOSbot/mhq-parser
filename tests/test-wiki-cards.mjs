@@ -47,7 +47,8 @@ const modelBlock = dsHtml.slice(dsHtml.indexOf('wcard-models'), dsHtml.indexOf('
 const modelNames = (modelBlock.match(/<tr class="wcard-name"><th scope="rowgroup"/g) || []).length;
 t('a stat line per model', modelNames, c.models.length);
 ok('the model header carries the stats', ['M', 'T', 'Sv', 'W', 'Ld', 'OC'].every(k => dsHtml.indexOf('<th scope="col">' + k + '</th>') !== -1));
-ok('and the model values, escaped where they hold a quote', dsHtml.indexOf('<td>8&quot;</td>') !== -1 && dsHtml.indexOf('<td>40mm</td>') !== -1);
+// task-39: the base is one token in the column headed Base - '40', not '40mm'.
+ok('and the model values, escaped where they hold a quote', dsHtml.indexOf('<td>8&quot;</td>') !== -1 && dsHtml.indexOf('<td>40</td>') !== -1);
 ok('the ranged weapons table is headed Range/A/BS/S/AP/D', /Ranged weapons<\/h2><div class="wcard-scroll"><table class="wcard-table wcard-weapons"><thead><tr>(<th scope="col">(Range|A|BS|S|AP|D)<\/th>){6}<\/tr>/.test(dsHtml));
 // task-34: the range and the skill carry the game's marks now - 24" and 2+.
 ok('and holds the datasheet\'s own weapon with its stats', dsHtml.indexOf('Guardian Spear') !== -1 && dsHtml.indexOf('<td>24&quot;</td><td>2</td><td>2+</td><td>5</td><td>-1</td><td>2</td>') !== -1);
@@ -140,5 +141,34 @@ if (actions) {
 const indexed = proseHtml('Body line.\n\n- faction: faction-tyr\n- card: Some Card\n- Combat Disembark: the unit may disembark\n', {});
 ok('(85) a link-index line is not rendered', indexed.indexOf('faction-tyr') === -1 && indexed.indexOf('card: Some Card') === -1);
 ok('(85) a real content line that starts the same way is kept', indexed.indexOf('Combat Disembark') !== -1 && indexed.indexOf('Body line.') !== -1);
+
+// --- task-40 / task-39: the reading face, the closed children, the header rows --------
+// task-40: the record fragment is the surface with the most text on the page; it must
+// carry the rulebook face, not the chrome sans it used to inherit.
+const rulesHtml = (await import('node:fs')).readFileSync(new URL('../src/rules.html', import.meta.url), 'utf8');
+ok('the record fragment has the reading face', /\.recfrag\{[^}]*font-family:var\(--serif\)/.test(rulesHtml));
+ok('and the same face the dialog fallback uses', /\.rectext\{[^}]*font-family:var\(--serif\)/.test(rulesHtml));
+// task-40: a see-also child is a record of its own; printing it open welds it into the
+// parent (core-rules#Units-and-Models rendered 8,480 characters that way).
+const units = byIdAll.get('core-rules#Units-and-Models');
+if (units) {
+  const h = bodyOf(units);
+  ok('the see-also children print closed', h.indexOf('<details class="wseealso">') !== -1 && h.indexOf('<details class="wseealso" open>') === -1);
+  t('and every one of them is closed', (h.match(/<details class="wseealso" open>/g) || []).length, 0);
+}
+// task-39: the first value cell of the models row is a value (M), not a name column.
+ok('the name column is left-aligned by its scope, not by being the first cell', CARD_CSS.indexOf('.wcard-table th[scope=row], .wcard-table th[scope=rowgroup] { text-align:left; }') !== -1);
+ok('and no rule left-aligns a first value cell', CARD_CSS.indexOf('.wcard-table td:first-child') === -1);
+// task-39: the base is one token, never a broken value.
+ok('the base cell never wraps', CARD_CSS.indexOf('.wcard-models td:last-child { white-space:nowrap; }') !== -1);
+// task-40: a detachment header is the same row table a stratagem gets.
+const detach = byIdAll.get('detachment#000000862');
+if (detach) {
+  const h = recordBody(detach, { record: detach, csvSource: detach.source, csvKind: detach.kind });
+  ok('a detachment header renders as rows', h.indexOf('<table class="svl-rows">') !== -1);
+  ok('with the points row', h.indexOf('<th>Detachment points</th><td>1</td>') !== -1);
+  ok('and the force disposition row', h.indexOf('<th>Force disposition</th><td>Disruption</td>') !== -1);
+  ok('and the header line leaves the prose', h.indexOf('Detachment points: 1  Force disposition') === -1);
+}
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

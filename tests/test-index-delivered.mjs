@@ -22,11 +22,11 @@ t('an empty record is not delivered', isDelivered(null), false);
 // task-13 dropped ten rules-branch records: the core-stratagem copy of PULSE JET
 // MOVE (its definition now rides the Wazdakka Gutsmek datasheet) and the nine
 // Challenger mission stratagems (outside matched play).
-// task-33, the 2026-10-19 export with the Legends name rule: 7,391 corpus / 6,327
-// delivered / 1,064 filtered (959 Legends + 105 edition-0 records; the 942 Legends
-// records the export re-tagged to edition 11 are filtered by name).
-t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7391, 7391]);
-t('delivered is 6,327 and filtered is 1,064 (task-33: the export, Legends out)', [delivered.length, filtered.length], [6327, 1064]);
+// task-33, the 2026-10-19 export with the Legends name rule: 6,327 delivered / 1,063
+// filtered. task-40: the $FAQ$ marker leaves one ability's text, which merges one
+// edition-0 part back, so the corpus is 7,390.
+t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7390, 7390]);
+t('delivered is 6,327 and filtered is 1,063 (task-33 export, task-40 marker)', [delivered.length, filtered.length], [6327, 1063]);
 
 // --- the query path cannot return what the product does not deliver -----------
 const ids = deliveredIds();
@@ -39,12 +39,12 @@ ok('both query backends return through that filter', (src.match(/deliveredHits\(
 
 // --- the ingest plan skips the filtered records -------------------------------
 const dry = await ingest(null, { set: 'factions', dryRun: true });
-t('a dry-run faction ingest filtered exactly the 1,064', dry.filtered, 1064);
+t('a dry-run faction ingest filtered exactly the 1,063', dry.filtered, 1063);
 const row = dry.sources.find(s => s.source === 'factions-csv');
 ok('and the source row reports its delivered sections, not the corpus count', !!row && row.sections + row.filtered > row.sections);
 // task-33: the ingest plans the indexable sections - the 175 kind 'index' pages are
 // delivered but never embedded - so the factions plan is 5,438 delivered minus 175.
-ok('the source row reports its indexable, filtered and index-excluded counts', row.sections === 5263 && row.filtered === 1064 && row.indexExcluded === 175);
+ok('the source row reports its indexable, filtered and index-excluded counts', row.sections === 5263 && row.filtered === 1063 && row.indexExcluded === 175);
 t('and the dry run totals the exclusion', dry.indexExcluded, 175);
 const indexIds = indexedIds();
 ok('an index page is delivered but never indexed', isDelivered({ id: 'faction-index#faction-ae', kind: 'index', edition: '11' }) && !indexIds.has('faction-index#faction-ae') && indexIds.size === delivered.length - 175);

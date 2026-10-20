@@ -281,6 +281,16 @@ export function findDatasheet(question, asked) {
 
 // The card, field for field, from the export. Null when the datasheet has no
 // statline to render: an id alone is not a card.
+// task-39: the base size is millimetres everywhere in the corpus, so the unit is noise in
+// a 40px column at 360px and '120 x 92mm' broke mid-token ('120 x' / '92m' / 'm').
+// '120x92' is one token; a trailing description ('flying base') stays, it can wrap on its
+// space. The column header already says Base, so the unit is not lost.
+export function baseLabel(value) {
+  const t = clean(value);
+  if (!t) return '';
+  return t.replace(/(\d)\s*x\s*(\d)/g, '$1x$2').replace(/(\d)\s*mm\b/gi, '$1').trim();
+}
+
 export function buildUnitCard(id, opts) {
   const o = opts || {};
   const corpora = o.corpora || {};
@@ -295,7 +305,7 @@ export function buildUnitCard(id, opts) {
     M: m.M, T: m.T, Sv: m.Sv,
     inv: (m.inv_sv && m.inv_sv !== '-') ? m.inv_sv + '+' : '',
     W: m.W, Ld: m.Ld, OC: m.OC,
-    base: clean(m.base_size),
+    base: baseLabel(m.base_size),
   }));
   if (!models.length) { cache.set(key, null); return null; }
   const weapons = (t.wargear.get(d.id) || []).map(w => ({

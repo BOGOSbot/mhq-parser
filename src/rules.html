@@ -450,6 +450,10 @@ body.recopen{overflow:hidden}
 .recwiki{min-height:44px;display:inline-flex;align-items:center;padding:10px 14px;border:1px solid var(--line);
   border-radius:12px;background:transparent;color:var(--acc);font:600 13px var(--sans);text-decoration:none}
 .recwiki:hover{border-color:var(--acc)}
+/* task-40: the record fragment is the surface with the most text on the page and it was
+   the only prose surface without the rulebook face - it inherited the chrome sans 15/24.
+   Same face as .rectext, the fallback inside the same dialog. */
+.recfrag{font-family:var(--serif);font-size:16px;line-height:1.65}
 .rectext{overflow-wrap:anywhere;font-family:var(--serif);font-size:16px;line-height:1.65}
 .rectext p{margin:0 0 12px;line-height:1.65}
 .recswipe{color:var(--dim);font:11.5px var(--sans);margin:16px 0 0}

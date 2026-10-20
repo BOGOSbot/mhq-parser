@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   CORE_STRATAGEMS, JUDGE_PASSAGE_CHARS, buildFactionSections, dedupeKey, dedupeSections, splitInlineRules, splitLong, splitSection,
-  corpusDir, SOURCES, extractSections,
+  corpusDir, SOURCES, extractSections, stripWahapediaMarkers, readAllCorpus,
 } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
@@ -227,5 +227,13 @@ t('(81-5) no section is the See-Also widget', seeSecs.filter(s => /See-Also|See 
 const carrier = seeSecs.find(s => /Modifying Dice Rolls/.test(String(s.text)) && /Measuring To A Destroyed Model Or Unit/.test(String(s.text))) || {};
 ok('(81-5) the related-rules list stays inside the Inflict Damage body', /Inflict Damage/.test(String(carrier.heading)) || /Inflict Damage/.test(String(carrier.path)));
 t('(81-5) and it keeps its entries', ['Modifying Dice Rolls', 'Random Characteristics', 'Destroyed', 'Fight On Death'].every(n => String(carrier.text || '').indexOf(n) !== -1), true);
+
+// --- task-40: Wahapedia's template markers never reach the reader ------------------
+// The CSV export carries its page placeholders inline; '$FAQ$' stood in 39 records'
+// text (faction-rule#000008466 among them). Stripped at the ingest, not at display.
+t('the marker is stripped, whatever it wraps', stripWahapediaMarkers('a $FAQ$ b').replace(/\s+/g, ' '), 'a b');
+t('a marker with digits or an underscore is stripped too', stripWahapediaMarkers('x $D6$ y $FAQ_2$ z').replace(/\s+/g, ' '), 'x y z');
+t('ordinary prose is untouched', stripWahapediaMarkers('EFFECT: roll 2D6'), 'EFFECT: roll 2D6');
+t('no delivered record carries the marker', readAllCorpus().filter(function (r) { return String(r.text || '').indexOf('$FAQ$') !== -1; }).length, 0);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

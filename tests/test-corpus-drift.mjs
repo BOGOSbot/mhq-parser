@@ -61,8 +61,9 @@ const BASELINE = {
     // task-13: +710 bytes - the Wazdakka Gutsmek datasheet now carries the full
     // PULSE JET MOVE definition that used to be a core-stratagem record.
     // task-33 (2026-10-19 export): 6,502 shaped sections, 10,244,777 bytes - the new
-    // export's records with task-32's three fixes still in.
-    'factions-csv': { sections: 6502, bytes: 10244777 },
+    // export's records with task-32's three fixes still in. task-40: the $FAQ$ marker
+    // leaves one ability's text, which merges one part back - 6,501 / 10,243,873.
+    'factions-csv': { sections: 6501, bytes: 10243873 },
   },
 };
 
@@ -144,7 +145,7 @@ t('(drift) the CSV path reproduces factions-csv.json', {
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
   added: csvAdded,
   missing: csvMissing,
-}, { sections: 6502, bytes: 10244777, added: 0, missing: 0 });
+}, { sections: 6501, bytes: 10243873, added: 0, missing: 0 });
 
 const rebuiltPool = fs.readdirSync(root).filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')))

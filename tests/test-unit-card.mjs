@@ -1,5 +1,5 @@
 import {
-  ABILITY_CHARS, abilityRuleIds, buildUnitCard, cardBuildCount, cardTables, findAbilityRecord, findDatasheet, recordCard, resetCardTables, resolveRecordLinks, unitCard, unitCardEnabled, wantsUnitCard,
+  ABILITY_CHARS, abilityRuleIds, baseLabel, buildUnitCard, cardBuildCount, cardTables, findAbilityRecord, findDatasheet, recordCard, resetCardTables, resolveRecordLinks, unitCard, unitCardEnabled, wantsUnitCard,
 } from '../src/unit-card.mjs';
 import { readAllCorpus, findingFor } from '../src/rules-corpus.mjs';
 import { markRange, markHit, markWargearText } from '../src/wargear-marks.mjs';
@@ -71,7 +71,7 @@ const c = buildUnitCard('000000574');
 // task-33: the 2026-10-19 export bumps the Aeldari source to version 1.4 (errata 14.10.2026).
 ok('every field comes from the export, none from a model', c && c.source === 'Aeldari' && c.edition === '11' && c.version === '1.4');
 t('the statline is the CSV statline', c.models, [{
-  line: '1', name: 'Fuegan', M: '7"', T: '3', Sv: '2+', inv: '4+', W: '5', Ld: '6+', OC: '1', base: '40mm',
+  line: '1', name: 'Fuegan', M: '7"', T: '3', Sv: '2+', inv: '4+', W: '5', Ld: '6+', OC: '1', base: '40',
 }]);
 // task-34: the range carries its inch mark and BS/WS its plus - the export writes
 // both bare (0 of 7,758 wargear rows carry either), so this is the game's notation
@@ -244,5 +244,16 @@ const built2 = cardBuildCount();
 buildUnitCard('000000574');
 t('resetCardTables starts a new cache generation', cardBuildCount() - built2, 1);
 
+
+// --- task-39: the base size is one token ------------------------------------------
+// The column is headed Base and every base size in the corpus is millimetres, so the
+// unit is noise in a 40px column at 360px - and '120 x 92mm' broke as '120 x'/'92m'/'m'.
+t('millimetres leave the value', baseLabel('40mm'), '40');
+t('a rectangle joins its dimensions', baseLabel('120 x 92mm'), '120x92');
+t('and keeps a trailing description, which may wrap on its space', baseLabel('120 x 92mm flying base'), '120x92 flying base');
+t('the export\'s own text is left alone', baseLabel('Use model'), 'Use model');
+t('an empty value stays empty', baseLabel(''), '');
+const fueganBase = buildUnitCard('000000574');
+t('and the card data carries the same one-token base', fueganBase.models[0].base, '40');
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
