@@ -185,6 +185,10 @@ ok('a check with no n falls back to its position', sweepRows({ checks: [{ what: 
 ok('an empty event collapses to no rows', sweepRows({ checks: [] }).length === 0 && sweepRows(null).length === 0);
 // The empty case and the footer, as source: the count comes from the rows drawn.
 ok('an empty sweep says nothing was to be checked', SURFACE.indexOf('Nothing to check') !== -1 && /sv-sweep-none/.test(SURFACE));
+// A sweep that FAILED is not entitled to the corpus claim: the empty case branches on
+// the reason, and the failed branch must exist and be reachable.
+ok('a failed sweep says it could not run, not that there was nothing', /var failed = s\.stopped === 'failed'/.test(SURFACE) && SURFACE.indexOf('Could not check') !== -1);
+ok('and the two empty cases are different strings', SURFACE.indexOf('Could not check') !== SURFACE.indexOf('Nothing to check'));
 ok('the footer counts the rows it drew, not the attempts', /Checked ' \+ rows\.length/.test(SURFACE) && !/Checked ' \+ s\.checks\.length/.test(SURFACE));
 ok('and the absent count comes from the same rows', /rows\.filter\(function \(r\) \{ return r\.verdict === 'absent'; \}\)\.length/.test(SURFACE));
 // The event still carries every attempt for the trace, so nothing is lost.

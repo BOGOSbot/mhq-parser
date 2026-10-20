@@ -1769,9 +1769,16 @@ function devPanel(f, state, ctx) {
     // task-49: the sweep RAN and the judge named nothing. Saying nothing at all left
     // the reader unable to tell 'I looked and there was nothing to check' from 'nobody
     // looked', and only the first is a claim we can make.
+    //
+    // A FAILED sweep is the third case and it must not borrow the first one's words:
+    // 'nothing to check' is a claim about the corpus, and a sweep that never ran is
+    // not entitled to it.
     if (!rows.length) {
-      box.appendChild(el('p', 'sv-sweep-none', 'Nothing to check \u2014 the passages settle it.'));
-      box.appendChild(el('p', 'sv-sweep-foot', 'Checked 0'));
+      var failed = s.stopped === 'failed';
+      box.appendChild(el('p', 'sv-sweep-none', failed
+        ? 'Could not check \u2014 the sweep did not run.'
+        : 'Nothing to check \u2014 the passages settle it.'));
+      box.appendChild(el('p', 'sv-sweep-foot', failed ? 'Checked 0 \u00b7 could not run' : 'Checked 0'));
       return box;
     }
     var list = el('div', 'sv-sweep-list');
