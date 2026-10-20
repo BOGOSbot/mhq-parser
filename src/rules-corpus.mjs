@@ -1899,12 +1899,20 @@ export async function scrapeAll(only, setName) {
 // the same one the page already uses: Jev decides, it does not write.
 const STOP = new Set(['that', 'this', 'these', 'those', 'with', 'from', 'have', 'has', 'had', 'does', 'what', 'when', 'where', 'which', 'while', 'would', 'could', 'should', 'about', 'after', 'before', 'into', 'onto', 'your', 'their', 'there', 'then', 'than', 'them', 'they', 'same', 'also', 'only', 'must', 'rule', 'rules', 'unit', 'units', 'model', 'models', 'turn', 'game', 'warhammer', 'edition', 'mean', 'means', 'work', 'works']);
 
+// task-55: a three-character floor WITH a guard. The floor alone was measured first,
+// and it is a trap: at a floor of 3, 24 of the 33 bank questions change their term set,
+// exactly ONE gains a term its expected record contains ('fly' for 'what are the rules
+// for a unit that can fly', whose record is 'Flying Models'), and the other 23 gain only
+// function words - 'how', 'the', 'can', 'are', 'for', 'see', 'put', 'own', 'end', 'let',
+// 'you', 'hit'. So the guard is what keeps the one word worth having without making
+// every query match everything.
+const SHORT_STOP = new Set(['the', 'and', 'for', 'can', 'are', 'was', 'not', 'you', 'all', 'any', 'but', 'how', 'its', 'may', 'one', 'out', 'see', 'use', 'who', 'why', 'per', 'off', 'own', 'end', 'get', 'set', 'way', 'day', 'new', 'old', 'top', 'two', 'six', 'hit', 'run', 'put', 'add', 'her', 'his', 'him', 'she', 'our', 'too', 'yet', 'nor', 'via', 'did', 'let', 'far', 'due', 'non', 'pre', 'sub', 'it', 'is', 'of', 'in', 'to', 'on', 'at', 'by', 'or', 'as', 'be', 'do', 'if', 'no', 'so', 'up', 'we', 'he', 'me', 'my', 'us', 'an', 'am']);
 export function grepTerms(question) {
   const words = String(question == null ? '' : question)
     .toLowerCase()
     .replace(/[^a-z0-9' -]+/g, ' ')
     .split(/\s+/)
-    .filter(w => w.length >= 4 && !STOP.has(w));
+    .filter(w => STOP.has(w) ? false : (w.length >= 4 || (w.length === 3 && !SHORT_STOP.has(w))));
   return Array.from(new Set(words));
 }
 
