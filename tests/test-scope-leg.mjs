@@ -1,4 +1,4 @@
-import { readAllCorpus, indexedSections, scopeIndex, scopeKeywords, scopeLookup, entityKeywords, retrieveDual, findingFor, judgePrompt, passageCaps, passageTruncation } from '../src/rules-corpus.mjs';
+import { readAllCorpus, indexedSections, scopeIndex, scopeKeywords, scopeLookup, scopeLegIndex, entityKeywords, retrieveDual, findingFor, judgePrompt, passageCaps, passageTruncation } from '../src/rules-corpus.mjs';
 
 // task-65: the scope leg. A rule scoped to a KEYWORD ('one friendly ASTRA MILITARUM
 // VEHICLE model') is reachable FROM that keyword, because the two records that must
@@ -97,6 +97,24 @@ ok('a question with no entity scopes nothing', scopeLookup('What is a Hazard Rol
   const after = passageTruncation(findings, {});
   ok('the cut count is reported for both budgets', before.cut > 0 && after.cut > 0);
   console.log('truncation: uniform cap ' + before.cut + ' passages cut / ' + before.dropped + ' chars dropped; scope-full ' + after.cut + ' cut / ' + after.dropped + ' dropped');
+}
+
+
+// --- task-67: an EMPTY terms array is not 'no terms' --------------------------
+// The server passes the translation's terms, which is [] for an English question.
+// `o.terms || grepTerms(question)` treated [] as truthy, so every record scored zero
+// capability terms and the leg returned whichever three the rarity weight favoured -
+// measured on the Box as three Astra Militarum stratagems instead of the Enginseer.
+{
+  const q = 'Can a baneblade have an invulnerable save?';
+  const corpus = indexedSections(readAllCorpus());
+  const kws = entityKeywords(q, corpus, {});
+  const idx = scopeLegIndex();
+  const withEmpty = scopeLookup(q, idx, kws, { cap: 3, terms: [] }).map(r => r.id);
+  const withNone = scopeLookup(q, idx, kws, { cap: 3 }).map(r => r.id);
+  ok('an empty terms array falls back to the question\u2019s own words', withEmpty.join(',') === withNone.join(','));
+  ok('and the lookup still reaches the Enginseer', withEmpty.indexOf('unitrules#000001396') !== -1);
+  ok('a real terms list is still used', scopeLookup(q, idx, kws, { cap: 3, terms: ['invulnerable'] }).length > 0);
 }
 
 console.log(pass + ' passed, ' + fail + ' failed');

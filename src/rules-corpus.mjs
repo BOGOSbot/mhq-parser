@@ -3962,7 +3962,13 @@ export function scopeLookup(question, index, keywords, opts) {
   const idf = new Map();
   const total = Math.max(index.size, 1);
   for (const key of list) idf.set(key, Math.log(1 + total / (1 + (index.get(key) || []).length)));
-  const words = (o.terms || grepTerms(question)).map(w => String(w).toLowerCase()).filter(Boolean);
+  // An EMPTY terms array is not "no terms": the server passes the translation's terms,
+  // which is [] for an English question, and `[] || grepTerms(...)` is `[]` - so every
+  // record scored zero capability terms and the leg returned whichever three records the
+  // rarity weight happened to favour (measured on the Box: three Astra Militarum
+  // stratagems instead of the Enginseer, which is the record the question is about).
+  const given = Array.isArray(o.terms) && o.terms.length ? o.terms : null;
+  const words = (given || grepTerms(question)).map(w => String(w).toLowerCase()).filter(Boolean);
   const scored = new Map();
   for (const key of list) {
     for (const r of (index.get(key) || [])) {
