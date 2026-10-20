@@ -64,7 +64,10 @@ const paid = await makeGateway(() => ({ status: 200, body: answers(3) }));
 paid.gateway.name = 'paid'; paid.gateway.free = false;
 
 const chainOf = [free.gateway, paid.gateway];
-const rank = (opts) => jevRank('a question', candidates(3), 'test-key', Object.assign({ chain: chainOf, max: 3 }, opts));
+// task-47 re-anchored this helper: the product's default rerank shape is now
+// 'choice', and this file is about the GATEWAY chain, so it asks in the noul shape
+// whose stub bodies it already writes. The choice shape has its own test file.
+const rank = (opts) => jevRank('a question', candidates(3), 'test-key', Object.assign({ chain: chainOf, max: 3, shape: 'noul' }, opts));
 
 // (1) a 429 on the free route falls through to paid, and the request completes.
 jevCallsReset();
@@ -80,7 +83,7 @@ const freeOk = await makeGateway(() => ({ status: 200, body: answers(3) }));
 freeOk.gateway.name = 'free'; freeOk.gateway.free = true;
 const paidIdle = await makeGateway(() => ({ status: 200, body: answers(3) }));
 paidIdle.gateway.name = 'paid'; paidIdle.gateway.free = false;
-ranked = await jevRank('q', candidates(3), 'k', { chain: [freeOk.gateway, paidIdle.gateway], max: 3 });
+ranked = await jevRank('q', candidates(3), 'k', { chain: [freeOk.gateway, paidIdle.gateway], max: 3, shape: 'noul' });
 ok('a free answer never reaches the paid route', ranked.gateway === 'free' && paidIdle.state.calls === 0);
 
 // (3) a timeout IS a failure the paid route can rescue: the free one hangs, the

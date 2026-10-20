@@ -2013,6 +2013,58 @@ export function defaultAsk(i, c, question) {
   };
 }
 
+// --- the question SHAPE (task-47) -------------------------------------------
+// Mandal: 'Is jev truly bad at this, or are we using it wrong? Asking it to
+// classify might work better than a noul.' Measured over the 33-question bank on
+// the gate corpus, same candidates and same corpus for both shapes:
+//
+//   noul   (one absolute question per candidate)   18/26/26/27, MRR .622
+//   choice (one comparative question per half)     20/27/29/30, MRR .698
+//
+// against the retrieval order's 15/26/28/29, .582 - and the choice shape does it
+// with 2 sub-questions a question instead of ~134. The noul shape stays reachable
+// (RULES_JEV_SHAPE=noul, or opts.shape) for the eval arms and for a before/after.
+export function jevShape(opts) {
+  const v = String((opts && opts.shape) || process.env.RULES_JEV_SHAPE || 'choice').toLowerCase();
+  return v === 'noul' ? 'noul' : 'choice';
+}
+// The label the choice question offers for 'the pool holds no answer'. It exists so
+// the model can say so instead of picking the least-bad candidate, and it is
+// RECORDED but never acted on: the measurement says sorting the probabilities anyway
+// beats falling back to the retrieval order when it is picked (per-half MRR .711
+// against .676), so a gate on it would lose. Do not build one.
+export const JEV_NONE = 'none';
+const passageLabel = c => String((c && c.heading) || '') + ((c && c.ruleId) ? ' (' + c.ruleId + ')' : '');
+// The old shape: one question per candidate, batched into one call.
+export function noulAskFor(question, top) {
+  const q = {};
+  top.forEach((c, i) => {
+    q['p' + i] = {
+      type: 'noul',
+      instructions: 'Does passage ' + i + ' (' + c.heading + ') state the rule that answers: ' + question,
+      criteria: { true: 'It answers the question', false: 'It does not' },
+    };
+  });
+  return q;
+}
+// The shape this slice ships: ONE comparative question for the whole half. The
+// candidates ARE the criteria map, so the model makes one decision instead of N.
+export function choiceAskFor(question, top) {
+  const criteria = {};
+  top.forEach((c, i) => { criteria['p' + i] = passageLabel(c); });
+  criteria[JEV_NONE] = 'None of these passages states the rule that answers it';
+  return { pick: { type: 'choice', instructions: 'Which passage states the rule that answers: ' + question, criteria: criteria } };
+}
+// A choice answer -> the order. Ranked by probability, and a TIE KEEPS THE INPUT
+// ORDER (the retrieval's own), so the rerank can only ever move a candidate up and
+// a pool the model has no opinion about is left exactly as it was found.
+export function orderByChoice(top, answer) {
+  const probs = (answer && answer.probabilities) || {};
+  const scored = top.map((c, i) => ({ c: c, i: i, jev: typeof probs['p' + i] === 'number' ? probs['p' + i] : 0 }));
+  scored.sort((a, b) => (b.jev - a.jev) || (a.i - b.i));
+  return { order: scored.map(x => Object.assign({ jev: x.jev }, x.c)), none: typeof probs[JEV_NONE] === 'number' ? probs[JEV_NONE] : 0, pick: (answer && answer.choice) || '' };
+}
+
 // One call, one yes/no per candidate, the same shape rules.mjs uses. Batched so
 // a wide net costs one request rather than forty.
 export const JEV_STATE_CHARS = Number(process.env.RULES_JEV_STATE_CHARS) || 40000;
@@ -2130,9 +2182,12 @@ export async function jevRank(question, candidates, key, opts) {
   try {
     const ranked = await jevRankOnce(question, top, key, o);
     JEV_CALLS.rerank.answered++;
-    // The gateway that served this half (task-45), read by the caller for the
-    // degraded-versus-ranked report. A property on the array keeps the signature.
+    // The gateway that served this half (task-45) and the shape it was asked in
+    // (task-47), read by the caller for the degraded-versus-ranked report. Properties
+    // on the array keep the signature every caller already destructures.
     ranked.gateway = o.gateway || '';
+    ranked.shape = o.shape || '';
+    ranked.none = typeof o.jevNone === 'number' ? o.jevNone : 0;
     return ranked;
   } catch (e) {
     JEV_CALLS.rerank.failed++;
@@ -2215,11 +2270,18 @@ async function jevChainCall(makeBody, opts) {
 // a call that throws is an attempt and a failure, never an answer. The wrapper
 // exists so the counting cannot drift back above the request again.
 async function jevRankOnce(question, top, key, o) {
-  const questions = {};
-  const ask = o.ask || defaultAsk;
-  top.forEach((c, i) => {
-    questions['p' + i] = ask(i, c, question);
-  });
+  // task-47: which shape to ask in. 'choice' is the default and the product's; the
+  // noul path is kept whole so a before/after is one env var and the eval arms that
+  // measure the old shape still run.
+  const shape = jevShape(o);
+  const questions = shape === 'choice'
+    ? choiceAskFor(question, top)
+    : (function () {
+      const ask = o.ask || defaultAsk;
+      const q = {};
+      top.forEach((c, i) => { q['p' + i] = ask(i, c, question); });
+      return q;
+    })();
   // How much of each candidate Jev is shown. It used to be a flat 700 characters
   // in a state cut at 40000, and the two together were a trap: past about fifty
   // candidates the tail of the list was sliced off the state while the questions
@@ -2238,7 +2300,7 @@ async function jevRankOnce(question, top, key, o) {
   // of the request, and the ledger records which gateway served it and what it cost.
   // o.endpoint is a harness override and pins the chain to that one transport.
   const chain = o.chain || (o.endpoint
-    ? [Object.assign({}, jevChain()[0], { endpoint: o.endpoint, name: (jevChain()[0] || {}).name || 'custom', free: false })]
+    ? [Object.assign({}, jevChain()[0], { endpoint: o.endpoint, name: 'custom', free: true })]
     : jevChain());
   const out = await jevChainCall(model => JSON.stringify({ model: model, state, questions }), {
     key: key, chain: chain, timeoutMs: o.timeoutMs, onAttempt: o.onAttempt,
@@ -2247,6 +2309,14 @@ async function jevRankOnce(question, top, key, o) {
   // Which gateway actually served it rides back on the options object, so jevRank's
   // return stays the array every caller already destructures.
   o.gateway = out.gateway;
+  o.shape = shape;
+  if (shape === 'choice') {
+    const ranked = orderByChoice(top, answers && answers.pick);
+    // The 'none' probability is recorded, never acted on (see JEV_NONE).
+    o.jevNone = ranked.none;
+    o.jevPick = ranked.pick;
+    return ranked.order;
+  }
   return top.map((c, i) => {
     const a = answers['p' + i];
     return Object.assign({ jev: a && typeof a.noul === 'number' ? a.noul : 0 }, c);
@@ -2364,7 +2434,7 @@ async function gateHalfOnce(question, key, o) {
   // answer on it used to leave the run half-routed for no reason the reader could see.
   // o.endpoint is a harness override and pins the chain to that one transport.
   const chain = o.endpoint
-    ? [Object.assign({}, jevChain()[0], { endpoint: o.endpoint, name: (jevChain()[0] || {}).name || 'custom', free: false })]
+    ? [Object.assign({}, jevChain()[0], { endpoint: o.endpoint, name: 'custom', free: true })]
     : jevChain();
   let gateOut = null;
   try {
@@ -3815,8 +3885,10 @@ export async function retrieveWide(question, opts) {
       } else if (o.jevKey) {
         // The gateway that served it comes back with the ranking, so the operator can
         // see free-versus-paid per half without a second lookup.
-        ranked = await jevRank(question, merged, o.jevKey, { max: o.jevMax || 80, endpoint: o.jevEndpoint });
-        if (ranked && ranked.length) rerankStatus = { state: 'ranked', gateway: ranked.gateway || '', reason: '' };
+        // task-47: the shape rides through, so a harness can ask for the noul shape
+        // without an env var (and the product's default is the choice shape).
+        ranked = await jevRank(question, merged, o.jevKey, { max: o.jevMax || 80, endpoint: o.jevEndpoint, shape: o.jevShape });
+        if (ranked && ranked.length) rerankStatus = { state: 'ranked', gateway: ranked.gateway || '', shape: ranked.shape || '', none: ranked.none || 0, reason: '' };
       } else {
         rerankStatus = { state: 'skipped', gateway: '', reason: 'no key' };
       }
@@ -3918,14 +3990,14 @@ export async function retrieveDual(question, opts) {
     retrieveWide(question, {
       corpus: o.rulesCorpus || readAllCorpus('rules'),
       namespace: o.rulesNamespace || 'rules',
-      jevKey: o.jevKey, jevSkip: o.jevSkip, jevEndpoint: o.jevEndpoint, cfg: o.cfg, terms: o.terms,
+      jevKey: o.jevKey, jevSkip: o.jevSkip, jevEndpoint: o.jevEndpoint, jevShape: o.jevShape, cfg: o.cfg, terms: o.terms,
       grepNet: Math.max(o.grepNet || 40, rulesK * 4), jevMax: netFor(rulesK), topK: rulesK,
       queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
     }),
     retrieveWide(question, {
       corpus: o.factionsCorpus || readAllCorpus('factions'),
       namespace: o.factionsNamespace || 'factions',
-      jevKey: o.jevKey, jevSkip: o.jevSkip, jevEndpoint: o.jevEndpoint, cfg: o.cfg, terms: o.terms,
+      jevKey: o.jevKey, jevSkip: o.jevSkip, jevEndpoint: o.jevEndpoint, jevShape: o.jevShape, cfg: o.cfg, terms: o.terms,
       grepNet: Math.max(o.grepNet || 40, factionsK * 4), jevMax: netFor(factionsK), topK: factionsK,
       queryMode: o.queryMode, fusionWeights: o.fusionWeights, fusionK: o.fusionK, protectVector: o.protectVector,
     }),

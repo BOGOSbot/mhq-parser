@@ -1315,6 +1315,10 @@ async function handleRulesAsk(req, res) {
         factionsCorpus: corpora().factions,
         jevKey: keys.jev,
         terms,
+        // task-47: the rerank's question shape. The product default is the choice
+        // shape; `shape` in the request body asks for the noul one, which is how a
+        // before/after is run through the product instead of through a harness.
+        jevShape: body.shape,
         // The grep net and the reranker's net are both wider than the cut, and
         // the reranker's is the one that mattered: on 'can Asurmen re-embark
         // after shooting' the Embarking rule reached merged rank 54, so a net of

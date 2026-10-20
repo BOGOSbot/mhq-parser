@@ -88,9 +88,12 @@ const ONE = [{ id: 'emb', heading: 'Embarking', text: 'A unit can embark.' }];
 const rerankCalls = () => { const c = jevCalls(); return [c.rerank.attempted, c.rerank.answered, c.rerank.failed]; };
 const gateCalls = () => { const c = jevCalls(); return [c.gate.attempted, c.gate.answered, c.gate.failed]; };
 
+// task-47 re-anchored this stub: the product's default shape is now 'choice', and
+// this block is about the CALL accounting (attempted / answered / failed), so it asks
+// for the noul shape explicitly rather than stubbing a body the default no longer reads.
 replies.push({ status: 200, obj: { answers: { p0: { noul: 1 } } } });
 jevCallsReset();
-await jevRank('can a unit embark?', ONE, 'key', { endpoint: JEV_ENDPOINT_TEST });
+await jevRank('can a unit embark?', ONE, 'key', { endpoint: JEV_ENDPOINT_TEST, shape: 'noul' });
 t('an answered rerank is an attempt and an answer', rerankCalls(), [1, 1, 0]);
 
 replies.push({ status: 429, obj: { error: 'rate limited' } });
