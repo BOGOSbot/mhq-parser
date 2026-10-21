@@ -48,6 +48,7 @@ import { findRows, lookupRecord, searchHeadings } from './header-index.mjs';
 import { devHtml, devState } from './dev-report.mjs';
 // Slice 2, additive: the dev route and the surface's static files. The flip in
 // slice 4 wires the surface into rules.html; nothing here touches it.
+import { frText, frUsable } from './i18n-fr.mjs';
 import { assetStamp, dataDir as surfaceDataDir, legendsSlugMap, surfaceAsset, surfacePage, surfaceSlugMap } from './wiki-surface.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -977,7 +978,12 @@ async function handleRulesRecord(req, res, u) {
     if (!raw) return fail(res, 404, 'no such record: ' + id);
     // task-89: selfId so a record never links to itself - '2. Select Targets > Selecting
     // Targets' was linkified back to the record being read.
-    return send(res, 200, recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor, selfId: raw.id }), 'text/html; charset=utf-8');
+    // task-69: the French overlay rides on the record, keyed by id. The English corpus is
+    // the canon; this swaps the BODY's text and leaves the headings and keywords alone.
+    // `lang=fr` asks for it, and a record with no French keeps the English text.
+    const wantFr = String(u.searchParams.get('lang') || '').toLowerCase() === 'fr';
+    const frText = wantFr ? frUsable(raw.id) : '';
+    return send(res, 200, recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor, selfId: raw.id, frText: frText }), 'text/html; charset=utf-8');
   }
   return json(res, 200, { ok: true, record, slug: surfaceSlugMap().get(id) || '' });
 }
@@ -1533,7 +1539,11 @@ async function handleRulesAsk(req, res) {
         emit({ type: 'done', elapsedMs, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, sweep, answer: '', writer: false, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
+      // task-69: the default path (no writer), and the one the page actually takes. The
+      // French rides under the quote here too, or the switch would do nothing.
+      const citedNoWriter = (judge && judge.from && payload[judge.from - 1]) ? payload[judge.from - 1] : null;
+      const quoteFrNoWriter = (answerLang === 'fr' && judge && judge.answered === true && judge.quote && citedNoWriter) ? frUsable(citedNoWriter.id) : '';
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, sweep, answer: '', writer: false, quoteFr: quoteFrNoWriter, quoteFrId: quoteFrNoWriter ? citedNoWriter.id : '', counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
     }
 
     // The judge has already run; the answer waits on it rather than racing it,
@@ -1599,8 +1609,17 @@ async function handleRulesAsk(req, res) {
       emit({ type: 'done', elapsedMs: Date.now() - started, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
       return res.end();
     }
+    // task-69: a quote is evidence and the evidence is English, so the French rides
+    // BESIDE it - never instead of it. The quote's own record gives the French body,
+    // and a record with no French simply has none.
+    const cited = (judge && judge.from && payload[judge.from - 1]) ? payload[judge.from - 1] : null;
+    // The reader's language is answerLang (the verdict's language), not `lang` (the
+    // language the QUESTION was asked in). An English question read by a French reader
+    // still gets the French beneath the quote.
+    const quoteFr = (answerLang === 'fr' && judge && judge.answered === true && judge.quote && cited) ? frUsable(cited.id) : '';
     return json(res, 200, {
       question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, sweep, answer,
+      quoteFr: quoteFr, quoteFrId: quoteFr ? cited.id : '',
       judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom,
       counts, steps, elapsedMs: Date.now() - started, mode: modeName, writer: writerOn,
       unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,
@@ -1689,6 +1708,16 @@ const server = http.createServer(async (req, res) => {
     } catch (e) { return fail(res, 500, 'the surface file could not be read: ' + String((e && e.message) || e)); }
   }
   if (req.method === 'GET' && u.pathname.indexOf('/rules/data/') === 0) return handleSurfaceData(req, res, u);
+  // task-69: the French overlay, one record at a time, for the surfaces that need the
+  // text itself rather than a rendered body (the quote's translation under the English
+  // canon). The server holds the pass's export in memory after the first call.
+  if (req.method === 'GET' && u.pathname === '/rules/fr') {
+    const id = String(u.searchParams.get('id') || '');
+    if (!id) return fail(res, 400, 'need ?id=<record id>');
+    const text = frUsable(id);
+    if (!text) return json(res, 200, { ok: true, id: id, fr: '', reason: frText(id) ? 'not-french' : 'none' });
+    return json(res, 200, { ok: true, id: id, fr: text });
+  }
   if (req.method === 'GET' && u.pathname === '/health') {
     const a = archiveIndex();
     return json(res, 200, {

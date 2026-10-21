@@ -278,6 +278,9 @@ details{border-color:var(--line)}
 .rquote{font:15.5px/1.5 var(--serif);color:var(--ink);margin:10px 0 0;padding:0 0 0 12px;
   border-left:2px solid var(--acc)}
 .rquote.bad{color:var(--warn);text-decoration:line-through;text-decoration-thickness:1px}
+/* task-69: the record's French under the English quote. The English is the evidence and
+   keeps the serif; the French is the translation and is set slightly quieter. */
+.rquote-fr{margin-top:4px;font-size:14.5px;color:var(--dim);border-left-color:var(--line)}
 .rstrike{color:var(--warn);text-decoration:line-through;text-decoration-thickness:1px}
 .rsrc{margin:7px 0 0;font:11px/1.4 var(--mono);color:var(--dim);padding-left:14px}
 .rsrc a{color:var(--acc);text-decoration:none}
@@ -676,6 +679,22 @@ details pre{background:var(--bg);border:1px solid var(--line);border-radius:10px
         <button type="button" data-legends="on">On</button>
       </span>
     </div>
+    <!-- task-69: the record language. The English corpus is the canon and the French is an
+         overlay keyed by record id, so this switch changes what a record BODY renders and
+         never what a quote quotes. It follows the interface language by default: a reader
+         whose UI is French gets French records without asking, and a record with no French
+         (the pass blocked 39) shows English rather than nothing. -->
+    <div class="sheetrow" id="frsetting" data-fr-state="en">
+      <div class="sheetwhat">
+        <span class="sheetlabel" id="frSettingLabel">Record language</span>
+        <span class="sheethint" id="frSettingHint">Headings and keywords stay English; the body is translated.</span>
+        <span class="sheetstate" id="frState" data-on="0">Records are English</span>
+      </div>
+      <span class="doorseg" role="tablist" aria-label="Record language" id="frseg">
+        <button type="button" data-fr="en">English</button>
+        <button type="button" data-fr="fr">Français</button>
+      </span>
+    </div>
     <p class="sheetmeta" id="gearmeta"></p>
   </div>
 </div>
@@ -802,6 +821,10 @@ var I18N = {
   legendsSettingHint: 'Legends records are readable here, and never part of an answer.',
   legendsStateOn: 'Legends are on \u2014 readable and searchable, never cited.',
   legendsStateOff: 'Legends are off',
+  frSetting: 'Record language',
+  frSettingHint: 'Headings and keywords stay English; the body is translated.',
+  frStateOn: 'Records are French \u2014 headings and keywords stay English',
+  frStateOff: 'Records are English',
   findingActions: 'actions for this finding',
   sheetFirst: 'Put first',
   sheetFirstOn: 'Remove from first',
@@ -1018,6 +1041,10 @@ var I18N = {
   legendsSettingHint: 'Les fiches Legends se lisent ici, et ne font jamais partie d’une réponse.',
   legendsStateOn: 'Legends activés — lisibles et cherchables, jamais cités.',
   legendsStateOff: 'Legends désactivés',
+  frSetting: 'Langue des fiches',
+  frSettingHint: 'Les titres et les mots-clés restent en anglais ; le corps est traduit.',
+  frStateOn: 'Fiches en français — titres et mots-clés en anglais',
+  frStateOff: 'Fiches en anglais',
   findingActions: 'actions pour ce constat',
   sheetFirst: 'Mettre en premier',
   sheetFirstOn: 'Retirer du premier rang',
@@ -1640,6 +1667,11 @@ var VOICE_KEY = 'mhq.rules.voice';
 // task-44: the Legends setting's key is the reader's, like the two above. The wiki
 // surface owns the branch and the search; this sheet owns the switch and its state.
 var LEGENDS_KEY = 'mhq.rules.legends';
+// task-69: the record language. 'mhq.rules.fr' is the reader's, like the three above.
+// It FOLLOWS the interface language by default - a French UI means French records - and
+// an explicit choice sticks. The English corpus stays the canon either way: this switch
+// changes the record body, never the quote and never a heading.
+var FR_KEY = 'mhq.rules.fr';
 var DOOR_CUR = null; // the finding whose door was last opened
 function doorMode() {
   try { return localStorage.getItem(DOOR_KEY) === 'quick' ? 'quick' : 'book'; } catch (e) { return 'book'; }
@@ -1653,6 +1685,43 @@ function setVoiceEngine(engine) {
 }
 function legendsMode() {
   try { return localStorage.getItem(LEGENDS_KEY) === '1' ? 'on' : 'off'; } catch (e) { return 'off'; }
+}
+// The default is the interface language, and only an explicit choice overrides it. A
+// stored 'en' from a reader who chose English stays English when they switch the UI.
+function frMode() {
+  try {
+    var saved = localStorage.getItem(FR_KEY);
+    if (saved === 'fr' || saved === 'en') return saved;
+  } catch (e) { /* private mode */ }
+  return LANG === 'fr' ? 'fr' : 'en';
+}
+function setFrMode(mode) {
+  var want = mode === 'fr' ? 'fr' : 'en';
+  try { localStorage.setItem(FR_KEY, want); } catch (e) { /* private mode */ }
+  // The record dialog caches the fragment it was served; a language change must not
+  // show yesterday's language under today's label.
+  RECORD_CACHE_FR = null;
+  if (RECORD_STATE) { RECORD_STATE.recordFrag = null; RECORD_STATE.recordCache = null; }
+  if (RECORD_STATE && RECORD_STATE.recordId) { loadRecord(RECORD_STATE); renderRecord(RECORD_STATE); }
+  var api = window.WIKI_SURFACE_API;
+  if (api && api.setRecordLang) api.setRecordLang(want);
+  paintSettings();
+}
+// The record fragment and the record JSON are cached per language: a reader toggling
+// back and forth should not see the other language's body.
+var RECORD_CACHE_FR = null;
+function recordLangQuery() { return frMode() === 'fr' ? '&lang=fr' : ''; }
+// The French BODY of one record, for the surfaces that need the text rather than a
+// rendered fragment - the quote's translation under the English canon. Fetched once per
+// record and kept, so a re-render does not ask again.
+var FR_TEXT = {};
+function frRecordText(id) {
+  if (!id) return Promise.resolve('');
+  if (FR_TEXT[id] !== undefined) return Promise.resolve(FR_TEXT[id]);
+  return fetch('/rules/fr?id=' + encodeURIComponent(id))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) { FR_TEXT[id] = (j && j.fr) || ''; return FR_TEXT[id]; })
+    .catch(function () { FR_TEXT[id] = ''; return ''; });
 }
 function setLegendsMode(mode) {
   var on = mode === 'on';
@@ -1690,14 +1759,14 @@ function openBook(state, f) {
 // the same one the page footer prints.
 function gearSheet() { return document.getElementById('gearsheet'); }
 function paintSettings() {
-  var v = voiceEngine(), d = doorMode(), lg = legendsMode();
-  ['voiceseg', 'findingsseg', 'legendsseg'].forEach(function (id) {
+  var v = voiceEngine(), d = doorMode(), lg = legendsMode(), frl = frMode();
+  ['voiceseg', 'findingsseg', 'legendsseg', 'frseg'].forEach(function (id) {
     var seg = document.getElementById(id);
     if (!seg) return;
     Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) {
-      var which = b.hasAttribute('data-voice') ? 'voice' : (b.hasAttribute('data-door') ? 'door' : 'legends');
-      var key = which === 'voice' ? b.getAttribute('data-voice') : which === 'door' ? b.getAttribute('data-door') : b.getAttribute('data-legends');
-      var sel = (which === 'voice' ? v : which === 'door' ? d : lg) === key;
+      var which = b.hasAttribute('data-voice') ? 'voice' : (b.hasAttribute('data-door') ? 'door' : (b.hasAttribute('data-fr') ? 'fr' : 'legends'));
+      var key = which === 'voice' ? b.getAttribute('data-voice') : which === 'door' ? b.getAttribute('data-door') : which === 'fr' ? b.getAttribute('data-fr') : b.getAttribute('data-legends');
+      var sel = (which === 'voice' ? v : which === 'door' ? d : which === 'fr' ? frl : lg) === key;
       b.classList.toggle('on', sel);
       b.setAttribute('aria-pressed', sel ? 'true' : 'false');
     });
@@ -1708,6 +1777,11 @@ function paintSettings() {
   if (row) row.setAttribute('data-legends-state', lg);
   var st = document.getElementById('legendsState');
   if (st) { st.textContent = lg === 'on' ? t('legendsStateOn') : t('legendsStateOff'); st.setAttribute('data-on', lg === 'on' ? '1' : '0'); }
+  // task-69: the record language's own row and state word, the same shape as Legends'.
+  var frrow = document.getElementById('frsetting');
+  if (frrow) frrow.setAttribute('data-fr-state', frl);
+  var frst = document.getElementById('frState');
+  if (frst) { frst.textContent = frl === 'fr' ? t('frStateOn') : t('frStateOff'); frst.setAttribute('data-on', frl === 'fr' ? '1' : '0'); }
   var txt = function (id, value) { var n = document.getElementById(id); if (n) n.textContent = value; };
   txt('geartitle', t('settingsTitle'));
   txt('gearclose', t('settingsClose'));
@@ -1770,6 +1844,12 @@ function closeSettings() {
   if (ls) ls.addEventListener('click', function (ev) {
     var b2 = ev.target && ev.target.closest ? ev.target.closest('[data-legends]') : null;
     if (b2) setLegendsMode(b2.getAttribute('data-legends'));
+  });
+  // task-69: the record language, the same one-click shape as the three above.
+  var frs = document.getElementById('frseg');
+  if (frs) frs.addEventListener('click', function (ev) {
+    var b2 = ev.target && ev.target.closest ? ev.target.closest('[data-fr]') : null;
+    if (b2) setFrMode(b2.getAttribute('data-fr'));
   });
   paintSettings();
 })();
@@ -2088,7 +2168,7 @@ function loadRecord(state) {
   // (marks, chips, wiki link, swipe) and builds no record markup at all.
   state.recordFrag = state.recordFrag || {};
   if (state.recordFrag[id] === undefined) {
-    fetch('/rules/record?id=' + encodeURIComponent(id) + '&format=html')
+    fetch('/rules/record?id=' + encodeURIComponent(id) + '&format=html' + recordLangQuery())
       .then(function (r) { return r.ok ? r.text() : ''; })
       .then(function (html) {
         state.recordFrag[id] = html || '';
@@ -2313,7 +2393,7 @@ function renderVerdicts(state) {
   // a widening renumbers the findings, so citations are shown only while the
   // verdict and the list on screen are the same pass.
   var samePass = (state.judgeAttempt || 0) === (state.pass || 0);
-  card.appendChild(rulingBlock(state.judge, samePass ? state.findings : null));
+  card.appendChild(rulingBlock(state.judge, samePass ? state.findings : null, state.quoteFr));
   // task-27: the review is visible while it runs, not only when it lands.
   if (!state.judge2 && state.secondPending) {
     card.appendChild(el('p', 'secondnote secondrun', t('secondReading')));
@@ -2388,7 +2468,7 @@ function strikeFigures(text, bad) {
   if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
   return frag;
 }
-function rulingBlock(judge, findings) {
+function rulingBlock(judge, findings, quoteFr) {
   var wrap = el('div', 'ruling');
   var answered = !!(judge && judge.answered === true);
   var trace = (judge && judge.trace) || null;
@@ -2408,6 +2488,14 @@ function rulingBlock(judge, findings) {
     var quote = el('blockquote', trace && trace.quoteOk === false ? 'rquote bad' : 'rquote');
     quote.textContent = String(judge.quote);
     wrap.appendChild(quote);
+    // task-69: the quote is the English canon and stays that; the record's French body
+    // sits under it, so the reader has the evidence and its translation, in that order.
+    if (quoteFr) {
+      var qfr = el('blockquote', 'rquote rquote-fr');
+      qfr.setAttribute('lang', 'fr');
+      qfr.textContent = String(quoteFr);
+      wrap.appendChild(qfr);
+    }
     var src = findFinding(findings, judge.from);
     if (src) wrap.appendChild(sourceLine(src));
   }
@@ -2945,6 +3033,22 @@ function applyEvent(ev, state) {
     }
     else {
       state.judge = ev.judge;
+      // task-69: the French that rides under the quote, when the reader's language is
+      // French. The English quote is the evidence and is never replaced by it.
+      if (ev.quoteFr !== undefined) state.quoteFr = String(ev.quoteFr || '');
+      // A streamed ask carries no quoteFr field, so the page asks for the cited record's
+      // French itself and re-renders the verdict when it lands. The English quote is
+      // already on screen; this only adds the translation under it.
+      if (!state.quoteFr && frMode() === 'fr' && ev.judge && ev.judge.answered === true && ev.judge.quote) {
+        var citedF = state.findings && state.findings[ev.judge.from - 1];
+        if (citedF && citedF.id) {
+          frRecordText(citedF.id).then(function (txt) {
+            if (!txt) return;
+            state.quoteFr = txt;
+            renderVerdicts(state);
+          });
+        }
+      }
       state.judgeAttempt = ev.attempt || 0;
       // The verdict names the passages it rests on. They are promoted out of the
       // collapse and badged, so the evidence behind a verdict is never hidden in
@@ -3044,7 +3148,7 @@ function showInto(state, j) {
   if (j.translation && j.translation !== (j.question || '')) applyEvent({ type: 'translation', detected: j.lang, translated: j.translation, elapsedMs: j.elapsedMs }, state);
   if (j.card) applyEvent({ type: 'card', card: j.card, elapsedMs: j.elapsedMs }, state);
   applyEvent({ type: 'findings', findings: j.findings || [], counts: j.counts, terms: j.terms, steps: j.steps, elapsedMs: j.elapsedMs }, state);
-  if (j.judge) applyEvent({ type: 'judge', judge: j.judge, final: true, elapsedMs: j.elapsedMs }, state);
+  if (j.judge) applyEvent({ type: 'judge', judge: j.judge, final: true, elapsedMs: j.elapsedMs, quoteFr: j.quoteFr }, state);
   applyEvent({ type: 'answer', answer: j.answer, elapsedMs: j.elapsedMs }, state);
   applyEvent({ type: 'done', elapsedMs: j.elapsedMs, unresolved: j.unresolved, escalated: j.escalated }, state);
   for (var i = 0; i < (j.notes || []).length; i++) state.rest.appendChild(el('div', 'note warn', j.notes[i]));

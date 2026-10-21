@@ -97,7 +97,12 @@ t('(f) no .html, no map.json, no legacy.json', written.filter(f => /\.html$/.tes
 // and the record route read. None of the three is named by index.json, so the default
 // reader never fetches one (tests/test-legends.mjs pins that half).
 const LEGENDS_FILES = ['index/legends.json', 'content/legends.json', 'index/legends-slugs.json'];
-t('(g) the file count is index + one per branch + one per book + the rows file + the Legends three', written.length, 1 + index.branches.length + books.length + 1 + LEGENDS_FILES.length);
+// task-69: the French overlay is baked per book, one file per book plus its index, and
+// only for the books that actually carry a translation.
+const frIndex = read('i18n/fr/index.json');
+const FR_FILES = 1 + Object.keys(frIndex.books).length;
+t('(g) the file count is index + one per branch + one per book + the rows file + the Legends three + the French overlay', written.length, 1 + index.branches.length + books.length + 1 + LEGENDS_FILES.length + FR_FILES);
+t('(g) and the French files are one per translated book plus its index', written.filter(f => /^i18n\/fr\//.test(f)).length, FR_FILES);
 t('(g) and the Legends three are the only files beyond that count', LEGENDS_FILES.filter(f => written.indexOf(f) === -1), []);
 t('(g) and it is the count the stats report', written.length, stats.fileCount);
 

@@ -69,7 +69,9 @@ ok('(C) the client has a row for that node rather than a blank pane', js.body.in
 
 // (G)(E) the tree and the record component are the payloads and the one body.
 ok('(G) the filter re-renders from memory, with no fetch in the handler', js.body.indexOf("addEventListener('input', function () { state.filter") !== -1);
-ok('(E) a record body comes from the server route that calls recordBody, with the record id', fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8').indexOf("recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor, selfId: raw.id })") !== -1);
+// task-69 adds the French overlay to the same call, so the pin reads for the route and
+// the record id rather than for the exact literal it used to be.
+ok('(E) a record body comes from the server route that calls recordBody, with the record id', /recordBody\(raw, \{ corpora: corpora\(\), index: cardIdx\(\), href: wikiFileFor, selfId: raw\.id/.test(fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8')));
 ok('(E2) the client never calls recordBody itself', (js.body.match(/recordBody\(/g) || []).length === 0);
 
 // (3) the ask, the tail, the icon and the copy - the slice-3 targets.

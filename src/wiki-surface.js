@@ -19,6 +19,11 @@
   // task-44: the Legends setting, per device like the language and the voice. Its key
   // is the reader's; the page's own sheet writes it through setLegends().
   var LEGENDS_KEY = 'mhq.rules.legends';
+  // task-69: the record language. The page's sheet writes it through setRecordLang();
+  // the surface reads the same key so a reader who chose French sees French records in
+  // the drawer and the reading view too. The corpus stays English; this only asks the
+  // record route for the French body.
+  var FR_KEY = 'mhq.rules.fr';
   var ROW_CAP = 500;
   var state = {
     branches: null, branch: null, cache: {}, open: {}, rows: {}, rowsCache: {}, rowsLoading: {}, filter: '',
@@ -60,6 +65,35 @@
   // of them. Turning it on fetches index/legends.json once and puts the branch at the
   // head of the list; turning it off drops the branch and its cached payload.
   function legendsWanted() { try { return localStorage.getItem(LEGENDS_KEY) === '1'; } catch (e) { return false; } }
+  // The record language, as the page's sheet set it. A surface with no page (a cold
+  // deep link) reads the stored choice; with nothing stored it stays English, which is
+  // the corpus's own language.
+  function recordLang() {
+    try { return localStorage.getItem(FR_KEY) === 'fr' ? 'fr' : 'en'; } catch (e) { return 'en'; }
+  }
+  function recordLangQuery() { return recordLang() === 'fr' ? '&lang=fr' : ''; }
+  function setRecordLang(mode) {
+    var want = mode === 'fr' ? 'fr' : 'en';
+    try { localStorage.setItem(FR_KEY, want); } catch (e) { /* private mode */ }
+    // The rows cache holds rendered HTML per record; a language change must not serve
+    // the old language from it. Whatever is on screen is re-fetched, so the reader sees
+    // the switch take effect on the record in front of them.
+    state.rows = {};
+    if (state.mode === 'page' && state.record) return showPage(state.record, state.from);
+    var tree = treeEl();
+    if (tree) {
+      var open = tree.querySelector('.sv-inline-body');
+      if (open && state.openRec) {
+        var rec = state.openRec;
+        open.textContent = '';
+        open.appendChild(el('div', 'sv-loading', 'Loading the record...'));
+        fetch(REC + '?id=' + encodeURIComponent(rec.id) + '&format=html' + recordLangQuery(), { credentials: 'same-origin' })
+          .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
+          .then(function (html) { open.textContent = ''; open.innerHTML = faceHtml(rec.id) + html; wireFaces(open); })
+          .catch(function () { open.textContent = 'The record could not be loaded.'; });
+      }
+    }
+  }
   function legendsOn() { return state.legends === true; }
   function legendsBranch() {
     var key = 'legends';
@@ -727,7 +761,7 @@ function rowDisplay(headingOrParts) {
     state.openRec = r;
     deIndent(box);
     if (state.rows[r.id]) { body.innerHTML = faceHtml(r.id) + state.rows[r.id]; wireFaces(body); return; }
-    fetch(REC + '?id=' + encodeURIComponent(r.id) + '&format=html', { credentials: 'same-origin' })
+    fetch(REC + '?id=' + encodeURIComponent(r.id) + '&format=html' + recordLangQuery(), { credentials: 'same-origin' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
       .then(function (html) { state.rows[r.id] = html; loadFaces().then(function () { body.innerHTML = faceHtml(r.id) + html; wireFaces(body); }); })
       .catch(function () { body.textContent = 'The record could not be loaded.'; });
@@ -783,7 +817,7 @@ function rowDisplay(headingOrParts) {
     body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
     v.appendChild(body);
     if (state.rows[record.id]) { body.innerHTML = faceHtml(record.id) + state.rows[record.id]; wireFaces(body); return; }
-    fetch(REC + '?id=' + encodeURIComponent(record.id) + '&format=html', { credentials: 'same-origin' })
+    fetch(REC + '?id=' + encodeURIComponent(record.id) + '&format=html' + recordLangQuery(), { credentials: 'same-origin' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
       .then(function (html) { state.rows[record.id] = html; loadFaces().then(function () { body.innerHTML = faceHtml(record.id) + html; wireFaces(body); }); })
       .catch(function () { body.textContent = 'The record could not be loaded.'; });
@@ -1873,6 +1907,10 @@ function devPanel(f, state, ctx) {
     // task-44: the settings sheet's Legends switch, and the state it paints.
     setLegends: setLegends,
     legendsOn: legendsOn,
+    // task-69: the settings sheet's record-language switch, and the two record fetches
+    // below it read the same key.
+    setRecordLang: setRecordLang,
+    recordLang: recordLang,
     // task-36: the landing page's find box. A door, not a second pipeline: it opens the
     // drawer, puts the name in the drawer's OWN field and runs the drawer's OWN search,
     // which is /rules/find - the only route either box uses, with no model call. The

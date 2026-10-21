@@ -43,6 +43,34 @@ function project(r) {
   };
 }
 
+// task-69: the French overlay, read from the translation pass's export and grouped by the
+// SAME bookOf the English payload uses, so a record's French lives in the book the reader
+// opened. Returns { source, translated, blocked, <book>: { text: { id: fr } } }.
+//
+// The export is 14.8 MB and carries the whole pass record; only the French text is kept
+// here. It is NOT read when the file is absent (a checkout with no translation still
+// bakes) - the function reports zero and the bake writes an empty index.
+const FR_SOURCE = path.join(REPO, 'workspace', 'i18n', 'fr-full.json');
+export function frByBook(ids, bookOf) {
+  const out = { source: '', translated: 0, blocked: 0 };
+  let raw = null;
+  try { raw = JSON.parse(fs.readFileSync(FR_SOURCE, 'utf8')); } catch (e) { return out; }
+  out.source = String(raw.exported_at || '');
+  const byId = new Map();
+  for (const rec of (raw.records || [])) {
+    if (!rec || !rec.id) continue;
+    if (rec.fr) { byId.set(String(rec.id), String(rec.fr)); out.translated++; } else out.blocked++;
+  }
+  for (const id of (ids || [])) {
+    const fr = byId.get(String(id));
+    if (!fr) continue;
+    const book = bookOf(String(id));
+    if (!out[book]) out[book] = { text: {} };
+    out[book].text[String(id)] = fr;
+  }
+  return out;
+}
+
 const textOf = rec => String((rec && rec.text) || '');
 // The name a row carries: the heading's own leaf, the same read wiki-toc's own rows use.
 const leafTitle = r => { const p = String((r && r.heading) || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : String((r && r.id) || ''); };
@@ -386,6 +414,30 @@ export function buildPayloads(corpus, outDir) {
     }
     write('content/' + book + '.json', { book: book, records: recordsOut });
   }
+
+  // --- the French overlay (task-69) -------------------------------------------
+  // The English corpus stays the canon; the French is an overlay keyed by record id, and
+  // it is baked PER BOOK so a reader fetches only the book they are reading, exactly like
+  // the English content payloads. The source is the translation pass's own export
+  // (workspace/i18n/fr-full.json): this reads it, it never re-runs it.
+  //
+  // Only the delivered records are written - a record the tree filtered has no page to
+  // render, and its French would be dead weight. A record with no French (the pass
+  // blocked 39) is simply absent from the file, which is how the reader falls back to
+  // the English rather than to nothing.
+  const fr = frByBook(live, bookOf);
+  fs.rmSync(path.join(out, 'i18n'), { recursive: true, force: true });
+  fs.mkdirSync(path.join(out, 'i18n', 'fr'), { recursive: true });
+  const frIndex = {};
+  for (const book of Object.keys(fr).filter(k => fr[k] && fr[k].text).sort()) {
+    const body = JSON.stringify({ book: book, records: fr[book].text });
+    fs.writeFileSync(path.join(out, 'i18n', 'fr', book + '.json'), body);
+    files.push({ name: 'i18n/fr/' + book + '.json', bytes: Buffer.byteLength(body) });
+    frIndex[book] = { file: book + '.json', records: fr[book].text.length, bytes: Buffer.byteLength(body) };
+  }
+  const frIndexBody = JSON.stringify({ source: fr.source, translated: fr.translated, blocked: fr.blocked, books: frIndex });
+  fs.writeFileSync(path.join(out, 'i18n', 'fr', 'index.json'), frIndexBody);
+  files.push({ name: 'i18n/fr/index.json', bytes: Buffer.byteLength(frIndexBody) });
 
   const bytes = files.reduce((n, f) => n + f.bytes, 0);
   const biggest = files.slice().sort((a, b) => b.bytes - a.bytes)[0] || { name: '', bytes: 0 };

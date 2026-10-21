@@ -81,7 +81,9 @@ t('no reader-facing label is hardcoded in the script', hardcoded, []);
 // is the only fetch outside /rules/ask on the page. task-17 adds the voice
 // transcription upload; it is the one other POST, and only when the mic is used.
 const fetchCalls = Array.from(new Set(Array.from(PAGE.matchAll(/fetch\('([^']+)'/g)).map(m => m[1]))).sort();
-t('the page only fetches the eight routes it needs', fetchCalls, ['/health', '/rules/answered', '/rules/ask', '/rules/labels', '/rules/lookup?q=', '/rules/record?id=', '/rules/voice', '/rules/vote']);
+// task-69 adds the ninth: the French body of one record, for the translation under the
+// English quote. It is a GET of the overlay, not a second ask.
+t('the page only fetches the nine routes it needs', fetchCalls, ['/health', '/rules/answered', '/rules/ask', '/rules/fr?id=', '/rules/labels', '/rules/lookup?q=', '/rules/record?id=', '/rules/voice', '/rules/vote']);
 
 // The display the task asks for, asserted where it can be seen: findings above
 // the prose, re-rendered whenever a findings event lands, popup over payload.

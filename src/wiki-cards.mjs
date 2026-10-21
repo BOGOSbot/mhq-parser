@@ -946,7 +946,12 @@ export function recordBody(record, opts) {
   // task-34: the flat record body is a display path too - the drawer's inline record
   // for a record with no card still shows the wargear lines, so it takes the same
   // marks as the card. Idempotent, and the corpus bytes are untouched.
-  const text = markWargearText(dropChildEchoes(stripSeeAlso({ text: stripBuiltBlock(record), links: record && record.links }), kids));
+  // task-69: the French overlay. The record's own text is the display text; when the
+  // caller passes the French for this record id, that is what the body renders. The
+  // heading, the links and the keywords do not move - the translation pass kept defined
+  // terms in English and this is where that is honoured rather than re-decided.
+  const shown = o.frText ? Object.assign({}, record, { text: String(o.frText) }) : record;
+  const text = markWargearText(dropChildEchoes(stripSeeAlso({ text: stripBuiltBlock(shown), links: record && record.links }), kids));
   // task-44: a record the product filters out - Legends, the pack line, the named
   // tenth-edition rule - is still reachable by its own id. It is labelled, in the same
   // voice as the third-party ruling banner, and never 404s.
@@ -966,6 +971,12 @@ export function recordBody(record, opts) {
   if (recordShape(text, record && record.heading, record && record.kind)) {
     return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 12, state: o.state, selfHeading: record && record.heading, csvSource: record && record.source, csvKind: record && record.kind }) + tail;
   }
+  // A card built from the CSV export has no French: its stat lines, wargear and ability
+  // rows come from tables the pass did not translate. Rather than show a French record
+  // whose card is English, the French body renders as its own text - which IS the card
+  // transcription (the pass translated it), keywords and all. The English record keeps
+  // the card. See the task-69 report for what the card view loses when French is on.
+  if (o.frText) return banner + shapeHtml(text, { selfId: record && record.id, href: o.href, cap: record && record.kind === 'index' ? 0 : 12, state: o.state, selfHeading: record && record.heading, csvSource: record && record.source, csvKind: record && record.kind }) + tail;
   const card = cardFor(record, o);
   if (card) return banner + cardHtml(card, o) + tail;
   // An index page carpeted in links is worse than an index with none: kind
