@@ -27,16 +27,67 @@ const ASSETS = {
   'surface-sw.js': { file: 'wiki-surface-sw.js', type: 'text/javascript; charset=utf-8' },
 };
 
-// task-95: the shell names the two assets with a content stamp, so a browser can never run
+// task-95: the shell names the assets with a content stamp, so a browser can never run
 // yesterday's client against today's server. A stale tab cost Mandal three reports of a
 // defect that was already fixed on the server: his page had the old bundle in memory and
-// nothing asked for the new one. The stamp is a hash of the two files, read per render -
+// nothing asked for the new one. The stamp is a hash of the three files, read per render -
 // they are read to serve them anyway.
 export function assetStamp() {
   const h = crypto.createHash('sha1');
   for (const name of Object.keys(ASSETS).sort()) h.update(fs.readFileSync(path.join(SURFACE_DIR, ASSETS[name].file)));
   return h.digest('hex').slice(0, 10);
 }
+
+// task-80: the PAYLOAD has its own stamp, and the two are kept apart on purpose.
+//
+// The offline cache is named with both (see workerStamp), because a cache whose name only
+// covered the shell would survive a corpus re-bake: activate would delete nothing, and a
+// reader would get yesterday's tree and yesterday's record body - a record the corpus had
+// dropped would still be listed and would still open. That is the task-95 class of defect
+// with data instead of a bundle.
+//
+// They are NOT one stamp: the page's ?v= must stay the shell's, so a payload-only deploy
+// does not make every reader re-download 90 KB of client that did not change, while the
+// worker's cache name covers both so nothing stale can be served.
+//
+// mtime+size, not contents: the payload is 18.7 MB raw over 61 files and a hash of its bytes
+// would be paid on every page render. Every file counts - an index-only stamp would miss a
+// record-text fix, which is exactly the kind of change that must not be served from cache.
+// Memoized on the set of (name, mtime, size), so a re-bake invalidates it by itself and a
+// long-lived process cannot pin the old value.
+let DATA_STAMP = { key: '', stamp: '' };
+function payloadFiles() {
+  const out = [];
+  const walk = (dir, depth) => {
+    if (depth > 3) return;
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; }
+    for (const e of entries) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p, depth + 1);
+      else if (e.name.endsWith('.json')) out.push(p);
+    }
+  };
+  walk(DATA_DIR, 0);
+  return out.sort();
+}
+export function dataStamp() {
+  const files = payloadFiles();
+  const key = files.map(f => { try { const s = fs.statSync(f); return f + ':' + s.mtimeMs + ':' + s.size; } catch (e) { return f + ':?'; } }).join('|');
+  if (key && key === DATA_STAMP.key) return DATA_STAMP.stamp;
+  const h = crypto.createHash('sha1');
+  h.update(key);
+  // The file NAMES are in the key, so a payload that only loses a book still changes the
+  // stamp; the sizes and mtimes catch a rewrite that keeps every name.
+  const stamp = h.digest('hex').slice(0, 8);
+  DATA_STAMP = { key: key, stamp: stamp };
+  return stamp;
+}
+
+// What the service worker's cache is named after: the shell AND the payload, so neither can
+// go stale behind the other. The worker's bytes carry it (surfaceAsset substitutes it), which
+// is what makes the browser update the worker at all.
+export function workerStamp() { return assetStamp() + '-' + dataStamp(); }
 
 export function surfaceAsset(name) {
   const a = ASSETS[String(name || '').replace(/^.*\//, '')];
@@ -46,7 +97,7 @@ export function surfaceAsset(name) {
   // read from its own URL. A worker whose BYTES change on every deploy is one the browser
   // must update; a worker that only reads a query string can be left un-updated when the
   // script itself is byte-identical, and an old worker keeps an old cache name.
-  return { type: a.type, body: a.file === 'wiki-surface-sw.js' ? body.split('__STAMP__').join(assetStamp()) : body };
+  return { type: a.type, body: a.file === 'wiki-surface-sw.js' ? body.split('__STAMP__').join(workerStamp()) : body };
 }
 
 export function dataDir() { return DATA_DIR; }

@@ -3716,7 +3716,7 @@ if (!window.matchMedia || !window.matchMedia('(pointer: coarse)').matches) $('#q
 // workers, or a private window, simply has no offline shell and nothing else changes.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('/rules/surface-sw.js?v=__STAMP__', { scope: '/rules' })
+    navigator.serviceWorker.register('/rules/surface-sw.js?v=__WORKER_STAMP__', { scope: '/rules' })
       .catch(function () { /* no offline shell; the page works exactly as before */ });
   });
 }

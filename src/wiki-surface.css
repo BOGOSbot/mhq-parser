@@ -118,6 +118,8 @@ a{color:var(--sv-acc)}
 .sv-offline{color:var(--sv-dim);padding:14px 16px 6px;font:13px/1.5 var(--sv-sans)}
 .sv-offline-again{margin:0 16px 14px;padding:7px 12px;border:1px solid var(--sv-line);border-radius:8px;background:transparent;color:inherit;font:13px/1.2 var(--sv-sans);cursor:pointer}
 .sv-offline-again:hover{border-color:var(--sv-fg)}
+.sv-offline-wrap{padding-bottom:6px}
+.sv-offline-wrap .sv-offline-again{margin:0 16px 8px}
 
 /* --- a record read alone, inside the drawer ------------------------------- */
 .sv-drawer.sv-reading .sv-filter,.sv-drawer.sv-reading .sv-tree{display:none}

@@ -28,7 +28,7 @@
   var state = {
     branches: null, branch: null, cache: {}, open: {}, rows: {}, rowsCache: {}, rowsLoading: {}, filter: '',
     legends: false, legendsBranch: null,
-    hits: null, searchQ: '', searchTimer: null,
+    hits: null, searchQ: '', searchTimer: null, rowsFailed: {},
     mode: 'none', record: null, from: '', answer: null, icons: {},
     // task-42: the drawer's own history entries - how many the reader can still go
     // back through (dhist), and the records a back step left behind, so the browser's
@@ -338,6 +338,39 @@ function rowDisplay(headingOrParts) {
     else hideDrawerRecord();
   }
   function drawerWanted() { try { return localStorage.getItem(DRAWER_KEY) === '1'; } catch (e) { return false; } }
+  // task-81: a read-only probe for the offline verification. Nothing in the product calls it;
+  // it is here so a check can assert the STATE (is the book held, is the drawer open) rather
+  // than infer it from pixels it might misread.
+  window.WIKI_SURFACE_PROBE = function () {
+    var d = $('sv-drawer');
+    return {
+      drawerOpen: !!(d && d.classList.contains('sv-open')),
+      reading: !!(d && d.classList.contains('sv-reading')),
+      branch: state.branch || '',
+      held: Object.keys(state.cache || {}),
+      rowsHeld: Object.keys(state.rowsCache || {}),
+      rowsFailed: Object.keys(state.rowsFailed || {}),
+      openNodes: Object.keys(state.open || {}).filter(function (k) { return state.open[k]; }),
+      dstack: (state.dstack || []).length,
+      filter: String(state.filter || ''),
+    };
+  };
+  // task-81: dump the tree's shape for the offline check (branch, depth, text).
+  window.WIKI_SURFACE_TREE = function () {
+    var box = $('sv-tree');
+    if (!box) return [];
+    var out = [];
+    var walk = function (el2, depth) {
+      for (var i = 0; i < el2.children.length; i++) {
+        var c = el2.children[i];
+        var btn = c.querySelector ? c.querySelector('.sv-node') : null;
+        out.push(depth + ':' + (btn ? (btn.textContent || '').trim().slice(0, 24) : c.className));
+        walk(c, depth + 1);
+      }
+    };
+    walk(box, 0);
+    return out.slice(0, 24);
+  };
 
   // --- the tree -------------------------------------------------------------
   // task-38: offline is a STATE the drawer reports, never a silent empty tree. The service
@@ -345,15 +378,20 @@ function rowDisplay(headingOrParts) {
   // (a private window, a browser without one) or the book was never fetched, and the reader
   // is told which and offered the retry. An empty tree would read as 'this corpus has
   // nothing', which is the failure shape task-70 and task-78 both exist to prevent.
+  function offlineNoteEl(what, retry) {
+    var wrap = el('div', 'sv-offline-wrap');
+    wrap.appendChild(el('div', 'sv-offline', 'Offline: ' + what + '. The wiki needs the network the first time a book is opened.'));
+    var again = el('button', 'sv-offline-again', 'Try again');
+    again.type = 'button';
+    again.addEventListener('click', function () { retry(); });
+    wrap.appendChild(again);
+    return wrap;
+  }
   function offlineNote(what, retry) {
     var box = $('sv-tree');
     if (!box) return;
     box.textContent = '';
-    box.appendChild(el('div', 'sv-offline', 'Offline: ' + what + '. The wiki needs the network the first time a book is opened.'));
-    var again = el('button', 'sv-offline-again', 'Try again');
-    again.type = 'button';
-    again.addEventListener('click', function () { box.textContent = ''; retry(); });
-    box.appendChild(again);
+    box.appendChild(offlineNoteEl(what, retry));
   }
   function openIndex() {
     if (state.branches) { renderTree(); if (legendsOn()) ensureLegendsBranch(); return Promise.resolve(); }
@@ -470,8 +508,20 @@ function rowDisplay(headingOrParts) {
   // task-58: one row opens the record it names - or, for a folded row, one of the
   // records it stands for. Same act, so it is one function.
   function openHit(r) {
-    if (r.slug) { recordBySlug(r.slug).then(function (rec) { if (rec) showInDrawer(rec, true); }); return; }
-    showInDrawer({ id: r.id, kind: r.kind, slug: '', title: r.title, heading: r.title }, true);
+    // task-81: a record whose payload fetch fails must SAY so. Silently doing nothing left
+    // the reader with a tap that visibly did nothing, and when the tap had already opened
+    // the drawer's page surface the panel closed under them. The tree stays, the drawer
+    // stays open, and the sentence names the record.
+    function missing() {
+      var d = $('sv-drawer');
+      if (d && d.classList.contains('sv-open')) offlineNote('"' + (r.title || 'this record') + '" is not in the offline copy', function () { openHit(r); });
+    }
+    if (r.slug) {
+      recordBySlug(r.slug).then(function (rec) { if (rec) showInDrawer(rec, true); else missing(); });
+      return;
+    }
+    if (!r.kind) { missing(); return; }
+    showInDrawer({ id: r.id, kind: r.kind, slug: '', title: r.title, heading: r.title }, true).then(function (ok) { if (!ok) missing(); });
   }
   function renderHits(q) {
     var box = treeEl();
@@ -562,10 +612,18 @@ function rowDisplay(headingOrParts) {
     if (!b) return Promise.resolve({});
     if (state.rowsCache[b]) return Promise.resolve(state.rowsCache[b]);
     if (state.rowsLoading[b]) return state.rowsLoading[b];
+    // task-81: a FAILED load is remembered as failed, not as an empty book. Caching {} on a
+    // failure made 'offline' and 'this book has no rows' the same state, and the retry could
+    // never run: the empty object was already in the cache.
     state.rowsLoading[b] = getJson(DATA + '/index/' + b + '-rows.json').then(function (j) {
       state.rowsCache[b] = (j && j.rows) || {};
+      delete state.rowsFailed[b];
       return state.rowsCache[b];
-    }).catch(function () { state.rowsCache[b] = {}; return {}; });
+    }).catch(function () {
+      state.rowsFailed[b] = true;
+      delete state.rowsLoading[b];
+      return {};
+    });
     return state.rowsLoading[b];
   }
   function rowFromBranch(id) {
@@ -626,8 +684,19 @@ function rowDisplay(headingOrParts) {
       var p = pageFor(n, key);
       if (p) {
         if (!state.rowsCache[state.branch]) {
-          body.appendChild(el('div', 'sv-loading', 'Loading the records...'));
-          loadRows().then(function () { renderTree(); });
+          // task-81: the rows are a SECOND fetch, so offline they are the part that is
+          // missing even when the tree itself came from cache. Three states, three
+          // sentences: loading, this book's records could not be fetched (with a retry),
+          // and the rows themselves.
+          if (state.rowsFailed[state.branch]) {
+            body.appendChild(offlineNoteEl('this book\'s records could not be fetched', function () {
+              delete state.rowsFailed[state.branch];
+              loadRows().then(function () { renderTree({ attr: 'data-node', val: key }); });
+            }));
+          } else {
+            body.appendChild(el('div', 'sv-loading', 'Loading the records...'));
+            loadRows().then(function () { renderTree({ attr: 'data-node', val: key }); });
+          }
         } else {
           rows = rows.concat(p.recs.map(function (id) { return rowFromBranch(id); }));
         }
@@ -956,7 +1025,7 @@ function rowDisplay(headingOrParts) {
   }
   function showInDrawer(record, push, note) {
     var d = $('sv-drawer'), panel = drawerPanel(), tree = treeEl();
-    if (!d || !panel || !record) return;
+    if (!d || !panel || !record) return Promise.resolve(false);
     markSurface('page');
     // task-74: the page is ONE surface, so no inline box is left open behind it. An
     // inline opened by an earlier tap stays in the tree (toggleInline's own cleanup runs
@@ -994,19 +1063,27 @@ function rowDisplay(headingOrParts) {
     body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
     panel.appendChild(body);
     panel.scrollTop = top;
-    if (state.rows[record.id]) { body.innerHTML = faceHtml(record.id) + state.rows[record.id]; wireFaces(body); panel.scrollTop = top; return; }
-    fetch(REC + '?id=' + encodeURIComponent(record.id) + '&format=html' + recordLangQuery(), { credentials: 'same-origin' })
+    // task-81: the caller is told whether the body arrived. Without an answer the drawer
+    // could be left on a page surface with 'The record could not be loaded.' in a panel the
+    // reader never saw, and the tap read as a tap that did nothing.
+    if (state.rows[record.id]) { body.innerHTML = faceHtml(record.id) + state.rows[record.id]; wireFaces(body); panel.scrollTop = top; return Promise.resolve(true); }
+    return fetch(REC + '?id=' + encodeURIComponent(record.id) + '&format=html' + recordLangQuery(), { credentials: 'same-origin' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
       .then(function (html) {
         state.rows[record.id] = html;
-        loadFaces().then(function () {
-          if (!panel.contains(body)) return;
-          body.innerHTML = faceHtml(record.id) + html;
-          wireFaces(body);
-          panel.scrollTop = top;
+        return loadFaces().then(function () {
+          if (panel.contains(body)) {
+            body.innerHTML = faceHtml(record.id) + html;
+            wireFaces(body);
+            panel.scrollTop = top;
+          }
+          return true;
         });
       })
-      .catch(function () { body.textContent = 'The record could not be loaded.'; });
+      .catch(function () {
+        body.textContent = 'The record could not be loaded.';
+        return false;
+      });
   }
   // task-42: the drawer's own back button takes the step the hardware back takes - the
   // history entry is the trail, and popstate draws the drawer down to the depth that

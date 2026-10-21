@@ -1,27 +1,30 @@
-// task-38: the offline SHELL, and the two rules that keep it from lying.
+// task-38 + task-80: the offline SHELL, and the rules that keep a cache from lying.
 //
-// 1. VERSIONED WITH THE DEPLOY. The service worker is served as an asset, so the deploy's
-//    asset stamp is substituted INTO its bytes (the cache name) and into the URL the page
-//    registers. That matters twice: a worker whose bytes change must be updated by the
-//    browser, and a cache named with the stamp means one cache per deploy, with the old one
-//    deleted on activate. A reader can never be served yesterday's client, and a deploy
-//    cannot half-apply.
-// 2. NOTHING ABOUT A RECORD IS CACHED AS AN ANSWER. The routes the worker touches are
-//    network-first (the shell) or stale-while-revalidate (the tree, the branch payloads, a
-//    record body) - the fresh copy always wins when the network answers. /rules/ask,
-//    /rules/find and /rules/lookup are NOT intercepted at all, because an answer is not a
-//    document. A record the corpus no longer has cannot be offered from this cache: the
-//    payload that would list it is refreshed from the network first, and a non-ok response
-//    is never stored.
+// 1. VERSIONED WITH THE DEPLOY, SHELL AND PAYLOAD TOGETHER. The worker is served as an
+//    asset, so the deploy's stamps are substituted INTO its bytes and into the URL the page
+//    registers; the cache is named mhq-rules-<shell>-<payload>. A shell change makes a new
+//    cache and so does a payload change, because a cache named only after the client would
+//    survive a corpus re-bake and serve a record the corpus has dropped. The page's ?v= stays
+//    the SHELL stamp alone, so a payload-only deploy does not re-download a client that did
+//    not change.
+// 2. THE NETWORK ANSWERS FIRST. The shell, /rules/data and /rules/record are all fetched
+//    before the cache is consulted; the cache answers only when the fetch failed. There is no
+//    stale-while-revalidate anywhere: SWR would serve one load of yesterday's tree in front
+//    of a live corpus, which is what the card forbids. What the cache holds is at most one
+//    deploy old, and it is read only while offline.
+// 3. AN ANSWER IS NEVER CACHED. /rules/ask, /rules/find and /rules/lookup are not
+//    intercepted at all, and a non-ok response is never stored - so a 404 for a record the
+//    corpus has dropped cannot come back as a cached page.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { assetStamp, surfaceAsset } from '../src/wiki-surface.mjs';
+import { assetStamp, dataStamp, surfaceAsset, workerStamp } from '../src/wiki-surface.mjs';
 
 const N = String.fromCharCode(10);
 let pass = 0, fail = 0;
 const ok = (name, cond) => { if (cond) pass++; else { fail++; console.log('FAIL ' + name); } };
-const t = (name, got, want) => { const same = JSON.stringify(got) === JSON.stringify(want); if (same) pass++; else { fail++; console.log('FAIL ' + name + N + '  got : ' + JSON.stringify(got) + N + '  want: ' + JSON.stringify(want)); } };
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PAGE = fs.readFileSync(path.join(here, '..', 'src', 'rules.html'), 'utf8');
 const SERVER = fs.readFileSync(path.join(here, '..', 'src', 'server.mjs'), 'utf8');
@@ -29,28 +32,77 @@ const SW_SRC = fs.readFileSync(path.join(here, '..', 'src', 'wiki-surface-sw.js'
 const CLIENT = fs.readFileSync(path.join(here, '..', 'src', 'wiki-surface.js'), 'utf8');
 
 const stamp = assetStamp();
-ok('the stamp is a content hash', /^[0-9a-f]{10}$/.test(stamp));
+ok('the shell stamp is a content hash', /^[0-9a-f]{10}$/.test(stamp));
+ok('the payload stamp is a short hash too', /^[0-9a-f]{8}$/.test(dataStamp()));
+ok('the worker stamp is the pair', workerStamp() === stamp + '-' + dataStamp());
 const sw = surfaceAsset('surface-sw.js');
 ok('the worker is served as an asset', !!(sw && sw.body));
-ok('its cache name carries the deploy stamp', sw.body.indexOf("var STAMP = '" + stamp + "'") !== -1);
+ok('its cache name carries the pair', sw.body.indexOf("var STAMP = '" + workerStamp() + "'") !== -1);
 ok('and the template literal is gone from what is served', sw.body.indexOf('__STAMP__') === -1);
 ok('the source file still carries the template', SW_SRC.indexOf("var STAMP = '__STAMP__'") !== -1);
 ok('the one cache name is derived from it', /var CACHE = 'mhq-rules-' \+ STAMP;/.test(SW_SRC));
 ok('activate deletes every other mhq-rules cache', /caches\.keys\(\)/.test(SW_SRC) && /caches\.delete\(n\)/.test(SW_SRC));
 ok('the server allows the worker its scope', /'Service-Worker-Allowed': '\/rules'/.test(SERVER));
 ok('the worker is served on the asset route', SERVER.indexOf("u.pathname === '/rules/surface-sw.js'") !== -1);
-ok('the page registers it with the stamp', PAGE.indexOf("navigator.serviceWorker.register('/rules/surface-sw.js?v=__STAMP__'") !== -1);
-ok('and the server fills that stamp in', /\.replace\('__STAMP__', v\)/.test(SERVER));
+ok('the page registers it with the worker stamp', PAGE.indexOf("navigator.serviceWorker.register('/rules/surface-sw.js?v=__WORKER_STAMP__'") !== -1);
+ok('and the server fills that stamp in', /\.replace\('__WORKER_STAMP__', workerStamp\(\)\)/.test(SERVER));
+ok('the page assets keep the SHELL stamp, not the pair', /\.replace\('\/rules\/surface\.js"', '\/rules\/surface\.js\?v=' \+ v \+ '"'/.test(SERVER));
+ok('the two stamps are visible on /health', /stamp: assetStamp\(\)/.test(SERVER) && /payloadStamp: dataStamp\(\)/.test(SERVER));
 ok('registration failure is silent, never fatal', /catch\(function \(\) \{ \/\* no offline shell/.test(PAGE));
+
+// The proof the card asked for, in a temp tree: a changed payload changes the stamp with the
+// shell untouched. Run in a CHILD so this process's memoization and the real tree are not
+// involved.
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-offline-'));
+const surfaceDir = path.join(tmp, 'shell');
+fs.mkdirSync(surfaceDir, { recursive: true });
+for (const f of ['wiki-surface.js', 'wiki-surface.css', 'wiki-surface-sw.js']) fs.copyFileSync(path.join(here, '..', 'src', f), path.join(surfaceDir, f));
+const dataDir = path.join(tmp, 'data');
+fs.mkdirSync(path.join(dataDir, 'content'), { recursive: true });
+fs.mkdirSync(path.join(dataDir, 'index'), { recursive: true });
+fs.writeFileSync(path.join(dataDir, 'index.json'), JSON.stringify({ branches: [{ b: 'rules' }] }));
+fs.writeFileSync(path.join(dataDir, 'index', 'rules.json'), JSON.stringify({ records: [{ id: 'a' }] }));
+fs.writeFileSync(path.join(dataDir, 'content', 'rules.json'), JSON.stringify({ records: [{ id: 'a', text: 'one' }] }));
+const probe = path.join(tmp, 'probe.mjs');
+const probeSrc = [
+  'import { assetStamp, dataStamp, workerStamp } from ' + JSON.stringify(new URL('../src/wiki-surface.mjs', import.meta.url).href) + ';',
+  'console.log(JSON.stringify({ shell: assetStamp(), data: dataStamp(), worker: workerStamp() }));',
+].join(N);
+fs.writeFileSync(probe, probeSrc);
+const run = () => {
+  const r = spawnSync(process.execPath, [probe], { encoding: 'utf8', env: Object.assign({}, process.env, { WIKI_SURFACE_DIR: surfaceDir, WIKI_DATA_DIR: dataDir }) });
+  try { return JSON.parse(r.stdout.trim().split(N).pop()); } catch (e) { return null; }
+};
+const first = run();
+ok('the temp tree stamps', !!(first && first.shell && first.data && first.worker));
+ok('the child stamp is not the real tree\'s', !!(first && first.data !== dataStamp()));
+if (first) {
+  fs.writeFileSync(path.join(dataDir, 'content', 'rules.json'), JSON.stringify({ records: [{ id: 'a', text: 'two, longer' }] }));
+  const second = run();
+  ok('a payload change moves the payload stamp', !!(second && second.data !== first.data));
+  ok('and the worker stamp with it', !!(second && second.worker !== first.worker));
+  ok('while the SHELL stamp is unchanged', !!(second && second.shell === first.shell));
+  fs.appendFileSync(path.join(surfaceDir, 'wiki-surface.css'), N + '/* touched */' + N);
+  const third = run();
+  ok('a shell change moves the shell stamp', !!(third && third.shell !== second.shell));
+  ok('and the worker stamp too', !!(third && third.worker !== second.worker));
+  ok('and the payload stamp does not move', !!(third && third.data === second.data));
+  fs.unlinkSync(path.join(dataDir, 'index', 'rules.json'));
+  const fourth = run();
+  ok('losing a payload file moves the stamp', !!(fourth && fourth.data !== third.data));
+}
+fs.rmSync(tmp, { recursive: true, force: true });
 
 ok('the ask is never intercepted', SW_SRC.indexOf("'/rules/ask'") !== -1);
 ok('nor the drawer\'s search', SW_SRC.indexOf("'/rules/find'") !== -1);
 ok('nor the lookup', SW_SRC.indexOf("'/rules/lookup'") !== -1);
 ok('a non-GET is never cached', /if \(req\.method !== 'GET'\) return;/.test(SW_SRC));
 ok('a non-ok response is never stored', /if \(res && res\.ok && request\.method === 'GET'\) cache\.put/.test(SW_SRC) && /if \(res && res\.ok\) cache\.put/.test(SW_SRC));
+ok('there is no stale-while-revalidate left', !/staleWhileRevalidate/.test(SW_SRC));
 ok('the shell is network-first', /function networkFirst/.test(SW_SRC) && /if \(isShell\(url\)\) \{ e\.respondWith\(networkFirst\(req\)\); return; \}/.test(SW_SRC));
-ok('the data is stale-while-revalidate', /function staleWhileRevalidate/.test(SW_SRC) && /url\.pathname\.indexOf\(DATA_PREFIX\) === 0/.test(SW_SRC));
+ok('the data is network-first with the cache as fallback', /function networkFirstWithCache/.test(SW_SRC) && /url\.pathname\.indexOf\(DATA_PREFIX\) === 0/.test(SW_SRC));
 ok('and so is a record body', /url\.pathname\.indexOf\('\/rules\/record'\) === 0/.test(SW_SRC));
+ok('the cache is only reached after a failed fetch', /catch \(e\) \{[\s\S]{0,200}cache\.match/.test(SW_SRC));
 
 ok('the drawer reports offline instead of showing nothing', /function offlineNote/.test(CLIENT) && /sv-offline/.test(CLIENT));
 ok('the book list failing says so', /the list of books could not be loaded/.test(CLIENT));

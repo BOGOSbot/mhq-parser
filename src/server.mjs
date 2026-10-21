@@ -49,7 +49,7 @@ import { devHtml, devState } from './dev-report.mjs';
 // Slice 2, additive: the dev route and the surface's static files. The flip in
 // slice 4 wires the surface into rules.html; nothing here touches it.
 import { frText, frUsable } from './i18n-fr.mjs';
-import { assetStamp, dataDir as surfaceDataDir, legendsSlugMap, surfaceAsset, surfacePage, surfaceSlugMap } from './wiki-surface.mjs';
+import { assetStamp, dataDir as surfaceDataDir, dataStamp, legendsSlugMap, surfaceAsset, surfacePage, surfaceSlugMap, workerStamp } from './wiki-surface.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // The process's own birth time, published by /dev: a src/ file newer than this is
@@ -1715,7 +1715,11 @@ const server = http.createServer(async (req, res) => {
         // task-38: the service worker's URL carries the same stamp, and the name is what a
         // deploy changes. The worker's own bytes change with it (surfaceAsset substitutes
         // it), so the browser cannot keep an old one running.
-        .replace('__STAMP__', v);
+        // task-80: the worker's cache name covers the SHELL and the PAYLOAD, so a corpus
+        // re-bake that leaves the client alone still invalidates the offline cache. The
+        // page's two asset URLs keep the shell stamp alone, so that same re-bake does not
+        // make every reader re-download a client that did not change.
+        .replace('__WORKER_STAMP__', workerStamp());
       return send(res, 200, html, 'text/html; charset=utf-8');
     }
     catch (e) { return fail(res, 500, 'rules.html could not be read: ' + String((e && e.message) || e)); }
@@ -1781,6 +1785,11 @@ const server = http.createServer(async (req, res) => {
       // detail: 10th and 11th give different answers to the same question.
       rulesEdition: rulesEdition,
       rulesEditionLabel: rulesEditionLabel,
+      // task-80: the two stamps a deploy carries, so a reader (or a person debugging a
+      // cache) can see which build served this page. The worker's cache name is their
+      // pair; a payload-only re-bake moves dataStamp and the page's shell stamp does not.
+      stamp: assetStamp(),
+      payloadStamp: dataStamp(),
       // What the page actually searches, replacing the old page-count that
       // described the crawl the corpus replaced.
       // When our copy of the rules was last built, and how much of it there is.
