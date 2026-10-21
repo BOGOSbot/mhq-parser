@@ -33,6 +33,8 @@ functionality document for that page; the army-list parser has its own in
   pipeline when the reader submits - Enter or the send button - and nothing is
   fetched while they type: a card that opened mid-word would answer a question
   nobody has finished asking.
+- `src/rules-cli.mjs` is the same corpus from a shell - see *The agent CLI* at the
+  end of this file. It is not a route; it is the third face of the same code.
 - `GET /rules/find?q=...` is the wiki drawer's search: the same heading
   projection the lookup router reads, returned as a ranked list instead of one
   answer (`searchHeadings` in `src/header-index.mjs`, cap 40). Each row carries
@@ -1114,6 +1116,49 @@ answer the same question differently.
   surviving fusion and anchoring, on both the ranked and the unranked return.
 - `node tests/test-rules-page.mjs` - the page's i18n discipline: both tables carry
   the same keys, every `t('...')` key exists, and no label is hardcoded.
+
+## The agent CLI
+
+`src/rules-cli.mjs` is the corpus for an agent with shell access, so a question does
+not need a script against the HTTP routes. One file, no dependencies, like the rest
+of `src/`.
+
+```
+node src/rules-cli.mjs find 'voice of command'
+node src/rules-cli.mjs ask 'Can a baneblade have an invulnerable save?'
+node src/rules-cli.mjs deep 'how does Fall Back interact with Firing Deck?'
+```
+
+| verb | what it does |
+|---|---|
+| `find <words>` | the lexical/heading search. Instant, no model, no network, no server |
+| `ask <question>` | the full pipeline: retrieve, Jev rerank, the agent's ruling, the second opinion |
+| `deep <question>` | the same with the bounded sweep (`mode: deep`) |
+
+Flags: `--json` for one JSON object on stdout and nothing else; `--lang en|fr` for
+the answer's language; `--server <url>` (or `RULES_SERVER`) for the server `ask`
+and `deep` talk to, default `http://127.0.0.1:8787`; `--legends` to include Legends
+in `find`; `--limit <n>` for the rows `find` prints. `--server` moves `ask` only:
+`find` reads this checkout's corpus directly, which is what makes it work with
+nothing running.
+
+**Why the two halves are wired differently, and it is deliberate:**
+
+- `find` imports the modules the server's own `/rules/find` route uses -
+  `findRows` from `src/header-index.mjs`, with the same `surfaceSlugMap` and
+  `deliveredIds` the route passes - so a CLI row and a page row come from one
+  function and cannot disagree. It needs no server and no credentials, which is
+  the point of a lexical verb. `tests/test-cli.mjs` starts the real server and
+  compares the two row lists rather than trusting that.
+- `ask` and `deep` POST to the local server and read its NDJSON stream: the model
+  routes, the vector index and the keys live in that server's environment, and
+  re-assembling them here would be a second pipeline that could drift from the
+  first. Progress goes to **stderr** (`findings: 13`, `agent: ruling in 40s`,
+  `done in 69s`), the result to **stdout**, so `| jq` and redirection stay clean.
+
+The CLI never prints a failure as an answer: a call that did not come back prints
+`THE CALL FAILED - this is not an answer about the corpus.` That is the task-78 rule
+at the shell, the same one the page's failure card carries.
 
 ## Known limits
 
