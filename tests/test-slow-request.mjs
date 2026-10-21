@@ -7,7 +7,14 @@
 // This test spawns the REAL server with a test-only delay on /health and holds a request
 // open past 300 seconds. It takes about five minutes and it is the only test in this suite
 // that does; that is the point of it - a 300s assumption is invisible in every shorter test.
+// RULES_SLOW_TEST_MS shortens it for a smoke run; the default is the real bound.
+// The measurement uses node:http, not fetch: a plain http.get held a 310s response and came
+// back 200, where the SAME request through fetch died at 302.77s with 'fetch failed'.
+// Undici's fetch applies its own 300s response cap that no server-side setting can lift, so
+// testing the server through fetch would measure the client.
 import fs from 'node:fs';
+import http from 'node:http';
+import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -15,9 +22,15 @@ import path from 'node:path';
 const NL = String.fromCharCode(10);
 let pass = 0, fail = 0;
 const ok = (name, cond) => { if (cond) pass++; else { fail++; console.log('FAIL ' + name); } };
-const t = (name, got, want) => { const same = JSON.stringify(got) === JSON.stringify(want); if (same) pass++; else { fail++; console.log('FAIL ' + name + NL + '  got : ' + JSON.stringify(got) + NL + '  want: ' + JSON.stringify(want)); } };
 
-const PORT = 8791;
+// A free port, asked for rather than assumed: a fixed one collides with a leftover server
+// from an interrupted run, and a test that fails on that is testing the harness.
+const freePort = () => new Promise((resolve, reject) => {
+  const s = net.createServer();
+  s.on('error', reject);
+  s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); });
+});
+const PORT = await freePort();
 const SLOW_MS = Number(process.env.RULES_SLOW_TEST_MS || 305000);
 const server = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'server.mjs');
 const child = spawn(process.execPath, [server], {
@@ -29,7 +42,7 @@ child.stdout.on('data', d => { out += d; });
 child.stderr.on('data', d => { out += d; });
 // A cold boot reads the corpus and the archive; measured at about 15 seconds on this
 // machine, so the probe waits generously and reports what the child said if it never comes
-// up at all.
+// up at all. It never sleeps itself: the delay is asked for with ?slow=1.
 const waitUp = async () => {
   for (let i = 0; i < 240; i++) {
     try { const r = await fetch('http://127.0.0.1:' + PORT + '/health', { signal: AbortSignal.timeout(5000) }); if (r.ok) return true; } catch (e) { /* not up yet */ }
@@ -43,10 +56,16 @@ if (!up) console.log('child output: ' + out.slice(-600));
 let answer = null, err = '';
 if (up) {
   const t0 = Date.now();
-  try {
-    const r = await fetch('http://127.0.0.1:' + PORT + '/health?slow=1', { signal: AbortSignal.timeout(SLOW_MS + 90000) });
-    answer = await r.json();
-  } catch (e) { err = String((e && e.message) || e); }
+  const got = await new Promise((resolve) => {
+    const req = http.get({ host: '127.0.0.1', port: PORT, path: '/health?slow=1', timeout: SLOW_MS + 90000 }, (res) => {
+      let body = '';
+      res.on('data', d => { body += d; });
+      res.on('end', () => { try { resolve({ status: res.statusCode, json: JSON.parse(body) }); } catch (e) { resolve({ status: res.statusCode, json: null }); } });
+    });
+    req.on('timeout', () => req.destroy(new Error('client gave up')));
+    req.on('error', (e) => resolve({ err: e.message }));
+  });
+  if (got.err) err = got.err; else answer = got.json;
   const took = Date.now() - t0;
   ok('the slow request came back instead of failing to fetch', !err);
   ok('the body is the real one', !!(answer && answer.ok === true));

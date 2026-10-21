@@ -2437,8 +2437,10 @@ function renderVerdicts(state) {
   // would be a false statement about the corpus). The findings stay on the page: they are
   // real, and 'Ask again' is one tap away.
   if (state.agent.failed === true) {
+    // The card says WHAT happened, not the provider's raw string: task-24 pinned that the
+    // agent's why is never put on the page, and a failure is no exception - the diagnostic
+    // belongs in the trace and in the server log, not in front of a reader.
     card.appendChild(el('div', 'agentfail', t('agentFailed')));
-    card.appendChild(el('p', 'note agentfail-why', String(state.agent.why || '')));
     var again = el('button', 'agentfail-again', t('agentAgain'));
     again.type = 'button';
     again.addEventListener('click', function () { if (state.question) ask({ asked: state.asked }); });
