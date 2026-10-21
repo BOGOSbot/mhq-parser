@@ -21,6 +21,10 @@ const DATA_DIR = process.env.WIKI_DATA_DIR || path.join(__dirname, '..', 'worksp
 const ASSETS = {
   'surface.js': { file: 'wiki-surface.js', type: 'text/javascript; charset=utf-8' },
   'surface.css': { file: 'wiki-surface.css', type: 'text/css; charset=utf-8' },
+  // task-38: the service worker is an asset for the same reason the other two are - it
+  // carries the deploy's stamp, so a new deploy is a new worker byte-for-byte and the
+  // browser cannot keep an old one. The stamp is also what NAMES its cache.
+  'surface-sw.js': { file: 'wiki-surface-sw.js', type: 'text/javascript; charset=utf-8' },
 };
 
 // task-95: the shell names the two assets with a content stamp, so a browser can never run
@@ -37,7 +41,12 @@ export function assetStamp() {
 export function surfaceAsset(name) {
   const a = ASSETS[String(name || '').replace(/^.*\//, '')];
   if (!a) return null;
-  return { type: a.type, body: fs.readFileSync(path.join(SURFACE_DIR, a.file), 'utf8') };
+  const body = fs.readFileSync(path.join(SURFACE_DIR, a.file), 'utf8');
+  // task-38: the worker's cache name is the deploy's stamp, substituted here rather than
+  // read from its own URL. A worker whose BYTES change on every deploy is one the browser
+  // must update; a worker that only reads a query string can be left un-updated when the
+  // script itself is byte-identical, and an old worker keeps an old cache name.
+  return { type: a.type, body: a.file === 'wiki-surface-sw.js' ? body.split('__STAMP__').join(assetStamp()) : body };
 }
 
 export function dataDir() { return DATA_DIR; }

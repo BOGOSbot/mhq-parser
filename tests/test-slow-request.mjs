@@ -2,7 +2,9 @@
 // 300 seconds by default, and the ask can legitimately run past it: a translation, an agent
 // call, a sweep and a second agent, each with a retry. Measured - three French runs died at
 // exactly 302s on this machine and on the Box alike, with 'fetch failed' at the client and
-// no verdict at all. The pipeline's own bounds are the cap, so the server's is off.
+// no verdict at all. task-79 set the cap to 900000ms - above the worst ask measured (486s)
+// and not removed - and left headersTimeout alone, which guards the header phase only.
+// Both are pinned in tests/test-dropped-connection.mjs.
 //
 // This test spawns the REAL server with a test-only delay on /health and holds a request
 // open past 300 seconds. It takes about five minutes and it is the only test in this suite

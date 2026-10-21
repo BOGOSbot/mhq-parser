@@ -15,9 +15,12 @@ const SERVER = fs.readFileSync(path.join(here, '..', 'src', 'server.mjs'), 'utf8
 const CORPUS = fs.readFileSync(path.join(here, '..', 'src', 'rules-corpus.mjs'), 'utf8');
 
 // --- the server does not end a slow ask --------------------------------------
-ok('the server sets requestTimeout to 0', /server\.requestTimeout = 0;/.test(SERVER));
-ok('and headersTimeout with it', /server\.headersTimeout = 0;/.test(SERVER));
-ok('the reason is written where the change is', /requestTimeout\)? and that is exactly where the/.test(SERVER) || /Node ends a request at 300 seconds/.test(SERVER));
+// task-79: the cap is RAISED above the worst ask (486s measured), not removed, and the
+// header guard is left exactly as Node ships it - it guards the header phase only, so it
+// cannot cut an ask, and dropping it would trade a real guard for nothing.
+ok('the server raises requestTimeout above the worst ask', /server\.requestTimeout = 900000;/.test(SERVER));
+ok('and never touches headersTimeout', !/server\.headersTimeout\s*=/.test(SERVER));
+ok('the reason is written where the change is', /request at 300 seconds by default/.test(SERVER) && /headersTimeout is NOT touched/.test(SERVER));
 ok('the test-only delay is inert without its variable', /RULES_TEST_SLOW_MS/.test(SERVER) && /if \(slow > 0\)/.test(SERVER));
 
 // --- a failed call is a failure, not an absence ------------------------------

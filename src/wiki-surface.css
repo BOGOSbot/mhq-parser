@@ -114,6 +114,10 @@ a{color:var(--sv-acc)}
 .sv-ownlist{margin-top:8px;border-top:1px dashed var(--sv-line);padding-top:6px}
 .sv-owntitle{color:var(--sv-dim);font:11px/1.4 var(--sv-sans);margin-bottom:2px}
 .sv-loading,.sv-empty{color:var(--sv-dim);padding:14px 16px;font:13px/1.5 var(--sv-sans)}
+/* task-38: offline is a stated state with a way out, not an empty tree (see the client). */
+.sv-offline{color:var(--sv-dim);padding:14px 16px 6px;font:13px/1.5 var(--sv-sans)}
+.sv-offline-again{margin:0 16px 14px;padding:7px 12px;border:1px solid var(--sv-line);border-radius:8px;background:transparent;color:inherit;font:13px/1.2 var(--sv-sans);cursor:pointer}
+.sv-offline-again:hover{border-color:var(--sv-fg)}
 
 /* --- a record read alone, inside the drawer ------------------------------- */
 .sv-drawer.sv-reading .sv-filter,.sv-drawer.sv-reading .sv-tree{display:none}

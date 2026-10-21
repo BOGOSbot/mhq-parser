@@ -3708,5 +3708,18 @@ growQuestion();
 // over the page before the reader has decided to ask anything.
 if (!window.matchMedia || !window.matchMedia('(pointer: coarse)').matches) $('#q').focus();
 </script>
+<script>
+// task-38: the offline shell. The worker caches the page and the two client files so the
+// wiki still opens with no network; the server bakes this deploy's stamp into the URL it
+// is served from, and the worker names its cache with the same stamp, so a deploy is a new
+// cache and the old one is deleted. Registration is silent: a browser without service
+// workers, or a private window, simply has no offline shell and nothing else changes.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/rules/surface-sw.js?v=__STAMP__', { scope: '/rules' })
+      .catch(function () { /* no offline shell; the page works exactly as before */ });
+  });
+}
+</script>
 </body>
 </html>

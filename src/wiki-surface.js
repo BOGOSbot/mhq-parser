@@ -340,6 +340,21 @@ function rowDisplay(headingOrParts) {
   function drawerWanted() { try { return localStorage.getItem(DRAWER_KEY) === '1'; } catch (e) { return false; } }
 
   // --- the tree -------------------------------------------------------------
+  // task-38: offline is a STATE the drawer reports, never a silent empty tree. The service
+  // worker serves what it has; when a fetch still fails there is either no offline shell
+  // (a private window, a browser without one) or the book was never fetched, and the reader
+  // is told which and offered the retry. An empty tree would read as 'this corpus has
+  // nothing', which is the failure shape task-70 and task-78 both exist to prevent.
+  function offlineNote(what, retry) {
+    var box = $('sv-tree');
+    if (!box) return;
+    box.textContent = '';
+    box.appendChild(el('div', 'sv-offline', 'Offline: ' + what + '. The wiki needs the network the first time a book is opened.'));
+    var again = el('button', 'sv-offline-again', 'Try again');
+    again.type = 'button';
+    again.addEventListener('click', function () { box.textContent = ''; retry(); });
+    box.appendChild(again);
+  }
   function openIndex() {
     if (state.branches) { renderTree(); if (legendsOn()) ensureLegendsBranch(); return Promise.resolve(); }
     return getJson(DATA + '/index.json').then(function (j) {
@@ -349,12 +364,14 @@ function rowDisplay(headingOrParts) {
       // Legends book is not one of them (task-44).
       if (legendsOn()) return ensureLegendsBranch();
     })
-      .catch(function () { renderTree(); });
+      .catch(function () { offlineNote('the list of books could not be loaded', function () { openIndex(); }); });
   }
   function openBranch(key, anchor) {
     if (state.branch === key) { state.branch = null; renderTree(anchor); return; }
     if (state.cache[key]) { state.branch = key; renderTree(anchor); return; }
-    getJson(DATA + '/index/' + key + '.json').then(function (j) { state.cache[key] = j; state.branch = key; renderTree(anchor); });
+    getJson(DATA + '/index/' + key + '.json')
+      .then(function (j) { state.cache[key] = j; state.branch = key; renderTree(anchor); })
+      .catch(function () { offlineNote('this book has not been downloaded yet', function () { openBranch(key, anchor); }); });
   }
   function matches(text) { return !state.filter || String(text || '').toLowerCase().indexOf(state.filter) !== -1; }
   function nodeOpen(key) { return state.open[key] === true; }

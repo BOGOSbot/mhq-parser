@@ -433,6 +433,10 @@ function send(res, status, body, type, opts) {
   const contentType = type || 'application/json; charset=utf-8';
   const compressible = COMPRESSIBLE.test(contentType);
   const headers = { 'Content-Type': contentType };
+  // task-38: a route may add a header the response needs - the service worker's scope is
+  // one: a script under /rules/ may not claim the /rules page's own scope without
+  // Service-Worker-Allowed, and the page and worker must share it.
+  if (o.headers) for (const k of Object.keys(o.headers)) headers[k] = o.headers[k];
   // Vary on every compressible response, compressed or not: the same URL has two
   // representations once Accept-Encoding is read, and a cache that forgets it
   // hands a br body to a client that asked for gzip.
@@ -1707,7 +1711,11 @@ const server = http.createServer(async (req, res) => {
       const v = assetStamp();
       const html = readRules()
         .replace('/rules/surface.css"', '/rules/surface.css?v=' + v + '"')
-        .replace('/rules/surface.js"', '/rules/surface.js?v=' + v + '"');
+        .replace('/rules/surface.js"', '/rules/surface.js?v=' + v + '"')
+        // task-38: the service worker's URL carries the same stamp, and the name is what a
+        // deploy changes. The worker's own bytes change with it (surfaceAsset substitutes
+        // it), so the browser cannot keep an old one running.
+        .replace('__STAMP__', v);
       return send(res, 200, html, 'text/html; charset=utf-8');
     }
     catch (e) { return fail(res, 500, 'rules.html could not be read: ' + String((e && e.message) || e)); }
@@ -1720,12 +1728,15 @@ const server = http.createServer(async (req, res) => {
   }
   // The surface's two files, on their stable product paths. /rules/dev/surface.*
   // is kept as an alias so the dev page and old links keep working.
-  if (req.method === 'GET' && (u.pathname === '/rules/surface.js' || u.pathname === '/rules/surface.css' || u.pathname.indexOf('/rules/dev/surface.') === 0)) {
+  // task-38: surface-sw.js rides the same route - one place serves an asset, and the
+  // service worker is an asset like the other two (it carries the deploy's stamp).
+  if (req.method === 'GET' && (u.pathname === '/rules/surface.js' || u.pathname === '/rules/surface.css' || u.pathname === '/rules/surface-sw.js' || u.pathname.indexOf('/rules/dev/surface.') === 0)) {
     try {
       const name = u.pathname.slice(u.pathname.lastIndexOf('/') + 1);
       const asset = surfaceAsset(name);
       if (!asset) return fail(res, 404, 'no such surface file: ' + u.pathname);
-      return send(res, 200, asset.body, asset.type);
+      const swHeaders = name === 'surface-sw.js' ? { 'Service-Worker-Allowed': '/rules' } : null;
+      return send(res, 200, asset.body, asset.type, { headers: swHeaders, cache: name === 'surface-sw.js' ? 'no-store' : undefined });
     } catch (e) { return fail(res, 500, 'the surface file could not be read: ' + String((e && e.message) || e)); }
   }
   if (req.method === 'GET' && u.pathname.indexOf('/rules/data/') === 0) return handleSurfaceData(req, res, u);
@@ -1854,11 +1865,14 @@ getAllEvents()
 // translation, a judge call, a sweep and a second agent, each with a retry. Node ends a
 // request at 300 seconds by default (server.requestTimeout) and that is exactly where the
 // failures measured: 302s, 302s, 302s, on this machine and on the Box alike, with 'fetch
-// failed' at the client and no verdict at all. The pipeline's own bounds are the cap, so
-// the server's is off. headersTimeout goes with it: it must not fire before the request
-// that a reader is still waiting for.
-server.requestTimeout = 0;
-server.headersTimeout = 0;
+// failed' at the client and no verdict at all. The cap is RAISED above the worst ask (486s
+// measured) rather than removed, so a stuck connection still ends.
+//
+// task-79: headersTimeout is NOT touched. It guards the HEADER phase only, so it cannot cut
+// an ask - a request whose headers have arrived and whose body is still coming is past it.
+// Dropping it would trade a real guard for nothing. Measured here with the default standing:
+// a POST whose headers arrived at once and whose body arrived 5s later answered 200.
+server.requestTimeout = 900000;
 server.listen(port, host, () => {
   console.log('MHQ army-lists UI   http://' + host + ':' + port);
   console.log('POST /parse {"url":"<army-lists url>"}');
