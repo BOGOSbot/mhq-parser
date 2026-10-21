@@ -110,5 +110,20 @@ ok('and a book never downloaded says so', /this book has not been downloaded yet
 ok('both offer a retry', /sv-offline-again/.test(CLIENT) && /Try again/.test(CLIENT));
 ok('the offline note is styled', /sv-offline-again\{/.test(fs.readFileSync(path.join(here, '..', 'src', 'wiki-surface.css'), 'utf8')));
 
+// --- task-81: the VISIBILITY rule the capture scripts broke ------------------
+// Four screenshots came out byte-identical because the capture script toggled a drawer that
+// localStorage had restored open, so the record rendered inside a drawer the script had shut.
+// The rule the client must keep is that the record is a rectangle the reader can see: the
+// drawer carries the open class AND the record is inside the viewport. A check that asserts
+// only the record's TEXT passes with the drawer closed, which is how it was missed.
+ok('the drawer opens before the record is drawn', /d\.classList\.add\('sv-reading'\)/.test(CLIENT) && /drawerOpen\(true/.test(CLIENT));
+ok('a capture can read the drawer state without toggling it', /DRAWER_KEY/.test(CLIENT) && /localStorage\.getItem\(DRAWER_KEY\) === '1'/.test(CLIENT));
+ok('the record view is a panel with its own id, so its rect is measurable', /p\.id = 'sv-drawer-record'/.test(CLIENT));
+ok('the tree keeps the record in place across a re-render', /function restoreInline/.test(CLIENT));
+ok('the offline note carries a retry, not just a sentence', /sv-offline-again/.test(CLIENT) && /Try again/.test(CLIENT));
+ok('a hit that cannot be fetched reports instead of doing nothing', /is not in the offline copy/.test(CLIENT));
+ok('a failed rows load is FAILED, never an empty book', /state\.rowsFailed\[b\] = true/.test(CLIENT) && !/catch\(function \(\) \{ state\.rowsCache\[b\] = \{\}; return \{\}; \}\)/.test(CLIENT));
+ok('a failed rows load says so in the tree', /records could not be fetched/.test(CLIENT));
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
