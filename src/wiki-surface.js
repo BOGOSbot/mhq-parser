@@ -701,6 +701,12 @@ function rowDisplay(headingOrParts) {
   function toggleInline(r, wrap, siblings) {
     var existing = wrap.querySelector('.sv-inline');
     if (existing) { existing.remove(); state.openRec = null; return; }
+    // task-74: an inline is opened in the TREE, so the drawer must be showing the tree -
+    // not the reading view a previous wiki-mode tap (or an earlier inline fallback) left
+    // behind. Without this the box is rendered inside a panel the reader cannot see.
+    var d = $('sv-drawer');
+    if (d && d.classList.contains('sv-reading')) hideDrawerRecord();
+    markSurface('inline');
     // One record at a time: two open bodies made a 4,909 px tree with the first one
     // 2,155 px above the viewport, and the bar removes the reason to keep two. An inline
     // that CONTAINS this row stays: a detachment's enhancements open inside it, and
@@ -913,9 +919,35 @@ function rowDisplay(headingOrParts) {
       return hit;
     }).catch(function () { return null; });
   }
-  function showInDrawer(record, push) {
+  // task-74: the drawer's own surface marker. The reader cannot see which of the two code
+  // paths ran, and neither could a test; the attribute is the state itself, set where the
+  // surface is chosen, so the sweep classifies from the code's own answer rather than from
+  // a guessed selector.
+  function markSurface(which) {
+    var d = $('sv-drawer');
+    if (d) d.setAttribute('data-surface', which || '');
+  }
+  // task-74: WIKI mode's one surface. The record opens as a page in the wiki - the
+  // drawer's reading view - for EVERY record, whether or not it is a tree row. That is
+  // the case Mandal hit: the same tap used to give the tree-with-inline for a tree row
+  // and this view for anything else.
+  function showRecordPage(f) {
+    if (!f || !f.id) return;
+    drawerOpen(true);
+    markSurface('page');
+    showInDrawer(recordLike(f), true);
+  }
+  function showInDrawer(record, push, note) {
     var d = $('sv-drawer'), panel = drawerPanel(), tree = treeEl();
     if (!d || !panel || !record) return;
+    markSurface('page');
+    // task-74: the page is ONE surface, so no inline box is left open behind it. An
+    // inline opened by an earlier tap stays in the tree (toggleInline's own cleanup runs
+    // on the tree, which is hidden here), and the reader would be looking at a page while
+    // the tree still held an expanded record - the two-surfaces state this card removes.
+    var root = tree || document;
+    Array.prototype.forEach.call(root.querySelectorAll('.sv-inline'), function (n) { n.remove(); });
+    state.openRec = null;
     var stack = drawerStack();
     if (push !== false) {
       saveEntryTop();
@@ -937,6 +969,8 @@ function rowDisplay(headingOrParts) {
     back.addEventListener('click', function (ev) { ev.preventDefault(); drawerBack(); });
     panel.appendChild(back);
     panel.appendChild(el('h2', 'sv-drawer-title', displayTitle(titleOf(record))));
+    // task-74: inline mode's one honest exception, said where the reader can see it.
+    if (note) panel.appendChild(el('p', 'sv-inline-fallback', note));
     var meta = [kindLabel(record.kind), bookLabel(record.slug)].filter(Boolean).join(' \u00b7 ');
     if (meta) panel.appendChild(el('p', 'sv-drawer-meta', meta));
     var body = el('div', 'sv-inline-body');
@@ -1123,7 +1157,13 @@ function rowDisplay(headingOrParts) {
         if (chap) chap.keys.forEach(function (k) { state.open[k] = true; });
         state.doorChapter = chap ? chap.label : '';
         renderTree();
-        showInDrawer(recordLike(f), true);
+        // task-74: this is the SAME fallback as the one below - a record with no place in
+        // the tree - and it must say so too. It went through a second call site and the
+        // sweep caught it: the reader got a page with no explanation of why inline mode
+        // had changed surface.
+        markSurface('page');
+        state.inlineFallback = true;
+        showInDrawer(recordLike(f), true, 'This record has no place in the tree, so it opens as a page.');
         return;
       }
       state.doorChapter = '';
@@ -1132,12 +1172,18 @@ function rowDisplay(headingOrParts) {
       var finish = function () {
         var row = rowFor(f.id);
         if (row && row.parentNode) {
+          markSurface('inline');
           toggleInline(recordLike(f), row.parentNode, row.svSiblings);
           if (row.scrollIntoView) row.scrollIntoView({ block: 'start' });
         } else {
-          // Not a tree row (an unplaced front-matter record, or a page that did
-          // not load): the drawer's record view is the honest fallback.
-          showInDrawer(recordLike(f), true);
+          // task-74: inline mode's ONE fallback. A record with no place in the tree cannot
+          // be inline, so it opens as the page - and SAYS SO, because a silent change of
+          // surface is the defect this card exists to remove.
+          markSurface('page');
+          state.inlineFallback = true;
+          // The surface has no dictionary of its own - its strings are English like the
+          // rest of it - so the sentence is written here, in the same voice.
+          showInDrawer(recordLike(f), true, 'This record has no place in the tree, so it opens as a page.');
         }
       };
       if (hit.page && !state.rowsCache[branch]) loadRows().then(function () { renderTree(); setTimeout(finish, 0); });
@@ -1692,8 +1738,10 @@ function findingItem(f, prominent, cited, state, ctx) {
     var path = el('button', 'fcrumbs fpath');
     path.type = 'button';
     path.appendChild(el('span', null, above.join(' \u203a ')));
-    path.appendChild(el('span', 'door', ' \u00b7 ' + (ctx.doorMode(state) === 'book' ? ctx.t('doorBook') : ctx.t('doorQuick'))));
-    path.setAttribute('aria-label', (ctx.doorMode(state) === 'book' ? ctx.t('doorBook') : ctx.t('doorQuick')) + ': ' + above.join(' \u203a '));
+    // task-74: the row says which surface the tap opens, and the two names are the modes'.
+    var doorName = ctx.doorMode(state) === 'inline' ? ctx.t('doorInline') : ctx.t('doorWiki');
+    path.appendChild(el('span', 'door', ' \u00b7 ' + doorName));
+    path.setAttribute('aria-label', doorName + ': ' + above.join(' \u203a '));
     path.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); ctx.openDoor(state, f); });
     li.appendChild(path);
   }
@@ -1904,6 +1952,10 @@ function devPanel(f, state, ctx) {
     // its chapter (or fall back to the drawer's record view). The switch lives in
     // the page's settings sheet now, so there is none to paint here.
     openRecordInTree: revealInTree,
+    // task-74: the two modes' one surface each. Wiki mode never consults the tree;
+    // inline mode expands where the record lives and falls back to the page when it has
+    // no place there, saying so (revealInTree's own fallback sets data-surface='page').
+    openRecordPage: showRecordPage,
     // task-44: the settings sheet's Legends switch, and the state it paints.
     setLegends: setLegends,
     legendsOn: legendsOn,

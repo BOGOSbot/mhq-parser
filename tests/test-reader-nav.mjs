@@ -66,16 +66,16 @@ ok('and its own intro row sorts before the numbered list', /key = \[-1, 0, 0\]/.
 // the section path under a row follows it. The drawer side reuses the entry the
 // tree already has.
 ok('a row tap asks the door, not the record directly', /ctx\.openDoor\(state, f\)/.test(surface) && !/ctx\.openRecord\(state, f\.id\)/.test(surface));
-ok('the section path is a button that follows the switch', /'fcrumbs fpath'/.test(surface) && /ctx\.doorMode\(state\) === 'book' \? ctx\.t\('doorBook'\) : ctx\.t\('doorQuick'\)/.test(surface));
+ok('the section path is a button that follows the switch', /'fcrumbs fpath'/.test(surface) && /ctx\.doorMode\(state\) === 'inline' \? ctx\.t\('doorInline'\) : ctx\.t\('doorWiki'\)/.test(surface));
 ok('the row carries one ... sheet button', /'fmore'/.test(surface) && /ctx\.findingSheet\(state, f\)/.test(surface));
 ok('the sheet keeps Put first, Ignore and the book door', /sheetAction\('first'/.test(page) && /sheetAction\('ignore'/.test(page) && /sheetAction\('wiki'/.test(page) && /t\('sheetWiki'\)/.test(page));
 ok('the record header carries no door switch any more', page.indexOf('doorbar') === -1 && page.indexOf('doorSeg(') === -1);
 ok('the choice is persisted under one key', page.indexOf("var DOOR_KEY = 'mhq.rules.door'") !== -1 && /localStorage\.setItem\(DOOR_KEY/.test(page));
-ok('In the book is the default', /localStorage\.getItem\(DOOR_KEY\) === 'quick' \? 'quick' : 'book'/.test(page));
-ok('the settings sheet is where the choice is made', /id="findingsseg"/.test(page) && /data-door="book"/.test(page) && /data-door="quick"/.test(page) && /function setDoor\(mode\)/.test(page));
-ok('In the book opens the drawer through the surface entry', /function openBook\(state, f\)/.test(page) && /api\.openRecordInTree\(f\)/.test(page));
+ok('Wiki is the default, and the stored value migrates by meaning', /saved === 'quick'\) return 'wiki'/.test(page) && /saved === 'book'\) return 'inline'/.test(page) && /return 'wiki';/.test(page));
+ok('the settings sheet is where the choice is made', /id="findingsseg"/.test(page) && /data-door="wiki"/.test(page) && /data-door="inline"/.test(page) && /function setDoor\(mode\)/.test(page));
+ok('inline mode opens the drawer through the surface entry', /function openInline\(state, f\)/.test(page) && /api\.openRecordInTree\(f\)/.test(page));
 ok('the drawer reveals the record in its chapter and inlines it', /function revealInTree\(f\)/.test(surface) && /function findOwner\(root, branch, id\)/.test(surface) && /toggleInline\(recordLike\(f\), row\.parentNode, row\.svSiblings\)/.test(surface));
-ok('a record with no tree row still opens at its chapter', /function findChapterKey\(root, branch, f\)/.test(surface) && /showInDrawer\(recordLike\(f\), true\)/.test(surface));
+ok('a record with no tree row still opens at its chapter, and says why', /function findChapterKey\(root, branch, f\)/.test(surface) && /showInDrawer\(recordLike\(f\), true, 'This record has no place in the tree/.test(surface));
 ok('the drawer head paints no switch', surface.indexOf('doorSwitch') === -1 && /openRecordInTree: revealInTree/.test(surface));
 
 // The bar must not bring back the duplicate title the row already prints.

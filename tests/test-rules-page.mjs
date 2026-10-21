@@ -254,7 +254,7 @@ ok('the page asks the header index first', /if \(!o\.keep && !o\.english && awai
 // setting names (In the book: the drawer; Quick read: the record view), not a
 // bespoke surface.
 ok('a lookup opens the door, without a model', /openDoor\(state, out\.record\);/.test(code) && /setStatus\(t\('lookupFound'\), 'ok'\)/.test(code) && code.indexOf('unitCardView(ev.card)') !== -1);
-ok('the door honours both settings', /function openDoor\(state, f\)[\s\S]{0,220}if \(doorMode\(\) === 'book'\) openBook\(state, f\);\s*else openRecord\(state, f\.id\)/.test(code));
+ok('the door honours both settings', /function openDoor\(state, f\)[\s\S]{0,220}if \(doorMode\(\) === 'inline'\) openInline\(state, f\);\s*else openPage\(state, f\)/.test(code));
 
 // --- task-28: the explainer is gone, the M value is centred ------------------
 ok('no How this works control in either language', I18N.en.howto === undefined && I18N.fr.howto === undefined && I18N.en.intro === undefined && I18N.fr.intro === undefined && code.indexOf('howtosum') === -1 && code.indexOf('introtext') === -1);

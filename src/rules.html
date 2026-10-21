@@ -660,8 +660,8 @@ details pre{background:var(--bg);border:1px solid var(--line);border-radius:10px
         <span class="sheethint" id="findingsSettingHint">A row opens the drawer at the record's chapter.</span>
       </div>
       <span class="doorseg" role="tablist" aria-label="Findings" id="findingsseg">
-        <button type="button" data-door="book">In the book</button>
-        <button type="button" data-door="quick">Quick read</button>
+        <button type="button" data-door="wiki">Wiki</button>
+        <button type="button" data-door="inline">Inline</button>
       </span>
     </div>
     <!-- task-44: Warhammer Legends. Off by default, and off costs nothing: the book is
@@ -807,8 +807,8 @@ var I18N = {
   heroIgnored: 'ignored',
   heroDev: 'show the whole passage and where it came from',
   heroDevHide: 'hide the passage',
-  doorQuick: 'Quick',
-  doorBook: 'In the book',
+  doorWiki: 'Wiki',
+  doorInline: 'Inline',
   runningSweep: 'Checking what the ruling leaves out\u2026',
   settingsTitle: 'Settings',
   settingsClose: 'Close',
@@ -1027,8 +1027,8 @@ var I18N = {
   heroIgnored: 'écarté',
   heroDev: 'afficher tout le passage et sa provenance',
   heroDevHide: 'masquer le passage',
-  doorQuick: 'Rapide',
-  doorBook: 'Dans le livre',
+  doorWiki: 'Wiki',
+  doorInline: 'Inline',
   runningSweep: 'Vérification de ce que le jugement laisse de côté…',
   settingsTitle: 'Réglages',
   settingsClose: 'Fermer',
@@ -1673,8 +1673,19 @@ var LEGENDS_KEY = 'mhq.rules.legends';
 // changes the record body, never the quote and never a heading.
 var FR_KEY = 'mhq.rules.fr';
 var DOOR_CUR = null; // the finding whose door was last opened
+// task-74: the two modes are wiki and inline, and the stored value MIGRATES - a reader who
+// had 'quick' (the record alone) lands on wiki, which is the same surface, and a reader who
+// had 'book' (the tree with the record inline) lands on inline, which is the same surface.
+// The migration is by MEANING, not by name: nobody is reset to a default.
 function doorMode() {
-  try { return localStorage.getItem(DOOR_KEY) === 'quick' ? 'quick' : 'book'; } catch (e) { return 'book'; }
+  var saved = null;
+  try { saved = localStorage.getItem(DOOR_KEY); } catch (e) { /* private mode */ }
+  if (saved === 'wiki' || saved === 'inline') return saved;
+  if (saved === 'quick') return 'wiki';
+  if (saved === 'book') return 'inline';
+  // The default. The wiki page is the surface that exists for EVERY record, so it is the
+  // one that cannot surprise a reader with a different shape on the next tap.
+  return 'wiki';
 }
 function voiceEngine() {
   try { return localStorage.getItem(VOICE_KEY) === 'browser' ? 'browser' : 'gemini'; } catch (e) { return 'gemini'; }
@@ -1731,22 +1742,34 @@ function setLegendsMode(mode) {
   paintSettings();
 }
 function setDoor(mode) {
-  try { localStorage.setItem(DOOR_KEY, mode === 'quick' ? 'quick' : 'book'); } catch (e) { /* private mode */ }
+  try { localStorage.setItem(DOOR_KEY, mode === 'inline' ? 'inline' : 'wiki'); } catch (e) { /* private mode */ }
   // The rows' section path carries the choice ('· In the book' / '· Quick'), so
   // the list is redrawn when it changes - the reader sees where the next tap goes.
   if (DOOR_CUR && DOOR_CUR.state) renderFindings(DOOR_CUR.state);
   if (RECORD_STATE && RECORD_STATE.recordId) renderRecord(RECORD_STATE);
   paintSettings();
 }
+// task-74, Mandal's ruling: ONE TAP, ONE KIND OF SURFACE, and the setting names which.
+// The record no longer decides - a tree row used to get the tree with the record inline
+// while anything else got the reading view, which is the defect he hit.
 function openDoor(state, f) {
   if (!state || !f) return;
   DOOR_CUR = { state: state, id: f.id };
-  if (doorMode() === 'book') openBook(state, f);
-  else openRecord(state, f.id);
+  if (doorMode() === 'inline') openInline(state, f);
+  else openPage(state, f);
 }
-// The book door: the drawer at the record's chapter, the record inline. The
-// surface owns the tree and the inline record; the page only says where to go.
-function openBook(state, f) {
+// WIKI: the record as a page in the wiki, for every record. A tree row opens as a page
+// too; the tree is not consulted at all.
+function openPage(state, f) {
+  if (!state || !f) return;
+  DOOR_CUR = { state: state, id: f.id };
+  if (RECORD_STATE && RECORD_STATE.recordId) closeRecord(RECORD_STATE);
+  var api = window.WIKI_SURFACE_API;
+  if (api && api.openRecordPage) api.openRecordPage(f);
+}
+// INLINE: the record expanded where it lives in the tree, for every record. A record with
+// no place in the tree cannot be inline; the surface falls back to the page and says so.
+function openInline(state, f) {
   if (!state || !f) return;
   DOOR_CUR = { state: state, id: f.id };
   if (RECORD_STATE && RECORD_STATE.recordId) closeRecord(RECORD_STATE);
@@ -1760,6 +1783,7 @@ function openBook(state, f) {
 function gearSheet() { return document.getElementById('gearsheet'); }
 function paintSettings() {
   var v = voiceEngine(), d = doorMode(), lg = legendsMode(), frl = frMode();
+  // The door's own row carries the mode for a test to read, like the two rows below.
   ['voiceseg', 'findingsseg', 'legendsseg', 'frseg'].forEach(function (id) {
     var seg = document.getElementById(id);
     if (!seg) return;

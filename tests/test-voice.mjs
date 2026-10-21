@@ -76,16 +76,16 @@ ok('the status counts the seconds while it records', /voiceRecordingSec'\)\.repl
 ok('the voice key is kept', page.indexOf("var VOICE_KEY = 'mhq.rules.voice'") !== -1);
 ok('Gemini is the voice default', /getItem\(VOICE_KEY\) === 'browser' \? 'browser' : 'gemini'/.test(page));
 ok('the findings key is kept', page.indexOf("var DOOR_KEY = 'mhq.rules.door'") !== -1);
-ok('In the book is the findings default', /getItem\(DOOR_KEY\) === 'quick' \? 'quick' : 'book'/.test(page));
+ok('Wiki is the findings default, with the migration by meaning', /saved === 'quick'\) return 'wiki'/.test(page) && /saved === 'book'\) return 'inline'/.test(page));
 ok('the gear opens one settings sheet, not a second route', /id="settingsbtn"/.test(page) && /id="gearsheet"/.test(page) && /function openSettings\(\)/.test(page));
-ok('the sheet holds both choices', /id="voiceseg"/.test(page) && /data-voice="gemini"/.test(page) && /data-voice="browser"/.test(page) && /id="findingsseg"/.test(page) && /data-door="book"/.test(page) && /data-door="quick"/.test(page));
+ok('the sheet holds both choices', /id="voiceseg"/.test(page) && /data-voice="gemini"/.test(page) && /data-voice="browser"/.test(page) && /id="findingsseg"/.test(page) && /data-door="wiki"/.test(page) && /data-door="inline"/.test(page));
 ok('the sheet carries the corpus date and edition line', /id="gearmeta"/.test(page) && /getElementById\('footdata'\)/.test(page));
 ok('the sheet applies on the next tap, not by navigating', /function setDoor\(mode\)/.test(page) && /renderFindings\(DOOR_CUR\.state\)/.test(page));
 
 // --- the switches left the record header and the drawer head -----------------
 ok('the record header has no door switch', page.indexOf('doorbar') === -1 && page.indexOf('id="voiceGemini"') === -1 && page.indexOf('doorSeg(') === -1);
 ok('the drawer head paints no switch', surface.indexOf('doorSwitch') === -1 && surface.indexOf('openRecordInTree: revealInTree') !== -1);
-ok('the row path still says where a tap goes', /ctx\.doorMode\(state\) === 'book' \? ctx\.t\('doorBook'\) : ctx\.t\('doorQuick'\)/.test(surface));
+ok('the row path still says where a tap goes', /ctx\.doorMode\(state\) === 'inline' \? ctx\.t\('doorInline'\) : ctx\.t\('doorWiki'\)/.test(surface));
 
 // --- the microphone path -----------------------------------------------------
 const voiceStart = page.indexOf('// --- voice ---');
