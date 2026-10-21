@@ -85,14 +85,14 @@ t('the writer endpoint is a url', /^https:\/\//.test(MODEL_ENDPOINT), true);
 t('the writer is named', MODEL.length > 3, true);
 t('the fast endpoint is a url', /^https:\/\//.test(FAST_ENDPOINT), true);
 t('the fast model is named', FAST_MODEL.length > 3, true);
-// task-76: the judge has a route of its own now - OpenRouter's free minimax - and the
-// writer keeps SenseNova. The overrides are the rollback: RULES_FAST_ENDPOINT /
-// RULES_FAST_MODEL / RULES_FAST_KEY still win, and fastKeyName() names the judge's own
-// credential when nobody set an endpoint.
-t('the judge is on OpenRouter\u2019s free minimax by default', FAST_ENDPOINT.indexOf('openrouter.ai') !== -1 && FAST_MODEL.indexOf('minimax') !== -1, true);
-t('and the writer is still SenseNova', MODEL_ENDPOINT.indexOf('sensenova') !== -1, true);
-t('the judge\u2019s own credential is named when no endpoint was given', fastKeyName(), 'OPENROUTER_API_KEY');
-t('the judge keeps its thinking by default, at an effort the model advertises', FAST_REASONING, 'low');
+// task-77: the judge is back on SenseNova with the writer, because the capability bank
+// moved the wrong way on OpenRouter's minimax (four wrong headlines against one). The
+// overrides stay the escape hatch: RULES_FAST_ENDPOINT / RULES_FAST_MODEL / RULES_FAST_KEY
+// win, and pointing them at OpenRouter is one environment change.
+t('the judge is on SenseNova by default, with the writer', FAST_ENDPOINT === MODEL_ENDPOINT && FAST_MODEL === MODEL, true);
+t('and that route is SenseNova', FAST_ENDPOINT.indexOf('sensenova') !== -1, true);
+t('the judge\u2019s credential is the writer\u2019s when no endpoint was given', fastKeyName(), 'SENSENOVA_API_KEY');
+t('the judge keeps its thinking by default, at SenseNova\u2019s setting', FAST_REASONING, 'medium');
 t('the writer reasons not at all by default', MODEL_REASONING, 'none');
 t('the jev model is named', JEV_MODEL.length > 3, true);
 t('RulesError carries a status', new RulesError('nope', 400).status, 400);
