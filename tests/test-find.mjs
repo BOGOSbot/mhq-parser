@@ -56,7 +56,11 @@ ok('the route no longer drops a row for having no slug', !/\.filter\(r => r\.slu
 ok('the client searches our route', client.indexOf("CFG.find || '/rules/find'") !== -1);
 ok('typing debounces into one request', /setTimeout\(function \(\) \{ runSearch\(q\); \}, 180\)/.test(client));
 ok('a stale answer cannot overwrite a newer query', /if \(state.searchQ !== q\) return;/.test(client));
-ok('a hit opens the record it names', /recordBySlug\(r.slug\)\.then\(function \(rec\) \{ if \(rec\) showInDrawer\(rec, true\); \}\)/.test(client));
+// task-81: the hit still opens the record it names, and a record whose payload cannot be
+// fetched now SAYS so instead of doing nothing (the silent tap was the defect).
+ok('a hit opens the record it names', /recordBySlug\(r\.slug\)\.then\(function \(rec\) \{ if \(rec\) showInDrawer\(rec, true\); else missing\(\); \}\)/.test(client));
+ok('and a hit that cannot be fetched says so', client.indexOf('is not in the offline copy') !== -1);
+ok('a failed record body is reported, not written into a hidden panel', /return false;/.test(client) && /then\(function \(ok\) \{ if \(!ok\) missing\(\); \}\)/.test(client));
 ok('and a row with no slug opens from the row itself', client.indexOf("showInDrawer({ id: r.id, kind: r.kind, slug: '', title: r.title, heading: r.title }, true)") !== -1);
 ok('the empty state offers the other act', client.indexOf('Ask it instead') !== -1);
 ok('the field says what it searches', client.indexOf("filter.placeholder = 'Find a rule, unit or stratagem'") !== -1);
