@@ -54,6 +54,23 @@ import path from 'path';
 const SENSENOVA = 'https://token.sensenova.ai/v1/chat/completions';
 const SENSENOVA_MODEL = 'sensenova-6.8-flash-lite';
 
+// task-76: the JUDGE's own route, on OpenRouter's free MiniMax. Mandal's reason is speed
+// as much as quality, and the measured difference is an order of magnitude: the judge on
+// SenseNova ran 55-75s typical and 246s worst on a real ask, where this model answers a
+// judge-shaped call in 1-3s. OpenRouter's free rows are meant for API use (OpenCode's are
+// not - their gate answers 400 MissingSessionID to anything outside their own clients, and
+// Mandal was told so on 2026-10-20).
+//
+// The writer stays on SenseNova: RULES_MODEL_* is untouched, and the fast route no longer
+// defaults to it. ROLLBACK IS ONE VARIABLE - RULES_FAST_ENDPOINT / RULES_FAST_MODEL /
+// RULES_FAST_KEY still override everything below, so pointing the judge back at SenseNova
+// is an environment change and not a code change:
+//   RULES_FAST_ENDPOINT=https://token.sensenova.ai/v1/chat/completions
+//   RULES_FAST_MODEL=sensenova-6.8-flash-lite
+//   RULES_FAST_KEY=SENSENOVA_API_KEY
+const OPENROUTER = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_MODEL = 'minimax/minimax-m3.1-flash:free';
+
 export const MODEL_ENDPOINT = process.env.RULES_MODEL_ENDPOINT || SENSENOVA;
 export const MODEL = process.env.RULES_MODEL || SENSENOVA_MODEL;
 export function modelKeyName() {
@@ -63,12 +80,13 @@ export function modelKeyName() {
 export function modelCredential() { const n = modelKeyName(); return n ? credential(n) : ''; }
 export function modelReady() { return !!(process.env.RULES_MODEL_ENDPOINT || modelCredential()); }
 
-export const FAST_ENDPOINT = process.env.RULES_FAST_ENDPOINT || MODEL_ENDPOINT;
-export const FAST_MODEL = process.env.RULES_FAST_MODEL || MODEL;
+export const FAST_ENDPOINT = process.env.RULES_FAST_ENDPOINT || OPENROUTER;
+export const FAST_MODEL = process.env.RULES_FAST_MODEL || OPENROUTER_MODEL;
 export function fastKeyName() {
   if (process.env.RULES_FAST_KEY) return process.env.RULES_FAST_KEY;
+  // An endpoint nobody named is the judge's own route, and it has its own credential.
   if (process.env.RULES_FAST_ENDPOINT) return '';
-  return modelKeyName();
+  return 'OPENROUTER_API_KEY';
 }
 export function fastCredential() { const n = fastKeyName(); return n ? credential(n) : ''; }
 export function fastReady() { return !!(process.env.RULES_FAST_ENDPOINT || fastCredential()); }
@@ -101,7 +119,12 @@ export function fastReady() { return !!(process.env.RULES_FAST_ENDPOINT || fastC
 // that needs it (79.4% against 61.8%); the writer does not.
 // RULES_MODEL_REASONING=medium restores the old behaviour.
 export const MODEL_REASONING = process.env.RULES_MODEL_REASONING || 'none';
-export const FAST_REASONING = process.env.RULES_FAST_REASONING || (process.env.RULES_FAST_ENDPOINT ? '' : 'medium');
+// task-76: minimax advertises low/high/max, and 'medium' is NOT one of them - the field
+// would be rejected or ignored on the reasoning call. The judge keeps its thinking
+// (measured on the bank: 79.4% with against 61.8% without), so the fast route asks for
+// 'low' on this model: enough to deliberate, cheap enough to keep the speed that is half
+// the reason for the swap. RULES_FAST_REASONING overrides it.
+export const FAST_REASONING = process.env.RULES_FAST_REASONING || (process.env.RULES_FAST_ENDPOINT ? '' : 'low');
 
 // How long one call may take. The thinking judge is the slow step and 90s was
 // cutting real questions off - seven of twenty-five in the measured run, which

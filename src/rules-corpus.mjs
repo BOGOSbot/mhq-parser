@@ -2552,11 +2552,24 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     // The route carries a default; a caller may override it for one call - the
     // /rules page's fast mode asks the judge not to reason, deep asks it to.
     const reasoning = (opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning;
+    // task-76: the reasoning control differs by gateway, and a wrong one is a 400 rather
+    // than a bad answer - so both shapes are VERIFIED, not assumed: a live call to
+    // OpenRouter's minimax with reasoning_effort returned 200 but reasoning 'null' (the
+    // field is accepted and ignored), where reasoning.effort returned 200 WITH reasoning
+    // text. SenseNova is the other way round: it reads reasoning_effort and does not know
+    // the nested object. The host decides.
+    const nested = /openrouter\.ai$/i.test(String(route.endpoint || ''));
+    // A nested-reasoning gateway may DEMAND it: OpenRouter's minimax answers 400
+    // 'Reasoning is mandatory for this endpoint and cannot be disabled.' to a request
+    // without it, so 'no reasoning' is asked for as the provider's cheapest effort rather
+    // than by omitting the field. Measured: the judge's own retry (reasoning 'none') was
+    // the call that emptied, 18 of 19 calls, and the log named it exactly.
+    const effort = reasoning && reasoning !== 'none' ? reasoning : (nested ? 'low' : '');
     const body = JSON.stringify(Object.assign({
       model: route.model,
       messages: [{ role: 'user', content: prompt }],
       max_tokens: budget,
-    }, reasoning ? { reasoning_effort: reasoning } : {}));
+    }, nested ? { reasoning: { effort: effort || 'low' } } : (effort ? { reasoning_effort: effort } : {})));
     const res = await new Promise((resolve, reject) => {
       const u = new URL(route.endpoint);
       const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) };
@@ -2589,6 +2602,12 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     if (!choice || !content.trim()) {
       ROUTE_STATS.empty++;
       bucket.empty++;
+      // A gateway that thinks BEFORE it writes can spend the whole budget on reasoning
+      // and return content:null with finish_reason 'length' - OpenRouter's minimax does
+      // exactly that at 4000. That is the truncated-JSON case, so it gets the truncated
+      // treatment: a bigger budget, not a shrug. Without this the judge answered
+      // 'nothing parseable' on a call that had simply run out of room thinking.
+      if (choice && choice.finish_reason === 'length') budget *= 2;
       if (attempt < 2) { recovering = true; continue; }
       return content;
     }

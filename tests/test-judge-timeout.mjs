@@ -18,8 +18,13 @@ const server = http.createServer((req, res) => {
   let body = '';
   req.on('data', d => { body += d; });
   req.on('end', () => {
+    // task-76: the reasoning control is either shape, so the stub reads both - a nested
+    // gateway sends reasoning.effort and this plain endpoint gets reasoning_effort.
     let reasoning = null;
-    try { reasoning = JSON.parse(body).reasoning_effort || null; } catch (e) { }
+    try {
+      const b = JSON.parse(body);
+      reasoning = (b.reasoning && b.reasoning.effort) || b.reasoning_effort || null;
+    } catch (e) { }
     seen.push(reasoning);
     if (reasoning && reasoning !== 'none') { return; } // never answer the reasoning call
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -46,7 +51,16 @@ server.close();
 t('the child run exits clean', code, 0);
 const verdict = out.trim() ? JSON.parse(out.trim().split('\n').pop()) : null;
 ok('the reasoning call was asked first', seen.length >= 2 && (seen[0] === 'medium' || seen[0] === 'high'));
-ok('and the fallback asked again without reasoning', seen.indexOf('medium') !== -1 && seen.indexOf('none') > seen.indexOf('medium'));
+// task-76: 'no reasoning' on a nested-reasoning gateway is asked for as its cheapest
+// effort rather than by dropping the field - OpenRouter's minimax answers 400 'Reasoning
+// is mandatory' without it, which emptied 18 of 19 judge calls. This stub is a plain
+// local endpoint, so the fallback drops the field as it always did; the nested shape is
+// pinned in tests/test-rules.mjs.
+// The reasoning attempt carries the effort; the fallback asks with NO effort field at all
+// (a plain endpoint does not know it), which is what 'without reasoning' means here. The
+// nested gateway's shape - where 'no reasoning' is its cheapest effort - is pinned in
+// tests/test-rules.mjs and exercised by the judge's own retry.
+ok('and the fallback asked again without reasoning', seen.indexOf('medium') !== -1 && seen[seen.length - 1] === null);
 ok('the judge answered through the fallback, no error', !!verdict && verdict.answered === true && verdict.confidence === 'high' && verdict.from === 1);
 if (err) console.log('child stderr: ' + err.slice(0, 400));
 
