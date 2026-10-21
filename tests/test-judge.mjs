@@ -187,6 +187,24 @@ t('the English prompt still carries the English schema', /"why": "the reason, in
 t('the French prompt keeps the passages untouched', promptFr.indexOf('Until the end of the turn') !== -1, true);
 
 
+
+// --- task-59: the applicability check ----------------------------------------
+// The judge is given the Enginseer's record (a Vehicle gets a 4+ invulnerable save) and
+// the Baneblade's own keyword list (Astra Militarum, Vehicle, Titanic, ...) and answered
+// no without joining them - two yes and four no across six runs on the same passages.
+// The check makes it state each record's scope and whether the subject is inside it, and
+// forbids the hedge that turns a good yes into 'no general answer is given'.
+{
+  const p = [{ set: 'factions', heading: 'Baneblade', text: 'Keywords: Astra Militarum, Vehicle' }];
+  const s = judgePrompt('Can a baneblade have an invulnerable save?', p, {});
+  t('the prompt says a record that states a rule may not apply', /A record that states a rule is not yet a record that APPLIES/.test(s), true);
+  t('it asks for the scope and the subject\u2019s membership', /state that scope in "why" and say whether the SUBJECT of the question is inside it/.test(s), true);
+  t('it names the keyword join', /the record APPLIES and the answer is what it says/.test(s), true);
+  t('it says an excluding scope cannot support the answer', /A record whose scope EXCLUDES the subject cannot support the answer/.test(s), true);
+  t('and it forbids the hedge the check could become', /Do not answer "no general answer is given" or "it depends" when a record in front of you applies/.test(s), true);
+  t('the applicability rule is on every prompt, not only capability ones', /A record that states a rule is not yet a record that APPLIES/.test(judgePrompt('How many points does a Space Marine Captain cost?', p, {})), true);
+}
+
 // --- task-56: the scope of a negative ---------------------------------------
 // Mandal's first-day warning, measured on the Box: 'Can a baneblade have an
 // invulnerable save?' was answered 'No, a Baneblade does not have an invulnerable

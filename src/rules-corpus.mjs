@@ -3042,6 +3042,19 @@ export function judgePrompt(question, passages, opts) {
     '',
     'Judge only what is written above, not what you know about the game.',
     'A passage marked TRUNCATED has more text that is not shown; if the rule could be in the unseen part, say so in "why" instead of concluding it is absent.',
+    // task-59: the applicability check. Measured on the deployed Box: the Baneblade
+    // question's findings hold the Enginseer's record ('select one friendly Astra
+    // Militarum Vehicle model ... that VEHICLE model has a 4+ invulnerable save') at #9
+    // AND the Baneblade's own keyword list (Astra Militarum, Vehicle, Titanic, ...) at
+    // #25, and the judge answered no without mentioning Vehicle - six runs gave two yes
+    // and four no on the same passages. It has both halves of the join and does not make
+    // it. The same step catches the wrong yes (a record whose scope excludes the subject,
+    // the Rampart Crest saving the unit the bearer LEADS and not the bearer).
+    'A record that states a rule is not yet a record that APPLIES to the subject of the question.',
+    '- Every record names a SCOPE: who the rule reaches. It is written in the record - "models in this model\u2019s unit", "the bearer", "one friendly Astra Militarum Vehicle model", "ADEPTUS MECHANICUS BATTLELINE models", "a friendly unit within 6\"". For each record you rely on, state that scope in "why" and say whether the SUBJECT of the question is inside it.',
+    '- A record whose scope EXCLUDES the subject cannot support the answer, whichever way it reads. Name it and look for one that reaches the subject.',
+    '- A scope is usually a KEYWORD rather than the subject\u2019s name. When the passages carry the subject\u2019s own keyword list, compare it with the scope: if the subject carries a keyword the scope names, the record APPLIES and the answer is what it says. This is the join, and it is written in the passages, not in what you know about the game.',
+    '- Once the scope check is done the answer is DECISIVE: yes when a record that applies grants it, no when none does. Do not answer "no general answer is given" or "it depends" when a record in front of you applies - that is the hedge this check exists to prevent.',
     o.scoped === true
       ? [
         'This question asks whether something is possible or permitted, and that changes what a no may claim.',
