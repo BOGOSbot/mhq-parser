@@ -1726,6 +1726,11 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true, id: id, fr: text });
   }
   if (req.method === 'GET' && u.pathname === '/health') {
+    // task-78: a test-only delay, so the suite can prove the server does not end a slow
+    // request at Node's default 300 seconds. It is inert unless the variable is set, and
+    // it lives here rather than in a test-only route so what is tested is the real server.
+    const slow = Number(process.env.RULES_TEST_SLOW_MS);
+    if (slow > 0) await new Promise(r => setTimeout(r, slow));
     const a = archiveIndex();
     return json(res, 200, {
       ok: true,
@@ -1828,6 +1833,16 @@ getAllEvents()
   .then((all) => runScan(withinWindow(all).filter(e => !archivedKeys.has(eventKey(e.type, e.slug)))))
   .catch(() => {});
 
+// task-78: the ask is bounded by its OWN timeouts (180s a model call, 45s a reasoning
+// attempt), and it can legitimately run past 300 seconds on a slow French question: a
+// translation, a judge call, a sweep and a second agent, each with a retry. Node ends a
+// request at 300 seconds by default (server.requestTimeout) and that is exactly where the
+// failures measured: 302s, 302s, 302s, on this machine and on the Box alike, with 'fetch
+// failed' at the client and no verdict at all. The pipeline's own bounds are the cap, so
+// the server's is off. headersTimeout goes with it: it must not fire before the request
+// that a reader is still waiting for.
+server.requestTimeout = 0;
+server.headersTimeout = 0;
 server.listen(port, host, () => {
   console.log('MHQ army-lists UI   http://' + host + ':' + port);
   console.log('POST /parse {"url":"<army-lists url>"}');
