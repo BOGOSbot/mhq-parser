@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import {
-  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, isCapabilityQuestion, judgePrompt, judgeStrength, normalizeConfidence, normalizeWiden, parseJsonObject, reconcileVerdicts, termCount, termPresent, widenPlan, writerEnabled,
+  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, isCapabilityQuestion, judgePrompt, judgeStrength, normalizeConfidence, normalizeWiden, parseJsonObject, reconcileVerdicts, scopeFacts, scopeLines, termCount, termPresent, widenPlan, writerEnabled,
 } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
@@ -188,6 +188,33 @@ t('the French prompt keeps the passages untouched', promptFr.indexOf('Until the 
 
 
 
+
+// --- task-70: the mechanical join --------------------------------------------
+// The leg has already computed that the Enginseer's record reaches a VEHICLE and that the
+// Baneblade carries VEHICLE. The judge was asked to re-derive that from prose and got it
+// wrong even when it wrote the right sentence ('it can only gain one if another rule, such
+// as Omnissiah's Blessing from a Tech-Priest Enginseer, grants it to it' -> answered NO).
+// The fact is now stated beside the passages.
+{
+  const q = 'Can a baneblade have an invulnerable save?';
+  const eng = { n: 8, id: 'unitrules#000001396', scopeKeys: ['ASTRA', 'MILITARUM', 'VEHICLE'], subjectKeys: ['ASTRA MILITARUM'], carriesQuestion: true, text: 'Omnissiah\u2019s Blessing: that VEHICLE model has a 4+ invulnerable save' };
+  const list = { n: 9, id: 'unitrules#000000702', scopeKeys: ['ASTRA', 'MILITARUM'], subjectKeys: ['ASTRA MILITARUM'], carriesQuestion: true, text: 'Baneblade Keywords Astra Militarum Vehicle Save 2+' };
+  const unrelated = { n: 3, id: 'core-rules#x', scopeKeys: [], subjectKeys: [], carriesQuestion: false, text: 'nothing' };
+  const facts = scopeFacts([eng, list, unrelated], q);
+  t('a record the leg matched, that carries the question, is stated', facts.some(f => f.id === 'unitrules#000001396'), true);
+  t('a record that does not say the thing is not stated as applying', !facts.some(f => f.id === 'unitrules#000000702'), true);
+  t('a record the leg did not match is not stated at all', !facts.some(f => f.id === 'core-rules#x'), true);
+  t('a non-capability question gets no facts', scopeFacts([eng], 'What does a Baneblade do?').length, 0);
+  const lines = scopeLines(facts).join('\n');
+  t('the line names the passage, the record and the keyword', /passage 8 \(unitrules#000001396\) is scoped to ASTRA MILITARUM VEHICLE/.test(lines), true);
+  t('and it says the subject carries the keyword', /the subject of the question carries ASTRA MILITARUM/.test(lines), true);
+  t('and it leaves what the record grants to the judge', /It is still for you to read what that record grants/.test(lines), true);
+  t('no facts means no block at all', scopeLines([]).length, 0);
+  const prompt = judgePrompt(q, [eng, list], { scoped: true, scopeFacts: facts });
+  t('the fact reaches the judge prompt', /is scoped to ASTRA MILITARUM VEHICLE/.test(prompt), true);
+  t('the prompt without facts is the old prompt', /scope check has already been run/.test(judgePrompt(q, [eng, list], { scoped: true })), false);
+}
+
 // --- task-59: the applicability check ----------------------------------------
 // The judge is given the Enginseer's record (a Vehicle gets a 4+ invulnerable save) and
 // the Baneblade's own keyword list (Astra Militarum, Vehicle, Titanic, ...) and answered
@@ -241,7 +268,9 @@ t('the passages are untouched by the scope rule', capScoped.indexOf('Sv 2+') !==
 {
   const src = fs.readFileSync(new URL('../src/rules-corpus.mjs', import.meta.url), 'utf8');
   t('the judge call reads the question for the scope', /const scoped = o\.scoped === undefined \? isCapabilityQuestion\(question\) : o\.scoped === true;/.test(src), true);
-  t('and passes it into the prompt', /judgePrompt\(question, passages, Object\.assign\(\{\}, o, \{ manifest: manifest \|\| \[\], scoped \}\)\)/.test(src), true);
+  // task-70: the same call now also carries the scope leg's facts, so the pattern reads
+  // for the three things it must pass and not for the exact literal it used to be.
+  t('and passes it into the prompt', /judgePrompt\(question, passages, Object\.assign\(\{\}, o, \{ manifest: manifest \|\| \[\], scoped, scopeFacts: facts \}\)\)/.test(src), true);
 }
 
 // --- the escalation policy --------------------------------------------------

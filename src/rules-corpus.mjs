@@ -2580,10 +2580,18 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     const choice = res && res.choices && res.choices[0];
     const content = String((choice && choice.message && choice.message.content) || '');
     last = content;
-    // A reply with no choice at all IS the empty body; it is returned as it always
-    // was (routeText does not retry it), but it is now counted.
-    if (!choice) { ROUTE_STATS.empty++; bucket.empty++; return content; }
-    if (!content.trim()) { ROUTE_STATS.empty++; bucket.empty++; }
+    // task-70: an empty reply is RETRIED, not returned. It was returned as it always had
+    // been, and the judge then read it as 'the judge did not answer', which the escalation
+    // loop treats as 'not answered' - a statement about the corpus made from a call that
+    // never happened. Measured on the Box: 2 empty and 3 truncated replies in 130 fast
+    // calls, and a probe hit an empty body after one 180 s timeout and kept getting them.
+    // A route that returns nothing has said nothing; it has not declined.
+    if (!choice || !content.trim()) {
+      ROUTE_STATS.empty++;
+      bucket.empty++;
+      if (attempt < 2) { recovering = true; continue; }
+      return content;
+    }
     // A reply that stopped on the token limit is only usable when a cut cannot
     // break it. Prose that had to be cut is still prose; a JSON object cut
     // mid-string is not an object at all - and that is what a judge returned
@@ -2992,6 +3000,20 @@ export function passageTruncation(passages, opts) {
   return { passages: (passages || []).length, cut: cut, dropped: dropped, caps: caps };
 }
 
+// The scope leg's facts, as lines the judge reads beside the passages. Each names the
+// record, the keyword its scope is written with, and the subject's own keyword that met
+// it - which is exactly what the leg computed, not a conclusion drawn for the judge.
+export function scopeLines(facts) {
+  const list = facts || [];
+  if (!list.length) return [];
+  return ['', 'The scope check has already been run on these passages, mechanically:']
+    .concat(list.map(f => {
+      const scope = (f.scopeKeys || []).join(' ');
+      return '- passage ' + f.n + ' (' + f.id + ') is scoped to ' + scope + '; the subject of the question carries ' + f.keyword + ', so that record APPLIES.';
+    }))
+    .concat(['It is still for you to read what that record grants.']);
+}
+
 export function judgePrompt(question, passages, opts) {
   const o = opts || {};
   const per = o.perPassage || JUDGE_PASSAGE_CHARS;
@@ -3039,6 +3061,13 @@ export function judgePrompt(question, passages, opts) {
     'Retrieved passages:',
     passages.map((p, i) => passageForJudge(p, i, caps[i])).join('\n\n'),
     manifestLines(manifest).join('\n'),
+    // task-70: the scope leg's own finding, stated as a fact. The leg's purpose is to find
+    // records whose scope covers the subject; the judge was being asked to re-derive that
+    // from two records' prose, and it is the inference it keeps getting wrong (a run wrote
+    // 'it can only gain one if another rule, such as Omnissiah's Blessing from a Tech-Priest
+    // Enginseer, grants it to it' and answered NO). Stating it removes the inference, not
+    // the check: the judge still has to read what the record grants.
+    scopeLines(o.scopeFacts).join('\n'),
     '',
     'Judge only what is written above, not what you know about the game.',
     'A passage marked TRUNCATED has more text that is not shown; if the rule could be in the unseen part, say so in "why" instead of concluding it is absent.',
@@ -3244,7 +3273,12 @@ async function judgeAsk(question, passages, key, o, manifest) {
   // the sweep all ask the same question and must all get the same discipline. An
   // explicit o.scoped wins either way, so a measurement can force one arm.
   const scoped = o.scoped === undefined ? isCapabilityQuestion(question) : o.scoped === true;
-  const prompt = judgePrompt(question, passages, Object.assign({}, o, { manifest: manifest || [], scoped }));
+  // task-70: the scope leg's finding travels with the passages as a stated fact, unless a
+  // measurement turns it off (RULES_SCOPE_FACTS=0, or o.scopeFacts).
+  const facts = o.scopeFacts !== undefined
+    ? o.scopeFacts
+    : (process.env.RULES_SCOPE_FACTS === '0' ? [] : scopeFacts(passages, question));
+  const prompt = judgePrompt(question, passages, Object.assign({}, o, { manifest: manifest || [], scoped, scopeFacts: facts }));
   // task-31: the reasoning verdict is the slow, unbounded step. Bound it, and when
   // it does not come back ask the same prompt without reasoning - a judge that
   // answered without thinking beats a run that died thinking. Measured on the fast
@@ -4005,7 +4039,39 @@ export function scopeLookup(question, index, keywords, opts) {
   return Array.from(scored.values())
     .sort((a, b) => (carries(b) - carries(a)) || (b.score - a.score) || (b.kw - a.kw) || (String(a.rec.text || '').length - String(b.rec.text || '').length))
     .slice(0, cap)
-    .map(x => Object.assign({}, x.rec, { scopeKeys: x.keys }));
+    // scopeKeys is what the record's scope NAMES; subjectKeys is which of the SUBJECT's
+    // own keywords the scope matched (task-70). The two together are the join, already
+    // computed: the judge is told it instead of re-deriving it from prose.
+    .map(x => Object.assign({}, x.rec, { scopeKeys: x.keys, subjectKeys: (keywords || []).filter(k => x.keys.some(w => String(k).split(/\s+/).indexOf(w) !== -1)), carriesQuestion: x.kw > 0 }));
+
+}
+
+// task-70: the scope leg's finding, made legible beside the passages. The leg exists to
+// find records whose scope covers the subject; asking the judge to re-derive that from the
+// two records' prose is the inference it keeps getting wrong (measured: a run wrote the
+// correct sentence and answered NO). This returns the fact as the leg computed it - the
+// record, the keyword the record's scope names, and the subject's own keyword that met it.
+export function scopeFacts(findings, question) {
+  const out = [];
+  // A capability question only: a scope fact is about whether a record reaches the
+  // subject, which is the question a 'can it ...' answer turns on.
+  if (!CAPABILITY_RE.test(String(question || ''))) return out;
+  (findings || []).forEach((f, i) => {
+    const keys = (f && f.scopeKeys) || [];
+    // Only a record that carries one of the question's own content words is stated as
+    // applying: the Baneblade's own keyword list is scoped to ASTRA MILITARUM too, and it
+    // says nothing about an invulnerable save. The leg already ranks on this (carries()).
+    if (!f || !keys.length || f.carriesQuestion !== true) return;
+    // And the record must SAY the thing the question asks about, not merely share a word
+    // with it: the Baneblade's keyword list carries 'Baneblade' and 'Save' while stating
+    // 'Save 2+', and stating 'that record APPLIES' for it would be a false fact. A record
+    // that states a capability states it with one of these, so they are the gate - what
+    // the record actually grants is still the judge's to read.
+    if (!/\b(has|have|had|gets?|gains?|grants?|granted|gives?|given|benefits?)\b/i.test(String(f.text || ''))) return;
+    const subject = (f.subjectKeys || [])[0] || '';
+    out.push({ n: f.n || i + 1, id: f.id, keyword: subject || keys[0], scopeKeys: keys });
+  });
+  return out;
 }
 
 // The index is built once from the whole corpus and kept, like the header projection:
@@ -4461,6 +4527,10 @@ export function findingFor(section, n) {
     // full length. scopeKeys is set by scopeLookup (the keywords it matched); a finding
     // built by hand carries none and is treated like any other.
     scope: Array.isArray(section.scopeKeys) && section.scopeKeys.length > 0,
+    // The leg's own output, carried so the judge prompt can state the join (task-70).
+    scopeKeys: Array.isArray(section.scopeKeys) ? section.scopeKeys : [],
+    subjectKeys: Array.isArray(section.subjectKeys) ? section.subjectKeys : [],
+    carriesQuestion: section.carriesQuestion === true,
     vectorRank: section.vectorRank || 0,
     vectorScore: section.vectorScore,
     lexicalRank: section.lexicalRank || 0,
