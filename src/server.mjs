@@ -1422,6 +1422,7 @@ async function handleRulesAsk(req, res) {
     let judgeDisagreement = false;
     let judgeDowngrade = false;
     let judgeDissentFrom = '';
+    let judgePolar = false;
     const emitSecond = () => {
       if (!secondJudge) return;
       // The reconciliation needs to know how hard each judge thought: a refusal
@@ -1433,6 +1434,10 @@ async function handleRulesAsk(req, res) {
       judgeDisagreement = reconciled.disagreement;
       judgeDowngrade = reconciled.downgrade;
       judgeDissentFrom = reconciled.dissenter;
+      // task-71: true when the two judges ANSWERED DIFFERENTLY rather than one answering
+      // and one refusing. The page shows both answers for this case; a refusal keeps the
+      // old annotation.
+      judgePolar = reconciled.polar === true;
       emit({ type: 'judge', judge: secondJudge, final: true, attempt: 0, second: true, reasoning: secondReasoning, elapsedMs: Date.now() - started });
       if (judgeDisagreement) {
         emit({
@@ -1440,6 +1445,7 @@ async function handleRulesAsk(req, res) {
           // 'downgrade' is the whole of task-16: true only when the dissenting
           // judge was at least as reliable as the binding one.
           downgrade: reconciled.downgrade,
+          polar: reconciled.polar === true,
           dissenter: reconciled.dissenter,
           conservative: reconciled.conservative,
           binding: { answered: judge ? judge.answered : null, confidence: (judge && judge.confidence) || '', reasoning: mode.reasoning },
@@ -1474,6 +1480,7 @@ async function handleRulesAsk(req, res) {
           judgeReasoning: mode.reasoning,
           judge2: secondJudge,
           judgeDisagreement,
+          judgePolar,
           judgeDowngrade,
           judgeDissentFrom,
           card: card ? { id: card.id, name: card.name } : null,
@@ -1620,7 +1627,7 @@ async function handleRulesAsk(req, res) {
     return json(res, 200, {
       question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, sweep, answer,
       quoteFr: quoteFr, quoteFrId: quoteFr ? cited.id : '',
-      judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom,
+      judge2: secondJudge, judgeDisagreement, judgePolar, judgeDowngrade, judgeDissentFrom,
       counts, steps, elapsedMs: Date.now() - started, mode: modeName, writer: writerOn,
       unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,
     });

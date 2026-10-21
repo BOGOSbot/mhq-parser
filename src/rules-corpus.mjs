@@ -3063,8 +3063,8 @@ export function judgePrompt(question, passages, opts) {
   // rule's own words under it, the passage they were copied from, the named rules
   // that change the answer, and what the corpus does not cover when it refuses.
   const schema = french
-    ? '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "answer": "une phrase, dans les termes du lecteur", "quote": "des mots copi\u00e9s verbatim du passage nomm\u00e9 dans from, ou null", "from": 1, "exceptions": [3], "missing": null, "why": "la raison, en deux ou trois phrases"}'
-    : '{"rules_question": true, "answered": true, "confidence": "high", "widen": "both", "passages": [1,2], "answer": "one sentence, in the reader\'s terms", "quote": "words copied verbatim from the passage named in from, or null", "from": 1, "exceptions": [3], "missing": null, "why": "the reason, in two or three sentences"}';
+    ? '{"rules_question": true, "answered": true, "verdict": "oui", "confidence": "high", "widen": "both", "passages": [1,2], "answer": "une phrase, dans les termes du lecteur", "quote": "des mots copi\u00e9s verbatim du passage nomm\u00e9 dans from, ou null", "from": 1, "exceptions": [3], "missing": null, "why": "la raison, en deux ou trois phrases"}'
+    : '{"rules_question": true, "answered": true, "verdict": "yes", "confidence": "high", "widen": "both", "passages": [1,2], "answer": "one sentence, in the reader\'s terms", "quote": "words copied verbatim from the passage named in from, or null", "from": 1, "exceptions": [3], "missing": null, "why": "the reason, in two or three sentences"}';
   // The follow member is declared only when a hop is on offer: a judge asked for a
   // field it cannot use invents a value for it. The same rule holds for the sweep's
   // checks, and it is why the fast prompt is byte-identical to what it was.
@@ -3117,6 +3117,13 @@ export function judgePrompt(question, passages, opts) {
     whyMust,
     '- rules_question: is this a question about 40k rules at all? Some are about tournaments, paint or the subreddit.',
     '- answered: do the passages state the rule needed to answer it? Partial coverage is not answered.',
+    // task-71: the verdict's own polarity, so two judges can be compared by what they
+    // SAID rather than only by whether they spoke. Measured on the key question: five runs
+    // WITH the field returned 'yes' five times; five runs without it returned no verdict at
+    // all, which is what left the disagreement detector blind. It also forces the headline
+    // to commit, which is the shape behind 'does not have it by default, but can gain it' -
+    // that answer's verdict is yes.
+    '- verdict: the polarity of YOUR answer LINE, one of "yes", "no" or "unclear". It is what the answer says, not what the passages contain: an answer that says the unit does not have it by default but can gain it is "yes". "unclear" only when the answer genuinely cannot commit. Give it whenever answered is true.',
     '- confidence: how sure you are of that verdict. "high" when a passage states the rule outright, "med" when the passages are about the right subject but do not settle it, "low" when the retrieval looks off-topic or the question names something absent from the passages. Always give one of the three.',
     '- widen: only when answered is false, which half to search deeper next. "rules" if it is the core rules that are missing, "faction" if it is a datasheet, stratagem or enhancement, "both" if you cannot tell which. Always give one of the three.',
     '- passages: the numbers that carry the answer, best first; [] if none do.',
@@ -3135,6 +3142,9 @@ export function judgePrompt(question, passages, opts) {
     french
       ? '- missing : seulement quand answered est false - ce que le corpus ne couvre pas, en une ou deux phrases. null quand answered est true.'
       : '- missing: only when answered is false - what the corpus does not cover, in one or two sentences. null when answered is true.',
+    french
+      ? '- verdict : la polarite de TA phrase de reponse, "oui", "non" ou "incertain". C\'est ce que dit la reponse, pas ce que disent les passages : une reponse qui dit que l\'unite ne l\'a pas par defaut mais peut l\'obtenir est "oui". "incertain" seulement quand la reponse ne peut vraiment pas trancher. A donner quand answered est true.'
+      : '',
     sweep
       ? '- checks: what you would have to LOOK UP to be sure the answer is not incomplete. Ask yourself what could make it WRONG or narrow - an exception in another chapter, a detachment or army rule that grants it, a unit whose own datasheet overrides the general rule - and name each as a search. "what" is the claim you are checking, "query" is the words a rulebook would use to state it (a search, never a question). Up to four, best first. [] only when you can already see that nothing outside these passages could change the answer; when in doubt, name the check. This is not "follow": a follow opens a link a passage already names, a check is a search the corpus has not run.'
       : '',
@@ -3168,15 +3178,46 @@ export function judgeStrength(reasoning) {
 export function reconcileVerdicts(binding, second) {
   const a = binding ? binding.answered : null;
   const b = second ? second.answered : null;
-  if (a === null || a === undefined || b === null || b === undefined) return { disagreement: false, conservative: 'binding', downgrade: false, dissenter: '' };
-  if (a === b) return { disagreement: false, conservative: 'binding', downgrade: false, dissenter: '' };
+  if (a === null || a === undefined || b === null || b === undefined) return { disagreement: false, conservative: 'binding', downgrade: false, dissenter: '', polar: false };
+  if (a === b) {
+    // task-71: TWO JUDGES THAT BOTH ANSWERED CAN STILL DISAGREE, and that is the case
+    // Mandal hit - judge 1 'does not have it by default, but can gain it', judge 2 'yes, a
+    // Baneblade can have one' - recorded as agreement because only `answered` was
+    // compared. The verdict field is what they are compared on now. Two answers with no
+    // verdict at all cannot be compared, and stay as they were: not a disagreement, but
+    // not evidence of agreement either.
+    const va = normalizeVerdict(binding && binding.verdict);
+    const vb = normalizeVerdict(second && second.verdict);
+    // 'unclear' is a judge saying it cannot commit. That is not a polarity to disagree
+    // with, so only yes against no counts - the sentence this catches is the one that
+    // names the condition and still says yes, against one that says no.
+    const polar = (va === 'yes' || va === 'no') && (vb === 'yes' || vb === 'no') && va !== vb;
+    if (a === true && polar) {
+      // The stronger judge's answer gets the headline: judgeStrength is the measured one
+      // (61.8% with reasoning off against 79.4% with it on).
+      const secondStronger = judgeStrength(second.reasoning) > judgeStrength(binding.reasoning);
+      return { disagreement: true, conservative: secondStronger ? 'second' : 'binding', downgrade: false, dissenter: secondStronger ? 'binding' : 'second', polar: true };
+    }
+    return { disagreement: false, conservative: 'binding', downgrade: false, dissenter: '', polar: false };
+  }
   // Only the second judge's refusal has something to downgrade: when the binding
   // judge refused, the answer is already the cautious one.
   if (b === false) {
     const downgrade = judgeStrength(second.reasoning) >= judgeStrength(binding.reasoning);
-    return { disagreement: true, conservative: downgrade ? 'second' : 'binding', downgrade, dissenter: 'second' };
+    return { disagreement: true, conservative: downgrade ? 'second' : 'binding', downgrade, dissenter: 'second', polar: false };
   }
-  return { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'binding' };
+  return { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'binding', polar: false };
+}
+
+// task-71: the verdict's polarity, folded to yes / no / unclear. A model reaches for its
+// own language ('oui', 'non') and for synonyms ('true', 'false', 'uncertain'), and an
+// unknown value is '' - no verdict - rather than a wrong one.
+export function normalizeVerdict(value) {
+  const s = String(value == null ? '' : value).trim().toLowerCase();
+  if (/^(yes|y|true|oui|vrai|correct)$/.test(s)) return 'yes';
+  if (/^(no|n|false|non|faux|incorrect)$/.test(s)) return 'no';
+  if (/^(unclear|uncertain|unknown|maybe|incertain|indetermine|ind\u00e9termin\u00e9)$/.test(s)) return 'unclear';
+  return '';
 }
 
 // 'medium' and 'normal' are what a model reaches for when it is not given the
@@ -3368,6 +3409,10 @@ async function judgeAsk(question, passages, key, o, manifest) {
   return {
     rulesQuestion: obj.rules_question !== false,
     answered,
+    // task-71: the polarity the answer LINE committed to, '' when the judge gave none.
+    // A refusal has no verdict - it says nothing about the answer, only about the
+    // records - so it is never invented from `answered`.
+    verdict: answered ? normalizeVerdict(obj.verdict) : '',
     confidence,
     widen: normalizeWiden(obj.widen),
     passages: passageNumbers,

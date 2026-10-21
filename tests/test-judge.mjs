@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import {
-  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, isCapabilityQuestion, judgePrompt, judgeStrength, normalizeConfidence, normalizeWiden, parseJsonObject, reconcileVerdicts, scopeFacts, scopeLines, termCount, termPresent, widenPlan, writerEnabled,
+  ASK_MODES, ESCALATION_TOPKS, MAX_PASSES, WIDEN_ADD, answerableFindings, askMode, dontKnowAnswer, entityAnchors, isCapabilityQuestion, judgePrompt, judgeStrength, normalizeConfidence, normalizeVerdict, normalizeWiden, parseJsonObject, reconcileVerdicts, scopeFacts, scopeLines, termCount, termPresent, widenPlan, writerEnabled,
 } from '../src/rules-corpus.mjs';
 
 let pass = 0, fail = 0;
@@ -142,12 +142,40 @@ t('and the request beats the environment, both ways', [writerEnabled({ RULES_WRI
 // reliable as the one that answered. Reasoning off measured 61.8% against
 // reasoning on 79.4%, so the quick judge does not hold a veto over the careful
 // one - but the careful judge keeps its veto over the quick one.
+// task-71: the verdict field, folded to three values. A model reaches for its own language
+// and for synonyms, and an unknown value must arrive as NO verdict rather than a wrong one.
+t('yes', normalizeVerdict('yes'), 'yes');
+t('oui is yes', normalizeVerdict('OUI'), 'yes');
+t('true is yes', normalizeVerdict('true'), 'yes');
+t('no', normalizeVerdict('no'), 'no');
+t('non is no', normalizeVerdict('non'), 'no');
+t('false is no', normalizeVerdict('false'), 'no');
+t('unclear', normalizeVerdict('unclear'), 'unclear');
+t('incertain is unclear', normalizeVerdict('incertain'), 'unclear');
+t('anything else is no verdict at all', normalizeVerdict('probably'), '');
+t('and an empty field is no verdict', normalizeVerdict(null), '');
 t('reasoning off is the weak setting', judgeStrength('none'), 0);
 t('reasoning on is the strong setting', judgeStrength('medium'), 1);
 t('high is no stronger than medium', judgeStrength('high'), 1);
 t('an unknown setting ranks as the equal of anything', judgeStrength(''), 1);
 
-const AGREE = { disagreement: false, conservative: 'binding', downgrade: false, dissenter: '' };
+const AGREE = { disagreement: false, conservative: 'binding', downgrade: false, dissenter: '', polar: false };
+// task-71: TWO JUDGES THAT BOTH ANSWERED CAN STILL DISAGREE, and that is the case Mandal
+// reported - judge 1 'does not have it by default, but can gain it', judge 2 'yes, a
+// Baneblade can have one' - which the old answered-only comparison recorded as agreement.
+// The verdict field is what they are compared on now, and the stronger judge's answer takes
+// the headline: the reasoning judge was the one that found the Enginseer.
+const POLAR = { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'second', polar: true };
+t('a yes and a no are a polar disagreement', reconcileVerdicts({ answered: true, verdict: 'yes', reasoning: 'medium' }, { answered: true, verdict: 'no', reasoning: 'none' }), POLAR);
+t('and the stronger judge takes the headline', reconcileVerdicts({ answered: true, verdict: 'no', reasoning: 'none' }, { answered: true, verdict: 'yes', reasoning: 'medium' }).conservative, 'second');
+t('the weaker judge is the dissenter in that direction', reconcileVerdicts({ answered: true, verdict: 'no', reasoning: 'none' }, { answered: true, verdict: 'yes', reasoning: 'medium' }).dissenter, 'binding');
+t('two yeses are still agreement', reconcileVerdicts({ answered: true, verdict: 'yes', reasoning: 'medium' }, { answered: true, verdict: 'yes', reasoning: 'none' }).disagreement, false);
+// 'unclear' is the judge saying it cannot commit: it is not a polarity, so it is not a
+// polar disagreement. It is not silence either, so it still cannot be read as agreement.
+t('an unclear verdict is not a polar disagreement', reconcileVerdicts({ answered: true, verdict: 'yes', reasoning: 'medium' }, { answered: true, verdict: 'unclear', reasoning: 'none' }).polar, false);
+t('and it raises no disagreement at all', reconcileVerdicts({ answered: true, verdict: 'yes', reasoning: 'medium' }, { answered: true, verdict: 'unclear', reasoning: 'none' }).disagreement, false);
+t('two answers with no verdict are not compared', reconcileVerdicts({ answered: true, reasoning: 'medium' }, { answered: true, reasoning: 'none' }).disagreement, false);
+t('a refusal has no polarity to disagree with', reconcileVerdicts({ answered: false, verdict: '', reasoning: 'medium' }, { answered: true, verdict: 'yes', reasoning: 'none' }).polar, false);
 t('two yeses agree', reconcileVerdicts({ answered: true, reasoning: 'medium' }, { answered: true, reasoning: 'none' }), AGREE);
 t('two nos agree', reconcileVerdicts({ answered: false, reasoning: 'none' }, { answered: false, reasoning: 'medium' }), AGREE);
 t('an unparseable verdict raises no disagreement', reconcileVerdicts({ answered: null }, { answered: true }), AGREE);
@@ -156,22 +184,22 @@ t('a missing second verdict raises no disagreement', reconcileVerdicts({ answere
 // FAST MODE: the binding judge is quick, the second is the careful one, so the
 // careful refusal downgrades the answer. This is the case the rule was written
 // for and it must not regress.
-t('fast mode: the careful second judge keeps its veto', reconcileVerdicts({ answered: true, reasoning: 'none' }, { answered: false, reasoning: 'medium' }), { disagreement: true, conservative: 'second', downgrade: true, dissenter: 'second' });
-t('an equal second judge downgrades too', reconcileVerdicts({ answered: true, reasoning: 'medium' }, { answered: false, reasoning: 'medium' }), { disagreement: true, conservative: 'second', downgrade: true, dissenter: 'second' });
-t('an unknown setting can still downgrade', reconcileVerdicts({ answered: true, reasoning: 'medium' }, { answered: false, reasoning: '' }), { disagreement: true, conservative: 'second', downgrade: true, dissenter: 'second' });
+t('fast mode: the careful second judge keeps its veto', reconcileVerdicts({ answered: true, reasoning: 'none' }, { answered: false, reasoning: 'medium' }), { disagreement: true, conservative: 'second', downgrade: true, dissenter: 'second', polar: false });
+t('an equal second judge downgrades too', reconcileVerdicts({ answered: true, reasoning: 'medium' }, { answered: false, reasoning: 'medium' }), { disagreement: true, conservative: 'second', downgrade: true, dissenter: 'second', polar: false });
+t('an unknown setting can still downgrade', reconcileVerdicts({ answered: true, reasoning: 'medium' }, { answered: false, reasoning: '' }), { disagreement: true, conservative: 'second', downgrade: true, dissenter: 'second', polar: false });
 
 // DEEP MODE, the exact case from the task-13 screenshot: the careful judge
 // answered correctly and the quick one refused. It is a dissent, not a verdict:
 // the answer is NOT stamped 'not confirmed'.
-t('deep mode: the quick judge does not veto the careful one', reconcileVerdicts({ answered: true, reasoning: 'medium' }, { answered: false, reasoning: 'none' }), { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'second' });
+t('deep mode: the quick judge does not veto the careful one', reconcileVerdicts({ answered: true, reasoning: 'medium' }, { answered: false, reasoning: 'none' }), { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'second', polar: false });
 t('the weaker dissent is still recorded as a disagreement', reconcileVerdicts({ answered: true, reasoning: 'high' }, { answered: false, reasoning: 'none' }).disagreement, true);
 t('and the dissenter is named', reconcileVerdicts({ answered: true, reasoning: 'medium' }, { answered: false, reasoning: 'none' }).dissenter, 'second');
 
 // The other direction: the binding judge refused, so the cautious answer already
 // stands and there is nothing to downgrade. The second judge's willingness to
 // answer is reported, and cannot upgrade a refusal.
-t('the first refusing keeps the binding when the second would answer', reconcileVerdicts({ answered: false, reasoning: 'medium' }, { answered: true, reasoning: 'none' }), { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'binding' });
-t('a careful second cannot upgrade a quick refusal either', reconcileVerdicts({ answered: false, reasoning: 'none' }, { answered: true, reasoning: 'medium' }), { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'binding' });
+t('the first refusing keeps the binding when the second would answer', reconcileVerdicts({ answered: false, reasoning: 'medium' }, { answered: true, reasoning: 'none' }), { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'binding', polar: false });
+t('a careful second cannot upgrade a quick refusal either', reconcileVerdicts({ answered: false, reasoning: 'none' }, { answered: true, reasoning: 'medium' }), { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'binding', polar: false });
 
 // --- the verdict follows the reader's language ------------------------------
 // The passages are the corpus's English and stay that way; the verdict is a

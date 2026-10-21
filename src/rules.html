@@ -765,6 +765,7 @@ var I18N = {
     judgeReasoning: 'with reasoning',
     secondJudgeWith: 'A second judge, with reasoning, also read these findings.',
     secondJudgeWithout: 'A second judge, without reasoning, also read these findings.',
+    judgeTwoAnswers: 'The two judges read the same findings and answered differently. Both answers are here; the stronger judge\u2019s is the line above.',
     // task-27: what is running while the send is disabled. runningAsk covers the
     // beat before the server's first event names the real first stage.
     runningAsk: 'asking the corpus...',
@@ -988,6 +989,7 @@ var I18N = {
     judgeReasoning: 'avec raisonnement',
     secondJudgeWith: 'Un second juge, avec raisonnement, a aussi lu ces constats.',
     secondJudgeWithout: 'Un second juge, sans raisonnement, a aussi lu ces constats.',
+    judgeTwoAnswers: 'Les deux juges ont lu les m\u00eames constats et r\u00e9pondu diff\u00e9remment. Les deux r\u00e9ponses sont ici ; celle du juge le plus fiable est la ligne ci-dessus.',
     runningAsk: 'interrogation du corpus...',
     secondReading: 'Un second juge relit ces constats...',
     runningTranslate: 'traduction de la question...',
@@ -1673,6 +1675,7 @@ var LEGENDS_KEY = 'mhq.rules.legends';
 // changes the record body, never the quote and never a heading.
 var FR_KEY = 'mhq.rules.fr';
 var DOOR_CUR = null; // the finding whose door was last opened
+var VERDICT_STATE = null; // the state the ruling on screen was rendered from (task-72)
 // task-74: the two modes are wiki and inline, and the stored value MIGRATES - a reader who
 // had 'quick' (the record alone) lands on wiki, which is the same surface, and a reader who
 // had 'book' (the tree with the record inline) lands on inline, which is the same surface.
@@ -1933,8 +1936,11 @@ function openFindingSheet(state, f) {
   box.appendChild(sheetAction('ignore', ignOn ? t('sheetIgnoreOn') : t('sheetIgnore'), ignOn ? t('heroIgnored') : t('heroIgnore'), '\u00d7', ignOn ? ' ign on' : ' ign', function () {
     toggleIgnore(state, f.id); closeFindingSheet();
   }));
+  // task-74 renamed the door's two surfaces; this call still named the old one, so this
+  // action threw ReferenceError the moment it was tapped. It goes through the door like
+  // every other row now, which is also what task-72 asks of the quote's source.
   box.appendChild(sheetAction('wiki', t('sheetWiki'), t('sheetWikiHint'), '\u2197', '', function () {
-    closeFindingSheet(); openBook(state, f);
+    closeFindingSheet(); openDoor(state, f);
   }));
   box.appendChild(el('div', 'sheetfoot', t('sheetFoot')));
   FSHEET.pop.classList.remove('hidden');
@@ -2409,7 +2415,15 @@ function citeLink(c, label) {
 // The judge card, drawn from both verdicts. The binding one is always first; the
 // second judge is appended under it with its own reasoning setting, so the
 // reader can see which verdict gated the prose and which arrived afterwards.
+// task-71: the two judges' strength, the same rule the server reconciles on (reasoning off
+// measured 61.8% against 79.4% with it on). An unknown setting ranks as the equal of
+// anything, so it never silently wins.
+function reasoningStrength(r) { return String(r || '').toLowerCase() === 'none' ? 0 : 1; }
 function renderVerdicts(state) {
+  // task-72: the ruling's source link opens the door the reader chose, and the door needs
+  // the state that holds the findings. The verdict is rendered from the one state that is
+  // on screen, so it is kept here rather than threaded through three call sites.
+  VERDICT_STATE = state;
   var card = state.verdict;
   card.textContent = '';
   if (!state.judge) { card.appendChild(el('div', 'note waiting', t('readingFindings'))); return; }
@@ -2417,21 +2431,35 @@ function renderVerdicts(state) {
   // a widening renumbers the findings, so citations are shown only while the
   // verdict and the list on screen are the same pass.
   var samePass = (state.judgeAttempt || 0) === (state.pass || 0);
-  card.appendChild(rulingBlock(state.judge, samePass ? state.findings : null, state.quoteFr));
+  // task-71: when the two judges disagree about the ANSWER (not about whether they can
+  // answer), the reader is shown BOTH, with the stronger judge's line as the headline.
+  // Mandal's report: the second judge found the Enginseer and its answer was collapsed
+  // under a footnote while the first judge's weaker line was the one visible.
+  var j2 = state.judge2 ? state.judge2.judge : null;
+  var polar = !!(state.judgeDisagreement && j2);
+  var secondStronger = polar && reasoningStrength(state.judge2.reasoning) > reasoningStrength(state.judgeReasoning);
+  var head = polar && secondStronger ? j2 : state.judge;
+  var under = polar && secondStronger ? state.judge : j2;
+  var headQuote = head === state.judge ? state.quoteFr : '';
+  var headFindings = head === state.judge && samePass ? state.findings : null;
+  card.appendChild(rulingBlock(head, headFindings, headQuote));
+  if (polar) card.appendChild(el('p', 'note seconddisagree', t('judgeTwoAnswers')));
   // task-27: the review is visible while it runs, not only when it lands.
   if (!state.judge2 && state.secondPending) {
     card.appendChild(el('p', 'secondnote secondrun', t('secondReading')));
   }
-  if (state.judge2) {
+  if (under) {
     // task-25: a plain dim sentence, not an uppercase eyebrow. The second judge
     // stays reachable - task-16's cautious-verdict work depends on it.
     var box = document.createElement('details');
     box.className = 'secondv';
-    var head = document.createElement('summary');
-    head.className = 'secondnote';
-    head.textContent = state.judge2.reasoning === 'none' ? t('secondJudgeWithout') : t('secondJudgeWith');
-    box.appendChild(head);
-    box.appendChild(rulingBlock(state.judge2.judge, null));
+    box.open = polar;
+    var sum = document.createElement('summary');
+    sum.className = 'secondnote';
+    var other = under === state.judge2 ? state.judge2.reasoning : state.judgeReasoning;
+    sum.textContent = other === 'none' ? t('secondJudgeWithout') : t('secondJudgeWith');
+    box.appendChild(sum);
+    box.appendChild(rulingBlock(under, null));
     card.appendChild(box);
   }
 }
@@ -2466,12 +2494,17 @@ function rowDisplayOf(heading) {
   var parts = crumbs(heading);
   return { name: shortName(parts.length ? parts[parts.length - 1] : String(heading || '')), path: parts.slice(0, Math.max(0, parts.length - 1)) };
 }
+// task-72: the quote's source opens the SAME DOOR a ledger row opens - the formatted
+// record, in whichever surface the reader chose - not the raw-text passage sheet. Mandal
+// hit the sheet: 'clicking the Baneblade link sends me to a popup with no formatting,
+// instead of the wiki.' The source of the quote is the evidence for the sentence above it,
+// so it must not be the one link on the page that leads to a wall of text.
 function sourceLine(f) {
   var p = el('p', 'rsrc');
   var disp = rowDisplayOf(f.heading);
   var a = el('a', null, disp.name || leafOf(f.heading));
   a.href = '#';
-  a.addEventListener('click', function (ev) { ev.preventDefault(); openPassage(f); });
+  a.addEventListener('click', function (ev) { ev.preventDefault(); openDoor(VERDICT_STATE || newState(), f); });
   p.appendChild(a);
   if (disp.path.length) p.appendChild(el('span', 'srule', disp.path.join(' \u203a ')));
   return p;
@@ -2532,7 +2565,9 @@ function rulingBlock(judge, findings, quoteFr) {
       // question here exactly as it does in the ledger.
       var a = el('a', null, rowDisplayOf(ex.heading).name || leafOf(ex.heading));
       a.href = '#';
-      (function (rec) { a.addEventListener('click', function (ev) { ev.preventDefault(); openPassage(rec); }); })(ex);
+      // task-72: an exception is a record like the source is, so it opens the same door.
+      // The raw passage sheet stays reachable from the [n] citation markers.
+      (function (rec) { a.addEventListener('click', function (ev) { ev.preventDefault(); openDoor(VERDICT_STATE || newState(), rec); }); })(ex);
       links.push(a);
     }
     if (links.length) {
@@ -3057,6 +3092,10 @@ function applyEvent(ev, state) {
     }
     else {
       state.judge = ev.judge;
+      // task-71: which effort the binding judge ran at, so the reader can be shown the
+      // stronger of two disagreeing answers. The stream carries it; the ask's own mode is
+      // the fallback for a payload that does not.
+      state.judgeReasoning = ev.reasoning || (state.mode && state.mode.reasoning) || '';
       // task-69: the French that rides under the quote, when the reader's language is
       // French. The English quote is the evidence and is never replaced by it.
       if (ev.quoteFr !== undefined) state.quoteFr = String(ev.quoteFr || '');
@@ -3130,6 +3169,10 @@ function applyEvent(ev, state) {
     // accurate one - reasoning off measured 61.8% against reasoning on 79.4%.
     var down = ev.downgrade === true;
     state.disputed = down;
+    // task-71: a POLAR disagreement - both answered, and they answered differently - is
+    // shown as two answers rather than one answer plus a footnote.
+    state.judgeDisagreement = ev.polar === true;
+    renderVerdicts(state);
     var box = el('div', down ? 'dispute' : 'dissent');
     box.appendChild(el('div', 'dtitle', down ? t('judgeDisagreeTitle') : t('judgeDissentTitle')));
     box.appendChild(el('div', 'note', down

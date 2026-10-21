@@ -127,9 +127,29 @@ ok('the union keeps the top five and promotes the cited ones', /i < 5 \|\| isCit
 ok('a cited finding is badged and shown whole', /if \(cited\) head\.appendChild\(el\('span', 'leg cite'/.test(SURFACE));
 // task-24 (J4): the ruling names its source BY TITLE, with the section path
 // beside it, and that name is the link to the passage.
-ok('the ruling links its source by title', /function sourceLine/.test(code) && /leafOf\(f\.heading\)/.test(code) && /openPassage\(f\)/.test(code));
+ok('the ruling links its source by title', /function sourceLine/.test(code) && /leafOf\(f\.heading\)/.test(code));
+// task-72: the source of the quote is the evidence for the sentence above it, so it opens
+// the SAME DOOR a ledger row opens - the formatted record in the reader's chosen surface -
+// and not the raw-text passage sheet. Mandal hit the sheet: 'a popup with no formatting,
+// instead of the wiki.'
+ok('the quote\u2019s source opens the door, not the raw sheet', /openDoor\(VERDICT_STATE \|\| newState\(\), f\)/.test(code) && !/sourceLine[\s\S]{0,400}openPassage/.test(code));
+ok('the door needs the state the verdict was rendered from', /VERDICT_STATE = state/.test(code) && /var VERDICT_STATE = null/.test(code));
+// task-74 renamed the door's surfaces, and this action still named the old one: it threw
+// ReferenceError the moment it was tapped. It goes through the door like every other row.
+ok('the finding sheet\u2019s action goes through the door', /closeFindingSheet\(\); openDoor\(state, f\)/.test(code) && !/openBook\(/.test(code));
 ok('a widening drops the citations it renumbered', /if \(ev\.attempt > 0\) state\.cited = \[\];/.test(code));
 ok('citations show only against the list the verdict judged', /var samePass = /.test(code));
+// task-71: two judges that both answered can still disagree, and the reader is owed BOTH
+// answers with the stronger judge's as the headline. Mandal's report: the reasoning judge
+// found the Enginseer and its answer was collapsed under a footnote while the weaker line
+// was the one visible.
+ok('a polar disagreement shows both answers', /var polar = !!\(state\.judgeDisagreement && j2\)/.test(code) && /note seconddisagree/.test(code));
+ok('the stronger judge takes the headline', /secondStronger = polar && reasoningStrength/.test(code) && /var head = polar && secondStronger \? j2 : state\.judge/.test(code));
+ok('and the weaker one stays open rather than collapsed', /box\.open = polar/.test(code));
+ok('the strength rule is the measured one', /function reasoningStrength\(r\) \{ return String\(r \|\| ''\)\.toLowerCase\(\) === 'none' \? 0 : 1; \}/.test(code));
+ok('the binding judge\u2019s effort is kept for that comparison', /state\.judgeReasoning = ev\.reasoning/.test(code));
+ok('the polar flag comes from the reconcile event', /state\.judgeDisagreement = ev\.polar === true/.test(code));
+ok('and the sentence exists in both languages', (PAGE.match(/judgeTwoAnswers:/g) || []).length === 2);
 ok('one place draws the findings list', /function renderFindings\(state\)/.test(code));
 
 // The manual rerank (task-21): the reader unticks passages, the request carries
