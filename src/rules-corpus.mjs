@@ -3425,7 +3425,11 @@ async function agentAsk(question, passages, key, o, manifest) {
   const mustNotCopy = '\n\nYour previous reply was the EXAMPLE from the schema, not an answer: it repeated the placeholder text of the example. Reply with the JSON object only, in one line, and with the fields FILLED IN for this question. Do not copy the wording of the example.';
   for (let ask = 1; (!obj || agentTemplate(obj)) && ask < (o.maxAsks || 3); ask++) {
     try {
-      obj = parseJsonObject(await fastText(prompt + (ask > 1 || agentTemplate(obj) ? mustNotCopy : '\n\nReply with the JSON object only, in one line, and nothing else.'), key, 1200, reOpts));
+      // The FIRST re-ask is the plain one - it is the old behaviour, and it applies to a
+      // reply that was missing. When the reply we already hold IS the example, or when a
+      // plain re-ask has already failed, the prompt says what went wrong instead.
+      const prior = ask > 1 || agentTemplate(obj) ? mustNotCopy : '\n\nReply with the JSON object only, in one line, and nothing else.';
+      obj = parseJsonObject(await fastText(prompt + prior, key, 1200, reOpts));
     } catch (e) { break; }
   }
   if (agentTemplate(obj)) {
