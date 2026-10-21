@@ -944,7 +944,7 @@ function rowDisplay(headingOrParts) {
     panel.appendChild(body);
     panel.scrollTop = top;
     if (state.rows[record.id]) { body.innerHTML = faceHtml(record.id) + state.rows[record.id]; wireFaces(body); panel.scrollTop = top; return; }
-    fetch(REC + '?id=' + encodeURIComponent(record.id) + '&format=html', { credentials: 'same-origin' })
+    fetch(REC + '?id=' + encodeURIComponent(record.id) + '&format=html' + recordLangQuery(), { credentials: 'same-origin' })
       .then(function (res) { return res.ok ? res.text() : Promise.reject(new Error('HTTP ' + res.status)); })
       .then(function (html) {
         state.rows[record.id] = html;
