@@ -1,32 +1,32 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * Task-22's arm: the judge's latency, before and after the settle change.
+ * Task-22's arm: the agent's latency, before and after the settle change.
  *
- *   node tests/measure-judge.mjs --arm before --out workspace/eval/judge-latency-before.json
+ *   node tests/measure-agent.mjs --arm before --out workspace/eval/agent-latency-before.json
  *
  * Same questions, same mode, same index state, one process per arm. What it
  * measures per question, and nothing else:
- *   - the seconds: retrieval, the judge loop, the writer, and their total;
- *   - the PASSES the widening loop ran, and how many judge calls those passes
+ *   - the seconds: retrieval, the agent loop, the writer, and their total;
+ *   - the PASSES the widening loop ran, and how many agent calls those passes
  *     cost (a settle pass is two: the quick gate and the reasoned verdict);
  *   - every pass's VERDICT, and which pass was final.
  *
- * It injects the RETRIEVER and the writer, never the judge, so the loop's own
- * judge policy - whatever ASK_MODES says in this checkout - is exactly what is
+ * It injects the RETRIEVER and the writer, never the agent, so the loop's own
+ * agent policy - whatever ASK_MODES says in this checkout - is exactly what is
  * measured. The question list is fixed here, taken from the traces on disk; each
  * entry carries that trace's own total and pass count as the recorded reference.
  *
  * Built for task-22's settle arm, whose change was REVERTED after this arm
- * measured it (workspace/eval/judge-latency-task22.txt): the reasoning-off gate
- * widened the fuegan question to three passes where the reasoned judge had
+ * measured it (workspace/eval/agent-latency-task22.txt): the reasoning-off gate
+ * widened the fuegan question to three passes where the reasoned agent had
  * answered on the first, 73.2s -> 240.9s and answered -> unresolved. The settle
- * fields it reads (outcome.judgeCalls, attempts[].settled and .quick) exist only
+ * fields it reads (outcome.agentCalls, attempts[].settled and .quick) exist only
  * in a checkout that has the settle pass; on a checkout without it the arm
- * measures the one-judge-per-pass loop, which is what the 'before' arm did.
+ * measures the one-agent-per-pass loop, which is what the 'before' arm did.
  *
  * ACCURACY IS NOT MEASURED HERE. The bank is 33 graded questions, one question
- * is ~3 points and the noise floor is 2-4, so a judge change cannot be resolved
+ * is ~3 points and the noise floor is 2-4, so a agent change cannot be resolved
  * by it. This file reports verdicts, not correctness, and says so in its output.
  */
 import fs from 'fs';
@@ -43,7 +43,7 @@ const ONLY = Number(flag('only', 0)) || 0;
 
 // The questions, with the trace each was taken from. The reference is what the
 // reader actually waited for on the deployed page (translation included); this
-// arm asks the English the run actually searched and times retrieve+judge+answer,
+// arm asks the English the run actually searched and times retrieve+agent+answer,
 // so the two are compared on the part the change touches.
 const QUESTIONS = [
   { q: 'I played against a Harlequin who secured an objective in the Movement phase with a stratagem, then disembarked into a Starweaver at the end of the turn. Is that legal?', mode: 'deep', ref: '3587537ce2a2bb67', refTotal: 374919, refPasses: 3 },
@@ -78,7 +78,7 @@ function save() {
   if (!OUT_ABS) return;
   fs.mkdirSync(path.dirname(OUT_ABS), { recursive: true });
   fs.writeFileSync(OUT_ABS, JSON.stringify({
-    arm: ARM, at: new Date().toISOString(), model: MODEL, judgeModel: FAST_MODEL,
+    arm: ARM, at: new Date().toISOString(), model: MODEL, agentModel: FAST_MODEL,
     modes: { fast: ASK_MODES.fast, deep: ASK_MODES.deep },
     degraded, results,
   }, null, 1));
@@ -100,7 +100,7 @@ for (const item of list) {
       fastKey: FAST,
       topKs: [mode.first],
       passes: mode.passes,
-      judgeOpts: { reasoning: mode.reasoning, lang: 'en' },
+      agentOpts: { reasoning: mode.reasoning, lang: 'en' },
       settleReasoning: mode.settle,
       dual,
       retrieve: async (q, plan) => {
@@ -112,9 +112,9 @@ for (const item of list) {
     });
     loopMs = Date.now() - t0;
     rec.retrieveMs = retrieveMs;
-    rec.judgeMs = Math.max(0, loopMs - retrieveMs);
+    rec.agentMs = Math.max(0, loopMs - retrieveMs);
     rec.passes = outcome.attempts.length;
-    rec.judgeCalls = outcome.judgeCalls;
+    rec.agentCalls = outcome.agentCalls;
     rec.attempts = outcome.attempts;
     rec.verdicts = (outcome.attempts || []).map(a => (a.answered ? 'Y' : 'N')).join('');
     rec.unresolved = outcome.unresolved;
@@ -128,9 +128,9 @@ for (const item of list) {
     let answer = '';
     try {
       answer = outcome.unresolved
-        ? dontKnowAnswer(outcome.judge, 'en')
+        ? dontKnowAnswer(outcome.agent, 'en')
         : await compileFindings(item.q, outcome.findings, SENSE, { lang: 'en' });
-      if (!outcome.unresolved && String(answer).trim() === WRITER_DECLINED) answer = dontKnowAnswer(outcome.judge, 'en');
+      if (!outcome.unresolved && String(answer).trim() === WRITER_DECLINED) answer = dontKnowAnswer(outcome.agent, 'en');
     } catch (e) { rec.writerFailed = 'timeout'; }
     answerMs = Date.now() - t1;
     rec.answerMs = answerMs;
@@ -139,9 +139,9 @@ for (const item of list) {
   } catch (e) {
     rec.failed = String((e && e.message) || e);
     rec.retrieveMs = retrieveMs;
-    rec.judgeMs = Math.max(0, Date.now() - startedAt - retrieveMs);
+    rec.agentMs = Math.max(0, Date.now() - startedAt - retrieveMs);
   }
-  rec.totalMs = rec.retrieveMs + rec.judgeMs + (rec.answerMs || 0);
+  rec.totalMs = rec.retrieveMs + rec.agentMs + (rec.answerMs || 0);
   if (rec.failed || rec.writer === 'timeout' || rec.writer === 'empty' || (rec.jev && rec.jev.failed)) degraded++;
   results.push(rec);
   save();
@@ -149,7 +149,7 @@ for (const item of list) {
     (rec.failed ? 'FAILED ' : '') + item.mode.padEnd(4),
     String(rec.passes === undefined ? '-' : rec.passes).padStart(2) + 'p',
     String(rec.verdicts || '-').padEnd(3),
-    'judge ' + String(rec.judgeMs || 0).padStart(6) + 'ms',
+    'agent ' + String(rec.agentMs || 0).padStart(6) + 'ms',
     'retr ' + String(rec.retrieveMs || 0).padStart(5) + 'ms',
     'ans ' + String(rec.answerMs || 0).padStart(5) + 'ms',
     'total ' + String(rec.totalMs).padStart(6) + 'ms',
@@ -159,13 +159,13 @@ for (const item of list) {
   ].join('  '));
 }
 const totals = results.map(r => r.totalMs);
-const judges = results.filter(r => r.judgeMs !== undefined).map(r => r.judgeMs);
+const agents = results.filter(r => r.agentMs !== undefined).map(r => r.agentMs);
 const deep = results.filter(r => r.mode === 'deep');
 const fast = results.filter(r => r.mode === 'fast');
 console.log('');
 console.log('arm ' + ARM + '   questions ' + results.length + '   DEGRADED ' + degraded);
 console.log('total ms   median ' + median(totals) + '   p90 ' + pct(totals, 0.9) + '   mean ' + Math.round(totals.reduce((a, b) => a + b, 0) / totals.length));
-console.log('judge ms   median ' + median(judges) + '   p90 ' + pct(judges, 0.9) + '   mean ' + Math.round(judges.reduce((a, b) => a + b, 0) / judges.length));
+console.log('agent ms   median ' + median(agents) + '   p90 ' + pct(agents, 0.9) + '   mean ' + Math.round(agents.reduce((a, b) => a + b, 0) / agents.length));
 console.log('deep n ' + deep.length + '   passes ' + deep.map(r => r.passes).join(',') + '   verdicts ' + deep.map(r => r.verdicts).join(' '));
 if (fast.length) console.log('fast n ' + fast.length + '   passes ' + fast.map(r => r.passes).join(',') + '   verdicts ' + fast.map(r => r.verdicts).join(' '));
 console.log('accuracy: UNMEASURED - 33 graded questions, one ~3 points, noise floor 2-4; this arm compares seconds, passes and verdicts only.');

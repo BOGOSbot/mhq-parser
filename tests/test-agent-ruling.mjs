@@ -1,8 +1,8 @@
-import { judgePrompt, rulingSlots, traceRuling } from '../src/rules-corpus.mjs';
+import { agentPrompt, rulingSlots, traceRuling } from '../src/rules-corpus.mjs';
 
 // task-24 (J4): the prompt's field contract and the trace check. The client renders
 // the slots; these two are the server half, and they are pure so they are pinned
-// here rather than through a live judge call. The rendering itself (no chip, no
+// here rather than through a live agent call. The rendering itself (no chip, no
 // verdict line, the cited/residue split) is pinned in test-wiki-surface.mjs.
 let pass = 0, fail = 0;
 const ok = (name, cond) => { if (cond) pass++; else { fail++; console.log('FAIL ' + name); } };
@@ -16,13 +16,13 @@ const P = [
 ];
 
 // --- the prompt asks for the fields, in the page's language -------------------
-const en = judgePrompt('Can a unit shoot after it Fell Back?', P, { lang: 'en' });
+const en = agentPrompt('Can a unit shoot after it Fell Back?', P, { lang: 'en' });
 for (const field of ['"answer"', '"quote"', '"from"', '"exceptions"', '"missing"']) ok('the schema names ' + field, en.indexOf(field) !== -1);
 ok('the prompt asks for why as well (the trace and the dataset keep it)', en.indexOf('- why') !== -1);
 ok('the quote is required to be verbatim and from the named passage', /quote:.*VERBATIM.*from/s.test(en) && /no paraphrase/.test(en));
 ok('an answered ruling does not explain what is absent', /missing: only when answered is false/.test(en));
 ok('an answer is one sentence in the reader\'s terms', /answer: one sentence/.test(en));
-const fr = judgePrompt('Une unite peut-elle tirer apres un Fall Back ?', P, { lang: 'fr' });
+const fr = agentPrompt('Une unite peut-elle tirer apres un Fall Back ?', P, { lang: 'fr' });
 ok('the French prompt asks for the fields in French', /answer : une phrase/.test(fr) && /quote : des mots copi/.test(fr) && /missing : seulement quand answered est false/.test(fr));
 ok('and says the quote stays in the passage\'s English', /VERBATIM/.test(fr));
 
@@ -65,7 +65,7 @@ t('and never carries exceptions', refused.exceptions, []);
 t('the refusal keeps its missing diagnosis', refused.missing, 'The Kill Team game system is not part of these rules.');
 t('an answered ruling carries no missing', noQuote.missing, null);
 
-// --- passage numbers are checked against the list the judge was shown ---------
+// --- passage numbers are checked against the list the agent was shown ---------
 const outOfRange = rulingSlots({ answer: 'x', quote: null, from: 99, exceptions: [0, 2, 99, '2'], missing: null }, true, P);
 t('an out-of-range from is null', outOfRange.from, null);
 t('out-of-range exceptions are filtered and strings are accepted', outOfRange.exceptions, [2]);

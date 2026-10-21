@@ -29,10 +29,10 @@ t('the first of the pair is kept', out[0].id, 'a');
 t('the unrelated record survives', out[1].id, 'c');
 
 // 4. a passage the previous pass never named goes
-const prev = { judge: { why: 'Passage [1] says the rule; nothing else bears on it.' }, findings: [mk('a', 'A', 1), mk('b', 'B', 2)] };
+const prev = { agent: { why: 'Passage [1] says the rule; nothing else bears on it.' }, findings: [mk('a', 'A', 1), mk('b', 'B', 2)] };
 const drop = makeCurator({ dropPassedOver: true, passageChars: 9999 });
 const keptIds = drop([mk('a', 'A', 1), mk('b', 'B', 2), mk('c', 'C', 3)], { question: 'q', attempt: 1, previous: prev }).map(x => x.id);
-t('the passage the judge named stays', keptIds.includes('a'), true);
+t('the passage the agent named stays', keptIds.includes('a'), true);
 t('the passage it never named goes', keptIds.includes('b'), false);
 t('a passage that was not in the previous pass stays', keptIds.includes('c'), true);
 
@@ -62,7 +62,7 @@ t('an anchored duplicate survives the dedupe', dg.some(f => f.id === 'z'), true)
 t('the plain duplicate is still dropped', dg.filter(f => f.text === 'The same text in both records.').length, 2);
 
 const passedGuard = makeCurator({ corpora: corp, terms: [], dropPassedOver: true, passageChars: 9999 });
-const pg = passedGuard([mk('z', 'Z', 1)], { question: 'How do I embark?', attempt: 1, previous: { judge: { why: 'Passage [9] only.' }, findings: [mk('z', 'Z', 1)] } });
+const pg = passedGuard([mk('z', 'Z', 1)], { question: 'How do I embark?', attempt: 1, previous: { agent: { why: 'Passage [9] only.' }, findings: [mk('z', 'Z', 1)] } });
 t('an anchored record survives the passed-over drop', pg.some(f => f.id === 'z'), true);
 
 console.log(pass + ' passed, ' + fail + ' failed');

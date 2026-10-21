@@ -85,14 +85,14 @@ t('the writer endpoint is a url', /^https:\/\//.test(MODEL_ENDPOINT), true);
 t('the writer is named', MODEL.length > 3, true);
 t('the fast endpoint is a url', /^https:\/\//.test(FAST_ENDPOINT), true);
 t('the fast model is named', FAST_MODEL.length > 3, true);
-// task-77: the judge is back on SenseNova with the writer, because the capability bank
+// task-77: the agent is back on SenseNova with the writer, because the capability bank
 // moved the wrong way on OpenRouter's minimax (four wrong headlines against one). The
 // overrides stay the escape hatch: RULES_FAST_ENDPOINT / RULES_FAST_MODEL / RULES_FAST_KEY
 // win, and pointing them at OpenRouter is one environment change.
-t('the judge is on SenseNova by default, with the writer', FAST_ENDPOINT === MODEL_ENDPOINT && FAST_MODEL === MODEL, true);
+t('the agent is on SenseNova by default, with the writer', FAST_ENDPOINT === MODEL_ENDPOINT && FAST_MODEL === MODEL, true);
 t('and that route is SenseNova', FAST_ENDPOINT.indexOf('sensenova') !== -1, true);
-t('the judge\u2019s credential is the writer\u2019s when no endpoint was given', fastKeyName(), 'SENSENOVA_API_KEY');
-t('the judge keeps its thinking by default, at SenseNova\u2019s setting', FAST_REASONING, 'medium');
+t('the agent\u2019s credential is the writer\u2019s when no endpoint was given', fastKeyName(), 'SENSENOVA_API_KEY');
+t('the agent keeps its thinking by default, at SenseNova\u2019s setting', FAST_REASONING, 'medium');
 t('the writer reasons not at all by default', MODEL_REASONING, 'none');
 t('the jev model is named', JEV_MODEL.length > 3, true);
 t('RulesError carries a status', new RulesError('nope', 400).status, 400);

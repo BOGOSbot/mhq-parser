@@ -75,14 +75,14 @@ export function resolveGroups(groups, live) {
   return { groups: kept, missing };
 }
 
-// The passages the verdict rested on: the judge's cited finding numbers, or - on
+// The passages the verdict rested on: the agent's cited finding numbers, or - on
 // an older trace that predates cited - the writer's own [n] markers.
 export function citedIds(trace) {
   const findings = trace.findings || [];
   const byN = new Map(findings.map(f => [f.n, f.id]));
   const out = [];
   const add = n => { const id = byN.get(n); if (id && out.indexOf(id) === -1) out.push(id); };
-  const cited = (trace.judge && Array.isArray(trace.judge.cited)) ? trace.judge.cited : [];
+  const cited = (trace.agent && Array.isArray(trace.agent.cited)) ? trace.agent.cited : [];
   for (const n of cited) add(n);
   if (!out.length) {
     for (const m of String(trace.answer || '').matchAll(/\[(\d+)\]/g)) add(Number(m[1]));

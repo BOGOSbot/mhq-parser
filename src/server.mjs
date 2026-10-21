@@ -18,8 +18,8 @@
  *   POST /feedback  { title?, body } -> { created, url }  file an issue on GitHub,
  *                    or a prefilled github.com/.../issues/new link when no token
  *   GET  /rules     serves rules.html, the rules-question page
- *   POST /rules/ask { question, answerLang, english?, stream? } -> findings, judge, answer
- *                    searches the indexed corpus, ranks with Jev, judges and writes
+ *   POST /rules/ask { question, answerLang, english?, stream? } -> findings, agent, answer
+ *                    searches the indexed corpus, ranks with Jev, agents and writes
  *                    with a small model; every citation is a page it really fetched
  *
  * The browser cannot fetch miniheadquarters.com directly (no CORS headers), so
@@ -36,7 +36,7 @@ import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
 import { RulesError, credential, fastCredential, jevKeyName, jevSpend, keyState as rulesKeyState, modelCredential, RULES_EDITION as rulesEdition, RULES_EDITION_LABEL as rulesEditionLabel } from './rules.mjs';
-import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, deliveredIds, dontKnowAnswer, jevCalls as jevCallStats, sweepChecks, findingFor, indexInfo, judgeCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
+import { ASK_MODES, VECTOR_BACKEND, WRITER_DECLINED, answerableFindings, askMode, compileFindings, corpusState, deliveredIds, dontKnowAnswer, jevCalls as jevCallStats, sweepChecks, findingFor, indexInfo, agentCoverage, looksForeign, readAllCorpus, routeStats, writerEnabled, reconcileVerdicts, translateQuestion } from './rules-corpus.mjs';
 import { MAX_VOICE_BYTES, transcribeClip, voiceFormatOf } from './voice.mjs';
 import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceSignals, tracesEnabled, voteTrace } from './rules-traces.mjs';
 // task-78: the asset route reads the corpus's asset tree; the import is its own line so
@@ -840,7 +840,7 @@ async function handleFeedback(req, res) {
 //
 // The findings are returned and rendered beside the answer. The answer is an
 // addition to them, never a substitute: the citations are the product. The
-// judge is a signal about the findings, not a replacement for them.
+// agent is a signal about the findings, not a replacement for them.
 let corpusCache = null;
 function corpora() {
   // Parsed once, not per request: the grep leg reads them whole and they are
@@ -1096,7 +1096,7 @@ async function handleRulesAsk(req, res) {
 
   // The manual rerank (task-21): the reader unticks the passages the answer should
   // not rest on, and the page sends back the ids that stay. Retrieval is skipped -
-  // the reader has already decided what is relevant - and only the judge and the
+  // the reader has already decided what is relevant - and only the agent and the
   // writer run. The request carries ids, never passage text: the server resolves
   // them against its own corpus, so a client cannot inject prose into a prompt.
   // `asked` is the English question the reader already read, sent back so the
@@ -1125,7 +1125,7 @@ async function handleRulesAsk(req, res) {
   // The Jev key follows the route: the ranker authenticates with whichever
   // gateway rules.mjs has active, OpenRouter's paid decisions endpoint right
   // now while the free tier rate-limits.
-  // The judge and the translation run on the fast route, the answer on the
+  // The agent and the translation run on the fast route, the answer on the
   // writer's: a small model decides well and writes badly, and the writer is
   // the step the reader grades.
   const keys = { jev: credential(jevKeyName()), model: modelCredential(), fast: fastCredential() };
@@ -1141,11 +1141,11 @@ async function handleRulesAsk(req, res) {
   };
 
   // Each stage is published as it lands rather than all at the end. The findings
-  // are the product, and they are ready in a couple of seconds; the judge and
+  // are the product, and they are ready in a couple of seconds; the agent and
   // the prose take twenty more. Sending them together would make a reader wait
   // for the slowest part to read the fastest one.
   //
-  // The judge is emitted last but belongs first on the page: it says whether the
+  // The agent is emitted last but belongs first on the page: it says whether the
   // findings are worth reading, so it sits above them rather than after them.
   const stream = body.stream === true;
   let gone = false;
@@ -1156,7 +1156,7 @@ async function handleRulesAsk(req, res) {
       'Cache-Control': 'no-cache, no-transform',
       'X-Accel-Buffering': 'no',
     });
-    // A heartbeat. The longest silent gap on this stream is the judge thinking
+    // A heartbeat. The longest silent gap on this stream is the agent thinking
     // (up to three minutes), and a response that sends nothing for a minute is
     // what an intermediary or a browser is entitled to cut - the page then shows
     // the browser's own 'Error in input stream' after an answer that had already
@@ -1185,14 +1185,14 @@ async function handleRulesAsk(req, res) {
   // The writer is off by default (see writerEnabled): when it is off there is no
   // answer segment on the bar and nothing waits on prose.
   const writerOn = writerEnabled(process.env, body.writer);
-  const stages = (override ? ['judge'] : (foreign ? ['translate'] : []).concat(['retrieve', 'judge'])).concat(writerOn ? ['answer'] : []);
+  const stages = (override ? ['agent'] : (foreign ? ['translate'] : []).concat(['retrieve', 'agent'])).concat(writerOn ? ['answer'] : []);
   // The page needs the id to attach a thumb to the right record, and the id is
   // the only handle it gets: eight random bytes that tie to nothing.
   emit({ type: 'start', lang: lang || 'und', stages, traceId, elapsedMs: Date.now() - started });
 
   try {
     // The whole question is translated, not only its keywords: the retrieval
-    // wants English words, but the judge and the writer want the question, and
+    // wants English words, but the agent and the writer want the question, and
     // 'can Asurmen embark after shooting' is not 'asurmen embark shoot'.
     // A rerun does not translate again: it already has the English the first
     // answer was judged and written from, and re-deriving it would be a call the
@@ -1223,7 +1223,7 @@ async function handleRulesAsk(req, res) {
     const mode = ASK_MODES[modeName];
 
     // A unit card is rendered here, before anything is searched, and it is
-    // ADDITIVE: the search, the judge and the writer always run, and the card
+    // ADDITIVE: the search, the agent and the writer always run, and the card
     // arrives beside their answer rather than instead of it.
     //
     // It used to replace the pipeline when it fired, and that was a bug with a
@@ -1231,7 +1231,7 @@ async function handleRulesAsk(req, res) {
     // matched an intent word the TRANSLATOR had generated ('Melta weapons' among
     // its terms - the terms are a retrieval artefact, never the reader's
     // question), the card fired, and a rules question got a datasheet with no
-    // judge and no answer. The English wording needed no translation, had no
+    // agent and no answer. The English wording needed no translation, had no
     // terms, and answered correctly - the whole French-versus-English asymmetry.
     // The gate now reads the question and its translation only (src/unit-card.mjs)
     // and, because a question that literally says "melta weapons" still matches,
@@ -1245,8 +1245,8 @@ async function handleRulesAsk(req, res) {
     const card = override ? null : unitCard(question, { asked, corpora: corpora() });
     if (card) emit({ type: 'card', card, preview: true, elapsedMs: Date.now() - started });
 
-    // The search keeps deepening while the judge says it cannot answer, and the
-    // last pass is the last word. The judge's verdict is binding: a retrieval it
+    // The search keeps deepening while the agent says it cannot answer, and the
+    // last pass is the last word. The agent's verdict is binding: a retrieval it
     // has already called insufficient must not go on to produce a confident
     // answer, which is exactly what used to happen.
     let findings = [];
@@ -1278,13 +1278,13 @@ async function handleRulesAsk(req, res) {
       links: resolveRecordLinks((byId.get(f.id) || {}).links, byId),
     }));
 
-    // The reader picks the setting: fast asks the judge not to reason and takes
+    // The reader picks the setting: fast asks the agent not to reason and takes
     // a narrower, shallower search; deep lets it think and looks wider for
     // longer. Both keep the anchoring, which is what makes the fast setting safe.
     emit({ type: 'mode', mode: modeName, requested: requested, routed: sweepPhrased ? 'sweep' : '', first: mode.first, passes: mode.passes, reasoning: mode.reasoning || 'model default', elapsedMs: Date.now() - started });
     // A manual rerank: the reader's own selection IS the retrieval. The ids are
     // resolved against both halves in the order sent, they become the findings,
-    // and the judge's verdict on them is binding exactly as it is on a searched
+    // and the agent's verdict on them is binding exactly as it is on a searched
     // list. Nothing is searched and nothing is widened.
     let outcome;
     if (override) {
@@ -1296,26 +1296,26 @@ async function handleRulesAsk(req, res) {
       counts = { rules: chosen.filter(f => f.set !== 'factions').length, factions: chosen.filter(f => f.set === 'factions').length };
       const plan = { rules: counts.rules, factions: counts.factions };
       emit({ type: 'findings', findings: toPayload(chosen), counts, terms, steps, attempt: 0, plan, escalated: false, override: true, elapsedMs: Date.now() - started });
-      const verdict = await timed('judge', () => judgeCoverage(asked, chosen, keys.fast, { reasoning: mode.reasoning, lang: answerLang }));
-      emit({ type: 'judge', judge: verdict, final: true, attempt: 0, elapsedMs: Date.now() - started });
+      const verdict = await timed('agent', () => agentCoverage(asked, chosen, keys.fast, { reasoning: mode.reasoning, lang: answerLang }));
+      emit({ type: 'agent', agent: verdict, final: true, attempt: 0, elapsedMs: Date.now() - started });
       outcome = {
         findings: chosen,
-        judge: verdict,
+        agent: verdict,
         dual: null,
         attempts: [{ plan, count: chosen.length, answered: verdict.answered === true, confidence: verdict.confidence || '', widen: verdict.widen, final: true }],
         unresolved: verdict.answered !== true,
         escalated: false,
       };
     } else {
-    outcome = await timed('retrieve+judge', () => answerableFindings(asked, {
+    outcome = await timed('retrieve+agent', () => answerableFindings(asked, {
       fastKey: keys.fast,
       topKs: [mode.first],
       passes: mode.passes,
-      // The verdict is shown to the reader, so both judges write it in the
+      // The verdict is shown to the reader, so both agents write it in the
       // reader's language; the passages stay as the corpus writes them.
-      // task-43: the sweep clause rides in the judge's own prompt, so the judge that
-      // produces the checks is the judge that ruled - one call, not a second opinion.
-      judgeOpts: { reasoning: mode.reasoning, lang: answerLang, sweep: !!mode.sweep },
+      // task-43: the sweep clause rides in the agent's own prompt, so the agent that
+      // produces the checks is the agent that ruled - one call, not a second opinion.
+      agentOpts: { reasoning: mode.reasoning, lang: answerLang, sweep: !!mode.sweep },
       dual: {
         rulesCorpus: corpora().rules,
         factionsCorpus: corpora().factions,
@@ -1328,7 +1328,7 @@ async function handleRulesAsk(req, res) {
         // The grep net and the reranker's net are both wider than the cut, and
         // the reranker's is the one that mattered: on 'can Asurmen re-embark
         // after shooting' the Embarking rule reached merged rank 54, so a net of
-        // 50 never showed it to Jev and the judge was asked about a corpus that
+        // 50 never showed it to Jev and the agent was asked about a corpus that
         // had the rule without being shown it. At 80 the same passage came back
         // 4th. One batched call, so the wider net is one request, not forty.
         grepNet: mode.grepNet,
@@ -1345,38 +1345,38 @@ async function handleRulesAsk(req, res) {
           rerank: dual && dual.rerank ? dual.rerank : null,
         });
       },
-      onJudge: ({ judge, final, attempt }) => {
-        emit({ type: 'judge', judge, final, attempt, elapsedMs: Date.now() - started });
+      onAgent: ({ agent, final, attempt }) => {
+        emit({ type: 'agent', agent, final, attempt, elapsedMs: Date.now() - started });
         // Only the intermediate verdict widens; the last one is final by
         // definition and the page should not be told the search will continue.
-        if (!final) emit({ type: 'escalate', widen: judge.widen || 'both', elapsedMs: Date.now() - started });
+        if (!final) emit({ type: 'escalate', widen: agent.widen || 'both', elapsedMs: Date.now() - started });
       },
     }));
     }
 
-    const judge = outcome.judge;
+    const agent = outcome.agent;
     const payload = toPayload(outcome.findings);
 
-    // task-43: the deep sweep. The judge named the checks it would still run to be sure
+    // task-43: the deep sweep. The agent named the checks it would still run to be sure
     // nothing was missing; each one is run for REAL through the same two legs the
-    // retrieval uses, and the judge is shown what came back. It starts here, after the
+    // retrieval uses, and the agent is shown what came back. It starts here, after the
     // binding verdict, so the ruling and the ranked ledger are untouched by it - the
     // sweep is an addition UNDER them, and it can only ever add absence statements and
     // records, never reorder what the reader is already looking at.
     //
-    // Deep only, and only when the judge actually answered the question: a sweep on a
+    // Deep only, and only when the agent actually answered the question: a sweep on a
     // refusal would be checking for what the corpus already said it does not hold.
     // Every bound is passed in and reported back, so a stopped loop says why.
     //
-    // task-49: the event is emitted even when the judge named NOTHING to check. That
+    // task-49: the event is emitted even when the agent named NOTHING to check. That
     // is a result - 'I looked and there was nothing to check' - and rendering nothing
     // left the reader unable to tell it from 'nobody looked'. sweepChecks reports it
     // as stopped 'nothing-to-check' with an empty list.
-    const sweepRun = (mode.sweep && judge && judge.answered === true)
-      ? sweepChecks(asked, judge.checks || [], {
+    const sweepRun = (mode.sweep && agent && agent.answered === true)
+      ? sweepChecks(asked, agent.checks || [], {
         key: keys.fast,
         lang: answerLang,
-        // The budget is the SWEEP's own clock, not the ask's: the judge and the second
+        // The budget is the SWEEP's own clock, not the ask's: the agent and the second
         // verdict have already run, and a clock started at the top of the request would
         // stop the loop before its first search.
         startedAt: Date.now(),
@@ -1404,52 +1404,52 @@ async function handleRulesAsk(req, res) {
       return toPayload(rest.map((s, i) => findingFor(s, payload.length + i + 1)));
     })();
 
-    // The SECOND judge: the reasoning setting the reader did not pick, fired
+    // The SECOND agent: the reasoning setting the reader did not pick, fired
     // beside the writer so the prose never waits for it. In fast mode that is the
-    // thinking judge - the reader keeps the fast answer and the careful verdict
+    // thinking agent - the reader keeps the fast answer and the careful verdict
     // lands after, as information rather than as a delay. In deep mode the
-    // binding judge is already the careful one and the second opinion is the
+    // binding agent is already the careful one and the second opinion is the
     // quick one, which cannot upgrade anything.
     //
-    // The conservative verdict stands, but only when it comes from a judge at
+    // The conservative verdict stands, but only when it comes from a agent at
     // least as reliable as the one that answered: a second refusal downgrades
     // the answer, a second 'answered' never turns a refusal into prose, and a
-    // refusal from the QUICK judge never outvotes a careful one. Nothing here
+    // refusal from the QUICK agent never outvotes a careful one. Nothing here
     // replaces the answer - the reader may already have read it - so a
     // disagreement is annotated on top of it, as a downgrade or as a dissent.
     const secondReasoning = mode.second === undefined ? (modeName === 'fast' ? 'medium' : 'none') : mode.second;
-    let secondJudge = null;
-    let judgeDisagreement = false;
-    let judgeDowngrade = false;
-    let judgeDissentFrom = '';
-    let judgePolar = false;
+    let secondAgent = null;
+    let agentDisagreement = false;
+    let agentDowngrade = false;
+    let agentDissentFrom = '';
+    let agentPolar = false;
     const emitSecond = () => {
-      if (!secondJudge) return;
-      // The reconciliation needs to know how hard each judge thought: a refusal
-      // from the quick judge must not downgrade an answer the careful one wrote.
+      if (!secondAgent) return;
+      // The reconciliation needs to know how hard each agent thought: a refusal
+      // from the quick agent must not downgrade an answer the careful one wrote.
       const reconciled = reconcileVerdicts(
-        Object.assign({}, judge, { reasoning: mode.reasoning }),
-        Object.assign({}, secondJudge, { reasoning: secondReasoning }),
+        Object.assign({}, agent, { reasoning: mode.reasoning }),
+        Object.assign({}, secondAgent, { reasoning: secondReasoning }),
       );
-      judgeDisagreement = reconciled.disagreement;
-      judgeDowngrade = reconciled.downgrade;
-      judgeDissentFrom = reconciled.dissenter;
-      // task-71: true when the two judges ANSWERED DIFFERENTLY rather than one answering
+      agentDisagreement = reconciled.disagreement;
+      agentDowngrade = reconciled.downgrade;
+      agentDissentFrom = reconciled.dissenter;
+      // task-71: true when the two agents ANSWERED DIFFERENTLY rather than one answering
       // and one refusing. The page shows both answers for this case; a refusal keeps the
       // old annotation.
-      judgePolar = reconciled.polar === true;
-      emit({ type: 'judge', judge: secondJudge, final: true, attempt: 0, second: true, reasoning: secondReasoning, elapsedMs: Date.now() - started });
-      if (judgeDisagreement) {
+      agentPolar = reconciled.polar === true;
+      emit({ type: 'agent', agent: secondAgent, final: true, attempt: 0, second: true, reasoning: secondReasoning, elapsedMs: Date.now() - started });
+      if (agentDisagreement) {
         emit({
           type: 'reconcile',
           // 'downgrade' is the whole of task-16: true only when the dissenting
-          // judge was at least as reliable as the binding one.
+          // agent was at least as reliable as the binding one.
           downgrade: reconciled.downgrade,
           polar: reconciled.polar === true,
           dissenter: reconciled.dissenter,
           conservative: reconciled.conservative,
-          binding: { answered: judge ? judge.answered : null, confidence: (judge && judge.confidence) || '', reasoning: mode.reasoning },
-          second: { answered: secondJudge.answered, confidence: secondJudge.confidence || '', reasoning: secondReasoning },
+          binding: { answered: agent ? agent.answered : null, confidence: (agent && agent.confidence) || '', reasoning: mode.reasoning },
+          second: { answered: secondAgent.answered, confidence: secondAgent.confidence || '', reasoning: secondReasoning },
           elapsedMs: Date.now() - started,
         });
       }
@@ -1476,13 +1476,13 @@ async function handleRulesAsk(req, res) {
           signals: traceSignals(question, findings),
           counts,
           findings,
-          judge,
-          judgeReasoning: mode.reasoning,
-          judge2: secondJudge,
-          judgeDisagreement,
-          judgePolar,
-          judgeDowngrade,
-          judgeDissentFrom,
+          agent,
+          agentReasoning: mode.reasoning,
+          secondAgent: secondAgent,
+          agentDisagreement,
+          agentPolar,
+          agentDowngrade,
+          agentDissentFrom,
           card: card ? { id: card.id, name: card.name } : null,
           // The human override, recorded on the trace it belongs to: which
           // passages the reader kept, which the first answer had shown and were
@@ -1515,24 +1515,24 @@ async function handleRulesAsk(req, res) {
         emit({ type: 'done', elapsedMs, steps, notes });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: [], tail: withSlug(tail), traceId, judge, answer: '', steps, elapsedMs, notes });
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: [], tail: withSlug(tail), traceId, agent, answer: '', steps, elapsedMs, notes });
     }
 
-    // The second judge starts here, beside the writer, and is only awaited after
+    // The second agent starts here, beside the writer, and is only awaited after
     // the answer has been sent. It starts after the empty-retrieval return above
     // so a question that matched nothing does not spend a call judging nothing.
-    const secondRun = judgeCoverage(asked, outcome.findings, keys.fast, { reasoning: secondReasoning, lang: answerLang })
-      .then(v => { secondJudge = v; })
+    const secondRun = agentCoverage(asked, outcome.findings, keys.fast, { reasoning: secondReasoning, lang: answerLang })
+      .then(v => { secondAgent = v; })
       .catch(() => { /* a second opinion that never arrives leaves the first standing */ });
 
-    // The judge has already run; the answer waits on it rather than racing it,
+    // The agent has already run; the answer waits on it rather than racing it,
     // because whether to write one at all depends on its verdict.
     const DECLINED = WRITER_DECLINED;
-    // The writer is OFF by default (writerEnabled): the findings, the judge, the
+    // The writer is OFF by default (writerEnabled): the findings, the agent, the
     // citations and the marks are the run's product, so the run ends here - no
     // answer event, no prose to wait for, and no answer segment on the bar (the
     // start event already left it out). The call below is kept, not deleted: its
-    // format is going into the judge next.
+    // format is going into the agent next.
     if (!writerOn) {
       await secondRun;
       emitSecond();
@@ -1543,17 +1543,17 @@ async function handleRulesAsk(req, res) {
       trace('', {});
       const elapsedMs = Date.now() - started;
       if (stream) {
-        emit({ type: 'done', elapsedMs, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
+        emit({ type: 'done', elapsedMs, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: agentDowngrade });
         return res.end();
       }
       // task-69: the default path (no writer), and the one the page actually takes. The
       // French rides under the quote here too, or the switch would do nothing.
-      const citedNoWriter = (judge && judge.from && payload[judge.from - 1]) ? payload[judge.from - 1] : null;
-      const quoteFrNoWriter = (answerLang === 'fr' && judge && judge.answered === true && judge.quote && citedNoWriter) ? frUsable(citedNoWriter.id) : '';
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, sweep, answer: '', writer: false, quoteFr: quoteFrNoWriter, quoteFrId: quoteFrNoWriter ? citedNoWriter.id : '', counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
+      const citedNoWriter = (agent && agent.from && payload[agent.from - 1]) ? payload[agent.from - 1] : null;
+      const quoteFrNoWriter = (answerLang === 'fr' && agent && agent.answered === true && agent.quote && citedNoWriter) ? frUsable(citedNoWriter.id) : '';
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, agent, secondAgent: secondAgent, agentDisagreement, agentDowngrade, agentDissentFrom, sweep, answer: '', writer: false, quoteFr: quoteFrNoWriter, quoteFrId: quoteFrNoWriter ? citedNoWriter.id : '', counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
     }
 
-    // The judge has already run; the answer waits on it rather than racing it,
+    // The agent has already run; the answer waits on it rather than racing it,
     // cut at the timeout, or it comes back with nothing because its own reasoning
     // ate the budget. One path, one ending - the findings are already on the page
     // and they stay, so the answer card says the prose failed rather than waiting
@@ -1562,13 +1562,13 @@ async function handleRulesAsk(req, res) {
     let answer = '';
     try {
       answer = await timed('answer', () => (outcome.unresolved
-        ? Promise.resolve(dontKnowAnswer(judge, lang))
+        ? Promise.resolve(dontKnowAnswer(agent, lang))
         : compileFindings(asked, outcome.findings, keys.model, { lang: answerLang })));
     } catch (e) {
       writerFailed = 'timeout';
     }
     if (!writerFailed && !outcome.unresolved && !String(answer).trim()) writerFailed = 'empty';
-    // The writer's refusal beats the judge's boolean. The judge once marked a
+    // The writer's refusal beats the agent's boolean. The agent once marked a
     // question answered on a passage it then quoted as NOT applying - 'answer:
     // true' with a why that argued against itself - and the writer, reading the
     // same findings, declined. When the two disagree the honest verdict is the
@@ -1576,7 +1576,7 @@ async function handleRulesAsk(req, res) {
     // that says both things at once.
     let writerDeclined = false;
     if (!writerFailed && !outcome.unresolved && String(answer).trim() === DECLINED) {
-      answer = dontKnowAnswer(judge, lang);
+      answer = dontKnowAnswer(agent, lang);
       outcome.unresolved = true;
       writerDeclined = true;
     }
@@ -1588,10 +1588,10 @@ async function handleRulesAsk(req, res) {
       emitSecond();
       trace('', { failed: writerFailed });
       if (stream) {
-        emit({ type: 'done', elapsedMs, steps, failed: true, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
+        emit({ type: 'done', elapsedMs, steps, failed: true, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: agentDowngrade });
         return res.end();
       }
-      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, judge2: secondJudge, judgeDisagreement, judgeDowngrade, judgeDissentFrom, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
+      return json(res, 200, { question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, agent, secondAgent: secondAgent, agentDisagreement, agentDowngrade, agentDissentFrom, answer: '', failed: writerFailed, counts, steps, elapsedMs, mode: modeName, unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts });
     }
 
     emit({ type: 'answer', answer, unresolved: outcome.unresolved, elapsedMs: Date.now() - started });
@@ -1599,9 +1599,9 @@ async function handleRulesAsk(req, res) {
     // The revised verdict follows the answer it is about. The writer spent that
     // time deciding to decline, and the page credits every stage with the seconds
     // between one event and the next: a verdict emitted before its own answer
-    // would put the writer's time on the judge's clock.
+    // would put the writer's time on the agent's clock.
     if (writerDeclined) {
-      emit({ type: 'judge', judge: Object.assign({}, judge, { answered: false, confidence: judge && judge.confidence, why: ((judge && judge.why) || '') + ' - the writer declined these findings' }), final: true, attempt: 0, elapsedMs: Date.now() - started });
+      emit({ type: 'agent', agent: Object.assign({}, agent, { answered: false, confidence: agent && agent.confidence, why: ((agent && agent.why) || '') + ' - the writer declined these findings' }), final: true, attempt: 0, elapsedMs: Date.now() - started });
     }
 
     // The second verdict lands after the prose, which is the whole point: the
@@ -1613,21 +1613,21 @@ async function handleRulesAsk(req, res) {
 
     trace(answer, { declined: writerDeclined });
     if (stream) {
-      emit({ type: 'done', elapsedMs: Date.now() - started, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: judgeDowngrade });
+      emit({ type: 'done', elapsedMs: Date.now() - started, steps, unresolved: outcome.unresolved, escalated: outcome.escalated, disputed: agentDowngrade });
       return res.end();
     }
     // task-69: a quote is evidence and the evidence is English, so the French rides
     // BESIDE it - never instead of it. The quote's own record gives the French body,
     // and a record with no French simply has none.
-    const cited = (judge && judge.from && payload[judge.from - 1]) ? payload[judge.from - 1] : null;
+    const cited = (agent && agent.from && payload[agent.from - 1]) ? payload[agent.from - 1] : null;
     // The reader's language is answerLang (the verdict's language), not `lang` (the
     // language the QUESTION was asked in). An English question read by a French reader
     // still gets the French beneath the quote.
-    const quoteFr = (answerLang === 'fr' && judge && judge.answered === true && judge.quote && cited) ? frUsable(cited.id) : '';
+    const quoteFr = (answerLang === 'fr' && agent && agent.answered === true && agent.quote && cited) ? frUsable(cited.id) : '';
     return json(res, 200, {
-      question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, judge, sweep, answer,
+      question, asked, lang: lang || 'und', translation: translation.translated || '', terms, card, findings: withSlug(payload), tail: withSlug(tail), traceId, agent, sweep, answer,
       quoteFr: quoteFr, quoteFrId: quoteFr ? cited.id : '',
-      judge2: secondJudge, judgeDisagreement, judgePolar, judgeDowngrade, judgeDissentFrom,
+      secondAgent: secondAgent, agentDisagreement, agentPolar, agentDowngrade, agentDissentFrom,
       counts, steps, elapsedMs: Date.now() - started, mode: modeName, writer: writerOn,
       unresolved: outcome.unresolved, escalated: outcome.escalated, attempts: outcome.attempts,
     });

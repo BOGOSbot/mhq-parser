@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  CORE_STRATAGEMS, JUDGE_PASSAGE_CHARS, buildFactionSections, dedupeKey, dedupeSections, splitInlineRules, splitLong, splitSection,
+  CORE_STRATAGEMS, AGENT_PASSAGE_CHARS, buildFactionSections, dedupeKey, dedupeSections, splitInlineRules, splitLong, splitSection,
   corpusDir, SOURCES, extractSections, stripWahapediaMarkers, readAllCorpus,
 } from '../src/rules-corpus.mjs';
 
@@ -178,14 +178,14 @@ t('the residue is never core', residue.filter(s => s.set === 'rules').length, 0)
   t('and FRAME is not', /\bFrame\b/.test(stats ? stats.text : ''), false);
 }
 
-// --- nothing stored may be longer than the judge is shown -------------------
+// --- nothing stored may be longer than the agent is shown -------------------
 // This is the invariant the Asurmen failure turned on. At 700 characters the
-// judge could not see his Agile Manoeuvres, which begin around character 940,
+// agent could not see his Agile Manoeuvres, which begin around character 940,
 // and answered "no such rule is in the passages" about a passage it had not
 // been given. A correct retrieval became a wrong "I do not know".
 {
-  t('no record exceeds the judge cap', sections.filter(s => s.chars > JUDGE_PASSAGE_CHARS).length, 0);
-  t('the chunk limit is under the judge cap', 2000 <= JUDGE_PASSAGE_CHARS, true);
+  t('no record exceeds the agent cap', sections.filter(s => s.chars > AGENT_PASSAGE_CHARS).length, 0);
+  t('the chunk limit is under the agent cap', 2000 <= AGENT_PASSAGE_CHARS, true);
   // A single weapon profile or table row can be one "sentence" longer than the
   // limit; sentence splitting alone leaves it whole.
   const monster = 'A'.repeat(5000);

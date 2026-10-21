@@ -7,7 +7,7 @@ import { recordBody } from '../src/wiki-cards.mjs';
 import { recordCard } from '../src/unit-card.mjs';
 
 // task-29: the (1/2)/(2/2) chunks are one record in the reader's surfaces. The
-// corpus and the index keep the parts (the judge's passage window needs them); the
+// corpus and the index keep the parts (the agent's passage window needs them); the
 // display reassembles them - the ledger row, the record view and the tree must not
 // disagree. Merging is by the heading's base name because part/parts read 1/1 on
 // every labelled chunk (the corpus audit, 2026-10-19).

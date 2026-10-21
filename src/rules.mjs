@@ -21,7 +21,7 @@
  *   RULES_EDITION        which edition the corpus holds, and what the page answers for
  *   RULES_*_ENDPOINT     the gateways, for pointing a deployment elsewhere
  *   OPENCODE_GO_API_KEY  Jev, free
- *   MISTRAL_API_KEY      the translation, the judge and the prose (RULES_MODEL_*)
+ *   MISTRAL_API_KEY      the translation, the agent and the prose (RULES_MODEL_*)
  *   TINYFISH_API_KEY     no longer read here; kept in keyState so an existing
  *                        deployment's /health does not change shape under it
  *
@@ -37,14 +37,14 @@ import path from 'path';
 //
 // The WRITER has to engage with a rule it has only half found, and to write the
 // answer the reader sees. A small fast model is worst exactly here: on the real
-// question bank ministral-8b refused 54 of 65 answers the judge had accepted
+// question bank ministral-8b refused 54 of 65 answers the agent had accepted
 // (22% accuracy against the community's rulings) and on the six French
 // questions it answered fluently and wrongly (0%). So the writer is SenseNova,
 // which engages, is right about half to three quarters of the time, and is
 // free. RULES_MODEL_* moves it.
 //
-// The MECHANICAL half - the translation, the search terms, the judge - only
-// decides and rewrites, and the judge is what makes a question slow (median 17s,
+// The MECHANICAL half - the translation, the search terms, the agent - only
+// decides and rewrites, and the agent is what makes a question slow (median 17s,
 // mean 35s over that same bank). A small fast model belongs here.
 // RULES_FAST_ENDPOINT / RULES_FAST_MODEL / RULES_FAST_KEY point at one - any
 // OpenAI-compatible endpoint, including a box on this machine - and with none
@@ -54,17 +54,17 @@ import path from 'path';
 const SENSENOVA = 'https://token.sensenova.ai/v1/chat/completions';
 const SENSENOVA_MODEL = 'sensenova-6.8-flash-lite';
 
-// task-76 tried OpenRouter's free MiniMax as the judge's own route; task-77 reverted it on
-// Mandal's call, 'Keep sensenova and continue.' The judge call there was genuinely faster
+// task-76 tried OpenRouter's free MiniMax as the agent's own route; task-77 reverted it on
+// Mandal's call, 'Keep sensenova and continue.' The agent call there was genuinely faster
 // (4-11s against 27-180s) but the capability bank moved the wrong way - four wrong
 // headlines against one, all of them the 'yes, when X' shape - so the DEFAULT is SenseNova
-// again and the writer and the judge share it, as they did before.
+// again and the writer and the agent share it, as they did before.
 //
 // What the swap produced is KEPT because it is route-agnostic and costs nothing here: the
 // nested reasoning shape for openrouter.ai hosts, the mandatory-reasoning 400 handled, and
 // the length-truncated empty reply that doubles its budget and retries (all in
 // src/rules-corpus.mjs routeText). The OpenRouter constants stay declared so pointing the
-// judge back at it is one override rather than a re-derivation:
+// agent back at it is one override rather than a re-derivation:
 //   RULES_FAST_ENDPOINT=https://openrouter.ai/api/v1/chat/completions
 //   RULES_FAST_MODEL=minimax/minimax-m3.1-flash:free
 //   RULES_FAST_KEY=OPENROUTER_API_KEY  (and RULES_FAST_REASONING=low)
@@ -91,10 +91,10 @@ export function fastKeyName() {
 export function fastCredential() { const n = fastKeyName(); return n ? credential(n) : ''; }
 export function fastReady() { return !!(process.env.RULES_FAST_ENDPOINT || fastCredential()); }
 
-// Reasoning is the upfront wait. On a real judge prompt (6.5k characters, six
+// Reasoning is the upfront wait. On a real agent prompt (6.5k characters, six
 // passages) SenseNova spends 187 reasoning tokens and 4.1s at its default, and
-// 0 tokens and 2.1s with reasoning off - and the real bank's judge prompts are
-// ten times that, which is why the wait is where it is. The judge, the
+// 0 tokens and 2.1s with reasoning off - and the real bank's agent prompts are
+// ten times that, which is why the wait is where it is. The agent, the
 // translation and the search terms only decide and rewrite, so the fast route
 // runs with reasoning off by default, and so does the writer (measured; see
 // MODEL_REASONING below).
@@ -104,41 +104,41 @@ export function fastReady() { return !!(process.env.RULES_FAST_ENDPOINT || fastC
 // RULES_FAST_REASONING asks, and nothing when they are silent, because another
 // gateway may not know the field.
 //
-// The judge keeps its thinking. Measured on the same 17 questions, a judge
-// without it scored 61.8% where the same judge thinking scored 79.4% - it
+// The agent keeps its thinking. Measured on the same 17 questions, a agent
+// without it scored 61.8% where the same agent thinking scored 79.4% - it
 // accepts findings that do not answer and the writer then writes from them -
 // and the seconds it saves are not worth that. 'medium' is the default because
-// it is the setting that behaves: on a real judge prompt it spent ~375
+// it is the setting that behaves: on a real agent prompt it spent ~375
 // reasoning tokens on both samples, where the model's own default wandered
 // between 80 and 367. RULES_FAST_REASONING=none buys back the seconds.
 // The writer does NOT keep its thinking, measured: on the 25-question bank, the
 // writer with reasoning off scored 60.0% against the default's 60.4% - the same
 // within the noise - with zero empty or timed-out writer responses against one,
 // and a mean answer time of 17.1s against 102.2s. The reasoning was buying six
-// times the wall clock and the failures, not the answer. The judge is the one
+// times the wall clock and the failures, not the answer. The agent is the one
 // that needs it (79.4% against 61.8%); the writer does not.
 // RULES_MODEL_REASONING=medium restores the old behaviour.
 export const MODEL_REASONING = process.env.RULES_MODEL_REASONING || 'none';
 // task-77: 'medium' is SenseNova's setting and the one the bank measured (79.4% with the
-// judge thinking against 61.8% without). minimax advertises low/high/max instead, so an
+// agent thinking against 61.8% without). minimax advertises low/high/max instead, so an
 // override pointed at OpenRouter wants RULES_FAST_REASONING=low - the nested shape and the
 // mandatory-reasoning 400 are handled in routeText either way.
 export const FAST_REASONING = process.env.RULES_FAST_REASONING || (process.env.RULES_FAST_ENDPOINT ? '' : 'medium');
 
-// How long one call may take. The thinking judge is the slow step and 90s was
+// How long one call may take. The thinking agent is the slow step and 90s was
 // cutting real questions off - seven of twenty-five in the measured run, which
 // is a lost answer where a slow one would have done. A question is allowed to
 // take three minutes; RULES_MODEL_TIMEOUT_MS / RULES_FAST_TIMEOUT_MS move it.
 export const MODEL_TIMEOUT_MS = Number(process.env.RULES_MODEL_TIMEOUT_MS) || 180000;
 export const FAST_TIMEOUT_MS = Number(process.env.RULES_FAST_TIMEOUT_MS) || MODEL_TIMEOUT_MS;
 // task-31: a reasoning call is unbounded in practice on the fast model. Measured
-// against token.sensenova.ai on a deep-shaped judge prompt (18,645 characters, 10
+// against token.sensenova.ai on a deep-shaped agent prompt (18,645 characters, 10
 // passages, max_tokens 4000): reasoning_effort medium returned 200 in 27.6s where
 // 'none' returned 200 in 3.6s, and the same model on the Box's own deep list never
 // came back inside the 180s model timeout - the run then died as an error event.
-// The reasoning attempt gets its own bound; when it is not back by then the judge
+// The reasoning attempt gets its own bound; when it is not back by then the agent
 // is asked again without reasoning, so a deep run answers instead of dying.
-export const JUDGE_REASONING_TIMEOUT_MS = Number(process.env.RULES_JUDGE_REASONING_TIMEOUT_MS) || 45000;
+export const AGENT_REASONING_TIMEOUT_MS = Number(process.env.RULES_AGENT_REASONING_TIMEOUT_MS) || 45000;
 
 // Two gateways speak the System One decisions protocol - same request and
 // answers shape, different key refs. The free OpenCode Zen tier rate-limited

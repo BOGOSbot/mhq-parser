@@ -134,7 +134,7 @@ button.sendbtn:active{transform:scale(.94)}
 button.sendbtn:disabled{opacity:.45}
 button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 button::after{transition:none}
-/* The judge dial and the run status share the line under the field. */
+/* The agent dial and the run status share the line under the field. */
 .askmeta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 2px 0;min-height:26px}
 .modegrp{display:flex;align-items:center;gap:3px;flex:0 0 auto}
 .modelead{color:var(--dim);font:400 11.5px var(--sans);margin-right:3px}
@@ -257,7 +257,7 @@ details.moref{margin-top:12px}
 details.moref summary{color:var(--dim);font:12px var(--sans);cursor:pointer}
 details.moref summary:hover{color:var(--txt)}
 details{border-color:var(--line)}
-/* The judge: a verdict stripe under the findings' title, not a competing card. */
+/* The agent: a verdict stripe under the findings' title, not a competing card. */
 #verdict h2,.card h2{color:var(--dim)}
 .secondv{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
 .dispute{margin-top:12px;padding:12px;border:1px solid color-mix(in srgb,var(--warn) 50%,transparent);
@@ -599,10 +599,10 @@ details pre{background:var(--bg);border:1px solid var(--line);border-radius:10px
     </form>
     <div id="trslot" class="hidden"></div>
     <div class="askmeta">
-      <!-- The judge dial: fast (one judge, no reasoning) against deep (the judge
+      <!-- The agent dial: fast (one agent, no reasoning) against deep (the agent
            reasons). It moves retrieval depth too; the note says so. -->
-      <span class="modegrp" role="group" aria-label="Judge reasoning">
-        <span class="modelead" id="modelead">Judge</span>
+      <span class="modegrp" role="group" aria-label="Agent reasoning">
+        <span class="modelead" id="modelead">Agent</span>
         <button type="button" class="modebtn on" id="modeFast" data-mode="fast" aria-pressed="true">fast</button>
         <button type="button" class="modebtn" id="modeDeep" data-mode="deep" aria-pressed="false">deep</button>
       </span>
@@ -759,28 +759,28 @@ var I18N = {
     waitingFindings: 'waiting for the findings...',
     readingFindings: 'reading the findings...',
     writingAnswer: 'writing the answer...',
-    judgeTitle: 'Judge',
-    secondJudge: 'Second judge',
-    judgeNoReasoning: 'without reasoning',
-    judgeReasoning: 'with reasoning',
-    secondJudgeWith: 'A second judge, with reasoning, also read these findings.',
-    secondJudgeWithout: 'A second judge, without reasoning, also read these findings.',
-    judgeTwoAnswers: 'The two judges read the same findings and answered differently. Both answers are here; the stronger judge\u2019s is the line above.',
+    agentTitle: 'Agent',
+    secondAgent: 'Second agent',
+    agentNoReasoning: 'without reasoning',
+    agentReasoning: 'with reasoning',
+    secondAgentWith: 'A second agent, with reasoning, also read these findings.',
+    secondAgentWithout: 'A second agent, without reasoning, also read these findings.',
+    agentTwoAnswers: 'The two agents read the same findings and answered differently. Both answers are here; the stronger agent\u2019s is the line above.',
     // task-27: what is running while the send is disabled. runningAsk covers the
     // beat before the server's first event names the real first stage.
     runningAsk: 'asking the corpus...',
-    secondReading: 'A second judge is reading these findings...',
+    secondReading: 'A second agent is reading these findings...',
     runningTranslate: 'translating the question...',
     runningRetrieve: 'searching the corpus...',
-    runningJudge: 'the judge is reading the findings...',
+    runningAgent: 'the agent is reading the findings...',
     runningAnswer: 'writing the answer...',
-    runningSecond: 'a second judge is reviewing the answer...',
-    judgeDisagreeTitle: 'The two judges disagree',
-    judgeDisagreeNo: 'The second judge does not think these findings answer the question. That is the more cautious verdict, so the answer above is not confirmed.',
-    judgeDisagreeYes: 'The second judge would answer from these findings, but the first judge found them insufficient. The cautious verdict stands: the answer above stays a statement of absence.',
-    judgeDissentTitle: 'A weaker judge dissents',
-    judgeDissentWeaker: 'The second judge reasons less than the one that answered, and it would not answer from these findings. The answer stands: the more reliable verdict is the one that wrote it.',
-    judgeDissentOther: 'The second judge would answer from these findings, but the judge that gated the prose found them insufficient, so the refusal stands.',
+    runningSecond: 'a second agent is reviewing the answer...',
+    agentDisagreeTitle: 'The two agents disagree',
+    agentDisagreeNo: 'The second agent does not think these findings answer the question. That is the more cautious verdict, so the answer above is not confirmed.',
+    agentDisagreeYes: 'The second agent would answer from these findings, but the first agent found them insufficient. The cautious verdict stands: the answer above stays a statement of absence.',
+    agentDissentTitle: 'A weaker agent dissents',
+    agentDissentWeaker: 'The second agent reasons less than the one that answered, and it would not answer from these findings. The answer stands: the more reliable verdict is the one that wrote it.',
+    agentDissentOther: 'The second agent would answer from these findings, but the agent that gated the prose found them insufficient, so the refusal stands.',
     answerTitle: 'Answer',
     termsTitle: 'Searched for',
     termsNote: 'The corpus is English, so these terms were searched alongside the translated question. They are search input, not a translation of the rules.',
@@ -858,7 +858,7 @@ var I18N = {
   kindAbility: 'ability',
   kindIndex: 'index',
   kindOther: 'record',
-    citedByJudge: 'the judge cites this',
+    citedByAgent: 'the agent cites this',
     close: 'Close',
     openSource: 'Open on Wahapedia',
     findingsCounts: ' core, ',
@@ -866,10 +866,10 @@ var I18N = {
     nothingMatchedCard: 'Nothing in the corpus matched that question.',
     nothingMatched: 'nothing in the corpus matched that question',
     findingsReady: 'findings ready in ',
-    judgeComing: 's - the judge is still running',
-    judgeIn: 'judge in ',
-    judgeNo: 'it does not think these findings answer it',
-    judgeYes: 'it thinks these findings answer it',
+    agentComing: 's - the agent is still running',
+    agentIn: 'agent in ',
+    agentNo: 'it does not think these findings answer it',
+    agentYes: 'it thinks these findings answer it',
     partMissing: 'a part of the answer never arrived',
     noVerdict: 'no verdict',
     // task-24 (J4): the ruling's own lines.
@@ -930,7 +930,7 @@ var I18N = {
     translationTitle: 'Translation',
     translationFrom: ' - ',
     translationTo: ' to English',
-    translationNote: 'Your question was not in English, so it was translated in full before searching. The index, the judge and the answer all read the English text below - correct it and search again if a name came out wrong.',
+    translationNote: 'Your question was not in English, so it was translated in full before searching. The index, the agent and the answer all read the English text below - correct it and search again if a name came out wrong.',
     translationButton: 'Search this English text',
     translationTooShort: 'that translation is too short to search',
   correctionQueued: 'the correction will be searched when this run finishes',
@@ -941,7 +941,7 @@ var I18N = {
     corpusDays: ' days ago',
     corpusCountsA: ' core + ',
     corpusCountsB: ' faction records',
-    stages: { translate: 'translate', retrieve: 'retrieve', judge: 'judge', answer: 'answer', widen: 'widen', datasheet: 'datasheet', second: 'second judge' },
+    stages: { translate: 'translate', retrieve: 'retrieve', agent: 'agent', answer: 'answer', widen: 'widen', datasheet: 'datasheet', second: 'second agent' },
     answerFailed: 'The prose could not be written this time - the findings above are what was retrieved.',
     requestFailed: 'The request failed. Try again.',
     streamCut: 'the connection dropped before the end - what arrived is above, ask again for the rest',
@@ -983,26 +983,26 @@ var I18N = {
     waitingFindings: 'en attente des constats...',
     readingFindings: 'lecture des constats...',
     writingAnswer: 'rédaction de la réponse...',
-    judgeTitle: 'Juge',
-    secondJudge: 'Second juge',
-    judgeNoReasoning: 'sans raisonnement',
-    judgeReasoning: 'avec raisonnement',
-    secondJudgeWith: 'Un second juge, avec raisonnement, a aussi lu ces constats.',
-    secondJudgeWithout: 'Un second juge, sans raisonnement, a aussi lu ces constats.',
-    judgeTwoAnswers: 'Les deux juges ont lu les m\u00eames constats et r\u00e9pondu diff\u00e9remment. Les deux r\u00e9ponses sont ici ; celle du juge le plus fiable est la ligne ci-dessus.',
+    agentTitle: 'Juge',
+    secondAgent: 'Second juge',
+    agentNoReasoning: 'sans raisonnement',
+    agentReasoning: 'avec raisonnement',
+    secondAgentWith: 'Un second juge, avec raisonnement, a aussi lu ces constats.',
+    secondAgentWithout: 'Un second juge, sans raisonnement, a aussi lu ces constats.',
+    agentTwoAnswers: 'Les deux juges ont lu les m\u00eames constats et r\u00e9pondu diff\u00e9remment. Les deux r\u00e9ponses sont ici ; celle du juge le plus fiable est la ligne ci-dessus.',
     runningAsk: 'interrogation du corpus...',
     secondReading: 'Un second juge relit ces constats...',
     runningTranslate: 'traduction de la question...',
     runningRetrieve: 'recherche dans le corpus...',
-    runningJudge: 'le juge lit les constats...',
+    runningAgent: 'le juge lit les constats...',
     runningAnswer: 'rédaction de la réponse...',
     runningSecond: 'un second juge relit la réponse...',
-    judgeDisagreeTitle: 'Les deux juges ne sont pas d\u2019accord',
-    judgeDisagreeNo: 'Le second juge estime que ces constats ne répondent pas à la question. C\u2019est l\u2019avis le plus prudent : la réponse ci-dessus n\u2019est pas confirmée.',
-    judgeDisagreeYes: 'Le second juge répondrait à partir de ces constats, mais le premier les a jugés insuffisants. L\u2019avis prudent l\u2019emporte : la réponse ci-dessus reste une absence de réponse.',
-    judgeDissentTitle: 'Un juge plus faible exprime un désaccord',
-    judgeDissentWeaker: 'Le second juge raisonne moins que celui qui a répondu, et il ne répondrait pas à partir de ces constats. La réponse tient : c\u2019est l\u2019avis le plus fiable qui l\u2019a écrite.',
-    judgeDissentOther: 'Le second juge répondrait à partir de ces constats, mais le juge qui a commandé la prose les a jugés insuffisants : l\u2019absence de réponse tient.',
+    agentDisagreeTitle: 'Les deux juges ne sont pas d\u2019accord',
+    agentDisagreeNo: 'Le second juge estime que ces constats ne répondent pas à la question. C\u2019est l\u2019avis le plus prudent : la réponse ci-dessus n\u2019est pas confirmée.',
+    agentDisagreeYes: 'Le second juge répondrait à partir de ces constats, mais le premier les a jugés insuffisants. L\u2019avis prudent l\u2019emporte : la réponse ci-dessus reste une absence de réponse.',
+    agentDissentTitle: 'Un juge plus faible exprime un désaccord',
+    agentDissentWeaker: 'Le second juge raisonne moins que celui qui a répondu, et il ne répondrait pas à partir de ces constats. La réponse tient : c\u2019est l\u2019avis le plus fiable qui l\u2019a écrite.',
+    agentDissentOther: 'Le second juge répondrait à partir de ces constats, mais le juge qui a commandé la prose les a jugés insuffisants : l\u2019absence de réponse tient.',
     answerTitle: 'Réponse',
     termsTitle: 'Termes cherchés',
     termsNote: 'Le corpus est en anglais : ces termes ont été cherchés en plus de la question traduite. Ce sont des termes de recherche, pas une traduction des règles.',
@@ -1078,7 +1078,7 @@ var I18N = {
   kindAbility: 'capacité',
   kindIndex: 'index',
   kindOther: 'fiche',
-    citedByJudge: 'cité par le juge',
+    citedByAgent: 'cité par le juge',
     close: 'Fermer',
     openSource: 'Ouvrir sur Wahapedia',
     findingsCounts: ' règles de base, ',
@@ -1086,10 +1086,10 @@ var I18N = {
     nothingMatchedCard: 'Rien dans le corpus ne correspond à cette question.',
     nothingMatched: 'rien dans le corpus ne correspond à cette question',
     findingsReady: 'constats prêts en ',
-    judgeComing: ' s — le juge est en cours',
-    judgeIn: 'juge en ',
-    judgeNo: 'il estime que ces constats ne répondent pas à la question',
-    judgeYes: 'il estime que ces constats répondent à la question',
+    agentComing: ' s — le juge est en cours',
+    agentIn: 'juge en ',
+    agentNo: 'il estime que ces constats ne répondent pas à la question',
+    agentYes: 'il estime que ces constats répondent à la question',
     partMissing: 'une partie de la réponse n\u2019est jamais arrivée',
     noVerdict: 'pas de verdict',
     rulingStart: 'commencez par ',
@@ -1160,7 +1160,7 @@ var I18N = {
     corpusDays: ' jours',
     corpusCountsA: ' règles de base + ',
     corpusCountsB: ' fiches de faction',
-    stages: { translate: 'traduction', retrieve: 'recherche', judge: 'juge', answer: 'réponse', widen: 'élargissement', datasheet: 'fiche', second: 'second juge' },
+    stages: { translate: 'traduction', retrieve: 'recherche', agent: 'juge', answer: 'réponse', widen: 'élargissement', datasheet: 'fiche', second: 'second juge' },
     answerFailed: 'La réponse n\u2019a pas pu être rédigée cette fois — les constats ci-dessus sont ce qui a été trouvé.',
     requestFailed: 'La requête a échoué. Réessayez.',
     streamCut: 'la connexion a lâché avant la fin — ce qui est arrivé est ci-dessus, relancez pour la suite',
@@ -1358,17 +1358,17 @@ function applyLang() {
   applyLang();
 })();
 
-// --- the judge dial ---------------------------------------------------------
-// task-22. The toggle selects the judge's reasoning, and it is stated rather than
-// assumed what else moves with it: ASK_MODES binds the judge, the second judge
+// --- the agent dial ---------------------------------------------------------
+// task-22. The toggle selects the agent's reasoning, and it is stated rather than
+// assumed what else moves with it: ASK_MODES binds the agent, the second agent
 // AND the retrieval scope to the mode, so this is the mapping, from the same
 // table the server reads (src/rules-corpus.mjs, ASK_MODES):
 //
 // The reader's page states the mapping and NOT an accuracy: the measured score is
-//                   second judge 'medium'
+//                   second agent 'medium'
 //                   retrieval: first 5, passes 2, grepNet 50, jevMax 60
 // test-bank knowledge, and it was being served as page copy (Mandal, task-72).
-//                   second judge off
+//                   second agent off
 //                   retrieval: first 10, passes 3, grepNet 60, jevMax 80
 //
 // The retrieval scope is therefore MODE-BOUND, not fixed, and the note under the
@@ -1376,11 +1376,11 @@ function applyLang() {
 // off by default (RULES_WRITER) and, when it is on, it writes without reasoning
 // first - the mode never reaches it.
 var MODE_MAP = {
-  fast: { judge: 'none', second: 'medium', first: 5, passes: 2, grepNet: 50, jevMax: 60 },
-  deep: { judge: 'medium', second: 'none', first: 10, passes: 3, grepNet: 60, jevMax: 80 }
+  fast: { agent: 'none', second: 'medium', first: 5, passes: 2, grepNet: 50, jevMax: 60 },
+  deep: { agent: 'medium', second: 'none', first: 10, passes: 3, grepNet: 60, jevMax: 80 }
 };
 var MODE = 'fast';
-function modeOn(m) { return m.judge !== 'none'; }
+function modeOn(m) { return m.agent !== 'none'; }
 function setMode(name) {
   MODE = MODE_MAP[name] ? name : 'fast';
   var bf = $('#modeFast'), bd = $('#modeDeep');
@@ -1643,16 +1643,16 @@ function sendPick(state, by, none) {
 
 
 // The order the reader sees, in one place: the caret's picks first (newest
-// first), then the passages the judge cited, then rank order, then the ignored
+// first), then the passages the agent cited, then rank order, then the ignored
 // ones. The hero list draws it and a swipe in the full-screen record walks it,
-// so the two surfaces cannot disagree about what comes next. The judge's
+// so the two surfaces cannot disagree about what comes next. The agent's
 // citations and the reader's picks both resort, and the reader wins.
 
 
 
 
 // One place that draws the list, so a new verdict can re-draw it with its
-// citations without the findings event and the judge event disagreeing about
+// citations without the findings event and the agent event disagreeing about
 // what is on screen.
 // task-80: the finding card is the surface's renderer, one implementation. This is
 // the page's only entry point into it; PAGE_CTX carries what the page still owns -
@@ -1969,7 +1969,7 @@ function renderFindings(state) {
 
 // Which leg produced a finding, and what it scored there. The similarity is
 // labelled a rank score on purpose: it orders passages, and it is not a
-// confidence that the passage answers the question - the judge is that.
+// confidence that the passage answers the question - the agent is that.
 function legLabel(leg) {
   return leg === 'both' ? t('legBoth') : leg === 'lexical' ? t('legLexical') : leg === 'vector' ? t('legVector')
     : leg === 'anchored' ? t('legAnchored') : leg === 'child' ? t('legChild') : '';
@@ -2291,7 +2291,7 @@ function refresh(state) {
 }
 
 // The caret: rank this record first, or take the rank back. The reader's order
-// wins over the judge's citations, and the record it names is the positive
+// wins over the agent's citations, and the record it names is the positive
 // example the trace keeps. Careting a record the reader had ignored restores it
 // to the kept set.
 function toggleFirst(state, id) {
@@ -2412,10 +2412,10 @@ function citeLink(c, label) {
   return a;
 }
 
-// The judge card, drawn from both verdicts. The binding one is always first; the
-// second judge is appended under it with its own reasoning setting, so the
+// The agent card, drawn from both verdicts. The binding one is always first; the
+// second agent is appended under it with its own reasoning setting, so the
 // reader can see which verdict gated the prose and which arrived afterwards.
-// task-71: the two judges' strength, the same rule the server reconciles on (reasoning off
+// task-71: the two agents' strength, the same rule the server reconciles on (reasoning off
 // measured 61.8% against 79.4% with it on). An unknown setting ranks as the equal of
 // anything, so it never silently wins.
 function reasoningStrength(r) { return String(r || '').toLowerCase() === 'none' ? 0 : 1; }
@@ -2426,38 +2426,38 @@ function renderVerdicts(state) {
   VERDICT_STATE = state;
   var card = state.verdict;
   card.textContent = '';
-  if (!state.judge) { card.appendChild(el('div', 'note waiting', t('readingFindings'))); return; }
+  if (!state.agent) { card.appendChild(el('div', 'note waiting', t('readingFindings'))); return; }
   // A verdict's passage numbers only mean something against the list it judged:
   // a widening renumbers the findings, so citations are shown only while the
   // verdict and the list on screen are the same pass.
-  var samePass = (state.judgeAttempt || 0) === (state.pass || 0);
-  // task-71: when the two judges disagree about the ANSWER (not about whether they can
-  // answer), the reader is shown BOTH, with the stronger judge's line as the headline.
-  // Mandal's report: the second judge found the Enginseer and its answer was collapsed
-  // under a footnote while the first judge's weaker line was the one visible.
-  var j2 = state.judge2 ? state.judge2.judge : null;
-  var polar = !!(state.judgeDisagreement && j2);
-  var secondStronger = polar && reasoningStrength(state.judge2.reasoning) > reasoningStrength(state.judgeReasoning);
-  var head = polar && secondStronger ? j2 : state.judge;
-  var under = polar && secondStronger ? state.judge : j2;
-  var headQuote = head === state.judge ? state.quoteFr : '';
-  var headFindings = head === state.judge && samePass ? state.findings : null;
+  var samePass = (state.agentAttempt || 0) === (state.pass || 0);
+  // task-71: when the two agents disagree about the ANSWER (not about whether they can
+  // answer), the reader is shown BOTH, with the stronger agent's line as the headline.
+  // Mandal's report: the second agent found the Enginseer and its answer was collapsed
+  // under a footnote while the first agent's weaker line was the one visible.
+  var j2 = state.secondAgent ? state.secondAgent.agent : null;
+  var polar = !!(state.agentDisagreement && j2);
+  var secondStronger = polar && reasoningStrength(state.secondAgent.reasoning) > reasoningStrength(state.agentReasoning);
+  var head = polar && secondStronger ? j2 : state.agent;
+  var under = polar && secondStronger ? state.agent : j2;
+  var headQuote = head === state.agent ? state.quoteFr : '';
+  var headFindings = head === state.agent && samePass ? state.findings : null;
   card.appendChild(rulingBlock(head, headFindings, headQuote));
-  if (polar) card.appendChild(el('p', 'note seconddisagree', t('judgeTwoAnswers')));
+  if (polar) card.appendChild(el('p', 'note seconddisagree', t('agentTwoAnswers')));
   // task-27: the review is visible while it runs, not only when it lands.
-  if (!state.judge2 && state.secondPending) {
+  if (!state.secondAgent && state.secondPending) {
     card.appendChild(el('p', 'secondnote secondrun', t('secondReading')));
   }
   if (under) {
-    // task-25: a plain dim sentence, not an uppercase eyebrow. The second judge
+    // task-25: a plain dim sentence, not an uppercase eyebrow. The second agent
     // stays reachable - task-16's cautious-verdict work depends on it.
     var box = document.createElement('details');
     box.className = 'secondv';
     box.open = polar;
     var sum = document.createElement('summary');
     sum.className = 'secondnote';
-    var other = under === state.judge2 ? state.judge2.reasoning : state.judgeReasoning;
-    sum.textContent = other === 'none' ? t('secondJudgeWithout') : t('secondJudgeWith');
+    var other = under === state.secondAgent ? state.secondAgent.reasoning : state.agentReasoning;
+    sum.textContent = other === 'none' ? t('secondAgentWithout') : t('secondAgentWith');
     box.appendChild(sum);
     box.appendChild(rulingBlock(under, null));
     card.appendChild(box);
@@ -2525,11 +2525,11 @@ function strikeFigures(text, bad) {
   if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
   return frag;
 }
-function rulingBlock(judge, findings, quoteFr) {
+function rulingBlock(agent, findings, quoteFr) {
   var wrap = el('div', 'ruling');
-  var answered = !!(judge && judge.answered === true);
-  var trace = (judge && judge.trace) || null;
-  var answer = judge && judge.answer ? String(judge.answer) : '';
+  var answered = !!(agent && agent.answered === true);
+  var trace = (agent && agent.trace) || null;
+  var answer = agent && agent.answer ? String(agent.answer) : '';
   if (!answer) {
     // FALLBACK: the model failed to write the answer line. The floor is the
     // recommendation - start with the titles - and never an empty block.
@@ -2541,9 +2541,9 @@ function rulingBlock(judge, findings, quoteFr) {
   line.appendChild(strikeFigures(answer, trace && trace.bad));
   wrap.appendChild(line);
   // answered:false never renders a quote slot, whatever the payload carries.
-  if (answered && judge.quote) {
+  if (answered && agent.quote) {
     var quote = el('blockquote', trace && trace.quoteOk === false ? 'rquote bad' : 'rquote');
-    quote.textContent = String(judge.quote);
+    quote.textContent = String(agent.quote);
     wrap.appendChild(quote);
     // task-69: the quote is the English canon and stays that; the record's French body
     // sits under it, so the reader has the evidence and its translation, in that order.
@@ -2553,13 +2553,13 @@ function rulingBlock(judge, findings, quoteFr) {
       qfr.textContent = String(quoteFr);
       wrap.appendChild(qfr);
     }
-    var src = findFinding(findings, judge.from);
+    var src = findFinding(findings, agent.from);
     if (src) wrap.appendChild(sourceLine(src));
   }
-  if (answered && judge.exceptions && judge.exceptions.length && findings) {
+  if (answered && agent.exceptions && agent.exceptions.length && findings) {
     var links = [];
-    for (var k = 0; k < judge.exceptions.length; k++) {
-      var ex = findFinding(findings, judge.exceptions[k]);
+    for (var k = 0; k < agent.exceptions.length; k++) {
+      var ex = findFinding(findings, agent.exceptions[k]);
       if (!ex) continue;
       // task-26: the exception is a row name too, so a Q&A rule reads as its
       // question here exactly as it does in the ledger.
@@ -2577,7 +2577,7 @@ function rulingBlock(judge, findings, quoteFr) {
       wrap.appendChild(p);
     }
   }
-  if (!answered && judge && judge.missing) wrap.appendChild(el('p', 'rmiss', String(judge.missing)));
+  if (!answered && agent && agent.missing) wrap.appendChild(el('p', 'rmiss', String(agent.missing)));
   if (trace && trace.dropped > 0) {
     wrap.appendChild(el('p', 'rtrace', t('rulingTrace').replace('{n}', String(trace.dropped)).replace('{m}', String(trace.total))));
   }
@@ -2744,10 +2744,10 @@ function unitCardView(c) {
   return card;
 }
 
-// Retrieval is ready in about two seconds and the judge and the prose take
+// Retrieval is ready in about two seconds and the agent and the prose take
 // twenty more, so the page is built up as each piece lands rather than held back
 // until the slowest one finishes. Every slot is created up front, so nothing
-// moves when a later piece arrives. The judge sits at the top even though it
+// moves when a later piece arrives. The agent sits at the top even though it
 // arrives last: it says whether the findings below it are worth reading.
 // One thumb up, one thumb down, on the answer that is about to arrive. Both are
 // tap targets a phone can hit, the POST is fire-and-forget, and a second vote
@@ -2806,7 +2806,7 @@ function resultSlots(host, state) {
 }
 
 function newState() {
-  return { findings: [], counts: null, cited: [], pass: 0, terms: [], translation: null, card: false, judge: null, judge2: null, judgeAttempt: 0, secondPending: false, disputed: false, events: 0, answered: false,
+  return { findings: [], counts: null, cited: [], pass: 0, terms: [], translation: null, card: false, agent: null, secondAgent: null, agentAttempt: 0, secondPending: false, disputed: false, events: 0, answered: false,
     // The manual rerank: what the reader asked, the English the pipeline ran,
     // the trace the first answer saved, the ids on screen and which of them the
     // reader is keeping. Only the first answer is selectable.
@@ -2834,7 +2834,7 @@ function startResult(lang, options) {
   if (o.append) {
     // A second answer to the same question, on the passages the reader chose. It
     // is appended, never replacing the first: the reader may already have read
-    // that one, which is the rule the second judge set.
+    // that one, which is the rule the second agent set.
     var wrap = el('div', 'rerun');
     var title = sectionCard(t('rerunTitle'));
     title.appendChild(el('div', 'note', t('rerunNote')));
@@ -2853,7 +2853,7 @@ function startResult(lang, options) {
 
 // --- stage progress ---------------------------------------------------------
 // The bar is built from the stage list the server sends with its first event and
-// advanced by the events that follow: findings means retrieval finished, judge
+// advanced by the events that follow: findings means retrieval finished, agent
 // means the verdict finished. Nothing here estimates - a segment lights because
 // that stage actually reported back.
 //
@@ -2869,7 +2869,7 @@ var PDONE = false;   // the run ended; the counter beside the bar stops moving
 function pFmt(ms) { return (ms / 1000).toFixed(1) + 's'; }
 
 // Credit everything since the last boundary to one stage and repaint it. Called
-// at each boundary the server reports, so a stage that ran twice - the judge,
+// at each boundary the server reports, so a stage that ran twice - the agent,
 // before and after a widening - accumulates instead of overwriting.
 function pAttribute(name, elapsedMs) {
   var at = Number(elapsedMs);
@@ -2877,7 +2877,7 @@ function pAttribute(name, elapsedMs) {
   var spent = at - PSTAGE_AT;
   if (spent < 0) spent = 0;
   // A stage with nothing credited yet is painted even when it cost nothing this
-  // boundary: the writer's refusal is reported by the judge and the answer in
+  // boundary: the writer's refusal is reported by the agent and the answer in
   // the same millisecond, and an empty box reads as a stage that never ran.
   if (spent > 0 || PSTAGE_MS[name] === undefined) {
     PSTAGE_MS[name] = (PSTAGE_MS[name] || 0) + spent;
@@ -2950,7 +2950,7 @@ function setStageActive(name) {
 // greyed send is always explained. One map: a stage with no sentence is a stage
 // the reader cannot see.
 var STAGE_RUNNING = {
-  translate: 'runningTranslate', retrieve: 'runningRetrieve', judge: 'runningJudge',
+  translate: 'runningTranslate', retrieve: 'runningRetrieve', agent: 'runningAgent',
   answer: 'runningAnswer', widen: 'runningRetrieve', second: 'runningSecond', sweep: 'runningSweep'
 };
 function stageRunning(name) {
@@ -2958,9 +2958,9 @@ function stageRunning(name) {
   if (k) setStatus(t(k), 'busy');
 }
 
-// Added when the judge sends the search back for a wider look, so the bar shows
+// Added when the agent sends the search back for a wider look, so the bar shows
 // the extra pass instead of quietly re-lighting a finished stage. Only the stage
-// actually running shimmers: the widening takes over from the judge, which is
+// actually running shimmers: the widening takes over from the agent, which is
 // still waiting to re-read the wider findings.
 function addStage(name, afterName) {
   var box = $('#psegs');
@@ -3018,7 +3018,7 @@ function applyEvent(ev, state) {
   // keeps the state honest if the two ever disagree.
   if (ev.type === 'mode') { state.mode = ev.mode; return; }
   if (ev.type === 'card') {
-    // Additive, never instead of the search: the judge, the findings and the
+    // Additive, never instead of the search: the agent, the findings and the
     // prose still run, so their slots stay where they are and the card takes the
     // top of the result. It is instant, and that is the point - something to
     // read while the pipeline works.
@@ -3029,7 +3029,7 @@ function applyEvent(ev, state) {
     setStatus(t('cardReady'), 'busy');
     return;
   }
-  if (ev.type === 'escalate') { pAttribute('judge', ev.elapsedMs); addStage('widen', 'retrieve'); return; }
+  if (ev.type === 'escalate') { pAttribute('agent', ev.elapsedMs); addStage('widen', 'retrieve'); return; }
   if (ev.type === 'translation') { state.translation = ev; renderTranslation(state); doneStage('translate', ev.elapsedMs); return; }
   if (ev.type === 'terms') {
     state.terms = ev.terms || [];
@@ -3071,39 +3071,39 @@ function applyEvent(ev, state) {
     refresh(state);
     if (ev.attempt > 0) flash(state.findingSlot);
     doneStage(ev.attempt > 0 ? 'widen' : 'retrieve', ev.elapsedMs);
-    if (ev.attempt > 0) setStageActive('judge');
-    // The judge is computed from the findings, so once they are here the
+    if (ev.attempt > 0) setStageActive('agent');
+    // The agent is computed from the findings, so once they are here the
     // placeholder should say what it is actually waiting on.
     var vwait = state.verdict.querySelector('.waiting');
     if (vwait) vwait.textContent = t('readingFindings');
     setStatus(state.findings.length
-      ? t('findingsReady') + (ev.elapsedMs / 1000).toFixed(1) + t('judgeComing')
+      ? t('findingsReady') + (ev.elapsedMs / 1000).toFixed(1) + t('agentComing')
       : t('nothingMatched'),
       state.findings.length ? 'busy' : 'warn');
     return;
   }
-  if (ev.type === 'judge') {
+  if (ev.type === 'agent') {
     // Two verdicts, two slots. The second is never allowed to overwrite the
     // first: it is a second opinion, and the reader is owed both.
     if (ev.second) {
-      state.judge2 = { judge: ev.judge, reasoning: ev.reasoning || '' };
+      state.secondAgent = { agent: ev.agent, reasoning: ev.reasoning || '' };
       state.secondPending = false;
       doneStage('second');
     }
     else {
-      state.judge = ev.judge;
-      // task-71: which effort the binding judge ran at, so the reader can be shown the
+      state.agent = ev.agent;
+      // task-71: which effort the binding agent ran at, so the reader can be shown the
       // stronger of two disagreeing answers. The stream carries it; the ask's own mode is
       // the fallback for a payload that does not.
-      state.judgeReasoning = ev.reasoning || (state.mode && state.mode.reasoning) || '';
+      state.agentReasoning = ev.reasoning || (state.mode && state.mode.reasoning) || '';
       // task-69: the French that rides under the quote, when the reader's language is
       // French. The English quote is the evidence and is never replaced by it.
       if (ev.quoteFr !== undefined) state.quoteFr = String(ev.quoteFr || '');
       // A streamed ask carries no quoteFr field, so the page asks for the cited record's
       // French itself and re-renders the verdict when it lands. The English quote is
       // already on screen; this only adds the translation under it.
-      if (!state.quoteFr && frMode() === 'fr' && ev.judge && ev.judge.answered === true && ev.judge.quote) {
-        var citedF = state.findings && state.findings[ev.judge.from - 1];
+      if (!state.quoteFr && frMode() === 'fr' && ev.agent && ev.agent.answered === true && ev.agent.quote) {
+        var citedF = state.findings && state.findings[ev.agent.from - 1];
         if (citedF && citedF.id) {
           frRecordText(citedF.id).then(function (txt) {
             if (!txt) return;
@@ -3112,39 +3112,39 @@ function applyEvent(ev, state) {
           });
         }
       }
-      state.judgeAttempt = ev.attempt || 0;
+      state.agentAttempt = ev.attempt || 0;
       // The verdict names the passages it rests on. They are promoted out of the
       // collapse and badged, so the evidence behind a verdict is never hidden in
       // the collapsed remainder.
-      state.cited = Array.isArray(ev.judge && ev.judge.passages) ? ev.judge.passages.slice() : [];
-      // A second judge always follows a non-empty retrieval, and the reader is
+      state.cited = Array.isArray(ev.agent && ev.agent.passages) ? ev.agent.passages.slice() : [];
+      // A second agent always follows a non-empty retrieval, and the reader is
       // owed the review while it runs: its segment appears at once and the ruling
       // carries the sentence until the review lands.
       if (state.findings.length) {
         state.secondPending = true;
-        // task-43: a deep run's judge may have named checks to run, and the sweep lands
+        // task-43: a deep run's agent may have named checks to run, and the sweep lands
         // last. The segment is added here so the reader sees the run is still looking;
         // a fast run never emits one and the bar skips straight past it.
-        if (ev.judge && ev.judge.checks && ev.judge.checks.length) addStage('sweep', 'judge');
-        addStage('second', 'judge');
+        if (ev.agent && ev.agent.checks && ev.agent.checks.length) addStage('sweep', 'agent');
+        addStage('second', 'agent');
         setStageActive('second');
       }
       if (state.findings.length) refresh(state);
     }
     renderVerdicts(state);
     flash(state.verdict);
-    // Only a final verdict closes the judge stage; an interim one is about to be
+    // Only a final verdict closes the agent stage; an interim one is about to be
     // superseded, so closing it would show progress that has not happened.
-    if (ev.final !== false) doneStage('judge', ev.elapsedMs);
-    else setStageActive('judge');
-    // The status line keeps the binding verdict's wording; the second judge is
+    if (ev.final !== false) doneStage('agent', ev.elapsedMs);
+    else setStageActive('agent');
+    // The status line keeps the binding verdict's wording; the second agent is
     // reported in the card and, when it disagrees, in the annotation.
     if (ev.second) return;
     // task-31 B: the ruling is the run's work. Release the send here; the second
-    // judge is an after-step that arrives late, and it never disables the send again.
+    // agent is an after-step that arrives late, and it never disables the send again.
     releaseSend();
-    var no = ev.judge && ev.judge.answered === false;
-    setStatus(t('judgeIn') + (ev.elapsedMs / 1000).toFixed(1) + 's - ' + (no ? t('judgeNo') : t('judgeYes')), no ? 'warn' : 'ok');
+    var no = ev.agent && ev.agent.answered === false;
+    setStatus(t('agentIn') + (ev.elapsedMs / 1000).toFixed(1) + 's - ' + (no ? t('agentNo') : t('agentYes')), no ? 'warn' : 'ok');
     // The run is still busy: the review is what it is busy on now.
     if (state.secondPending) stageRunning('second');
     return;
@@ -3163,24 +3163,24 @@ function applyEvent(ev, state) {
     // The prose was written before this verdict landed and may already have been
     // read, so the contradiction is annotated on top of it - never a silent
     // replacement. Two outcomes, and the difference is the point: a dissent from
-    // a judge at least as reliable as the one that answered downgrades the answer
-    // ('not confirmed'); a WEAKER judge's refusal is a dissent and leaves the
-    // answer standing, because the less accurate judge must not veto the more
+    // a agent at least as reliable as the one that answered downgrades the answer
+    // ('not confirmed'); a WEAKER agent's refusal is a dissent and leaves the
+    // answer standing, because the less accurate agent must not veto the more
     // accurate one - reasoning off measured 61.8% against reasoning on 79.4%.
     var down = ev.downgrade === true;
     state.disputed = down;
     // task-71: a POLAR disagreement - both answered, and they answered differently - is
     // shown as two answers rather than one answer plus a footnote.
-    state.judgeDisagreement = ev.polar === true;
+    state.agentDisagreement = ev.polar === true;
     renderVerdicts(state);
     var box = el('div', down ? 'dispute' : 'dissent');
-    box.appendChild(el('div', 'dtitle', down ? t('judgeDisagreeTitle') : t('judgeDissentTitle')));
+    box.appendChild(el('div', 'dtitle', down ? t('agentDisagreeTitle') : t('agentDissentTitle')));
     box.appendChild(el('div', 'note', down
-      ? (ev.conservative === 'second' ? t('judgeDisagreeNo') : t('judgeDisagreeYes'))
-      : (ev.dissenter === 'second' ? t('judgeDissentWeaker') : t('judgeDissentOther'))));
+      ? (ev.conservative === 'second' ? t('agentDisagreeNo') : t('agentDisagreeYes'))
+      : (ev.dissenter === 'second' ? t('agentDissentWeaker') : t('agentDissentOther'))));
     state.rest.appendChild(box);
     flash(state.rest);
-    setStatus(down ? t('judgeDisagreeTitle') : '', down ? 'warn' : '');
+    setStatus(down ? t('agentDisagreeTitle') : '', down ? 'warn' : '');
     return;
   }
   // No 'answer' event is handled: the writer is off, the server does not send one
@@ -3195,7 +3195,7 @@ function applyEvent(ev, state) {
     if (state.pickPending) postPick(state);
     // A disagreement outlives the request: clearing it here would erase the one
     // line that says the answer is provisional.
-    if (state.disputed) { setStatus(t('judgeDisagreeTitle'), 'warn'); return; }
+    if (state.disputed) { setStatus(t('agentDisagreeTitle'), 'warn'); return; }
     var pending = state.verdict.querySelector('.waiting');
     // A finished request says nothing here: the timings are in the bar and the
     // count is the findings card's own title. A stream that ended without a part
@@ -3215,7 +3215,7 @@ function showInto(state, j) {
   if (j.translation && j.translation !== (j.question || '')) applyEvent({ type: 'translation', detected: j.lang, translated: j.translation, elapsedMs: j.elapsedMs }, state);
   if (j.card) applyEvent({ type: 'card', card: j.card, elapsedMs: j.elapsedMs }, state);
   applyEvent({ type: 'findings', findings: j.findings || [], counts: j.counts, terms: j.terms, steps: j.steps, elapsedMs: j.elapsedMs }, state);
-  if (j.judge) applyEvent({ type: 'judge', judge: j.judge, final: true, elapsedMs: j.elapsedMs, quoteFr: j.quoteFr }, state);
+  if (j.agent) applyEvent({ type: 'agent', agent: j.agent, final: true, elapsedMs: j.elapsedMs, quoteFr: j.quoteFr }, state);
   applyEvent({ type: 'answer', answer: j.answer, elapsedMs: j.elapsedMs }, state);
   applyEvent({ type: 'done', elapsedMs: j.elapsedMs, unresolved: j.unresolved, escalated: j.escalated }, state);
   for (var i = 0; i < (j.notes || []).length; i++) state.rest.appendChild(el('div', 'note warn', j.notes[i]));
@@ -3460,7 +3460,7 @@ wireVoice(document.getElementById('fmic'), document.getElementById('fq'), functi
 // --- asking -----------------------------------------------------------------
 var busy = false;
 // task-31 B: the run's work is done when the ruling lands, not when the stream
-// closes - the second judge is a review, not a gate. So the send is released on the
+// closes - the second agent is a review, not a gate. So the send is released on the
 // binding verdict and a new run may start while the review is still coming; the run
 // carries a token and the previous stream is aborted, so the late review cannot
 // interleave its events into the new state.
@@ -3601,7 +3601,7 @@ async function ask(over) {
       return;
     }
     // One JSON object per line, applied as each line arrives. The findings are
-    // on screen about two seconds in; the judge and the prose follow behind.
+    // on screen about two seconds in; the agent and the prose follow behind.
     var reader = r.body.getReader();
     var dec = new TextDecoder();
     var buf = '';

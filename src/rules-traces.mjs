@@ -109,7 +109,7 @@ export function writerMode(input) {
 
 // Which findings the verdict rested on. The passages array names positions in
 // the findings list, never prose, so the trace keeps the pointers and still keeps
-// no judge reasoning - and the harvest reads them to put a checkable trace first.
+// no agent reasoning - and the harvest reads them to put a checkable trace first.
 const citedPassages = j => (j && Array.isArray(j.passages) ? j.passages : []).filter(n => typeof n === 'number').slice(0, 24);
 
 export function buildTrace(input) {
@@ -132,26 +132,26 @@ export function buildTrace(input) {
     // task-24 (J4): the ruling's slots, so a trace can be read back as the page
     // rendered it, and the trace check's own outcome (total claims, how many the
     // cited passages did not carry) is measurable across the bank.
-    judge: {
-      answered: !!(input.judge && input.judge.answered),
-      confidence: (input.judge && input.judge.confidence) || '',
-      reasoning: input.judgeReasoning || '',
-      cited: citedPassages(input.judge),
-      answer: (input.judge && input.judge.answer) || '',
-      from: (input.judge && input.judge.from) || null,
-      exceptions: (input.judge && Array.isArray(input.judge.exceptions)) ? input.judge.exceptions : [],
-      trace: (input.judge && input.judge.trace) ? { total: input.judge.trace.total || 0, dropped: input.judge.trace.dropped || 0 } : null,
+    agent: {
+      answered: !!(input.agent && input.agent.answered),
+      confidence: (input.agent && input.agent.confidence) || '',
+      reasoning: input.agentReasoning || '',
+      cited: citedPassages(input.agent),
+      answer: (input.agent && input.agent.answer) || '',
+      from: (input.agent && input.agent.from) || null,
+      exceptions: (input.agent && Array.isArray(input.agent.exceptions)) ? input.agent.exceptions : [],
+      trace: (input.agent && input.agent.trace) ? { total: input.agent.trace.total || 0, dropped: input.agent.trace.dropped || 0 } : null,
     },
-    // The second judge, and whether the two disagreed. The rate this exists to
-    // make measurable is count(judgeDisagreement) / count(traces with judge2): a
-    // question the binding judge accepted and the careful one refused is the
+    // The second agent, and whether the two disagreed. The rate this exists to
+    // make measurable is count(agentDisagreement) / count(traces with secondAgent): a
+    // question the binding agent accepted and the careful one refused is the
     // reader's one signal that the prose is provisional.
-    judgeDisagreement: !!input.judgeDisagreement,
-    // Which judge dissented, and whether that dissent was allowed to downgrade
+    agentDisagreement: !!input.agentDisagreement,
+    // Which agent dissented, and whether that dissent was allowed to downgrade
     // the answer. Both are needed to measure the rule: a refusal from the quick
-    // judge in deep mode is information, not a downgrade.
-    judgeDowngrade: !!input.judgeDowngrade,
-    judgeDissentFrom: input.judgeDissentFrom || '',
+    // agent in deep mode is information, not a downgrade.
+    agentDowngrade: !!input.agentDowngrade,
+    agentDissentFrom: input.agentDissentFrom || '',
     answer: input.answer || '',
     writer: writerMode(input),
     steps: input.steps || [],
@@ -173,11 +173,11 @@ export function buildTrace(input) {
   // findings, so only the delta and the pointer are stored.
   if (input.override) t.override = input.override;
   if (input.overrideOf) t.overrideOf = input.overrideOf;
-  if (input.judge2) {
-    t.judge2 = {
-      answered: input.judge2.answered === true,
-      confidence: input.judge2.confidence || '',
-      reasoning: input.judge2.reasoning || '',
+  if (input.secondAgent) {
+    t.secondAgent = {
+      answered: input.secondAgent.answered === true,
+      confidence: input.secondAgent.confidence || '',
+      reasoning: input.secondAgent.reasoning || '',
     };
   }
   return t;

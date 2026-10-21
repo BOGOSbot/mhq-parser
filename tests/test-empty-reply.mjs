@@ -1,5 +1,5 @@
 // task-70: an empty reply from the route is RETRIED, not returned. It used to be returned
-// as-is, and the judge then read it as 'the judge did not answer' - which the escalation
+// as-is, and the agent then read it as 'the agent did not answer' - which the escalation
 // loop treats as 'not answered', a statement about the corpus made from a call that never
 // happened. Measured on the Box: 2 empty and 3 truncated replies in 130 fast calls, and a
 // probe that timed out once then got an empty body on every following call.
@@ -12,7 +12,7 @@ const ok = (name, cond) => { if (cond) pass++; else { fail++; console.log('FAIL 
 const t = (name, got, want) => { const same = JSON.stringify(got) === JSON.stringify(want); if (same) pass++; else { fail++; console.log('FAIL ' + name + ' | got: ' + JSON.stringify(got) + ' | want: ' + JSON.stringify(want)); } };
 const reply = JSON.stringify({ choices: [{ message: { content: JSON.stringify({ rules_question: true, answered: true, confidence: 'high', quote: 'a quote', from: 1, exceptions: [], missing: null }) }, finish_reason: 'stop' }] });
 // The stub answers NOTHING on the first two calls, then answers. A route that returns the
-// empty body would give the caller '' and the judge would report 'did not answer'.
+// empty body would give the caller '' and the agent would report 'did not answer'.
 const empty = JSON.stringify({ choices: [{ message: { content: '' }, finish_reason: 'stop' }] });
 let calls = 0;
 const seen = [];

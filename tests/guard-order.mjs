@@ -4,15 +4,15 @@
  * guard-order: the retrieval guard, re-specified (task-9).
  *
  * The old guard (workspace/guard5.mjs, guard5b.mjs) posted five questions to
- * /rules/ask and compared FINDING COUNTS. That is not a fingerprint: the judge's
+ * /rules/ask and compared FINDING COUNTS. That is not a fingerprint: the agent's
  * first pass decides whether the search widens, so the same build returned
  * 15/12/15/35/13 and 15/34/34/35/13 minutes apart, and neither matched the
  * recorded 15/13/12/33/15 (handoff, 2026-10-16). The retriever itself is
- * deterministic; the judge is not, and a count moves when the judge widens.
+ * deterministic; the agent is not, and a count moves when the agent widens.
  *
  * What this command fingerprints is the UNJUDGED retrieval order: the two halves'
  * ordered findings for a fixed five-question set, rerank off (jevSkip, no key),
- * no judge, no model, no billed spend. Two runs minutes apart hash the same; a
+ * no agent, no model, no billed spend. Two runs minutes apart hash the same; a
  * change to the corpus, the index, the grep, the fusion, the anchoring or the
  * child-clarification rule moves the hash.
  *

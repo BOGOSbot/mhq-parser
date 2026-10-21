@@ -42,7 +42,7 @@ const trace = buildTrace({
   asked: 'Can Asurmen re-embark after shooting?', terms: ['embark', 'shoot'],
   signals: traceSignals('Est-ce que Asurmen peut réembarquer après avoir tiré ?', [finding]),
   counts: { rules: 1, factions: 0 }, findings: [finding],
-  judge: { answered: true, confidence: 'high', why: 'Passage [1] says a unit can embark.' },
+  agent: { answered: true, confidence: 'high', why: 'Passage [1] says a unit can embark.' },
   answer: 'Oui [1].', steps: [{ name: 'retrieve', ms: 900 }], elapsedMs: 1200,
   unresolved: false, escalated: false, attempts: 1,
 });
@@ -57,10 +57,10 @@ t('the question is kept', trace.question, 'Est-ce que Asurmen peut réembarquer 
 t('the English actually searched travels with it', trace.asked, 'Can Asurmen re-embark after shooting?');
 t('a finding is a pointer', trace.findings[0], { n: 1, set: 'rules', source: 'core-rules', ruleId: '18.02', id: 'core-rules#Embarking' });
 t('no passage text in the trace', JSON.stringify(trace).includes('A unit can embark'), false);
-t('no judge why in the trace', JSON.stringify(trace).includes('Passage [1] says'), false);
+t('no agent why in the trace', JSON.stringify(trace).includes('Passage [1] says'), false);
 // task-24 (J4): the ruling's slots travel with the verdict - the answer line, the
 // passage it quotes from, the exceptions it names, and the trace check's own counts.
-t('the verdict keeps its answer, confidence and reasoning setting', trace.judge, { answered: true, confidence: 'high', reasoning: '', cited: [], answer: '', from: null, exceptions: [], trace: null });
+t('the verdict keeps its answer, confidence and reasoning setting', trace.agent, { answered: true, confidence: 'high', reasoning: '', cited: [], answer: '', from: null, exceptions: [], trace: null });
 t('the answer is kept - the bank grades on it', trace.answer, 'Oui [1].');
 t('the corpus build travels with it', trace.corpusAt, '2026-10-13T00:55:31.597Z');
 t('kind is unknown, not a guess', trace.kind, KIND_UNKNOWN);
@@ -79,26 +79,26 @@ t('a cut call is a timeout', writerMode({ answer: '', failed: 'timeout' }), 'tim
 t('a refusal is a decline', writerMode({ answer: 'The findings do not answer this question.', declined: true }), 'declined');
 t('the trace carries the mode', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: '', failed: 'timeout' }).writer, 'timeout');
 
-// --- two judges, and the disagreement rate they exist to measure -------------
+// --- two agents, and the disagreement rate they exist to measure -------------
 // The second verdict and the flag are the whole measurement: without both in the
 // trace, the rate would need the benchmark Mandal does not want yet.
 const twoJudges = buildTrace({
   id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []),
-  answer: 'A rule [1].', judge: { answered: true, confidence: 'high' }, judgeReasoning: 'none',
-  judge2: { answered: false, confidence: 'med', reasoning: 'medium' }, judgeDisagreement: true,
-  judgeDowngrade: true, judgeDissentFrom: 'second',
+  answer: 'A rule [1].', agent: { answered: true, confidence: 'high' }, agentReasoning: 'none',
+  secondAgent: { answered: false, confidence: 'med', reasoning: 'medium' }, agentDisagreement: true,
+  agentDowngrade: true, agentDissentFrom: 'second',
 });
-t('the trace carries the second verdict', twoJudges.judge2, { answered: false, confidence: 'med', reasoning: 'medium' });
-t('the trace carries the disagreement flag', twoJudges.judgeDisagreement, true);
-t('the binding verdict is unchanged beside it', twoJudges.judge, { answered: true, confidence: 'high', reasoning: 'none', cited: [], answer: '', from: null, exceptions: [], trace: null });
-// Which judge dissented and whether it was allowed to downgrade: the two fields
+t('the trace carries the second verdict', twoJudges.secondAgent, { answered: false, confidence: 'med', reasoning: 'medium' });
+t('the trace carries the disagreement flag', twoJudges.agentDisagreement, true);
+t('the binding verdict is unchanged beside it', twoJudges.agent, { answered: true, confidence: 'high', reasoning: 'none', cited: [], answer: '', from: null, exceptions: [], trace: null });
+// Which agent dissented and whether it was allowed to downgrade: the two fields
 // task-16's rule is measured from.
-t('the dissent and its effect are recorded', [twoJudges.judgeDissentFrom, twoJudges.judgeDowngrade], ['second', true]);
-t('a stronger binding makes the quick dissent a non-downgrade', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', answer: 'a', judge: { answered: true }, judgeReasoning: 'medium', judge2: { answered: false, reasoning: 'none' }, judgeDisagreement: true, judgeDowngrade: false, judgeDissentFrom: 'second' }).judgeDowngrade, false);
-t('the reasoning setting of the binding judge is recorded', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', answer: 'a', judge: { answered: true }, judgeReasoning: 'medium' }).judge.reasoning, 'medium');
-const oneJudge = buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: 'A rule [1].', judge: { answered: true, confidence: 'high' } });
-t('a single-judge trace has no second verdict', oneJudge.judge2 === undefined, true);
-t('and no disagreement', oneJudge.judgeDisagreement, false);
+t('the dissent and its effect are recorded', [twoJudges.agentDissentFrom, twoJudges.agentDowngrade], ['second', true]);
+t('a stronger binding makes the quick dissent a non-downgrade', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', answer: 'a', agent: { answered: true }, agentReasoning: 'medium', secondAgent: { answered: false, reasoning: 'none' }, agentDisagreement: true, agentDowngrade: false, agentDissentFrom: 'second' }).agentDowngrade, false);
+t('the reasoning setting of the binding agent is recorded', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', answer: 'a', agent: { answered: true }, agentReasoning: 'medium' }).agent.reasoning, 'medium');
+const oneJudge = buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: 'A rule [1].', agent: { answered: true, confidence: 'high' } });
+t('a single-agent trace has no second verdict', oneJudge.secondAgent === undefined, true);
+t('and no disagreement', oneJudge.agentDisagreement, false);
 t('an answered trace is ok', buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', signals: traceSignals('q', []), answer: 'A rule [1].' }).writer, 'ok');
 
 // --- where it is written -----------------------------------------------------
@@ -176,8 +176,8 @@ t('the derivation is not good enough to store as the bank label', agree / total 
 
 // --- the thumb: one vote per trace, written into the record ------------------
 const voteDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-vote-'));
-appendTrace(buildTrace({ id: 'abc12345', at: '2026-10-13T10:00:00.000Z', question: 'q', answer: 'a', judge: { answered: true } }), voteDir);
-appendTrace(buildTrace({ id: 'other999', at: '2026-10-13T10:01:00.000Z', question: 'q2', answer: 'a2', judge: { answered: true } }), voteDir);
+appendTrace(buildTrace({ id: 'abc12345', at: '2026-10-13T10:00:00.000Z', question: 'q', answer: 'a', agent: { answered: true } }), voteDir);
+appendTrace(buildTrace({ id: 'other999', at: '2026-10-13T10:01:00.000Z', question: 'q2', answer: 'a2', agent: { answered: true } }), voteDir);
 const reload = () => loadTraces(voteDir).find(x => x.id === 'abc12345');
 t('no vote before anyone clicks', reload().vote, undefined);
 t('a vote lands in the record it is about', voteTrace('abc12345', 'up', voteDir), true);
@@ -200,7 +200,7 @@ const pickDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-pick-'));
 try {
   appendTrace(buildTrace({
     id: 'pickpickpickpick', at: '2026-10-13T11:00:00.000Z', question: 'Can a unit shoot after it Fell Back?',
-    answer: 'Yes [1].', judge: { answered: true, passages: [1] },
+    answer: 'Yes [1].', agent: { answered: true, passages: [1] },
     findings: [finding, { n: 2, set: 'rules', source: 'core-rules', ruleId: '18.03', id: 'core-rules#Shooting', heading: 'Shooting', excerpt: 'A unit can shoot.' }],
   }), pickDir);
   appendTrace(buildTrace({ id: 'other999', at: '2026-10-13T11:01:00.000Z', question: 'q2', answer: 'a2' }), pickDir);
@@ -232,7 +232,7 @@ const labelsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-labels-'));
 try {
   appendTrace(buildTrace({
     id: 'labellabellabel1', at: '2026-10-13T12:00:00.000Z', question: 'Can a unit shoot after it Fell Back?',
-    answer: 'Yes [1].', judge: { answered: true, passages: [1] },
+    answer: 'Yes [1].', agent: { answered: true, passages: [1] },
     findings: [finding, { n: 2, set: 'rules', source: 'core-rules', ruleId: '18.03', id: 'core-rules#Shooting', heading: 'Shooting', excerpt: 'A unit can shoot.' }],
   }), labelsDir);
   appendTrace(buildTrace({ id: 'other999', at: '2026-10-13T12:01:00.000Z', question: 'q2', answer: 'a2' }), labelsDir);
@@ -261,7 +261,7 @@ t('the harvest shows the marks as + and -', [rerankLabels({ labels: { positive: 
 // passage is one whose evidence can be checked. The tracing of a cited verdict
 // keeps the numbers only - pointers, never the reasoning.
 t('a thumbs-down is labelled first', tracePriority({ vote: 'down' }), 0);
-t('a cited verdict comes next', tracePriority({ judge: { cited: [1, 2] } }), 1);
+t('a cited verdict comes next', tracePriority({ agent: { cited: [1, 2] } }), 1);
 t('an older answer with writer markers counts as cited', tracePriority({ answer: 'A rule [1].' }), 1);
 t('everything else waits', tracePriority({ answer: 'A rule.' }), 2);
 t('the harvest order is down, cited, then the rest',
@@ -274,7 +274,7 @@ t('the promoted question defaults to the trace\'s own', promotedQuestion({ quest
 t('--q overrides it, trimmed', promotedQuestion({ question: 'Une unite peut-elle tirer ?' }, '  Can a unit shoot?  '), 'Can a unit shoot?');
 t('an empty override leaves nothing to promote', promotedQuestion({ question: 'FR ?' }, '   '), '');
 t('a cited verdict stores the numbers, not the prose',
-  buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', answer: 'a', judge: { answered: true, passages: [2, 5], why: 'Passage [2] says so.' } }).judge.cited, [2, 5]);
+  buildTrace({ id: 'x', at: '2026-10-01T00:00:00.000Z', question: 'q', answer: 'a', agent: { answered: true, passages: [2, 5], why: 'Passage [2] says so.' } }).agent.cited, [2, 5]);
 
 // --- the taxonomy label, for the promotion path -----------------------------
 t('the taxonomy labels a player question', classifyTrace({ question: 'can I shoot with my unit', findings: [{ id: 'x' }], signals: { firstPerson: true, termMatch: true, sources: ['core-rules'] } }), 'player');
@@ -289,19 +289,22 @@ t('and an out-of-corpus one', classifyTrace({ question: 'q', findings: [], signa
 import { bankRecord, buildDataset, citedIds, goldFor, negativesFor, rankStats, resolveGroups, scoreRanks, sha8, traceRecord } from './build-dataset.mjs';
 
 const LIVE = new Set(['core#A', 'core#B', 'fact#C']);
-t('the cited numbers resolve to the shown findings', citedIds({ findings: [{ n: 1, id: 'core#A' }, { n: 3, id: 'fact#C' }], judge: { cited: [3, 1, 3] } }), ['fact#C', 'core#A']);
-t('an older trace falls back to the answer markers', citedIds({ findings: [{ n: 2, id: 'core#B' }], judge: {}, answer: 'see [2], and [9] does not exist' }), ['core#B']);
+t('the cited numbers resolve to the shown findings', citedIds({ findings: [{ n: 1, id: 'core#A' }, { n: 3, id: 'fact#C' }], agent: { cited: [3, 1, 3] } }), ['fact#C', 'core#A']);
+t('an older trace falls back to the answer markers', citedIds({ findings: [{ n: 2, id: 'core#B' }], agent: {}, answer: 'see [2], and [9] does not exist' }), ['core#B']);
 
-// A group is 'any member satisfies'. The reader marked BOTH records, and the judge
+// A group is 'any member satisfies'. The reader marked BOTH records, and the agent
 // rested the answer on every passage it cited, so each is its own group of one -
 // folding them into one group would read as 'any one of them answers it'.
 t('every caret is a required record, not an alternative', goldFor({ labels: { positive: ['core#A', 'core#B'], negative: [] } }), { gold: [['core#A'], ['core#B']], gold_how: 'caret' });
 t('the answeredBy button is the same reader pick', goldFor({ answeredBy: 'core#A' }), { gold: [['core#A']], gold_how: 'caret' });
 t('and a caret outranks it', goldFor({ answeredBy: 'core#B', labels: { positive: ['core#A'] } }).gold, [['core#A']]);
-t('an up-vote takes every passage the answer rested on, each required', goldFor({ vote: 'up', findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], judge: { cited: [1, 2] } }), { gold: [['core#A'], ['core#B']], gold_how: 'vote' });
-t('an unmarked judge citation is marked judge', goldFor({ findings: [{ n: 1, id: 'core#A' }], judge: { cited: [1] } }).gold_how, 'judge');
-t('and every citation it rested on is required', goldFor({ findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], judge: { cited: [1, 2] } }).gold, [['core#A'], ['core#B']]);
-t('and no label at all is no gold', goldFor({ findings: [], judge: {} }), { gold: [], gold_how: '' });
+t('an up-vote takes every passage the answer rested on, each required', goldFor({ vote: 'up', findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], agent: { cited: [1, 2] } }), { gold: [['core#A'], ['core#B']], gold_how: 'vote' });
+// The tier is 'judge' and stays: it is the PROVENANCE label for a gold answer derived from
+// the answer's own citations (dataset.mjs HOW = vote|title|judge|generated|manual), not the
+// name of the component. The component's field is `agent`; the tier is a different thing.
+t('an unmarked agent citation is marked judge', goldFor({ findings: [{ n: 1, id: 'core#A' }], agent: { cited: [1] } }).gold_how, 'judge');
+t('and every citation it rested on is required', goldFor({ findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], agent: { cited: [1, 2] } }).gold, [['core#A'], ['core#B']]);
+t('and no label at all is no gold', goldFor({ findings: [], agent: {} }), { gold: [], gold_how: '' });
 
 t('a dead id leaves its group and is reported', resolveGroups([['core#A', 'gone#D']], LIVE), { groups: [['core#A']], missing: ['gone#D'] });
 t('a group that loses every member is dropped', resolveGroups([['gone#D'], ['core#B']], LIVE), { groups: [['core#B']], missing: ['gone#D'] });
@@ -336,7 +339,7 @@ t('a gold id the corpus lost turns the record query-only, and is counted', (func
   const b = buildDataset([{ id: 'g2', question: 'lost', findings: [], labels: { positive: ['gone#D'] } }], [], LIVE);
   return [b.records[0].gold, b.stats.gold_lost_records, b.stats.ids_missing];
 })(), [[], 1, 1]);
-t('the negatives count includes what was shown', buildDataset([{ id: 'n1', question: 'q', findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], judge: { cited: [1] } }], [], LIVE).stats.negatives, 1);
+t('the negatives count includes what was shown', buildDataset([{ id: 'n1', question: 'q', findings: [{ n: 1, id: 'core#A' }, { n: 2, id: 'core#B' }], agent: { cited: [1] } }], [], LIVE).stats.negatives, 1);
 t('the generated lane goes through the same resolution', (function () {
   const b = buildDataset([], [], LIVE, [{ id: 'gen/core#A/1', q: 'q', gold: [['core#A']], gold_how: 'generated', source: 'generated', split: 'train', negatives: [] }]);
   return [b.records[0].gold, b.records[0].gold_how, b.stats.generated, b.stats.by_source.generated];

@@ -26,7 +26,7 @@ t('a rules question naming a unit does not', wantsUnitCard('Fuegan peut-il tirer
 // The gate reads the question and its translation, NEVER the translator's search
 // terms. Those are a retrieval artefact - for the French melta question the
 // translator generated 'Melta weapons', "weapons" matched, and a rules question
-// was answered with a datasheet and no judge. The English wording needed no
+// was answered with a datasheet and no agent. The English wording needed no
 // translation, had no terms, and answered correctly: the whole asymmetry.
 const meltaFr = 'est-ce que fuegan peut arriver de reserves a portee de melta ?';
 const meltaEn = 'Can fuegan arrive from reserves in melta range ?';
@@ -169,7 +169,7 @@ ok('switched back on, it resolves again', unitCard('donne moi le profil de fuega
 // --- the trace --------------------------------------------------------------
 const tr = buildTrace({
   id: 'x', at: '2026-10-13T00:00:00.000Z', question: 'donne moi le profil de fuegan',
-  asked: 'Give me the profile of Fuegan.', terms: ['FUEGAN'], answer: '', findings: [], judge: null,
+  asked: 'Give me the profile of Fuegan.', terms: ['FUEGAN'], answer: '', findings: [], agent: null,
   card: { id: '000000574', name: 'Fuegan' },
 });
 // The writer field is the prose outcome, never the preview: the card is additive

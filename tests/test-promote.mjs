@@ -83,7 +83,7 @@ t('none of these is shown as its own candidate', readerPick({ answeredNone: true
 const harvestDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-harvest-'));
 try {
   const base = { at: '2026-10-13T12:00:00.000Z', lang: 'en', mode: 'deep', writer: 'ok', answer: 'Yes [1].', kind: 'unknown',
-    judge: { answered: true, cited: [1] }, signals: { sources: ['core-rules'] },
+    agent: { answered: true, cited: [1] }, signals: { sources: ['core-rules'] },
     findings: [{ n: 1, set: 'rules', source: 'core-rules', id: 'core-rules#Shooting' }] };
   fs.writeFileSync(path.join(harvestDir, '2026-10.ndjson'),
     JSON.stringify(Object.assign({}, base, { id: 'feedfacefeedface', question: 'Can a unit shoot after it Fell Back?', answeredBy: 'core-rules#Shooting' })) + '\n'

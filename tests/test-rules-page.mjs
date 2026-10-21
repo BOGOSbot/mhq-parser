@@ -53,8 +53,8 @@ t('and in the French table too', missingFr, []);
 // the tables like every other one.
 const needed = ['legVector', 'legLexical', 'legBoth', 'legAnchored', 'legChild', 'rankN', 'rankScore', 'rankScoreTitle', 'matchedWords', 'moreFindings', 'close', 'openSource',
   'cardTitle', 'cardRanged', 'cardMelee', 'cardAbilities', 'cardKeywords', 'cardComposition', 'cardPoints', 'cardSourceNote', 'cardOpen',
-  'secondJudge', 'judgeNoReasoning', 'judgeReasoning', 'judgeDisagreeTitle', 'judgeDisagreeNo', 'judgeDisagreeYes', 'judgeDissentTitle', 'judgeDissentWeaker', 'judgeDissentOther',
-  'cardReady', 'streamCut', 'citedByJudge', 'voteHelp', 'voteUp', 'voteDown',
+  'secondAgent', 'agentNoReasoning', 'agentReasoning', 'agentDisagreeTitle', 'agentDisagreeNo', 'agentDisagreeYes', 'agentDissentTitle', 'agentDissentWeaker', 'agentDissentOther',
+  'cardReady', 'streamCut', 'citedByAgent', 'voteHelp', 'voteUp', 'voteDown',
   // task-24 (J4): the ruling's own lines and the ledger's.
   'rulingStart', 'rulingUnless', 'rulingTrace', 'findingsLedger', 'nearestPassages', 'quotedAbove', 'otherPassages', 'voteThanks',
   'pickHelp', 'pickThis', 'pickNone', 'pickWaiting', 'pickThanks', 'pickNoneThanks',
@@ -73,7 +73,7 @@ t('the new display labels exist in both languages', absent, []);
 // A label written as a literal in the code is the defect 864ad28 fixed.
 // Leg values ('lexical', 'vector') are data compared in code, not labels; the
 // list is reader-facing strings only.
-const literals = ["'Findings'", "'Answer'", "'Judge'", "'Passage'", "'Close'", "'more findings'", "'Open on Wahapedia'"];
+const literals = ["'Findings'", "'Answer'", "'Agent'", "'Passage'", "'Close'", "'more findings'", "'Open on Wahapedia'"];
 const hardcoded = literals.filter(l => code.indexOf(l) !== -1);
 t('no reader-facing label is hardcoded in the script', hardcoded, []);
 
@@ -112,15 +112,15 @@ ok('the truncation note belongs to the kept-text branch', box.indexOf("t('cardTr
 ok('the ability link opens the passage popup', /openPassage\(\{ heading: ab\.link\.heading/.test(box));
 
 // The card is additive: it previews at the top of the result and the search,
-// judge and writer still run. It used to replace them, which answered a French
-// rules question with a datasheet and no judge.
+// agent and writer still run. It used to replace them, which answered a French
+// rules question with a datasheet and no agent.
 ok('the card previews above the pipeline', code.indexOf('host.appendChild(cardSlot)') !== -1 && code.indexOf('host.appendChild(cardSlot)') < code.indexOf('host.appendChild(verdict)'));
 ok('the card renders into its own slot', /state\.cardSlot\.appendChild\(unitCardView/.test(code));
 ok('the card event no longer clears the result', /host\.textContent = '';\s*\n\s*host\.appendChild\(unitCardView/.test(code) === false);
 ok('done no longer short-circuits on a card', code.indexOf('if (state.card) { setStatus') === -1);
 
 // The evidence behind a verdict is never collapsed: the list is the union of the
-// top five by rank and the passages the judge names, in rank order, cited ones
+// top five by rank and the passages the agent names, in rank order, cited ones
 // badged, no duplicate when a cited passage is already in the top five.
 ok('the card takes the cited passages', /function findingsCard\(findings, counts, cited, state, ctx\)/.test(SURFACE));
 ok('the union keeps the top five and promotes the cited ones', /i < 5 \|\| isCited\(findings\[i\]\)/.test(SURFACE));
@@ -139,21 +139,21 @@ ok('the door needs the state the verdict was rendered from', /VERDICT_STATE = st
 ok('the finding sheet\u2019s action goes through the door', /closeFindingSheet\(\); openDoor\(state, f\)/.test(code) && !/openBook\(/.test(code));
 ok('a widening drops the citations it renumbered', /if \(ev\.attempt > 0\) state\.cited = \[\];/.test(code));
 ok('citations show only against the list the verdict judged', /var samePass = /.test(code));
-// task-71: two judges that both answered can still disagree, and the reader is owed BOTH
-// answers with the stronger judge's as the headline. Mandal's report: the reasoning judge
+// task-71: two agents that both answered can still disagree, and the reader is owed BOTH
+// answers with the stronger agent's as the headline. Mandal's report: the reasoning agent
 // found the Enginseer and its answer was collapsed under a footnote while the weaker line
 // was the one visible.
-ok('a polar disagreement shows both answers', /var polar = !!\(state\.judgeDisagreement && j2\)/.test(code) && /note seconddisagree/.test(code));
-ok('the stronger judge takes the headline', /secondStronger = polar && reasoningStrength/.test(code) && /var head = polar && secondStronger \? j2 : state\.judge/.test(code));
+ok('a polar disagreement shows both answers', /var polar = !!\(state\.agentDisagreement && j2\)/.test(code) && /note seconddisagree/.test(code));
+ok('the stronger agent takes the headline', /secondStronger = polar && reasoningStrength/.test(code) && /var head = polar && secondStronger \? j2 : state\.agent/.test(code));
 ok('and the weaker one stays open rather than collapsed', /box\.open = polar/.test(code));
 ok('the strength rule is the measured one', /function reasoningStrength\(r\) \{ return String\(r \|\| ''\)\.toLowerCase\(\) === 'none' \? 0 : 1; \}/.test(code));
-ok('the binding judge\u2019s effort is kept for that comparison', /state\.judgeReasoning = ev\.reasoning/.test(code));
-ok('the polar flag comes from the reconcile event', /state\.judgeDisagreement = ev\.polar === true/.test(code));
-ok('and the sentence exists in both languages', (PAGE.match(/judgeTwoAnswers:/g) || []).length === 2);
+ok('the binding agent\u2019s effort is kept for that comparison', /state\.agentReasoning = ev\.reasoning/.test(code));
+ok('the polar flag comes from the reconcile event', /state\.agentDisagreement = ev\.polar === true/.test(code));
+ok('and the sentence exists in both languages', (PAGE.match(/agentTwoAnswers:/g) || []).length === 2);
 ok('one place draws the findings list', /function renderFindings\(state\)/.test(code));
 
 // The manual rerank (task-21): the reader unticks passages, the request carries
-// their ids and nothing else, the server runs the judge and the writer over
+// their ids and nothing else, the server runs the agent and the writer over
 // exactly those records, and the second answer is appended rather than replacing
 // the first the reader may already have read.
 // The findings are hero cards above the prose, and the reader's three controls
@@ -172,8 +172,8 @@ ok('a widening cannot undo the reader\'s marks', /state\.keep\[sid\] = prevKeep\
 ok('the dev toggle opens the whole passage and its indicators', /function devPanel\(f, state, ctx\)/.test(SURFACE) && SURFACE.indexOf("t('foundBy')") !== -1 && /ctx\.passageBody\(f\)/.test(SURFACE) && SURFACE.indexOf("t('rankScore')") !== -1);
 ok('the card shows one line at rest', /\.heroline\{white-space:nowrap;overflow:hidden;text-overflow:ellipsis\}/.test(PAGE));
 ok('the caret is green and a phone-sized target', /\.herocaret\{color:var\(--ok\)/.test(PAGE) && /\.fctl button\{[^}]*min-height:44px/.test(PAGE));
-ok('the judge citations and the reader picks both resort the list', /picked\.concat\(citedOnes, rest, dropped\)/.test(SURFACE) && /picked\.sort\(/.test(SURFACE));
-ok('and the reader wins over the judge', SURFACE.slice(SURFACE.indexOf('var picked = []'), SURFACE.indexOf('var order = picked')).indexOf('citedOnes') !== -1);
+ok('the agent citations and the reader picks both resort the list', /picked\.concat\(citedOnes, rest, dropped\)/.test(SURFACE) && /picked\.sort\(/.test(SURFACE));
+ok('and the reader wins over the agent', SURFACE.slice(SURFACE.indexOf('var picked = []'), SURFACE.indexOf('var order = picked')).indexOf('citedOnes') !== -1);
 ok('an ignored record sinks but never leaves the page', /if \(prominent\[g\.id\] \|\| firsted\(g\) \|\| ignored\(g\)\)/.test(SURFACE));
 // The links render from the payload's own array and nowhere else: the page must
 // never parse a link line out of the passage text, or the two drift.
@@ -217,8 +217,8 @@ ok('one pick per question: a second replaces the first', /state\.pick = none \? 
 const server = fs.readFileSync(path.join(__dirname, '..', 'src', 'server.mjs'), 'utf8');
 const unit = fs.readFileSync(path.join(__dirname, '..', 'src', 'unit-card.mjs'), 'utf8');
 const jsonReplies = server.split('return json(res, 200,').slice(1);
-const withDisagreement = jsonReplies.filter(x => x.slice(0, 900).indexOf('judgeDisagreement') !== -1);
-const withBoth = withDisagreement.filter(x => x.slice(0, 900).indexOf('judgeDowngrade') !== -1 && x.slice(0, 900).indexOf('judgeDissentFrom') !== -1);
+const withDisagreement = jsonReplies.filter(x => x.slice(0, 900).indexOf('agentDisagreement') !== -1);
+const withBoth = withDisagreement.filter(x => x.slice(0, 900).indexOf('agentDowngrade') !== -1 && x.slice(0, 900).indexOf('agentDissentFrom') !== -1);
 t('every JSON reply that reports a disagreement reports the downgrade and the dissenter', withBoth.length, withDisagreement.length);
 ok('and there is more than one such reply', withBoth.length >= 2);
 
@@ -589,10 +589,10 @@ ok('the find send is not the page second filled button', /\.findwrap button\.sen
 ok('the language switch sits in the top bar, not under the question',
   headerHtml.indexOf('id="lang"') !== -1 && PAGE.indexOf('id="lang"') < PAGE.indexOf('<form id="f">'));
 ok('the wiki box reaches the ask pipeline', /function askFromQuery\(\)/.test(code) && /\[\?&\]q=\(\[\^&\]\*\)/.test(code) && /box\.value = text;\s*\n\s*growQuestion\(\);\s*\n\s*ask\(\);/.test(code));
-// task-22 brought the control back, for the judge's reasoning only: it must
+// task-22 brought the control back, for the agent's reasoning only: it must
 // exist, default to fast, and state what it moves (test-ask-toggle.mjs pins the
 // mapping against ASK_MODES).
-ok('the judge fast/deep control is back and defaults to fast', /id="modeFast"[^>]*aria-pressed="true"/.test(PAGE) && /id="modeDeep"/.test(PAGE) && /var MODE = 'fast'/.test(PAGE));
+ok('the agent fast/deep control is back and defaults to fast', /id="modeFast"[^>]*aria-pressed="true"/.test(PAGE) && /id="modeDeep"/.test(PAGE) && /var MODE = 'fast'/.test(PAGE));
 ok('the page asks for the fast settings, the default', /var MODE = 'fast'/.test(code) && /mode: MODE/.test(code));
 // The writer is off by default, so the page draws no answer: no card to wait in,
 // no handler for an event that will not arrive, and no stage it could belong to.

@@ -78,11 +78,11 @@ export function makeCurator(opts) {
     }
     let list = kept;
 
-    // 4. what the previous pass already passed over. The judge's why names the
+    // 4. what the previous pass already passed over. The agent's why names the
     // passages it weighed; a passage from that pass it never named was shown for
     // nothing, and showing it again costs the same slot.
-    if (o.dropPassedOver && ctx && ctx.previous && ctx.previous.judge) {
-      const why = String(ctx.previous.judge.why || '');
+    if (o.dropPassedOver && ctx && ctx.previous && ctx.previous.agent) {
+      const why = String(ctx.previous.agent.why || '');
       const cited = new Set();
       const re = /\[(\d+)\]/g;
       let m;

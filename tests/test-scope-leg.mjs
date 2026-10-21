@@ -1,4 +1,4 @@
-import { readAllCorpus, indexedSections, scopeIndex, scopeKeywords, scopeLookup, scopeLegIndex, entityKeywords, retrieveDual, findingFor, judgePrompt, passageCaps, passageTruncation } from '../src/rules-corpus.mjs';
+import { readAllCorpus, indexedSections, scopeIndex, scopeKeywords, scopeLookup, scopeLegIndex, entityKeywords, retrieveDual, findingFor, agentPrompt, passageCaps, passageTruncation } from '../src/rules-corpus.mjs';
 
 // task-65: the scope leg. A rule scoped to a KEYWORD ('one friendly ASTRA MILITARUM
 // VEHICLE model') is reachable FROM that keyword, because the two records that must
@@ -52,17 +52,17 @@ ok('a question with no entity scopes nothing', scopeLookup('What is a Hazard Rol
   // leg label stays whatever else found it first; the position is the leg's work.
   ok('and it carries the scope keys the leg matched', (withLeg.all || []).some(x => x.id === 'unitrules#000001396' && (x.scopeKeys || []).length >= 2));
   // Inserted above the anchors, not appended: an appended record lands past the cut.
-  ok('it is inside the list the judge is shown, not at the tail', at(withLeg) < (withLeg.all || []).length - 3);
+  ok('it is inside the list the agent is shown, not at the tail', at(withLeg) < (withLeg.all || []).length - 3);
   ok('the retriever\u2019s own head keeps its place', (withLeg.all || [])[0].id === (without.all || [])[0].id);
   const plain = await retrieveDual('What is a Hazard Roll?', { corpus: all, rulesCorpus: rules, factionsCorpus: factions, mode: 'fast', topK: 10, jevSkip: true });
   ok('a question with no entity adds no scope records', (plain.all || []).every(x => x.leg !== 'scope'));
 }
 
 
-// --- task-67: the scope record's budget in the judge's prompt ------------------
+// --- task-67: the scope record's budget in the agent's prompt ------------------
 // The leg's records reached the widened findings and were then CUT by the prompt's
 // per-passage budget: at the widest pass (63 passages) each got 952 characters, and the
-// Enginseer's record is 1,374 with its answer at 1,043, so the judge read the ability's
+// Enginseer's record is 1,374 with its answer at 1,043, so the agent read the ability's
 // opening and never its effect. A record the leg found now gets its full length; the
 // rest of the list shares what is left.
 {
@@ -89,7 +89,7 @@ ok('a question with no entity scopes nothing', scopeLookup('What is a Hazard Rol
   const findings = (dual.all || []).map((s, i) => findingFor(s, i + 1));
   const eng = findings.find(f => f.id === 'unitrules#000001396');
   ok('the scope record is marked on the finding', !!eng && eng.scope === true);
-  const prompt = judgePrompt('Can a baneblade have an invulnerable save?', findings, {});
+  const prompt = agentPrompt('Can a baneblade have an invulnerable save?', findings, {});
   ok('the prompt carries the scope record\u2019s answer, not just its opening', /that VEHICLE model has a 4\+ invulnerable save/.test(prompt));
   const caps2 = passageCaps(findings, {});
   ok('the scope record is not truncated in the prompt', String(eng.text).length <= caps2[findings.indexOf(eng)]);

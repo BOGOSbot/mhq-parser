@@ -75,7 +75,7 @@ ok('the state word exists for a test to read', /id="frState"/.test(page) && /dat
 ok('the default follows the interface language', /return LANG === 'fr' \? 'fr' : 'en';/.test(page));
 ok('the choice is the reader\u2019s and sticks', /var FR_KEY = 'mhq\.rules\.fr';/.test(page));
 ok('the record fetch carries the language', /recordLangQuery\(\)/.test(page));
-ok('the quote keeps the English canon and puts the French under it', /rquote-fr/.test(page) && /if \(answered && judge\.quote\)/.test(page));
+ok('the quote keeps the English canon and puts the French under it', /rquote-fr/.test(page) && /if \(answered && agent\.quote\)/.test(page));
 const surface = fs.readFileSync(path.join(REPO, 'src', 'wiki-surface.js'), 'utf8');
 ok('the drawer and the reading view ask for the same language', /recordLangQuery\(\)/.test(surface) && /FR_KEY/.test(surface));
 const server = fs.readFileSync(path.join(REPO, 'src', 'server.mjs'), 'utf8');

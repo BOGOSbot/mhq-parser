@@ -3,7 +3,7 @@
  * payloads (one fetch per branch, ZERO per record); a record row expands in place
  * and its body is the server's own recordBody, fetched once from /rules/record.
  * The ask goes to the same /rules/ask the old page uses - same retrieval, same
- * judge - and renders the judged findings, the unjudged tail and the one icon. */
+ * agent - and renders the judged findings, the unjudged tail and the one icon. */
 (function () {
   'use strict';
   var CFG = window.WIKI_SURFACE || {};
@@ -1217,14 +1217,14 @@ function rowDisplay(headingOrParts) {
     v.appendChild(el('h1', 'sv-page-title', 'Findings'));
     var judged = a.findings || [];
     var tail = a.tail || [];
-    var answered = !!(a.judge && a.judge.answered === true) && a.unresolved !== true;
+    var answered = !!(a.agent && a.agent.answered === true) && a.unresolved !== true;
     // With a tail, a refusal is about the TEN, not about the corpus: the copy says
     // what was judged, so the reader does not read it as 'we do not know'.
     var copy = answered
-      ? 'The judge says these findings answer the question.'
+      ? 'The agent says these findings answer the question.'
       : (tail.length ? 'None of the judged findings states the rule. The tail below is further matched, unjudged.' : 'No judged finding states the rule.');
     v.appendChild(el('p', 'sv-verdict', copy));
-    if (a.judge && a.judge.why) v.appendChild(el('p', 'sv-why', String(a.judge.why)));
+    if (a.agent && a.agent.why) v.appendChild(el('p', 'sv-why', String(a.agent.why)));
     var list = el('div', 'sv-findings');
     judged.forEach(function (f, i) { list.appendChild(renderFinding(f, i)); });
     if (!judged.length) list.appendChild(el('div', 'sv-empty', 'No judged findings.'));
@@ -1506,16 +1506,16 @@ function ledgerResidue(rest, state, ctx) {
   return wrap;
 }
 function rulingLedger(findings, state, ctx, pending) {
-  var judge = state.judge || {};
-  var answered = judge.answered === true;
+  var agent = state.agent || {};
+  var answered = agent.answered === true;
   var usedNums = [];
   var add = function (n) { if (typeof n === 'number' && usedNums.indexOf(n) === -1) usedNums.push(n); };
   if (answered) {
-    add(judge.from);
-    (judge.exceptions || []).forEach(add);
-    (judge.passages || []).forEach(add);
+    add(agent.from);
+    (agent.exceptions || []).forEach(add);
+    (agent.passages || []).forEach(add);
   }
-  var order = heroOrder(findings, judge.passages || [], state, ctx);
+  var order = heroOrder(findings, agent.passages || [], state, ctx);
   // task-29: a merged row stands for every part it folded in, so a citation to
   // either part keeps the record (and its mark) in the used list.
   var rowNs = function (f) { return [f.n].concat(f.mergedNs || []); };
@@ -1540,7 +1540,7 @@ function rulingLedger(findings, state, ctx, pending) {
   head.appendChild(el('span', 'cnt', pending ? String(order.length) : String(order.length) + ' \u00b7 ' + used.length + ' read'));
   card.appendChild(head);
   var ol = el('ol', 'cites');
-  var quotedFrom = answered && judge.quote ? judge.from : null;
+  var quotedFrom = answered && agent.quote ? agent.from : null;
   for (var k = 0; k < used.length; k++) ol.appendChild(ledgerUsedRow(used[k], state, ctx, rowNs(used[k]).indexOf(quotedFrom) !== -1));
   card.appendChild(ol);
   if (rest.length) card.appendChild(ledgerResidue(rest, state, ctx));
@@ -1599,7 +1599,7 @@ function findingsCard(findings, counts, cited, state, ctx) {
   if (selectable) {
     // The manual rerank footer. The button only exists once the reader has
     // actually changed the selection: a control that re-asks the same list is
-    // noise, and an accidental tap must not spend a judge and a writer. The
+    // noise, and an accidental tap must not spend a agent and a writer. The
     // caret's order travels with the ids, so the second answer is written from
     // the passages in the order the reader put them.
     card.appendChild(rerankFooter(state, ctx));
@@ -1689,7 +1689,7 @@ function mergeChunks(list) {
     }
     if (base) prev.excerpt = (String(prev.excerpt || '') + ' ' + String(f.excerpt || '')).trim();
     (prev.mergedIds = prev.mergedIds || []).push(f.id);
-    // The judge cites passage numbers, and it can cite the folded sibling: the row
+    // The agent cites passage numbers, and it can cite the folded sibling: the row
     // keeps every number it stands for so a citation is never lost to the merge.
     (prev.mergedNs = prev.mergedNs || []).push(f.n);
   }
@@ -1704,7 +1704,7 @@ function findingItem(f, prominent, cited, state, ctx) {
   var head = el('div', 'fhead');
   head.appendChild(el('span', 'num', '[' + f.n + ']'));
   if (f.leg) head.appendChild(el('span', 'leg ' + ctx.legClass(f.leg), ctx.legLabel(f.leg)));
-  if (cited) head.appendChild(el('span', 'leg cite', ctx.t('citedByJudge')));
+  if (cited) head.appendChild(el('span', 'leg cite', ctx.t('citedByAgent')));
   if (first) head.appendChild(el('span', 'leg badgetop', ctx.t('heroTop')));
   if (ignored) head.appendChild(el('span', 'leg badgeign', ctx.t('heroIgnored')));
   var parts = ctx.crumbs(f.heading);
@@ -1821,7 +1821,7 @@ function devPanel(f, state, ctx) {
   return box;
 }
 
-  // task-49: ONE row per check, not per attempt. A check the judge could not settle
+  // task-49: ONE row per check, not per attempt. A check the agent could not settle
   // is re-run once on its own words (see sweepChecks), so the event carries two
   // entries for it - and printing both read as a contradiction ('did not settle it'
   // above the absence line) and made the footer count rows that were the same
@@ -1860,8 +1860,8 @@ function devPanel(f, state, ctx) {
     return said;
   }
   // task-43: the sweep, UNDER the ruling and the ranked ledger, never instead of them.
-  // A deep run's judge named the checks it would still run to be sure nothing was
-  // missing; each was run for real and the judge said what it found. The reader gets
+  // A deep run's agent named the checks it would still run to be sure nothing was
+  // missing; each was run for real and the agent said what it found. The reader gets
   // the one thing a fast answer cannot give: a statement of what was looked for and
   // not found. The findings are not regrouped - Mandal rejected the map for exactly
   // that - and this list is an addition beneath them.
@@ -1871,7 +1871,7 @@ function devPanel(f, state, ctx) {
     var rows = sweepRows(s);
     var box = el('section', 'sv-sweep');
     box.appendChild(el('h2', 'sv-sweep-h', 'Checked for what is missing'));
-    // task-49: the sweep RAN and the judge named nothing. Saying nothing at all left
+    // task-49: the sweep RAN and the agent named nothing. Saying nothing at all left
     // the reader unable to tell 'I looked and there was nothing to check' from 'nobody
     // looked', and only the first is a claim we can make.
     //
@@ -1934,7 +1934,7 @@ function devPanel(f, state, ctx) {
       if (state.rerank && state.rerank.state === 'degraded') {
         host.appendChild(el('p', 'sv-degraded', 'Showing retrieval order: the reranker did not answer, so these passages are not ranked.'));
       }
-      host.appendChild(rulingLedger(list, state, ctx, !state.judge));
+      host.appendChild(rulingLedger(list, state, ctx, !state.agent));
       var swept = sweepList(state);
       if (swept) host.appendChild(swept);
       if (state.selectable && !state.rerun) host.appendChild(rerankFooter(state, ctx));

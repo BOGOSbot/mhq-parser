@@ -112,12 +112,12 @@ export function rerankLabels(trace) {
 
 // The harvest order (task-27): the traces a human should label first are the ones
 // that already carry a signal. A thumbs-down is a reader saying the answer was
-// wrong; a verdict that cited a passage (judge.cited, or the writer's markers on
+// wrong; a verdict that cited a passage (agent.cited, or the writer's markers on
 // an older trace) is one whose evidence can be checked against the candidates.
 // Everything else waits, newest first.
 export function tracePriority(trace) {
   if (trace && trace.vote === 'down') return 0;
-  const cited = trace && trace.judge && Array.isArray(trace.judge.cited) && trace.judge.cited.length;
+  const cited = trace && trace.agent && Array.isArray(trace.agent.cited) && trace.agent.cited.length;
   if (cited || /\[\d+\]/.test(String((trace && trace.answer) || ''))) return 1;
   return 2;
 }
@@ -248,7 +248,7 @@ async function main() {
     for (const { t } of rows) { const p = tracePriority(t); if (p === 0) down++; else if (p === 1) cited++; }
     console.log('harvest: ' + rows.length + ' traces of ' + traces.length + '   thumb-down ' + down + '   cited ' + cited + '   bank ' + bankQs.length + '   dir ' + dir);
     for (const { t, status } of rows) {
-      const j = t.judge || {};
+      const j = t.agent || {};
       const marked = Array.isArray(j.cited) && j.cited.length ? j.cited.join(',') : (/\[\d+\]/.test(String(t.answer || '')) ? 'writer-markers' : 'none');
       console.log('');
       console.log('=== ' + t.id + '  ' + String(t.at).slice(0, 16) + '  ' + (t.lang || '?') + '  ' + (t.mode || '?') + '  writer ' + (t.writer || 'unknown') + '  vote ' + (t.vote || '-') + '  class ' + classifyTrace(t) + (status === 'promotable' ? '' : '  [' + status + ']'));
@@ -262,7 +262,7 @@ async function main() {
       // first), -record is the x (ignore it).
       const labels = rerankLabels(t);
       if (labels) console.log('labels: ' + labels);
-      console.log('judge: answered=' + (j.answered === true) + '  confidence=' + (j.confidence || '-') + '  cited=' + marked + (t.overrideOf ? '  override of ' + t.overrideOf : ''));
+      console.log('agent: answered=' + (j.answered === true) + '  confidence=' + (j.confidence || '-') + '  cited=' + marked + (t.overrideOf ? '  override of ' + t.overrideOf : ''));
       console.log('answer: ' + String(t.answer || '').replace(/\s+/g, ' ').slice(0, 220));
       console.log('findings (' + (t.findings || []).length + ', top ' + Math.min(8, (t.findings || []).length) + '):');
       for (const f of (t.findings || []).slice(0, 8)) {
@@ -280,7 +280,7 @@ async function main() {
     console.log('traces ' + traces.length + ' in ' + dir + '   bank ' + bankQs.length + ' questions');
     console.log('\npromotable (' + promotable.length + ')');
     // The order is the harvest: thumbs-down, then a cited verdict, then the rest.
-    const mark = t => t.vote === 'down' ? 'DOWN ' : ((t.judge && t.judge.cited && t.judge.cited.length) ? 'CITED' : (/\[\d+\]/.test(String(t.answer || '')) ? 'cites' : '     '));
+    const mark = t => t.vote === 'down' ? 'DOWN ' : ((t.agent && t.agent.cited && t.agent.cited.length) ? 'CITED' : (/\[\d+\]/.test(String(t.answer || '')) ? 'cites' : '     '));
     for (const { t } of promotable) {
       console.log('  ' + mark(t) + ' ' + t.id + '  ' + String(t.at).slice(0, 16) + '  ' + (t.lang || '?') + '  ' + (t.mode || '?') + '  writer ' + (t.writer || 'unknown') + '  findings ' + (t.findings || []).length + '  chars ' + (t.answer || '').length + '  class ' + classifyTrace(t));
       console.log('      Q: ' + t.question);

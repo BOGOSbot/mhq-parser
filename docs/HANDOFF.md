@@ -231,7 +231,7 @@ node tests/eval-reddit.mjs --limit 16                             # judge covera
 node tests/ask.mjs "can a unit shoot after it Fell Back?"         # one question end to end
 node tests/ask-fr.mjs --id asurmen-embark-after-shooting
 node tests/eval-retrieval.mjs --retriever dual --per-side 10 --net 60  # the page's path
-node tests/test-rules.mjs && node tests/test-judge.mjs            # 50 + 86
+node tests/test-rules.mjs && node tests/test-agent.mjs            # 50 + 86
 ```
 
 `workspace/eval/retrieval-dual-before.txt` and `retrieval-dual-after.txt` are

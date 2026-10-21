@@ -2,12 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  ASK_MODES, applySweepVerdicts, judgePrompt, normalizeChecks, readAllCorpus, runChecks, sweepChecks,
+  ASK_MODES, applySweepVerdicts, agentPrompt, normalizeChecks, readAllCorpus, runChecks, sweepChecks,
 } from '../src/rules-corpus.mjs';
 
-// task-43: the deep sweep. The judge names what it would have to look up to be sure
+// task-43: the deep sweep. The agent names what it would have to look up to be sure
 // nothing is missing, each check is run FOR REAL through the same two legs the
-// retrieval uses, and the judge is shown what came back and asked to resolve it.
+// retrieval uses, and the agent is shown what came back and asked to resolve it.
 //
 // The three properties that matter, and the one that must never be relaxed:
 //   1. the loop TERMINATES, and every bound that stopped it is reported;
@@ -27,19 +27,19 @@ const passages = [
 const corpus = readAllCorpus();
 
 // --- the prompt -------------------------------------------------------------
-const base = judgePrompt('can a unit shoot after falling back?', passages, {});
+const base = agentPrompt('can a unit shoot after falling back?', passages, {});
 ok('the fast prompt carries no checks field', base.indexOf('checks') === -1);
 ok('and no checks bullet', base.indexOf('- checks:') === -1);
 ok('the fast prompt is byte-identical whether the option is absent or false',
-  judgePrompt('can a unit shoot after falling back?', passages, { sweep: false }) === base);
+  agentPrompt('can a unit shoot after falling back?', passages, { sweep: false }) === base);
 ok('the fast prompt is byte-identical to the one with no options at all',
-  judgePrompt('can a unit shoot after falling back?', passages, {}) === base);
-const swept = judgePrompt('can a unit shoot after falling back?', passages, { sweep: true });
+  agentPrompt('can a unit shoot after falling back?', passages, {}) === base);
+const swept = agentPrompt('can a unit shoot after falling back?', passages, { sweep: true });
 ok('the deep prompt declares the checks schema', swept.indexOf('"checks"') !== -1);
 ok('and the bullet that explains what a check is', swept.indexOf('- checks:') !== -1 && swept.indexOf('not "follow"') !== -1);
 ok('the sweep prompt is longer than the fast one, by that clause only', swept.length > base.length && swept.indexOf('checks') !== -1);
 
-// --- the checks the judge asked for -----------------------------------------
+// --- the checks the agent asked for -----------------------------------------
 ok('normalizeChecks caps the list', normalizeChecks([{ query: 'a b c' }, { query: 'd e f' }, { query: 'g h i' }], 2).length === 2);
 ok('it drops a query with no words to search on', normalizeChecks([{ what: 'x', query: '?!' }, { what: 'y', query: 'ab' }]).length === 0);
 ok('it keeps a usable one and names it', normalizeChecks([{ what: 'a claim', query: 'fall back shoot' }])[0].what === 'a claim');
@@ -58,11 +58,11 @@ ok('a search that finds nothing still RAN', empty[0].ran === true && empty[0].hi
 
 // --- absent only after a search ---------------------------------------------
 const absent = applySweepVerdicts(empty, { checks: [{ n: 1, absent: true, why: 'nothing there' }] });
-ok('an empty search the judge read can be absent', absent[0].verdict === 'absent');
+ok('an empty search the agent read can be absent', absent[0].verdict === 'absent');
 const notRun = applySweepVerdicts([{ what: 'x', query: 'y', ran: false, hits: [], error: 'boom' }], { checks: [{ n: 1, absent: true }] });
 ok('a search that did NOT run is never absent', notRun[0].verdict === 'unresolved');
 const silent = applySweepVerdicts(ran, { checks: [] });
-ok('a check the judge said nothing about is unresolved', silent[0].verdict === 'unresolved');
+ok('a check the agent said nothing about is unresolved', silent[0].verdict === 'unresolved');
 const invented = applySweepVerdicts(ran, { checks: [{ n: 1, id: 'invented#id' }] });
 ok('a verdict naming a record the search did not return is refused', invented[0].verdict === 'unresolved');
 const answered = applySweepVerdicts(ran, { checks: [{ n: 1, id: ran[0].hits[0].id, why: 'this one' }] });
@@ -75,7 +75,7 @@ const loopOpts = extra => Object.assign({
   corpus: corpus, shown: new Set(), vector: false, hits: 3,
   rounds: 2, checksPerRound: 4, calls: 2, budgetMs: 60000,
 }, extra);
-// (1) an empty list is the judge saying it is sure: no round, no call.
+// (1) an empty list is the agent saying it is sure: no round, no call.
 const none = await sweepChecks('q', [], loopOpts({ ask: async () => '{}' }));
 ok('no checks means no round and no call', none.rounds === 0 && none.calls === 0 && none.checks.length === 0);
 ok('and it reports its bounds anyway', none.bounds.rounds === 2 && none.bounds.calls === 2 && none.bounds.checksPerRound === 4 && none.bounds.budgetMs === 60000);
@@ -95,14 +95,14 @@ const unresolvedRun = await sweepChecks('q', [{ what: 'a', query: 'fall back sho
 }));
 ok('a round that resolves nothing ends on nothing-new', unresolvedRun.stopped === 'nothing-new' && unresolvedRun.rounds === 1 && asked2 === 1);
 ok('and the check is unresolved, never absent', unresolvedRun.checks[0].verdict === 'unresolved' && unresolvedRun.absent.length === 0);
-// (4) the rounds bound: a judge that keeps resolving checks with records can still not
+// (4) the rounds bound: a agent that keeps resolving checks with records can still not
 // loop forever. It has to resolve one per round - a round that resolves nothing ends
 // the loop on 'nothing-new', which is a different ending and is pinned above. The id
 // is read off a 'c<n> [id]' line, not the first bracket in the prompt: a corpus id can
 // contain a bracket of its own (rules-appendix#[ONE-SHOT]...).
 const hitId = prompt => ((prompt.match(/c1 \[([^\]]+)\]/) || [])[1] || '');
 let asked3 = 0;
-// A judge that never settles: it names no record and does not call the search empty,
+// A agent that never settles: it names no record and does not call the search empty,
 // so the check stays unresolved and the loop has to be stopped by a bound.
 const manyRounds = await sweepChecks('q', [{ what: 'whether shooting is allowed at all', query: 'shooting' }], loopOpts({
   rounds: 2, calls: 5,
@@ -119,7 +119,7 @@ const manyCalls = await sweepChecks('q', [{ what: 'whether shooting is allowed a
   ask: async () => { asked4++; return JSON.stringify({ checks: [{ n: 1, id: null, absent: false, why: 'still unsure' }] }); },
 }));
 ok('the calls bound stops the loop and is reported', manyCalls.stopped === 'calls' && manyCalls.calls === 1 && asked4 === 1);
-// (5b) a check the judge cannot settle is re-run on the CLAIM's own words, not on the
+// (5b) a check the agent cannot settle is re-run on the CLAIM's own words, not on the
 //      same query: the same search would return the same list.
 let asked5 = 0;
 let asked6 = 0;
@@ -136,18 +136,18 @@ const broke = await sweepChecks('q', [{ what: 'a', query: 'fall back shoot' }], 
 }));
 ok('a spent budget stops the loop before any call', broke.stopped === 'budget' && broke.calls === 0);
 ok('and nothing is called absent on a budget stop', broke.absent.length === 0);
-// (7) a judge call that throws leaves the check unresolved.
+// (7) a agent call that throws leaves the check unresolved.
 const threw = await sweepChecks('q', [{ what: 'a', query: 'fall back shoot' }], loopOpts({ ask: async () => { throw new Error('model down'); } }));
-ok('a judge call that throws leaves the check unresolved', threw.checks[0].verdict === 'unresolved' && threw.absent.length === 0);
+ok('a agent call that throws leaves the check unresolved', threw.checks[0].verdict === 'unresolved' && threw.absent.length === 0);
 // (8) an answered check is reported as answered, and the loop keeps its one round.
 const answeredRun = await sweepChecks('q', [{ what: 'a', query: 'fall back shoot' }], loopOpts({
   ask: async prompt => JSON.stringify({ checks: [{ n: 1, id: hitId(prompt), why: 'this one' }] }),
 }));
-ok('a check the judge resolved with a record is answered', answeredRun.checks[0].verdict === 'answered' && !!answeredRun.checks[0].id);
+ok('a check the agent resolved with a record is answered', answeredRun.checks[0].verdict === 'answered' && !!answeredRun.checks[0].id);
 ok('and it is not counted absent', answeredRun.absent.length === 0 && answeredRun.answered === 1);
 
 // --- task-49: one row per check, and silence that says so ---------------------
-// (9) an empty checks list is a RESULT, not a silence: the judge answered and named
+// (9) an empty checks list is a RESULT, not a silence: the agent answered and named
 //     nothing to check, and the event says so with a reason.
 const nothing = await sweepChecks('q', [], loopOpts({ ask: async () => { throw new Error('must not be called'); } }));
 ok('no checks is reported as nothing-to-check, not as an empty stop', nothing.stopped === 'nothing-to-check');
@@ -210,15 +210,15 @@ ok('the footer counts the rows it drew, not the attempts', /Checked ' \+ rows\.l
 ok('and the absent count comes from the same rows', /rows\.filter\(function \(r\) \{ return r\.verdict === 'absent'; \}\)\.length/.test(SURFACE));
 // The event still carries every attempt for the trace, so nothing is lost.
 ok('the event keeps the attempts and adds the final view', /checks: all, final: final/.test(read('src/rules-corpus.mjs')));
-ok('and the server emits the sweep even with nothing to check', /mode\.sweep && judge && judge\.answered === true\)/.test(read('src/server.mjs')) && !/judge\.checks\.length\)\s*$/.test(read('src/server.mjs').slice(read('src/server.mjs').indexOf('const sweepRun'), read('src/server.mjs').indexOf('const sweepRun') + 200)));
+ok('and the server emits the sweep even with nothing to check', /mode\.sweep && agent && agent\.answered === true\)/.test(read('src/server.mjs')) && !/agent\.checks\.length\)\s*$/.test(read('src/server.mjs').slice(read('src/server.mjs').indexOf('const sweepRun'), read('src/server.mjs').indexOf('const sweepRun') + 200)));
 // --- the mode and the wiring ------------------------------------------------
 ok('deep is the mode that sweeps', !!ASK_MODES.deep.sweep && ASK_MODES.fast.sweep === undefined);
 ok('the deep bounds are the ones the card names', ASK_MODES.deep.sweep.rounds === 2 && ASK_MODES.deep.sweep.checksPerRound === 4 && ASK_MODES.deep.sweep.calls === 2);
 const server = read('src/server.mjs');
-ok('the sweep runs only in deep mode, and only on an answered question', /mode\.sweep && judge && judge\.answered === true/.test(server));
-ok('the sweep clause rides in the judge prompt', /sweep: !!mode\.sweep/.test(server));
+ok('the sweep runs only in deep mode, and only on an answered question', /mode\.sweep && agent && agent\.answered === true/.test(server));
+ok('the sweep clause rides in the agent prompt', /sweep: !!mode\.sweep/.test(server));
 ok('the budget is the sweep\'s own clock, not the ask\'s', /startedAt: Date\.now\(\),/.test(server) && /budgetMs: mode\.sweep\.budgetMs/.test(server));
-ok('the event is emitted and carried in the JSON reply', /type: 'sweep'/.test(server) && /judge, sweep, answer/.test(server));
+ok('the event is emitted and carried in the JSON reply', /type: 'sweep'/.test(server) && /agent, sweep, answer/.test(server));
 ok('the sweep never reorders the findings', /const sweepRun = /.test(server) && /sweepRun \? await sweepRun : null/.test(server));
 
 console.log('sweep bounds ' + JSON.stringify(ASK_MODES.deep.sweep));

@@ -1,5 +1,5 @@
-// task-31 A: a judge call that asks for reasoning must be bounded, and when it
-// does not come back the judge must be asked again without reasoning rather than
+// task-31 A: a agent call that asks for reasoning must be bounded, and when it
+// does not come back the agent must be asked again without reasoning rather than
 // the whole run dying as an error. Measured on the real route: reasoning medium
 // returned in 27.6s on an 18.6k prompt where 'none' returned in 3.6s, and the
 // Box's deep list never returned inside the model timeout. This test stands a
@@ -35,13 +35,13 @@ await new Promise(r => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 const corpus = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'rules-corpus.mjs');
 const script = [
-  'import { judgeCoverage } from ' + JSON.stringify(new URL('file:///' + corpus.replace(/\\/g, '/')).href) + ';',
+  'import { agentCoverage } from ' + JSON.stringify(new URL('file:///' + corpus.replace(/\\/g, '/')).href) + ';',
   'const passages = [{ id: "core-rules#1", n: 1, set: "rules", source: "core-rules", heading: "A rule", text: "A unit cannot shoot after it Fell Back unless a rule says otherwise." }];',
-  'const v = await judgeCoverage("Can a unit shoot after it Fell Back?", passages, "stub-key", { reasoning: "medium", lang: "en" });',
+  'const v = await agentCoverage("Can a unit shoot after it Fell Back?", passages, "stub-key", { reasoning: "medium", lang: "en" });',
   'console.log(JSON.stringify({ answered: v.answered, confidence: v.confidence, from: v.from, why: v.missing }));',
 ].join('\n');
 const child = spawn(process.execPath, ['--input-type=module', '-e', script], {
-  env: Object.assign({}, process.env, { RULES_FAST_ENDPOINT: 'http://127.0.0.1:' + port + '/v1/chat/completions', RULES_FAST_MODEL: 'stub', RULES_FAST_TIMEOUT_MS: '5000', RULES_JUDGE_REASONING_TIMEOUT_MS: '400' }),
+  env: Object.assign({}, process.env, { RULES_FAST_ENDPOINT: 'http://127.0.0.1:' + port + '/v1/chat/completions', RULES_FAST_MODEL: 'stub', RULES_FAST_TIMEOUT_MS: '5000', RULES_AGENT_REASONING_TIMEOUT_MS: '400' }),
 });
 let out = '', err = '';
 child.stdout.on('data', d => { out += d; });
@@ -53,15 +53,15 @@ const verdict = out.trim() ? JSON.parse(out.trim().split('\n').pop()) : null;
 ok('the reasoning call was asked first', seen.length >= 2 && (seen[0] === 'medium' || seen[0] === 'high'));
 // task-76: 'no reasoning' on a nested-reasoning gateway is asked for as its cheapest
 // effort rather than by dropping the field - OpenRouter's minimax answers 400 'Reasoning
-// is mandatory' without it, which emptied 18 of 19 judge calls. This stub is a plain
+// is mandatory' without it, which emptied 18 of 19 agent calls. This stub is a plain
 // local endpoint, so the fallback drops the field as it always did; the nested shape is
 // pinned in tests/test-rules.mjs.
 // The reasoning attempt carries the effort; the fallback asks with NO effort field at all
 // (a plain endpoint does not know it), which is what 'without reasoning' means here. The
 // nested gateway's shape - where 'no reasoning' is its cheapest effort - is pinned in
-// tests/test-rules.mjs and exercised by the judge's own retry.
+// tests/test-rules.mjs and exercised by the agent's own retry.
 ok('and the fallback asked again without reasoning', seen.indexOf('medium') !== -1 && seen[seen.length - 1] === null);
-ok('the judge answered through the fallback, no error', !!verdict && verdict.answered === true && verdict.confidence === 'high' && verdict.from === 1);
+ok('the agent answered through the fallback, no error', !!verdict && verdict.answered === true && verdict.confidence === 'high' && verdict.from === 1);
 if (err) console.log('child stderr: ' + err.slice(0, 400));
 
 // --- the wiring the behaviour above depends on --------------------------------
@@ -71,9 +71,9 @@ const { fileURLToPath: f2u } = await import('node:url');
 const here = path2.dirname(f2u(import.meta.url));
 const rulesSrc = fs.readFileSync(path2.join(here, '..', 'src', 'rules.mjs'), 'utf8');
 const corpusSrc = fs.readFileSync(path2.join(here, '..', 'src', 'rules-corpus.mjs'), 'utf8');
-ok('the reasoning attempt has its own bound, env-overridable', /export const JUDGE_REASONING_TIMEOUT_MS = Number\(process\.env\.RULES_JUDGE_REASONING_TIMEOUT_MS\)/.test(rulesSrc));
-ok('the judging call passes it as the one-call timeout', /timeout: JUDGE_REASONING_TIMEOUT_MS/.test(corpusSrc));
-ok('and a call that fails falls back to no reasoning', /reasoning: 'none'/.test(corpusSrc) && /the judge did not answer/.test(corpusSrc));
+ok('the reasoning attempt has its own bound, env-overridable', /export const AGENT_REASONING_TIMEOUT_MS = Number\(process\.env\.RULES_AGENT_REASONING_TIMEOUT_MS\)/.test(rulesSrc));
+ok('the judging call passes it as the one-call timeout', /timeout: AGENT_REASONING_TIMEOUT_MS/.test(corpusSrc));
+ok('and a call that fails falls back to no reasoning', /reasoning: 'none'/.test(corpusSrc) && /the agent did not answer/.test(corpusSrc));
 ok('the route honours a per-call timeout and a plain-http endpoint', /\(opts && opts\.timeout\) \|\| route\.timeout/.test(corpusSrc) && /u\.protocol === 'http:' \? http : https/.test(corpusSrc) && /port: u\.port \|\| undefined/.test(corpusSrc));
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

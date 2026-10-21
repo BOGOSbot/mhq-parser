@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 // slots and the ledger; what must be gone is the verification chrome - the verdict
 // line, the confidence chip, the 'why' toggle and the 'passages it rests on' line.
 // The server half (the field contract, the trace check, the fallbacks) is pinned in
-// tests/test-judge-ruling.mjs; the browser proof is the 390x844 capture of the Fell
+// tests/test-agent-ruling.mjs; the browser proof is the 390x844 capture of the Fell
 // Back, points, refused, not-a-question and fabricated-figure states.
 let pass = 0, fail = 0;
 const ok = (name, cond) => { if (cond) pass++; else { fail++; console.log('FAIL ' + name); } };
@@ -19,16 +19,16 @@ const surface = fs.readFileSync(path.join(ROOT, 'src', 'wiki-surface.js'), 'utf8
 for (const cls of ['ruling', 'rline', 'rquote', 'rstrike', 'rsrc', 'rex', 'rmiss', 'rtrace']) {
   ok('the page styles .' + cls, page.indexOf('.' + cls) !== -1);
 }
-ok('the page builds the ruling from the response fields', /judge\.answer/.test(page) && /judge\.quote/.test(page) && /judge\.exceptions/.test(page) && /judge\.missing/.test(page));
+ok('the page builds the ruling from the response fields', /agent\.answer/.test(page) && /agent\.quote/.test(page) && /agent\.exceptions/.test(page) && /agent\.missing/.test(page));
 ok('the source is named by title, with the section path beside it', /function sourceLine/.test(page) && /leafOf\(f\.heading\)/.test(page) && /'srule'/.test(page));
 ok('the ruling is rendered by one builder, used by both verdicts', (page.match(/rulingBlock\(/g) || []).length >= 3);
 ok('the exceptions read as an unless-line of title links', /t\('rulingUnless'\)/.test(page) && /'exlink'|rex/.test(page));
 
 // --- the chrome is deleted ----------------------------------------------------
 ok('no verdict line is rendered', page.indexOf('verdictLine(') === -1 && page.indexOf("t('answeredYes')") === -1 && page.indexOf("t('answeredNo')") === -1);
-ok('no confidence chip is rendered', page.indexOf("'conf ' + judge.confidence") === -1 && page.indexOf('t(\'confidence\')') === -1);
-ok('no why toggle is rendered', page.indexOf('whybox') === -1 && page.indexOf("t('judgeWhy')") === -1);
-ok('the why field is never put on the page', page.indexOf('judge.why') === -1);
+ok('no confidence chip is rendered', page.indexOf("'conf ' + agent.confidence") === -1 && page.indexOf('t(\'confidence\')') === -1);
+ok('no why toggle is rendered', page.indexOf('whybox') === -1 && page.indexOf("t('agentWhy')") === -1);
+ok('the why field is never put on the page', page.indexOf('agent.why') === -1);
 ok('no passages-it-rests-on line is rendered', page.indexOf('verdictEvidence') === -1 && page.indexOf("'vevidence'") === -1 && page.indexOf('.vevidence') === -1);
 
 // --- the trace check reaches the page ----------------------------------------
@@ -41,8 +41,8 @@ ok('the fallback with no answer is the recommendation line', /t\('rulingStart'\)
 ok('the ledger renderer exists', /function rulingLedger/.test(surface) && /function ledgerUsedRow/.test(surface) && /function ledgerResidue/.test(surface));
 // task-27: the ledger is the page from the moment the findings arrive, before and
 // after the verdict - the old bordered card is never rendered during a run.
-ok('the ledger is the list in every state', /host\.appendChild\(rulingLedger\(list, state, ctx, !state\.judge\)\)/.test(surface) && !/host\.appendChild\(findingsCard/.test(surface));
-ok('the used passages are the ruling\'s own numbers', /add\(judge\.from\)/.test(surface) && /judge\.exceptions/.test(surface) && /judge\.passages/.test(surface));
+ok('the ledger is the list in every state', /host\.appendChild\(rulingLedger\(list, state, ctx, !state\.agent\)\)/.test(surface) && !/host\.appendChild\(findingsCard/.test(surface));
+ok('the used passages are the ruling\'s own numbers', /add\(agent\.from\)/.test(surface) && /agent\.exceptions/.test(surface) && /agent\.passages/.test(surface));
 ok('a refusal shows the nearest three in full', /if \(!used\.length\) used = order\.slice\(0, pending \? 5 : 3\)/.test(surface) && /t\('nearestPassages'\)/.test(surface));
 ok('the quoted row is marked instead of repeating the words', /t\('quotedAbove'\)/.test(surface) && /lmark/.test(surface));
 
@@ -55,20 +55,20 @@ ok('the inline excerpt toggle is gone', usedRowSrc.indexOf('text.hidden') === -1
 ok('a residue row opens the door too', /ctx\.openDoor\(state, rec\)/.test(residueSrc) && /'rrow'/.test(residueSrc));
 ok('the residue GROUP still expands', /btn\.addEventListener\('click'/.test(residueSrc) && /list\.hidden = !open/.test(residueSrc));
 
-// --- task-27: the waiting states and the second-judge review ------------------
+// --- task-27: the waiting states and the second-agent review ------------------
 ok('the waiting ruling is one dim line in the ruleblock, no card', /el\('div', 'ruleblock'\)/.test(page) && /el\('div', 'note waiting', t\('readingFindings'\)\)/.test(page) && /el\('div', 'note waiting', t\('waitingFindings'\)\)/.test(page));
-ok('the second-judge review is stated while it runs', /t\('secondReading'\)/.test(page) && /state\.secondPending/.test(page));
-ok('the review has a stage in the bar', /second: 'second judge'/.test(page) && /'second juge'/.test(page));
+ok('the second-agent review is stated while it runs', /t\('secondReading'\)/.test(page) && /state\.secondPending/.test(page));
+ok('the review has a stage in the bar', /second: 'second agent'/.test(page) && /'second juge'/.test(page));
 ok('a running stage always explains the greyed send', /STAGE_RUNNING/.test(page) && /function stageRunning/.test(page) && /stageRunning\(name\)/.test(page));
-ok('the second judge closes its own stage', /doneStage\('second'\)/.test(page));
+ok('the second agent closes its own stage', /doneStage\('second'\)/.test(page));
 ok('the uncited rest is ONE collapsed line', /t\('otherPassages'\)/.test(surface) && /distinctNames\(rest, 3\)/.test(surface));
 
 // --- task-25: no card, no label, short names, distinct residue names ----------
 ok('the ruling is not wrapped in a card', page.indexOf("var verdict = el('div', 'card')") === -1 && /el\('div', 'ruleblock'\)/.test(page));
-ok('no heading is drawn over the ruling', page.indexOf("el('h2', null, t('judgeTitle'))") === -1);
+ok('no heading is drawn over the ruling', page.indexOf("el('h2', null, t('agentTitle'))") === -1);
 ok('the ledger is not a card either', /el\('div', 'ledger'\)/.test(surface) && !/var card = ctx\.sectionCard/.test(surface.slice(surface.indexOf('function rulingLedger'), surface.indexOf('function findingsCard'))));
 ok('the display name is the short one, from one implementation', /api\.shortName/.test(page) && /shortName: shortName/.test(surface));
-ok('the second judge is a plain dim sentence, not an eyebrow', /secondJudgeWith/.test(page) && /secondJudgeWithout/.test(page) && page.indexOf("'secondhead'") === -1 && page.indexOf('sreason') === -1);
+ok('the second agent is a plain dim sentence, not an eyebrow', /secondAgentWith/.test(page) && /secondAgentWithout/.test(page) && page.indexOf("'secondhead'") === -1 && page.indexOf('sreason') === -1);
 
 // The pure row display chain is tested, not just grepped: pull it out of the asset
 // by brace matching and run it on the capture's own headings.
@@ -106,14 +106,14 @@ ok('opening the residue shows path-only rows, not excerpts', /'fitem res'/.test(
 // The ledger row is the mockup's: a name, a path, no rank number and no cite chip.
 const usedRow = surface.slice(surface.indexOf('function ledgerUsedRow'), surface.indexOf('function ledgerResidue'));
 ok('a ledger row carries no [n] chip', usedRow.indexOf("'num'") === -1 && usedRow.indexOf('f.n') === -1);
-ok('a ledger row carries no cite badge', usedRow.indexOf('citedByJudge') === -1 && usedRow.indexOf('leg cite') === -1);
+ok('a ledger row carries no cite badge', usedRow.indexOf('citedByAgent') === -1 && usedRow.indexOf('leg cite') === -1);
 
 // --- task-31 B: the review is not a gate -------------------------------------
 // The send is released on the binding verdict (not at done), the run carries a
 // token, and the previous stream is aborted so a late review cannot interleave its
 // events into the next run's state.
 ok('the binding verdict releases the send', /releaseSend\(\);/.test(page) && /function releaseSend\(\) \{[^}]*busy = false;[^}]*disabled = false;/.test(page));
-ok('the release sits in the binding branch, before the judge status line', page.indexOf('releaseSend();') > page.indexOf('if (ev.second) return;') && page.indexOf('releaseSend();') < page.indexOf("setStatus(t('judgeIn')"));
+ok('the release sits in the binding branch, before the agent status line', page.indexOf('releaseSend();') > page.indexOf('if (ev.second) return;') && page.indexOf('releaseSend();') < page.indexOf("setStatus(t('agentIn')"));
 ok('the run carries a token and an abort controller', /var RUN = 0;/.test(page) && /RUN_ABORT = \(typeof AbortController !== 'undefined'\)/.test(page));
 ok('the ask carries the signal', /signal: RUN_ABORT \? RUN_ABORT\.signal : undefined/.test(page));
 ok('a stale run drops its events instead of applying them', (page.match(/if \(myRun !== RUN\) return;/g) || []).length >= 3);

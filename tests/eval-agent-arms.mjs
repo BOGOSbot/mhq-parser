@@ -1,30 +1,30 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * Four judges, one retrieval, one bank.
+ * Four agents, one retrieval, one bank.
  *
- *   node tests/eval-judge-arms.mjs [--limit 5] [--ids 3,9] [--out judge-arms.ndjson]
+ *   node tests/eval-agent-arms.mjs [--limit 5] [--ids 3,9] [--out agent-arms.ndjson]
  *
- * The question: should the judge be allowed to open a link while it reasons, and is it
- * worth paying for the deep judge to do it?
+ * The question: should the agent be allowed to open a link while it reasons, and is it
+ * worth paying for the deep agent to do it?
  *
- *   A  fast judge, no manifest, no hop   the shipping shape
- *   B  fast judge, one hop              the feature
- *   C  deep judge, one hop              the feature with the careful judge
- *   D  fast judge, manifest offered, hop refused   the CONTROL
+ *   A  fast agent, no manifest, no hop   the shipping shape
+ *   B  fast agent, one hop              the feature
+ *   C  deep agent, one hop              the feature with the careful agent
+ *   D  fast agent, manifest offered, hop refused   the CONTROL
  *
- * D exists because B differs from A in two ways at once. Handing the judge a list of
+ * D exists because B differs from A in two ways at once. Handing the agent a list of
  * links changes the prompt even when it opens nothing, so a change in B is not yet
  * evidence about the hop. D has the byte-identical prompt to B and never opens a link:
  * A->D is what being OFFERED a link does, D->B is what OPENING one does, and only the
  * second is the feature.
  *
  * All four see the SAME findings. One retrieval per question at the deep scope
- * (per-side 10, net 60), so the judge is the only variable. The arms run in parallel
+ * (per-side 10, net 60), so the agent is the only variable. The arms run in parallel
  * per question; questions run one at a time so the free route is not burst.
  *
- * What is graded is not hit@k - that is eval-retrieval.mjs - but whether the judge
- * CITES the rule the fixture expects. A judge that says 'answered' and cites the wrong
+ * What is graded is not hit@k - that is eval-retrieval.mjs - but whether the agent
+ * CITES the rule the fixture expects. A agent that says 'answered' and cites the wrong
  * rule is a worse product than one that says 'not answered' honestly, and only this
  * number tells them apart.
  *
@@ -32,9 +32,9 @@
  *   citedReach  an expected id is cited, or a record the splitter put under it
  *               ('<id>->-<title>'): the rule the reader can actually reach
  *   full        every expected group has a cited member
- *   missed      the rule WAS retrieved and the baseline judge cited nothing useful:
+ *   missed      the rule WAS retrieved and the baseline agent cited nothing useful:
  *               the population the hop exists for
- *   hop/hopGood the judge opened a link / the record it opened was expected
+ *   hop/hopGood the agent opened a link / the record it opened was expected
  *
  * Expectations are resolved against the corpus before anything is graded, exactly as
  * eval-retrieval.mjs does. The fixture's ids are as old as the chunker that wrote them,
@@ -46,7 +46,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { anchorFor, credential, fastCredential, jevKeyName } from '../src/rules.mjs';
-import { findingFor, followManifest, judgeCoverage, readAllCorpus, retrieveDual } from '../src/rules-corpus.mjs';
+import { findingFor, followManifest, agentCoverage, readAllCorpus, retrieveDual } from '../src/rules-corpus.mjs';
 import { expectGroups } from './expectation-groups.mjs';
 import { resolveExpectation as resolveOne } from './expectations.mjs';
 
@@ -55,10 +55,10 @@ const argv = process.argv.slice(2);
 const value = n => { const i = argv.indexOf(n); return i === -1 ? null : argv[i + 1]; };
 const LIMIT = parseInt(value('--limit') || '0', 10);
 const ONLY_IDS = (value('--ids') || '').split(',').map(s => s.trim()).filter(Boolean);
-const OUT = value('--out') || 'judge-arms.ndjson';
+const OUT = value('--out') || 'agent-arms.ndjson';
 // The page's own fast scope. Every arm sees the SAME findings, and they are the ones the
-// product actually shows the judge: 5 a side. A wider set made the prompt 28 KB and a
-// small judge drifts into prose at that size, which measures the harness, not the arms.
+// product actually shows the agent: 5 a side. A wider set made the prompt 28 KB and a
+// small agent drifts into prose at that size, which measures the harness, not the arms.
 const PER_SIDE = parseInt(value('--per-side') || '5', 10);
 const NET = parseInt(value('--net') || '60', 10);
 const JEV_MAX = parseInt(value('--jev-max') || '60', 10);
@@ -81,7 +81,7 @@ const IDX = (function () {
 })();
 const JEV = credential(jevKeyName());
 const FAST = fastCredential();
-if (!FAST) { console.error('no fast-route key: the judge cannot run'); process.exit(1); }
+if (!FAST) { console.error('no fast-route key: the agent cannot run'); process.exit(1); }
 
 const bank = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'rules-questions.json'), 'utf8'));
 let questions = bank.questions.filter(q => Array.isArray(q.expect) && q.expect.length);
@@ -168,7 +168,7 @@ for (let i = 0; i < questions.length; i++) {
   const linkItems = man.reduce((a, m) => a + m.items.length, 0);
   const results = await Promise.all(ARMS.map(async arm => {
     const t = Date.now();
-    const verdict = await judgeCoverage(item.q, findings, FAST, arm.opts)
+    const verdict = await agentCoverage(item.q, findings, FAST, arm.opts)
       .catch(e => ({ rulesQuestion: null, answered: null, confidence: '', passages: [], why: '', followFailed: String(e.message) }));
     return scoreArm(item, findings, arm, verdict, Date.now() - t);
   }));
@@ -214,7 +214,7 @@ console.log('');
 const answeredOnly = (x, y) => x.filter((r, i) => r.answered && !y[i].answered).length;
 console.log('A says answered and D does not : ' + answeredOnly(a, d) + '   (the offer alone already makes it more cautious)');
 console.log('D says answered and B does not : ' + answeredOnly(d, b) + '   (opening a link costs the answer)');
-console.log('D says answered and C does not : ' + answeredOnly(d, c) + '   (and the deep judge costs more)');
+console.log('D says answered and C does not : ' + answeredOnly(d, c) + '   (and the deep agent costs more)');
 const hopRows = rows.filter(r => r.arms[1].hop || r.arms[2].hop);
 console.log('');
 console.log('every hop (' + hopRows.length + ' questions):');
@@ -225,7 +225,7 @@ for (const r of hopRows) for (const k of [1, 2, 3]) {
 }
 console.log('');
 const noLinks = rows.filter(r => !r.linkItems);
-console.log('the link graph the hop can use, before any judge runs:');
+console.log('the link graph the hop can use, before any agent runs:');
 console.log('  questions with nothing openable : ' + noLinks.length + '/' + n);
 console.log('  openable links per question     : ' + (n ? (rows.reduce((x, r) => x + r.linkItems, 0) / n).toFixed(1) : '0') + ' mean, '
   + (n ? Math.max.apply(null, rows.map(r => r.linkItems)) : 0) + ' max');

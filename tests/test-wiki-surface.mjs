@@ -87,7 +87,7 @@ ok('(3) the icon writes BOTH channels through the existing endpoints', js.body.i
 ok('(3) the tail renders under a heading that says it is unjudged', js.body.indexOf("Also matched, not judged") !== -1);
 ok('(7) the refusal copy names what is on screen, not a number the protection layer can move', js.body.indexOf('None of the judged findings states the rule.') !== -1 && js.body.indexOf('top ten') === -1);
 ok('(3) none of these is at the foot, not on a finding', js.body.indexOf("el('div', 'sv-foot')") !== -1 && js.body.indexOf("sv-none") !== -1);
-ok('(3) the server returns the tail and the trace id, and slugs the findings', srv.indexOf('tail: withSlug(tail)') !== -1 && srv.indexOf('traceId, judge, answer') !== -1 && srv.indexOf('surfaceSlugMap') !== -1);
+ok('(3) the server returns the tail and the trace id, and slugs the findings', srv.indexOf('tail: withSlug(tail)') !== -1 && srv.indexOf('traceId, agent, answer') !== -1 && srv.indexOf('surfaceSlugMap') !== -1);
 // (a) the reader never sees a raw record id or a bare source string in the meta.
 ok('(a) the row meta is the book, not the record id', js.body.indexOf("[r.source, r.id].join") === -1 && js.body.indexOf('bookLabel(r.slug)') !== -1);
 ok('(a) page mode meta is kind + book', js.body.indexOf("[kindLabel(record.kind), bookLabel(record.slug)]") !== -1 && js.body.indexOf('[record.kind, record.source, record.set]') === -1);

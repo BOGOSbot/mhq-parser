@@ -13,7 +13,7 @@
  *
  * There is no answer key for them, so the retrieval is graded by the model:
  * given the question and the five passages, does any passage state the rule
- * needed? It is instructed to judge only what is written, because a model
+ * needed? It is instructed to agent only what is written, because a model
  * answering from memory would pass a retrieval that never contained the rule.
  *
  * Reported:
@@ -26,7 +26,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FAST_MODEL, credential, fastCredential } from '../src/rules.mjs';
-import { judgeCoverage, readAllCorpus, retrieveDual } from '../src/rules-corpus.mjs';
+import { agentCoverage, readAllCorpus, retrieveDual } from '../src/rules-corpus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -43,11 +43,11 @@ const SENSE = fastCredential();
 
 console.log('questions ' + questions.length + ' from ' + bank.source);
 console.log('corpus: ' + rulesCorpus.length + ' rules sections + ' + factionsCorpus.length + ' faction records  |  topK ' + TOPK + ' per half');
-console.log('judge:  ' + FAST_MODEL);
+console.log('agent:  ' + FAST_MODEL);
 console.log('');
 
 let rules = 0, answered = 0, unparsed = 0;
-const judgeMs = [];
+const agentMs = [];
 const citedAt = {};
 const misses = [];
 
@@ -62,12 +62,12 @@ for (let i = 0; i < questions.length; i++) {
     continue;
   }
   let verdict;
-  const judgeAt = Date.now();
+  const agentAt = Date.now();
   try {
-    verdict = await judgeCoverage(item.q, passages, SENSE);
-    judgeMs.push(Date.now() - judgeAt);
+    verdict = await agentCoverage(item.q, passages, SENSE);
+    agentMs.push(Date.now() - agentAt);
   } catch (e) {
-    console.log('  judge failed: ' + e.message);
+    console.log('  agent failed: ' + e.message);
     continue;
   }
   if (verdict.rulesQuestion === null) { unparsed++; continue; }
@@ -87,10 +87,10 @@ console.log('\n');
 console.log('rules questions   ' + rules + ' of ' + questions.length + (unparsed ? '  (' + unparsed + ' unparsed verdicts)' : ''));
 console.log('coverage          ' + answered + '/' + rules + '  ' + (rules ? Math.round((answered / rules) * 1000) / 10 : 0) + '%');
 console.log('cited at rank     ' + Object.keys(citedAt).sort().map(k => '#' + k + ': ' + citedAt[k]).join('   '));
-if (judgeMs.length) {
-  const sorted = judgeMs.slice().sort((a, b) => a - b);
-  const mean = judgeMs.reduce((a, b) => a + b, 0) / judgeMs.length;
-  console.log('judge latency     mean ' + Math.round(mean) + 'ms   median ' + sorted[Math.floor(sorted.length / 2)] + 'ms   over ' + judgeMs.length + ' calls, ' + FAST_MODEL);
+if (agentMs.length) {
+  const sorted = agentMs.slice().sort((a, b) => a - b);
+  const mean = agentMs.reduce((a, b) => a + b, 0) / agentMs.length;
+  console.log('agent latency     mean ' + Math.round(mean) + 'ms   median ' + sorted[Math.floor(sorted.length / 2)] + 'ms   over ' + agentMs.length + ' calls, ' + FAST_MODEL);
 }
 console.log('');
 console.log('misses (' + misses.length + '):');

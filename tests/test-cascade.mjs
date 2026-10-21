@@ -9,7 +9,7 @@ function t(name, got, want) {
 
 // The cascade, with the writer stubbed so no call is made: reasoning off first,
 // and only a decline pays for thinking. The decline sentence is fixed, which is
-// what makes it detectable without asking a model to judge its own refusal.
+// what makes it detectable without asking a model to agent its own refusal.
 async function run(answers) {
   const calls = [];
   const write = (q, f, reasoning) => { calls.push(reasoning); return answers.shift(); };

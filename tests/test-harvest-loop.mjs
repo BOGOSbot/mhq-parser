@@ -25,7 +25,7 @@ const traceInput = (id, q) => ({
   mode: 'fast', lang: 'en', question: q,
   counts: { rules: 2, factions: 1 },
   findings: [{ n: 1, id: 'core-rules#A' }, { n: 2, id: 'core-rules#B' }, { n: 3, id: 'faction-ae#C' }],
-  judge: { answered: true, confidence: 'high' }, answer: 'No, unless it has a special rule [1].',
+  agent: { answered: true, confidence: 'high' }, answer: 'No, unless it has a special rule [1].',
 });
 
 // The reader asks, the trace lands, then the reader carets one and x-es another.

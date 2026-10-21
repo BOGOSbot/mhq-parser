@@ -41,7 +41,7 @@ import http from 'http';
 import https from 'https';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_ENDPOINT, MODEL, MODEL_REASONING, MODEL_TIMEOUT_MS, JUDGE_REASONING_TIMEOUT_MS, JEV_ENDPOINT, JEV_MODEL, anchorFor, credential, gatewayAllowed, gatewayVerdict, jevChain, noteJevCall } from './rules.mjs';
+import { FAST_ENDPOINT, FAST_MODEL, FAST_REASONING, FAST_TIMEOUT_MS, MODEL_ENDPOINT, MODEL, MODEL_REASONING, MODEL_TIMEOUT_MS, AGENT_REASONING_TIMEOUT_MS, JEV_ENDPOINT, JEV_MODEL, anchorFor, credential, gatewayAllowed, gatewayVerdict, jevChain, noteJevCall } from './rules.mjs';
 import { TRACE_RETENTION_MONTHS, sweepTraces } from './rules-traces.mjs';
 // task-34: the flat passage text gets the wargear marks at display time - the corpus
 // bytes are untouched, the finding's excerpt and the passage sheet are not bare.
@@ -169,8 +169,8 @@ export function namespaceFor(setName) {
 // one paragraph that answers the question is averaged against three pages that
 // do not. Cutting at ~2400 characters keeps a section specific enough to rank
 // and long enough to hold a rule and its exception.
-// Kept just under JUDGE_PASSAGE_CHARS on purpose. A stored record must never be
-// longer than the judge is shown, or the judge ends up saying "no such ability
+// Kept just under AGENT_PASSAGE_CHARS on purpose. A stored record must never be
+// longer than the agent is shown, or the agent ends up saying "no such ability
 // is in the visible text" about text it was not given - which is exactly how a
 // correct retrieval produced a wrong "I do not know".
 // The live chunker's cap, and the only rule that may decide whether an existing
@@ -548,7 +548,7 @@ export function splitLong(text, max) {
   for (const s of sentences) {
     // A weapon profile or a table row can be one "sentence" longer than the
     // limit. Sentence splitting alone cannot cut it, and a record that cannot be
-    // cut is one the judge cannot be shown whole - so it is cut on a space as a
+    // cut is one the agent cannot be shown whole - so it is cut on a space as a
     // last resort. Five records needed this.
     if (s.length > max) {
       flush();
@@ -972,7 +972,7 @@ export function exclusionReason(record) {
 }
 
 // task-32 C: kind 'index' pages are navigation - a faction's name list with no rules
-// text, 296,563 characters that all sit over the judge's passage window - and every
+// text, 296,563 characters that all sit over the agent's passage window - and every
 // card name in the corpus has one competing with the card itself. They stay in the
 // corpus (a link can still land on one, and the payload renders them) but they are
 // never embedded, so a retrieval can never return one. The ingest's plan and the
@@ -2503,10 +2503,10 @@ export function parseTerms(text) {
   } catch { return []; }
 }
 
-// One OpenAI-compatible call, used by the writer, the rewriter and the judge.
+// One OpenAI-compatible call, used by the writer, the rewriter and the agent.
 // Pure inference: none of them writes anything, which is why all three keep
 // working when the vector index is out of write budget. The caller picks the
-// route, so the judge can run on a small fast model while the answer keeps the
+// route, so the agent can run on a small fast model while the answer keeps the
 // model that engages with half-found rules.
 // The model reasons before it answers and both are billed to the same budget, so
 // a cap that looks generous for the answer can be consumed entirely by the
@@ -2550,7 +2550,7 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     bucket.calls++;
     if (attempt > 0) { ROUTE_STATS.retries++; bucket.retries++; }
     // The route carries a default; a caller may override it for one call - the
-    // /rules page's fast mode asks the judge not to reason, deep asks it to.
+    // /rules page's fast mode asks the agent not to reason, deep asks it to.
     const reasoning = (opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning;
     // task-76: the reasoning control differs by gateway, and a wrong one is a 400 rather
     // than a bad answer - so both shapes are VERIFIED, not assumed: a live call to
@@ -2562,7 +2562,7 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     // A nested-reasoning gateway may DEMAND it: OpenRouter's minimax answers 400
     // 'Reasoning is mandatory for this endpoint and cannot be disabled.' to a request
     // without it, so 'no reasoning' is asked for as the provider's cheapest effort rather
-    // than by omitting the field. Measured: the judge's own retry (reasoning 'none') was
+    // than by omitting the field. Measured: the agent's own retry (reasoning 'none') was
     // the call that emptied, 18 of 19 calls, and the log named it exactly.
     const effort = reasoning && reasoning !== 'none' ? reasoning : (nested ? 'low' : '');
     const body = JSON.stringify(Object.assign({
@@ -2585,7 +2585,7 @@ async function routeText(route, prompt, key, maxTokens, opts) {
         r.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch { resolve(null); } });
       });
       req.on('error', reject);
-      // A caller may bound one call below the route's default (task-31: the judge's
+      // A caller may bound one call below the route's default (task-31: the agent's
       // reasoning attempt, which is unbounded in practice on the fast model).
       req.setTimeout((opts && opts.timeout) || route.timeout || 180000, () => req.destroy(new Error('the model timed out')));
       req.end(body);
@@ -2594,7 +2594,7 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     const content = String((choice && choice.message && choice.message.content) || '');
     last = content;
     // task-70: an empty reply is RETRIED, not returned. It was returned as it always had
-    // been, and the judge then read it as 'the judge did not answer', which the escalation
+    // been, and the agent then read it as 'the agent did not answer', which the escalation
     // loop treats as 'not answered' - a statement about the corpus made from a call that
     // never happened. Measured on the Box: 2 empty and 3 truncated replies in 130 fast
     // calls, and a probe hit an empty body after one 180 s timeout and kept getting them.
@@ -2605,7 +2605,7 @@ async function routeText(route, prompt, key, maxTokens, opts) {
       // A gateway that thinks BEFORE it writes can spend the whole budget on reasoning
       // and return content:null with finish_reason 'length' - OpenRouter's minimax does
       // exactly that at 4000. That is the truncated-JSON case, so it gets the truncated
-      // treatment: a bigger budget, not a shrug. Without this the judge answered
+      // treatment: a bigger budget, not a shrug. Without this the agent answered
       // 'nothing parseable' on a call that had simply run out of room thinking.
       if (choice && choice.finish_reason === 'length') budget *= 2;
       if (attempt < 2) { recovering = true; continue; }
@@ -2613,7 +2613,7 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     }
     // A reply that stopped on the token limit is only usable when a cut cannot
     // break it. Prose that had to be cut is still prose; a JSON object cut
-    // mid-string is not an object at all - and that is what a judge returned
+    // mid-string is not an object at all - and that is what a agent returned
     // once, which the caller read as 'nothing parseable' and answered "I do not
     // know" over findings that were fine. Those get a bigger budget instead.
     const truncated = choice.finish_reason === 'length';
@@ -2737,9 +2737,9 @@ export function frenchExpansionPrompt(question) {
 // --- the question in English ------------------------------------------------
 // A French question against an English corpus fails twice if only its keywords
 // are translated. Grep needs English words - that is the keywords' job - but
-// the judge and the writer need the question itself: 'Est-ce qu'Asurmen peut
+// the agent and the writer need the question itself: 'Est-ce qu'Asurmen peut
 // embarquer apres avoir tire' and 'asurmen embark shoot' are not the same
-// question, and a judge shown the second one grades a question nobody asked.
+// question, and a agent shown the second one grades a question nobody asked.
 // So the whole question is translated into natural English, and the keyword
 // list is asked for in the same call - one request, both products.
 //
@@ -2849,63 +2849,63 @@ export async function frenchTerms(question, key, opts) {
 // --- judging ----------------------------------------------------------------
 // Grading a retrieval without ground-truth section ids. Real questions do not
 // come with an answer key, and mapping a Reddit answer to a rule id by hand is
-// the work this is meant to avoid. The judge is asked the narrow question
+// the work this is meant to avoid. The agent is asked the narrow question
 // instead: do these passages state the rule that answers it? It is told to
-// judge only what is written, because a model that answers from memory will
+// agent only what is written, because a model that answers from memory will
 // mark a retrieval correct that never contained the rule.
-// How much of each passage the judge is shown. It used to be 700 characters,
+// How much of each passage the agent is shown. It used to be 700 characters,
 // which is a quarter of an Asurmen datasheet: his Battle Focus ability and the
 // Agile Manoeuvres that answer a question about moving after shooting start
-// around character 940, so the judge was asked whether the passages stated a
+// around character 940, so the agent was asked whether the passages stated a
 // rule while being shown none of the part that did. It answered honestly and
 // wrongly, and the pipeline duly said it did not know.
 //
-// A judge blind to most of the evidence is not a cautious judge, it is a
+// A agent blind to most of the evidence is not a cautious agent, it is a
 // misinformed one. It now sees as much as the compiler does, and a passage that
 // is still cut says so, so a "not stated" conclusion is at least made about text
 // that was shown.
-export const JUDGE_PASSAGE_CHARS = 2400;
-export const JUDGE_TOTAL_CHARS = 60000;
+export const AGENT_PASSAGE_CHARS = 2400;
+export const AGENT_TOTAL_CHARS = 60000;
 
-// --- one hop: the judge may open a link --------------------------------------
+// --- one hop: the agent may open a link --------------------------------------
 // A datasheet's ability rarely states the rule; it names it and points at it
-// ('Leader ... in the rules', 'Battle Focus - faction rule in the rules'). The judge
+// ('Leader ... in the rules', 'Battle Focus - faction rule in the rules'). The agent
 // was asked whether the passages state the rule while the rule sat one link away,
 // and answered honestly and wrongly. One hop is aimed at exactly that case: the
-// judge may name ONE link from the manifest below, that record's text is appended
+// agent may name ONE link from the manifest below, that record's text is appended
 // as a further passage, and the verdict is taken again on the longer list. There is
 // no second hop - the retry is handed an empty manifest - so a chain cannot walk
-// the corpus, and the cost of the feature is bounded at one extra judge call.
-export const JUDGE_FOLLOW_PER_PASSAGE = 4;
-export const JUDGE_FOLLOW_TOTAL = 24;
+// the corpus, and the cost of the feature is bounded at one extra agent call.
+export const AGENT_FOLLOW_PER_PASSAGE = 4;
+export const AGENT_FOLLOW_TOTAL = 24;
 
-// --- the sweep: the judge names what it would have to look up --------------
+// --- the sweep: the agent names what it would have to look up --------------
 // task-43. The one hop above failed for a reason that is now clear: a single hop has
 // no stopping rule, so it fires when a link happens to be offered and says nothing
-// when none is. A sweep is the same act with a termination condition - the judge
+// when none is. A sweep is the same act with a termination condition - the agent
 // names the searches it would still run to be sure, each is run for REAL, and the
-// judge is shown what came back. An empty list of checks is the judge saying the
+// agent is shown what came back. An empty list of checks is the agent saying the
 // passages settle it, and that is where the loop ends.
 //
-// The bounds are the feature's own safety: at most JUDGE_SWEEP_ROUNDS extra rounds,
-// JUDGE_CHECKS_PER_ROUND searches in each, a wall-clock budget and a hard cap on the
+// The bounds are the feature's own safety: at most AGENT_SWEEP_ROUNDS extra rounds,
+// AGENT_CHECKS_PER_ROUND searches in each, a wall-clock budget and a hard cap on the
 // extra model calls. Every one of them is reported on the event, because a loop that
 // cannot terminate is worse than no loop.
-export const JUDGE_CHECKS_MAX = 4;
-export const JUDGE_CHECKS_PER_ROUND = 4;
-export const JUDGE_SWEEP_ROUNDS = 2;
-export const JUDGE_SWEEP_BUDGET_MS = 25000;
-export const JUDGE_SWEEP_CALLS = 2;
-export const JUDGE_SWEEP_HITS = 3;
+export const AGENT_CHECKS_MAX = 4;
+export const AGENT_CHECKS_PER_ROUND = 4;
+export const AGENT_SWEEP_ROUNDS = 2;
+export const AGENT_SWEEP_BUDGET_MS = 25000;
+export const AGENT_SWEEP_CALLS = 2;
+export const AGENT_SWEEP_HITS = 3;
 
-// Which links a judge may open, for the passages it was given. Only links whose
+// Which links a agent may open, for the passages it was given. Only links whose
 // target is really in the corpus, never a target already on screen, and capped both
 // per passage and in total: the manifest is prompt, so it is spent on the first few
 // links of the first passages rather than on all of them.
 export function followManifest(passages, resolve, opts) {
   const o = opts || {};
-  const per = o.perPassage || JUDGE_FOLLOW_PER_PASSAGE;
-  const total = o.total || JUDGE_FOLLOW_TOTAL;
+  const per = o.perPassage || AGENT_FOLLOW_PER_PASSAGE;
+  const total = o.total || AGENT_FOLLOW_TOTAL;
   const shown = new Set((passages || []).map(p => p && p.id).filter(Boolean));
   const out = [];
   let n = 0;
@@ -2943,7 +2943,7 @@ function manifestLines(manifest) {
   return lines;
 }
 
-export function passageForJudge(p, i, cap) {
+export function passageForAgent(p, i, cap) {
   const full = String(p.text || '');
   const cut = full.length > cap;
   const head = '[' + (i + 1) + '] ' + (p.set === 'factions' ? 'Faction rules' : 'Core rules') + ' - '
@@ -2954,16 +2954,16 @@ export function passageForJudge(p, i, cap) {
 
 // --- a negative about what is possible --------------------------------------
 // task-56, Mandal's first-day warning: 'we need to be careful of the confidently
-// wrong answer.' Asked 'Can a baneblade have an invulnerable save?', the judge was
+// wrong answer.' Asked 'Can a baneblade have an invulnerable save?', the agent was
 // shown the datasheet, saw that its statline grants none, and answered 'No, a
 // Baneblade does not have an invulnerable save.' A datasheet cannot show that
 // NOTHING ELSE grants one, and the corpus holds the Tech-Priest Enginseer's
 // Omnissiah's Blessing, which gives an ASTRA MILITARUM VEHICLE a 4+ invulnerable
-// save while a Baneblade is exactly that. The judge was not wrong about what it
+// save while a Baneblade is exactly that. The agent was not wrong about what it
 // read; it was wrong about the reach of a no.
 //
 // The rule is the sweep's absence copy (task-51) applied to the verdict: a
-// negative about CAPABILITY is a claim about the records the judge was shown,
+// negative about CAPABILITY is a claim about the records the agent was shown,
 // never about the corpus. 'None of the records I was given grants one' is true
 // and useful; 'the unit has no invulnerable save' is a claim about 7,390 records
 // that a single retrieval never established.
@@ -2979,11 +2979,11 @@ export function isCapabilityQuestion(question) {
   return CAPABILITY_RE.test(String(question || ''));
 }
 
-// The character each passage gets in the judge's prompt. A long list must not starve
+// The character each passage gets in the agent's prompt. A long list must not starve
 // each passage, and a long passage must not starve the rest of the list - so the budget
 // is divided. task-67 measured what that division costs: at the widest pass (63 passages)
 // each gets 952 characters, and the Astra Militarum Tech-Priest Enginseer's record is
-// 1,374 with its answer at character 1,043, so the judge read the ability's opening and
+// 1,374 with its answer at character 1,043, so the agent read the ability's opening and
 // never its effect, and answered no. Holding the passage list fixed and raising only the
 // cap flipped the answer to yes.
 //
@@ -2994,8 +2994,8 @@ export function isCapabilityQuestion(question) {
 // still wins, so a measurement can pin one budget for every passage.
 export function passageCaps(passages, opts) {
   const o = opts || {};
-  const per = o.perPassage || JUDGE_PASSAGE_CHARS;
-  const total = o.totalChars || JUDGE_TOTAL_CHARS;
+  const per = o.perPassage || AGENT_PASSAGE_CHARS;
+  const total = o.totalChars || AGENT_TOTAL_CHARS;
   const list = passages || [];
   const n = Math.max(1, list.length);
   const shared = Math.max(400, Math.min(per, Math.floor(total / n)));
@@ -3019,9 +3019,9 @@ export function passageTruncation(passages, opts) {
   return { passages: (passages || []).length, cut: cut, dropped: dropped, caps: caps };
 }
 
-// The scope leg's facts, as lines the judge reads beside the passages. Each names the
+// The scope leg's facts, as lines the agent reads beside the passages. Each names the
 // record, the keyword its scope is written with, and the subject's own keyword that met
-// it - which is exactly what the leg computed, not a conclusion drawn for the judge.
+// it - which is exactly what the leg computed, not a conclusion drawn for the agent.
 export function scopeLines(facts) {
   const list = facts || [];
   if (!list.length) return [];
@@ -3033,10 +3033,10 @@ export function scopeLines(facts) {
     .concat(['It is still for you to read what that record grants.']);
 }
 
-export function judgePrompt(question, passages, opts) {
+export function agentPrompt(question, passages, opts) {
   const o = opts || {};
-  const per = o.perPassage || JUDGE_PASSAGE_CHARS;
-  const total = o.totalChars || JUDGE_TOTAL_CHARS;
+  const per = o.perPassage || AGENT_PASSAGE_CHARS;
+  const total = o.totalChars || AGENT_TOTAL_CHARS;
   // Empty unless the caller enabled the hop, so the prompt the page already sends
   // is byte-identical when the feature is off.
   const manifest = o.manifest || [];
@@ -3048,7 +3048,7 @@ export function judgePrompt(question, passages, opts) {
   // it are still the rule names.
   //
   // One clause at the end of a long prompt was not enough: measured live, a
-  // reasoning judge wrote its verdict in French on one call and in English on
+  // reasoning agent wrote its verdict in French on one call and in English on
   // the next, same question, same server. The language is therefore said twice -
   // in the JSON schema itself and in its own bullet - because a drifting call is
   // the failure mode, not a wrong option.
@@ -3065,7 +3065,7 @@ export function judgePrompt(question, passages, opts) {
   const schema = french
     ? '{"rules_question": true, "answered": true, "verdict": "oui", "confidence": "high", "widen": "both", "passages": [1,2], "answer": "une phrase, dans les termes du lecteur", "quote": "des mots copi\u00e9s verbatim du passage nomm\u00e9 dans from, ou null", "from": 1, "exceptions": [3], "missing": null, "why": "la raison, en deux ou trois phrases"}'
     : '{"rules_question": true, "answered": true, "verdict": "yes", "confidence": "high", "widen": "both", "passages": [1,2], "answer": "one sentence, in the reader\'s terms", "quote": "words copied verbatim from the passage named in from, or null", "from": 1, "exceptions": [3], "missing": null, "why": "the reason, in two or three sentences"}';
-  // The follow member is declared only when a hop is on offer: a judge asked for a
+  // The follow member is declared only when a hop is on offer: a agent asked for a
   // field it cannot use invents a value for it. The same rule holds for the sweep's
   // checks, and it is why the fast prompt is byte-identical to what it was.
   const sweep = o.sweep === true;
@@ -3078,14 +3078,14 @@ export function judgePrompt(question, passages, opts) {
     'Question: ' + question,
     '',
     'Retrieved passages:',
-    passages.map((p, i) => passageForJudge(p, i, caps[i])).join('\n\n'),
+    passages.map((p, i) => passageForAgent(p, i, caps[i])).join('\n\n'),
     manifestLines(manifest).join('\n'),
     // task-70: the scope leg's own finding, stated as a fact. The leg's purpose is to find
-    // records whose scope covers the subject; the judge was being asked to re-derive that
+    // records whose scope covers the subject; the agent was being asked to re-derive that
     // from two records' prose, and it is the inference it keeps getting wrong (a run wrote
     // 'it can only gain one if another rule, such as Omnissiah's Blessing from a Tech-Priest
     // Enginseer, grants it to it' and answered NO). Stating it removes the inference, not
-    // the check: the judge still has to read what the record grants.
+    // the check: the agent still has to read what the record grants.
     scopeLines(o.scopeFacts).join('\n'),
     '',
     'Judge only what is written above, not what you know about the game.',
@@ -3094,7 +3094,7 @@ export function judgePrompt(question, passages, opts) {
     // question's findings hold the Enginseer's record ('select one friendly Astra
     // Militarum Vehicle model ... that VEHICLE model has a 4+ invulnerable save') at #9
     // AND the Baneblade's own keyword list (Astra Militarum, Vehicle, Titanic, ...) at
-    // #25, and the judge answered no without mentioning Vehicle - six runs gave two yes
+    // #25, and the agent answered no without mentioning Vehicle - six runs gave two yes
     // and four no on the same passages. It has both halves of the join and does not make
     // it. The same step catches the wrong yes (a record whose scope excludes the subject,
     // the Rampart Crest saving the unit the bearer LEADS and not the bearer).
@@ -3117,7 +3117,7 @@ export function judgePrompt(question, passages, opts) {
     whyMust,
     '- rules_question: is this a question about 40k rules at all? Some are about tournaments, paint or the subreddit.',
     '- answered: do the passages state the rule needed to answer it? Partial coverage is not answered.',
-    // task-71: the verdict's own polarity, so two judges can be compared by what they
+    // task-71: the verdict's own polarity, so two agents can be compared by what they
     // SAID rather than only by whether they spoke. Measured on the key question: five runs
     // WITH the field returned 'yes' five times; five runs without it returned no verdict at
     // all, which is what left the disagreement detector blind. It also forces the headline
@@ -3152,12 +3152,12 @@ export function judgePrompt(question, passages, opts) {
   ].filter(Boolean).join('\n');
 }
 
-// How much a judge's reasoning is worth, for deciding whose refusal counts. The
-// bank measured the same judge at 61.8% with reasoning off and 79.4% with it on,
+// How much a agent's reasoning is worth, for deciding whose refusal counts. The
+// bank measured the same agent at 61.8% with reasoning off and 79.4% with it on,
 // and 'high' measured no deeper than 'medium'. An unknown setting - a custom
 // endpoint told nothing - ranks as the equal of anything, so it can still
 // downgrade rather than being silently ignored.
-export function judgeStrength(reasoning) {
+export function agentStrength(reasoning) {
   const r = String(reasoning || '').toLowerCase();
   if (r === 'none') return 0;
   return 1;
@@ -3168,12 +3168,12 @@ export function judgeStrength(reasoning) {
 // disagree at all, who dissented, and whether that dissent may downgrade the
 // answer.
 //
-// A second refusal binds only when it comes from a judge at least as reliable as
-// the one that answered. Fast mode pairs a quick binding judge with a careful
+// A second refusal binds only when it comes from a agent at least as reliable as
+// the one that answered. Fast mode pairs a quick binding agent with a careful
 // second, so the careful refusal still downgrades - that is the case the rule was
-// written for. Deep mode pairs a careful binding judge with a quick second, and
+// written for. Deep mode pairs a careful binding agent with a quick second, and
 // there the quick refusal must NOT stamp a correct answer 'not confirmed': the
-// less accurate judge was vetoing the more accurate one, which is a design bug
+// less accurate agent was vetoing the more accurate one, which is a design bug
 // and not a display one. A weaker dissent is still reported, as a dissent.
 export function reconcileVerdicts(binding, second) {
   const a = binding ? binding.answered : null;
@@ -3181,29 +3181,29 @@ export function reconcileVerdicts(binding, second) {
   if (a === null || a === undefined || b === null || b === undefined) return { disagreement: false, conservative: 'binding', downgrade: false, dissenter: '', polar: false };
   if (a === b) {
     // task-71: TWO JUDGES THAT BOTH ANSWERED CAN STILL DISAGREE, and that is the case
-    // Mandal hit - judge 1 'does not have it by default, but can gain it', judge 2 'yes, a
+    // Mandal hit - agent 1 'does not have it by default, but can gain it', agent 2 'yes, a
     // Baneblade can have one' - recorded as agreement because only `answered` was
     // compared. The verdict field is what they are compared on now. Two answers with no
     // verdict at all cannot be compared, and stay as they were: not a disagreement, but
     // not evidence of agreement either.
     const va = normalizeVerdict(binding && binding.verdict);
     const vb = normalizeVerdict(second && second.verdict);
-    // 'unclear' is a judge saying it cannot commit. That is not a polarity to disagree
+    // 'unclear' is a agent saying it cannot commit. That is not a polarity to disagree
     // with, so only yes against no counts - the sentence this catches is the one that
     // names the condition and still says yes, against one that says no.
     const polar = (va === 'yes' || va === 'no') && (vb === 'yes' || vb === 'no') && va !== vb;
     if (a === true && polar) {
-      // The stronger judge's answer gets the headline: judgeStrength is the measured one
+      // The stronger agent's answer gets the headline: agentStrength is the measured one
       // (61.8% with reasoning off against 79.4% with it on).
-      const secondStronger = judgeStrength(second.reasoning) > judgeStrength(binding.reasoning);
+      const secondStronger = agentStrength(second.reasoning) > agentStrength(binding.reasoning);
       return { disagreement: true, conservative: secondStronger ? 'second' : 'binding', downgrade: false, dissenter: secondStronger ? 'binding' : 'second', polar: true };
     }
     return { disagreement: false, conservative: 'binding', downgrade: false, dissenter: '', polar: false };
   }
-  // Only the second judge's refusal has something to downgrade: when the binding
-  // judge refused, the answer is already the cautious one.
+  // Only the second agent's refusal has something to downgrade: when the binding
+  // agent refused, the answer is already the cautious one.
   if (b === false) {
-    const downgrade = judgeStrength(second.reasoning) >= judgeStrength(binding.reasoning);
+    const downgrade = agentStrength(second.reasoning) >= agentStrength(binding.reasoning);
     return { disagreement: true, conservative: downgrade ? 'second' : 'binding', downgrade, dissenter: 'second', polar: false };
   }
   return { disagreement: true, conservative: 'binding', downgrade: false, dissenter: 'binding', polar: false };
@@ -3240,7 +3240,7 @@ export function normalizeWiden(value) {
   return 'both';
 }
 
-// task-24 (J4): the trace check. The ruling is printed as the judge wrote it, and the
+// task-24 (J4): the trace check. The ruling is printed as the agent wrote it, and the
 // page's claim to soundness rests on every checkable phrase in it being present in
 // the passages the ruling itself names: the quote's own passage, the exceptions and
 // the cited passages. A figure the cited passage does not carry is a fabricated one,
@@ -3288,11 +3288,11 @@ export function traceRuling(ruling, passages) {
   return { total: total, dropped: bad.length, bad: bad, quoteOk: quoteOk };
 }
 
-// The ruling's slots, taken from one judge object. Split out of judgeAsk so the
+// The ruling's slots, taken from one agent object. Split out of agentAsk so the
 // fallbacks are a tested interface rather than a branch inside a network call:
 // - no answer means the empty string (the client falls back to the recommendation line)
 // - no quote, or a refusal, means null - and a refusal NEVER carries a quote
-// - from/exceptions are passage numbers of the list the judge was shown
+// - from/exceptions are passage numbers of the list the agent was shown
 // - missing is for the refusal only; an answer does not explain what is absent
 // The trace is computed here, against the passages the ruling names, so `trace` and
 // the slots it describes cannot drift apart.
@@ -3348,9 +3348,9 @@ export function contradictsItself(obj) {
     || /\bcan gain one\b|\bcan have one\b|\bcan obtain one\b/i.test(text);
 }
 
-// One judge call: the prompt, the parse, and the one extra ask the verdict is worth.
-// Split out of judgeCoverage so the hop can run it twice on two lists.
-async function judgeAsk(question, passages, key, o, manifest) {
+// One agent call: the prompt, the parse, and the one extra ask the verdict is worth.
+// Split out of agentCoverage so the hop can run it twice on two lists.
+async function agentAsk(question, passages, key, o, manifest) {
   const callOpts = o.reasoning === undefined ? { json: true } : { json: true, reasoning: o.reasoning };
   // task-56: a capability question gets the scoped-negative rule, and the scope
   // travels with the QUESTION rather than with the caller - the page, the CLI and
@@ -3362,21 +3362,21 @@ async function judgeAsk(question, passages, key, o, manifest) {
   const facts = o.scopeFacts !== undefined
     ? o.scopeFacts
     : (process.env.RULES_SCOPE_FACTS === '0' ? [] : scopeFacts(passages, question));
-  const prompt = judgePrompt(question, passages, Object.assign({}, o, { manifest: manifest || [], scoped, scopeFacts: facts }));
+  const prompt = agentPrompt(question, passages, Object.assign({}, o, { manifest: manifest || [], scoped, scopeFacts: facts }));
   // task-31: the reasoning verdict is the slow, unbounded step. Bound it, and when
-  // it does not come back ask the same prompt without reasoning - a judge that
+  // it does not come back ask the same prompt without reasoning - a agent that
   // answered without thinking beats a run that died thinking. Measured on the fast
   // model: 27.6s with reasoning medium against 3.6s without, on one 18.6k prompt.
   const asking = !!(o.reasoning && o.reasoning !== 'none');
   let raw = '';
   try {
-    raw = await fastText(prompt, key, 4000, asking ? Object.assign({}, callOpts, { timeout: JUDGE_REASONING_TIMEOUT_MS }) : callOpts);
+    raw = await fastText(prompt, key, 4000, asking ? Object.assign({}, callOpts, { timeout: AGENT_REASONING_TIMEOUT_MS }) : callOpts);
   } catch (e) {
-    if (!asking) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'the judge did not answer: ' + String((e && e.message) || e), raw: true };
+    if (!asking) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'the agent did not answer: ' + String((e && e.message) || e), raw: true };
     try {
       raw = await fastText(prompt, key, 4000, Object.assign({}, callOpts, { reasoning: 'none' }));
     } catch (e2) {
-      return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'the judge did not answer: ' + String((e2 && e2.message) || e2), raw: true };
+      return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'the agent did not answer: ' + String((e2 && e2.message) || e2), raw: true };
     }
   }
   let obj = parseJsonObject(raw);
@@ -3386,7 +3386,7 @@ async function judgeAsk(question, passages, key, o, manifest) {
   // than the reader being told the rule is absent because a brace was missing.
   // Asking once more was not enough on a long list: measured, the fast model drifts into
   // a prose preamble on roughly a fifth of calls at a 30 KB prompt, and a single retry
-  // left the reader with 'the judge returned nothing'. It is asked up to three times in
+  // left the reader with 'the agent returned nothing'. It is asked up to three times in
   // all, and only when the object is missing - a verdict that parsed is never re-asked.
   // task-31: these re-asks are a wait too, so they run without reasoning and stay
   // bounded - the verdict's words are what matters, not the deliberation behind it.
@@ -3396,7 +3396,7 @@ async function judgeAsk(question, passages, key, o, manifest) {
       obj = parseJsonObject(await fastText(prompt + '\n\nReply with the JSON object only, in one line, and nothing else.', key, 1200, reOpts));
     } catch (e) { break; }
   }
-  if (!obj) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'judge returned nothing parseable', raw: true };
+  if (!obj) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'agent returned nothing parseable', raw: true };
   const answered = obj.answered === true;
   // The model is asked to always give one; when it does not, the verdict itself
   // is the fallback rather than an empty field, because the caller escalates on
@@ -3409,7 +3409,7 @@ async function judgeAsk(question, passages, key, o, manifest) {
   return {
     rulesQuestion: obj.rules_question !== false,
     answered,
-    // task-71: the polarity the answer LINE committed to, '' when the judge gave none.
+    // task-71: the polarity the answer LINE committed to, '' when the agent gave none.
     // A refusal has no verdict - it says nothing about the answer, only about the
     // records - so it is never invented from `answered`.
     verdict: answered ? normalizeVerdict(obj.verdict) : '',
@@ -3424,17 +3424,17 @@ async function judgeAsk(question, passages, key, o, manifest) {
     exceptions: slots.exceptions,
     missing: slots.missing,
     trace: slots.trace,
-    // Not sliced. A 160-character cap here cut the judge's reasoning mid-word,
+    // Not sliced. A 160-character cap here cut the agent's reasoning mid-word,
     // and the reader was shown a verdict that stopped in the middle of the
-    // sentence explaining it. What the judge says is the page's headline; it is
+    // sentence explaining it. What the agent says is the page's headline; it is
     // published whole, and the prompt asks for the sentences it takes.
     why: String(obj.why || ''),
-    // What the judge asked to open, named but not yet resolved: the caller owns the
+    // What the agent asked to open, named but not yet resolved: the caller owns the
     // corpus, so it is the caller that turns a name into a record.
     follow: obj.follow && typeof obj.follow === 'object'
       ? { passage: parseInt(obj.follow.passage, 10), link: parseInt(obj.follow.link, 10) }
       : null,
-    // task-43: what the judge says it would have to check to be sure nothing is
+    // task-43: what the agent says it would have to check to be sure nothing is
     // missing. Normalised here (a string where an object was asked for, a query that
     // is only punctuation) and capped; running them is the caller's job, because the
     // caller owns the corpus and the search legs.
@@ -3442,12 +3442,12 @@ async function judgeAsk(question, passages, key, o, manifest) {
   };
 }
 
-// The checks a judge asked for, in the one shape the runner reads. Anything that is
+// The checks a agent asked for, in the one shape the runner reads. Anything that is
 // not a usable search is dropped rather than run: a check with no query would be
 // marked absent after searching nothing, and 'absent' is the one verdict this
 // feature exists to make true.
 export function normalizeChecks(raw, max) {
-  const cap = Math.max(Number(max) || JUDGE_CHECKS_MAX, 1);
+  const cap = Math.max(Number(max) || AGENT_CHECKS_MAX, 1);
   if (!Array.isArray(raw)) return [];
   const out = [];
   for (const item of raw) {
@@ -3464,7 +3464,7 @@ export function normalizeChecks(raw, max) {
 }
 
 // A named link -> the record it points at, or null. Everything is re-checked against
-// the manifest the judge was actually shown: a model that answers [3.7] when it was
+// the manifest the agent was actually shown: a model that answers [3.7] when it was
 // offered two links is not followed, it is ignored.
 export function resolveFollow(follow, manifest, resolve) {
   if (!follow) return null;
@@ -3479,21 +3479,21 @@ export function resolveFollow(follow, manifest, resolve) {
 }
 
 // --- the sweep: one check, run for real --------------------------------------
-// A check is a search the judge asked for, and it runs through the SAME two legs the
+// A check is a search the agent asked for, and it runs through the SAME two legs the
 // retrieval runs: the lexical leg over the indexable corpus, and the vector leg. Both
 // go through indexedSections()/deliveredHits(), so a check can never surface a record
 // the product filters out (Legends, the pack line, a navigation page) - the guarantee
 // that a sweep cannot smuggle in what the answer is not allowed to cite.
 //
 // The two legs are joined by id, in the order they were found, and the already-shown
-// passages are dropped: a check that only finds what the judge has read has found
+// passages are dropped: a check that only finds what the agent has read has found
 // nothing new, and saying 'absent' there would be a lie about the search.
 export async function runChecks(checks, opts) {
   const o = opts || {};
-  const list = (checks || []).slice(0, Math.max(Number(o.max) || JUDGE_CHECKS_PER_ROUND, 1));
+  const list = (checks || []).slice(0, Math.max(Number(o.max) || AGENT_CHECKS_PER_ROUND, 1));
   const corpus = indexedSections(o.corpus || readAllCorpus());
   const shown = o.shown || new Set();
-  const limit = Math.max(Number(o.hits) || JUDGE_SWEEP_HITS, 1);
+  const limit = Math.max(Number(o.hits) || AGENT_SWEEP_HITS, 1);
   const lexical = (query, cap) => {
     const terms = grepTerms(query);
     if (!terms.length) return [];
@@ -3541,15 +3541,15 @@ export async function runChecks(checks, opts) {
   return out;
 }
 
-// What the judge is shown about the checks it asked for, and what it is asked back.
+// What the agent is shown about the checks it asked for, and what it is asked back.
 // The passages are labelled c1, c2... so a verdict can point at one without a second
 // numbering scheme, and a check whose search found nothing says so in the prompt:
-// 'nothing' is information, and the judge is the one who decides whether that settles
+// 'nothing' is information, and the agent is the one who decides whether that settles
 // the claim or whether the search was phrased wrong.
 export function sweepPrompt(question, checks, opts) {
   const o = opts || {};
   const french = String(o.lang || '').slice(0, 2) === 'fr';
-  // Enough of a record to judge whether it answers the check, not the whole record:
+  // Enough of a record to agent whether it answers the check, not the whole record:
   // this prompt carries up to four checks x three hits, and every character here is
   // latency on a phone. The id and heading are always complete.
   const cap = Math.max(Number(o.passageChars) || 400, 120);
@@ -3581,10 +3581,10 @@ export function sweepPrompt(question, checks, opts) {
   return lines.join('\n');
 }
 
-// The judge's verdicts on its own checks, applied to the check list. A verdict that
+// The agent's verdicts on its own checks, applied to the check list. A verdict that
 // names a record the search did not return is refused rather than trusted - the same
 // discipline resolveFollow() applies to a named link - and a check whose search did
-// not run stays unresolved whatever the judge says.
+// not run stays unresolved whatever the agent says.
 export function applySweepVerdicts(checks, obj) {
   const verdicts = (obj && Array.isArray(obj.checks)) ? obj.checks : [];
   const out = (checks || []).map(c => Object.assign({}, c));
@@ -3599,30 +3599,30 @@ export function applySweepVerdicts(checks, obj) {
     if (v && v.absent === true && c.ran) { c.verdict = 'absent'; c.id = ''; c.why = why; continue; }
     c.verdict = 'unresolved'; c.why = why;
   }
-  // A check the judge said nothing about is unresolved, never absent: silence is not
+  // A check the agent said nothing about is unresolved, never absent: silence is not
   // a search that came back empty.
   for (const c of out) if (!c.verdict) c.verdict = 'unresolved';
   return out;
 }
 
-// The whole sweep, bounded. One round is: run the checks the judge named, show it what
+// The whole sweep, bounded. One round is: run the checks the agent named, show it what
 // came back, and take its verdicts. A round ends the loop when every check it resolved
-// is ABSENT - the judge has said the corpus does not hold what it was worried about,
-// which is the statement this feature exists to make - or when the judge resolves
+// is ABSENT - the agent has said the corpus does not hold what it was worried about,
+// which is the statement this feature exists to make - or when the agent resolves
 // nothing new. The bounds are checked before each round and reported on the result.
 export async function sweepChecks(question, checks, opts) {
   const o = opts || {};
   const started = Number.isFinite(o.startedAt) ? o.startedAt : Date.now();
-  const budgetMs = Number.isFinite(o.budgetMs) ? o.budgetMs : JUDGE_SWEEP_BUDGET_MS;
-  const maxRounds = Math.max(Number(o.rounds) || JUDGE_SWEEP_ROUNDS, 1);
-  const maxCalls = Math.max(Number(o.calls) || JUDGE_SWEEP_CALLS, 0);
-  const perRound = Math.max(Number(o.checksPerRound) || JUDGE_CHECKS_PER_ROUND, 1);
+  const budgetMs = Number.isFinite(o.budgetMs) ? o.budgetMs : AGENT_SWEEP_BUDGET_MS;
+  const maxRounds = Math.max(Number(o.rounds) || AGENT_SWEEP_ROUNDS, 1);
+  const maxCalls = Math.max(Number(o.calls) || AGENT_SWEEP_CALLS, 0);
+  const perRound = Math.max(Number(o.checksPerRound) || AGENT_CHECKS_PER_ROUND, 1);
   const shown = o.shown || new Set();
   const all = [];
   let calls = 0;
   let round = 0;
   // 'nothing-to-check' is a real ending and it is the one the reader needs told
-  // apart from 'nobody looked' (task-49): the judge answered and named nothing.
+  // apart from 'nobody looked' (task-49): the agent answered and named nothing.
   let stopped = 'nothing-to-check';
   let pending = normalizeChecks(checks, perRound).map((c, i) => ({ n: i + 1, what: c.what, query: c.query }));
   while (pending.length) {
@@ -3631,8 +3631,8 @@ export async function sweepChecks(question, checks, opts) {
     if (Date.now() - started >= budgetMs) { stopped = 'budget'; break; }
     round += 1;
     const ran = await runChecks(pending, { corpus: o.corpus, shown: shown, hits: o.hits, max: perRound, vector: o.vector, cfg: o.cfg, namespace: o.namespace });
-    // The judge reads what the search returned; a check whose search found nothing
-    // is shown that, because 'nothing' is the answer it has to judge.
+    // The agent reads what the search returned; a check whose search found nothing
+    // is shown that, because 'nothing' is the answer it has to agent.
     const withText = ran.map(c => Object.assign({}, c, { hits: (c.hits || []).map(h => Object.assign({}, h, { text: (o.textOf ? o.textOf(h.id) : '') })) }));
     let obj = null;
     // The budget has to bound the CALL, not just the top of the round: one resolution
@@ -3642,7 +3642,7 @@ export async function sweepChecks(question, checks, opts) {
     const left = budgetMs - (Date.now() - started);
     if (left <= 0) {
       // The search ran and its results are real, so they are kept - a check whose
-      // search found nothing is still NOT absent, because no judge read it. The
+      // search found nothing is still NOT absent, because no agent read it. The
       // verdicts stay empty and the reason is the bound.
       all.push.apply(all, ran.map(c => Object.assign({}, c, { verdict: 'unresolved' })));
       stopped = 'budget';
@@ -3661,11 +3661,11 @@ export async function sweepChecks(question, checks, opts) {
     all.push.apply(all, resolved);
     for (const c of resolved) for (const h of (c.hits || [])) shown.add(h.id);
     // Termination, in three endings and only three:
-    //  - every check came back ABSENT: the judge has said the corpus does not hold what
+    //  - every check came back ABSENT: the agent has said the corpus does not hold what
     //    it was worried about, which is the statement this feature exists to make;
-    //  - nothing was resolved at all: the judge had nothing to say about its own
+    //  - nothing was resolved at all: the agent had nothing to say about its own
     //    checks, so another round would ask the same question again;
-    //  - every check was ANSWERED: the judge found a record for each, so there is
+    //  - every check was ANSWERED: the agent found a record for each, so there is
     //    nothing left it said it needed;
     //  - otherwise only the checks it could NOT resolve are carried into the next
     //    round. That is the deepening the feature is for: the records the first round
@@ -3677,7 +3677,7 @@ export async function sweepChecks(question, checks, opts) {
     const unresolved = resolved.filter(c => c.verdict === 'unresolved');
     if (absent.length === resolved.length && resolved.length) { stopped = 'absent'; break; }
     if (!unresolved.length) { stopped = 'answered'; break; }
-    // A check the judge could not settle is re-run with the OTHER half of what it
+    // A check the agent could not settle is re-run with the OTHER half of what it
     // wrote: 'what' is the claim, 'query' was the search, and searching the claim's own
     // words is a different search that can reach records the first one did not. The
     // same query would return the same list and the round would cost a phone seconds
@@ -3709,13 +3709,13 @@ export async function sweepChecks(question, checks, opts) {
     bounds: { rounds: maxRounds, checksPerRound: perRound, budgetMs: budgetMs, calls: maxCalls },
   };
 }
-export async function judgeCoverage(question, passages, key, opts) {
+export async function agentCoverage(question, passages, key, opts) {
   const o = opts || {};
   const manifest = (o.follow && typeof o.resolve === 'function') ? followManifest(passages, o.resolve, o) : [];
-  const first = await judgeAsk(question, passages, key, o, manifest);
+  const first = await agentAsk(question, passages, key, o, manifest);
   // The control arm: the manifest is offered and the prompt is byte-identical, and the
-  // hop is refused. It separates 'the judge changed because it was offered a link' from
-  // 'the judge changed because it opened one' - which are different claims about the
+  // hop is refused. It separates 'the agent changed because it was offered a link' from
+  // 'the agent changed because it opened one' - which are different claims about the
   // feature and only one of them is about the feature.
   if (o.noHop) return first;
   if (!manifest.length || !first.follow) return first;
@@ -3725,48 +3725,48 @@ export async function judgeCoverage(question, passages, key, opts) {
   // it by number like any other and the page can say where it came from.
   const opened = Object.assign({}, t.rec, { openedFrom: t.passage });
   let second;
-  try { second = await judgeAsk(question, passages.concat([opened]), key, o, []); }
+  try { second = await agentAsk(question, passages.concat([opened]), key, o, []); }
   catch (e) { return Object.assign({}, first, { followFailed: String((e && e.message) || e) }); }
   return Object.assign({}, second, { followed: { from: t.passage, link: t.link, to: t.rec.id, title: String(t.rec.heading || t.rec.id), hop: 1 } });
 }
 
-// --- what to do when the judge says no --------------------------------------
-// A judge that flags a retrieval as insufficient and is then ignored is worse
-// than no judge: it produces a confident answer to a question the system has
+// --- what to do when the agent says no --------------------------------------
+// A agent that flags a retrieval as insufficient and is then ignored is worse
+// than no agent: it produces a confident answer to a question the system has
 // already established it cannot answer. So the verdict is binding, and a miss
 // deepens the search rather than being answered anyway.
 //
 // One widening was never enough. 'Can Asurmen re-embark after shooting' missed
 // the Embarking rule on the first pass, missed it again on the widened one (it
 // sat below the reranker's cut at 50), and was declared absent by a system whose
-// corpus holds it - the judge had simply never been shown it. The search now
-// keeps deepening by WIDEN_ADD findings a round, aimed at the half the judge
-// named, until the judge says it can answer.
+// corpus holds it - the agent had simply never been shown it. The search now
+// keeps deepening by WIDEN_ADD findings a round, aimed at the half the agent
+// named, until the agent says it can answer.
 //
-// What bounds that: each round re-shows the whole candidate list to the judge,
+// What bounds that: each round re-shows the whole candidate list to the agent,
 // so a widened pass is a slower and more expensive call, and past a point the
-// per-passage cap in judgePrompt starts cutting the evidence the judge is asked
-// to judge. RULES_MAX_PASSES (default 3) is the ceiling; the last pass is final
+// per-passage cap in agentPrompt starts cutting the evidence the agent is asked
+// to agent. RULES_MAX_PASSES (default 3) is the ceiling; the last pass is final
 // by definition, so a miss there is still reported as not knowing.
 //
 // Finding a passage that was ranked 7th is a real win. Guessing from a passage
 // that was ranked 3rd and is about something else is not, and the difference is
-// exactly what the judge is for.
+// exactly what the agent is for.
 export const ESCALATION_TOPKS = [10];
 export const WIDEN_ADD = 20;
 export const MAX_PASSES = Math.max(1, Number(process.env.RULES_MAX_PASSES) || 3);
 
 // --- the two settings the page offers --------------------------------------
-// Not a speed dial: measured, the judge's wall-clock is its own reasoning, not
+// Not a speed dial: measured, the agent's wall-clock is its own reasoning, not
 // the size of the prompt (holding the question and the route fixed, 10 findings
 // and 23 findings came out at a 31.9s and a 33.0s mean). So the fast setting
-// buys its seconds where the seconds are - the judge does not think - and pays
+// buys its seconds where the seconds are - the agent does not think - and pays
 // for them where the benchmark says the thinking is worth it (79.4% -> 61.8% on
 // the real bank). Taking fewer findings is the second half of it: a smaller
 // prompt that costs no recall once the rerank is on - on the 29-question bank
 // per-side 5 is at least as good as 10 on every reported column (reachable
 // 51.7 / 86.2 / 93.1 / 93.1 against 48.3 / 86.2 / 93.1 / 93.1, MRR 0.670 against
-// 0.648) while handing the judge 13.1 passages instead of 23.4 - with the
+// 0.648) while handing the agent 13.1 passages instead of 23.4 - with the
 // anchoring still guaranteeing the rule the question names.
 export const ASK_MODES = {
   fast: { first: 5, passes: 2, reasoning: 'none', second: 'medium', grepNet: 50, jevMax: 60 },
@@ -3787,8 +3787,8 @@ export function askMode(value) {
 }
 
 // The writer - the "answer" call that turns findings into prose - is OFF by
-// default. What the page shows is the findings, the judge's verdict, the citations
-// and the marks; the prose is a later format whose home is going to be the judge,
+// default. What the page shows is the findings, the agent's verdict, the citations
+// and the marks; the prose is a later format whose home is going to be the agent,
 // so the call is switched off rather than deleted. RULES_WRITER=1 (or
 // writer: true in the request) turns it back on for whoever wants it.
 export function writerEnabled(env, requested) {
@@ -3816,8 +3816,8 @@ export function widenPlan(target, perSide) {
   return { rules: prev.rules + half, factions: prev.factions + half, target: 'both' };
 }
 
-export function dontKnowAnswer(judge, lang) {
-  const why = (judge && judge.why) ? judge.why : 'no passage states the rule.';
+export function dontKnowAnswer(agent, lang) {
+  const why = (agent && agent.why) ? agent.why : 'no passage states the rule.';
   if (lang === 'fr') {
     return [
       "**Je ne sais pas.**",
@@ -3834,7 +3834,7 @@ export function dontKnowAnswer(judge, lang) {
     '',
     'The question was searched for — the findings are listed below, and the search was widened — but no passage states the rule needed to answer it.',
     '',
-    'The judge: ' + why,
+    'The agent: ' + why,
     '',
     'This is not an answer, it is a statement of absence. Two likely causes: the rule is not in this copy (a missing datasheet or stratagem), or the question falls outside what the corpus covers. An invented answer here would be worse than none.',
   ].join('\n');
@@ -3845,42 +3845,42 @@ export function dontKnowAnswer(judge, lang) {
 export async function answerableFindings(question, opts) {
   const o = opts || {};
   const base = (o.topKs && o.topKs[0]) || ESCALATION_TOPKS[0];
-  // Until the judge stops, not once: a question the corpus can answer must not
+  // Until the agent stops, not once: a question the corpus can answer must not
   // be declared unanswerable because the first two looks missed. MAX_PASSES is
   // the ceiling, not the plan.
   const passes = Math.max(1, o.passes || MAX_PASSES);
   const retrieve = o.retrieve || ((q, plan) => retrieveDual(q, Object.assign({}, o.dual, { perSide: plan })));
-  const judge = o.judge || ((q, findings) => judgeCoverage(q, findings, o.fastKey, o.judgeOpts));
+  const agent = o.agent || ((q, findings) => agentCoverage(q, findings, o.fastKey, o.agentOpts));
   const attempts = [];
   let widened = false;
   let plan = { rules: base, factions: base };
   for (let i = 0; i < passes; i++) {
     const dual = await retrieve(question, plan);
     let findings = dual.all.map((s, idx) => findingFor(s, idx + 1));
-    // A curator, when one is given, sees the list the judge and the writer are
+    // A curator, when one is given, sees the list the agent and the writer are
     // about to see and may drop, cap and reorder it. The previous attempt travels
     // with it, so a passage an earlier pass already passed over can be dropped
     // rather than judged again. Nothing changes by default: with no curator the
     // list is exactly what it always was.
     if (o.curate) findings = o.curate(findings, { question, plan, attempt: i, previous: attempts[attempts.length - 1] });
     if (o.onFindings) o.onFindings({ plan, findings, dual, attempt: i });
-    const verdict = await judge(question, findings);
+    const verdict = await agent(question, findings);
     const final = verdict.answered === true || i === passes - 1;
-    attempts.push({ plan, findings, judge: verdict, dual, final });
-    if (o.onJudge) o.onJudge({ judge: verdict, plan, attempt: i, final });
+    attempts.push({ plan, findings, agent: verdict, dual, final });
+    if (o.onAgent) o.onAgent({ agent: verdict, plan, attempt: i, final });
     if (verdict.answered === true) break;
     if (!final) { widened = true; plan = widenPlan(verdict.widen, plan); }
   }
   const last = attempts[attempts.length - 1];
   return {
     findings: last.findings,
-    judge: last.judge,
+    agent: last.agent,
     dual: last.dual,
     attempts: attempts.map(a => ({
-      plan: a.plan, count: a.findings.length, answered: a.judge.answered === true,
-      confidence: a.judge.confidence, widen: a.judge.widen, final: a.final,
+      plan: a.plan, count: a.findings.length, answered: a.agent.answered === true,
+      confidence: a.agent.confidence, widen: a.agent.widen, final: a.final,
     })),
-    unresolved: last.judge.answered !== true,
+    unresolved: last.agent.answered !== true,
     escalated: widened,
   };
 }
@@ -4129,13 +4129,13 @@ export function scopeLookup(question, index, keywords, opts) {
     .slice(0, cap)
     // scopeKeys is what the record's scope NAMES; subjectKeys is which of the SUBJECT's
     // own keywords the scope matched (task-70). The two together are the join, already
-    // computed: the judge is told it instead of re-deriving it from prose.
+    // computed: the agent is told it instead of re-deriving it from prose.
     .map(x => Object.assign({}, x.rec, { scopeKeys: x.keys, subjectKeys: (keywords || []).filter(k => x.keys.some(w => String(k).split(/\s+/).indexOf(w) !== -1)), carriesQuestion: x.kw > 0 }));
 
 }
 
 // task-70: the scope leg's finding, made legible beside the passages. The leg exists to
-// find records whose scope covers the subject; asking the judge to re-derive that from the
+// find records whose scope covers the subject; asking the agent to re-derive that from the
 // two records' prose is the inference it keeps getting wrong (measured: a run wrote the
 // correct sentence and answered NO). This returns the fact as the leg computed it - the
 // record, the keyword the record's scope names, and the subject's own keyword that met it.
@@ -4154,7 +4154,7 @@ export function scopeFacts(findings, question) {
     // with it: the Baneblade's keyword list carries 'Baneblade' and 'Save' while stating
     // 'Save 2+', and stating 'that record APPLIES' for it would be a false fact. A record
     // that states a capability states it with one of these, so they are the gate - what
-    // the record actually grants is still the judge's to read.
+    // the record actually grants is still the agent's to read.
     if (!/\b(has|have|had|gets?|gains?|grants?|granted|gives?|given|benefits?)\b/i.test(String(f.text || ''))) return;
     const subject = (f.subjectKeys || [])[0] || '';
     out.push({ n: f.n || i + 1, id: f.id, keyword: subject || keys[0], scopeKeys: keys });
@@ -4343,7 +4343,7 @@ export async function retrieveWide(question, opts) {
     } catch (e) {
       // The ranker is a free-tier call one shared budget away from a 429, and it
       // must not take the question with it: grep and the vector index already
-      // found passages, and the judge reads the model, not Jev. Unranked order is
+      // found passages, and the agent reads the model, not Jev. Unranked order is
       // the rank fusion itself - what the two retrievers already agree on. A
       // measurement arm turns that fallback into a stop instead of a mixed row;
       // the page never sets the flag.
@@ -4392,7 +4392,7 @@ export async function retrieveWide(question, opts) {
   // Capped at three records. It is INSERTED above the anchors and the children rather
   // than appended: an appended record lands past the display cut, which is where the
   // first version of this leg put the Enginseer (present in the list, rank 24 of 24, and
-  // invisible to the judge). The retriever heads keep their places; the weakest picks
+  // invisible to the agent). The retriever heads keep their places; the weakest picks
   // make room.
   if (o.scopeLeg !== false && scopeLegReady()) {
     const kws = entityKeywords(question, o.scopeCorpus || corpus, { terms: o.terms, anchorCap: o.anchorCap || 2 });
@@ -4453,7 +4453,7 @@ export async function retrieveWide(question, opts) {
 export async function retrieveDual(question, opts) {
   const o = opts || {};
   // Each half can be asked for a different depth. They fail for different
-  // reasons - a missing core rule is not a missing datasheet - and the judge
+  // reasons - a missing core rule is not a missing datasheet - and the agent
   // says which one is short.
   const plan = o.perSide || {};
   const rulesK = plan.rules || o.topK || 10;
@@ -4462,7 +4462,7 @@ export async function retrieveDual(question, opts) {
   // Jev reorders the candidates it is given; it cannot rank a passage that was
   // sliced off first. On the Asurmen embark question the Embarking rule sat at
   // merged rank 54 - a candidate list cut at 50 never showed it to Jev, and with
-  // a net of 80 the same passage came back 4th and the judge could finally read
+  // a net of 80 the same passage came back 4th and the agent could finally read
   // it. K + 10 was too tight a net to let the reranker do the job it exists for,
   // and it is the net, not K, that has to grow when the search deepens.
   const netFor = k => Math.max(o.jevMax || 30, k + 70);
@@ -4543,7 +4543,7 @@ export function compilePrompt(question, findings, opts) {
     '- When a finding states a condition and another finding clarifies it, say what the condition excludes in practice - name the case it rules out, not only the wording of the condition.',
     '',
     'Findings:',
-    findings.map((f, i) => '[' + (i + 1) + '] ' + (f.set === 'factions' ? 'Faction rules' : 'Core rules') + ' - ' + (f.faction ? f.faction + ' - ' : '') + f.heading + (f.ruleId ? ' (' + f.ruleId + ')' : '') + '\n' + String(f.text).slice(0, JUDGE_PASSAGE_CHARS)).join('\n\n'),
+    findings.map((f, i) => '[' + (i + 1) + '] ' + (f.set === 'factions' ? 'Faction rules' : 'Core rules') + ' - ' + (f.faction ? f.faction + ' - ' : '') + f.heading + (f.ruleId ? ' (' + f.ruleId + ')' : '') + '\n' + String(f.text).slice(0, AGENT_PASSAGE_CHARS)).join('\n\n'),
     '',
     'Question: ' + question,
     '',
@@ -4573,7 +4573,7 @@ export const WRITER_DECLINED = 'The findings do not answer this question.';
 // sample showed the difference - the thinking writer reasoned from the
 // Not-on-the-Battlefield rule to an answer, the fast one refused. A refusal is
 // cheap to detect (the sentence is fixed) and cheap to re-ask; paying 85 seconds
-// on every question to fix the tail is not. It mirrors the escalation the judge
+// on every question to fix the tail is not. It mirrors the escalation the agent
 // already has, one layer up.
 //
 // opts.write is for tests: (question, findings, reasoning) -> prose.
@@ -4611,11 +4611,11 @@ export function findingFor(section, n) {
     // simply carries no provenance.
     rank: section.rank || 0,
     leg: section.leg || '',
-    // task-67: the scope leg's own record, marked so the judge prompt can give it its
+    // task-67: the scope leg's own record, marked so the agent prompt can give it its
     // full length. scopeKeys is set by scopeLookup (the keywords it matched); a finding
     // built by hand carries none and is treated like any other.
     scope: Array.isArray(section.scopeKeys) && section.scopeKeys.length > 0,
-    // The leg's own output, carried so the judge prompt can state the join (task-70).
+    // The leg's own output, carried so the agent prompt can state the join (task-70).
     scopeKeys: Array.isArray(section.scopeKeys) ? section.scopeKeys : [],
     subjectKeys: Array.isArray(section.subjectKeys) ? section.subjectKeys : [],
     carriesQuestion: section.carriesQuestion === true,
@@ -5091,7 +5091,7 @@ export async function ingest(only, opts) {
 // different things and can only ever answer coarsely. What can be stated exactly
 // is when our own copy was made - the export's stamp, and the moment we built
 // from it. A reader who wants to know whether that is recent enough can see the
-// date and judge for themselves.
+// date and agent for themselves.
 //
 // Cached because the corpus does not change while the server is running, and
 // /health is read on every page load.

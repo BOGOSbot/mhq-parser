@@ -470,7 +470,7 @@ the default changes what runs, not what was recorded.
   a **downgrade** marks the answer unconfirmed, a **weaker dissent** is shown as
   a dissent and the answer stands, because it is still information. Both name the
   verdicts and their settings. `reconcileVerdicts` and `judgeStrength` are that
-  rule, on their own, and `tests/test-judge.mjs` holds it for both modes.
+  rule, on their own, and `tests/test-agent.mjs` holds it for both modes.
 
 ### The sweep: the judge names its gaps (task-43)
 
@@ -1104,7 +1104,7 @@ answer the same question differently.
   resumes.
 - `node tests/ask.mjs "<question>"` and `node tests/ask-fr.mjs --id <id>` - one
   question end to end, printed.
-- `node tests/test-rules.mjs`, `node tests/test-judge.mjs`,
+- `node tests/test-rules.mjs`, `node tests/test-agent.mjs`,
   `node tests/test-corpus-build.mjs` - edition and anchors, the judge and the
   escalation policy, the CSV builder.
 - `node tests/test-unit-card.mjs` - the datasheet resolution, every field of the
