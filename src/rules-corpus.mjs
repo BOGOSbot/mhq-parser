@@ -2668,6 +2668,34 @@ export function repairJsonStrings(text) {
   return out;
 }
 
+// task-75: the schema example, echoed back. The prompt ends with a filled-in example, and a
+// small model sometimes returns the EXAMPLE as its answer instead of filling it in: the
+// reply parses as valid JSON and reads as prose, so every earlier guard let it through and
+// the reader was shown 'une phrase, dans les termes du lecteur' as the answer. Measured on
+// the Box, French: see workspace/t75-report-2026-10-21.md.
+//
+// The fields are matched EXACTLY, not as substrings: a real answer may well CONTAIN
+// 'one sentence', and the whole point is to catch the placeholder standing alone. The
+// quote and why placeholders are matched too, because a model that echoes one field of the
+// example is echoing the example.
+const TEMPLATE_PLACEHOLDERS = [
+  'une phrase, dans les termes du lecteur',
+  'des mots copi\u00e9s verbatim du passage nomm\u00e9 dans from, ou null',
+  'la raison, en deux ou trois phrases',
+  "one sentence, in the reader's terms",
+  'words copied verbatim from the passage named in from, or null',
+  'the reason, in two or three sentences',
+];
+function isPlaceholder(value) {
+  const s = String(value == null ? '' : value).trim();
+  return !!s && TEMPLATE_PLACEHOLDERS.indexOf(s) !== -1;
+}
+// True when the parsed object is the prompt's own example rather than an answer.
+export function agentTemplate(obj) {
+  if (!obj || typeof obj !== 'object') return false;
+  return isPlaceholder(obj.answer) || isPlaceholder(obj.quote) || isPlaceholder(obj.why);
+}
+
 export function parseJsonObject(text) {
   const raw = String(text == null ? '' : text).split(String.fromCharCode(96)).join(' ').trim();
   for (let start = raw.indexOf('{'); start !== -1; start = raw.indexOf('{', start + 1)) {
@@ -3391,10 +3419,20 @@ async function agentAsk(question, passages, key, o, manifest) {
   // task-31: these re-asks are a wait too, so they run without reasoning and stay
   // bounded - the verdict's words are what matters, not the deliberation behind it.
   const reOpts = Object.assign({}, callOpts, { reasoning: 'none' });
-  for (let ask = 1; !obj && ask < (o.maxAsks || 3); ask++) {
+  // task-75: a reply that IS the schema example is re-asked exactly like a missing object,
+  // and with the word that stops the copying. It parses, so nothing else in this file
+  // catches it.
+  const mustNotCopy = '\n\nYour previous reply was the EXAMPLE from the schema, not an answer: it repeated the placeholder text of the example. Reply with the JSON object only, in one line, and with the fields FILLED IN for this question. Do not copy the wording of the example.';
+  for (let ask = 1; (!obj || agentTemplate(obj)) && ask < (o.maxAsks || 3); ask++) {
     try {
-      obj = parseJsonObject(await fastText(prompt + '\n\nReply with the JSON object only, in one line, and nothing else.', key, 1200, reOpts));
+      obj = parseJsonObject(await fastText(prompt + (ask > 1 || agentTemplate(obj) ? mustNotCopy : '\n\nReply with the JSON object only, in one line, and nothing else.'), key, 1200, reOpts));
     } catch (e) { break; }
+  }
+  if (agentTemplate(obj)) {
+    // Three asks and it is still the template. That is not a refusal and not an answer:
+    // the records may hold the rule and this call never read them. Reported as such.
+    ROUTE_STATS.template = (ROUTE_STATS.template || 0) + 1;
+    return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'the agent returned the schema example instead of an answer', template: true };
   }
   if (!obj) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'agent returned nothing parseable', raw: true };
   const answered = obj.answered === true;
