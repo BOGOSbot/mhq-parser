@@ -3264,6 +3264,30 @@ export function rulingSlots(obj, answered, passages) {
   };
 }
 
+// A verdict that says 'no' while its own sentence grants the capability. The refusal shape
+// is 'does not have ... but it can gain one from ...'; the answer that follows its own
+// reasoning is a yes. Only a refusal is tested, so an answer that already says yes cannot
+// be turned into a re-ask by this.
+// NOT WIRED IN (task-70): the mechanical join took the key case from 7/10 to 9/10, and the
+// detector's own false positive - a correct no that names an exception ('only the unit it
+// leads can have one') - would re-ask a verdict that is already right. It is kept, tested
+// and unused until a card authorises the re-ask itself.
+export function contradictsItself(obj) {
+  const o = obj || {};
+  if (o.answered === true) return false;
+  const text = String(o.answer || '');
+  if (!text.trim()) return false;
+  // A no is stated first; a yes is stated first. Only the second shape is a contradiction.
+  if (/^\s*(yes\b|it can|a unit can|they can|such a unit can|the answer is yes)/i.test(text)) return false;
+  // The capability is granted TO the subject: 'one can be granted to it', 'it can gain
+  // one', 'the unit can have one'. A refusal that names an exception about ANOTHER model
+  // ('only the unit it leads can have one') is not a contradiction, so the pronoun or the
+  // subject has to be in the clause.
+  return /\b(can|may) be (granted|given|obtained|received)\b[^.]{0,30}?\b(it|them|this|that model|the (?:unit|model|vehicle))\b/i.test(text)
+    || /\b(it|this|the (?:unit|model|vehicle)|such a (?:unit|model))\b[^.]{0,30}?\b(can|may)\b[^.]{0,30}?\b(have|gain|get|obtain|receive|be granted)\b/i.test(text)
+    || /\bcan gain one\b|\bcan have one\b|\bcan obtain one\b/i.test(text);
+}
+
 // One judge call: the prompt, the parse, and the one extra ask the verdict is worth.
 // Split out of judgeCoverage so the hop can run it twice on two lists.
 async function judgeAsk(question, passages, key, o, manifest) {
