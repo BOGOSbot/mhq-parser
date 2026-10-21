@@ -134,6 +134,12 @@ ok('the ruling links its source by title', /function sourceLine/.test(code) && /
 // instead of the wiki.'
 ok('the quote\u2019s source opens the door, not the raw sheet', /openDoor\(VERDICT_STATE \|\| newState\(\), f\)/.test(code) && !/sourceLine[\s\S]{0,400}openPassage/.test(code));
 ok('the door needs the state the verdict was rendered from', /VERDICT_STATE = state/.test(code) && /var VERDICT_STATE = null/.test(code));
+// task-78: a call that never happened is not a verdict. The card says the agent could not
+// read the findings and offers one tap to ask again - it must never borrow the refusal's
+// sentence, which claims the question WAS searched for.
+ok('a failed agent call renders as a failure', /state\.agent\.failed === true/.test(code) && /agentFailed/.test(code) && /agentfail-again/.test(code));
+ok('the failure copy says it is a failure, not an absence', /not a statement about the corpus/.test(PAGE) && /pas une affirmation sur le corpus/.test(PAGE));
+ok('and the reader can ask again from the card', /again\.addEventListener\('click', function \(\) \{ if \(state\.question\) ask\(/.test(code));
 // task-74 renamed the door's surfaces, and this action still named the old one: it threw
 // ReferenceError the moment it was tapped. It goes through the door like every other row.
 ok('the finding sheet\u2019s action goes through the door', /closeFindingSheet\(\); openDoor\(state, f\)/.test(code) && !/openBook\(/.test(code));

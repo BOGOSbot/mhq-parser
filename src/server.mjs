@@ -1560,12 +1560,26 @@ async function handleRulesAsk(req, res) {
     // forever, and the provider's raw string never reaches the reader.
     let writerFailed = '';
     let answer = '';
+    // task-78: an agent call that never happened is NOT a refusal. The agent's own
+    // `answered === null` is it saying it could not run - an empty body, a dropped
+    // connection, a reply that was the schema example - and its `why` says which. Below,
+    // `outcome.unresolved` would send that straight into dontKnowAnswer, whose first line is
+    // 'The question was searched for', a false statement about the corpus built from a call
+    // that never answered. The statement of absence is for a real refusal; this is a
+    // failure, and it is reported as one. The flag rides on the agent to the client, which
+    // renders it without a retry button the reader cannot use.
+    const agentCallFailed = !!(agent && agent.answered === null);
+    if (agentCallFailed) agent.failed = true;
     try {
-      answer = await timed('answer', () => (outcome.unresolved
+      answer = await timed('answer', () => (agentCallFailed
+        ? Promise.reject(new Error(String((agent && agent.why) || 'the agent did not answer')))
+        : outcome.unresolved
         ? Promise.resolve(dontKnowAnswer(agent, lang))
         : compileFindings(asked, outcome.findings, keys.model, { lang: answerLang })));
     } catch (e) {
-      writerFailed = 'timeout';
+      // The two are different failures and the reader is told which: the agent never ran
+      // against the corpus, or the prose call did not come back.
+      writerFailed = agentCallFailed ? 'agent' : 'timeout';
     }
     if (!writerFailed && !outcome.unresolved && !String(answer).trim()) writerFailed = 'empty';
     // The writer's refusal beats the agent's boolean. The agent once marked a
@@ -1727,9 +1741,11 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === 'GET' && u.pathname === '/health') {
     // task-78: a test-only delay, so the suite can prove the server does not end a slow
-    // request at Node's default 300 seconds. It is inert unless the variable is set, and
-    // it lives here rather than in a test-only route so what is tested is the real server.
-    const slow = Number(process.env.RULES_TEST_SLOW_MS);
+    // request at Node's default 300 seconds. It is inert unless the variable is set AND the
+    // request asks for it, so the health probe that waits for the server to come up is never
+    // the request that sleeps. It lives here rather than in a test-only route so what is
+    // tested is the real server.
+    const slow = Number(u.searchParams.get('slow')) > 0 ? Number(process.env.RULES_TEST_SLOW_MS) : 0;
     if (slow > 0) await new Promise(r => setTimeout(r, slow));
     const a = archiveIndex();
     return json(res, 200, {

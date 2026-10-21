@@ -766,6 +766,8 @@ var I18N = {
     secondAgentWith: 'A second agent, with reasoning, also read these findings.',
     secondAgentWithout: 'A second agent, without reasoning, also read these findings.',
     agentTwoAnswers: 'The two agents read the same findings and answered differently. Both answers are here; the stronger agent\u2019s is the line above.',
+  agentFailed: 'The agent could not read these findings: the call did not come back. That is a failure, not a statement about the corpus.',
+  agentAgain: 'Ask again',
     // task-27: what is running while the send is disabled. runningAsk covers the
     // beat before the server's first event names the real first stage.
     runningAsk: 'asking the corpus...',
@@ -989,7 +991,9 @@ var I18N = {
     agentReasoning: 'avec raisonnement',
     secondAgentWith: 'Un second juge, avec raisonnement, a aussi lu ces constats.',
     secondAgentWithout: 'Un second juge, sans raisonnement, a aussi lu ces constats.',
-    agentTwoAnswers: 'Les deux juges ont lu les m\u00eames constats et r\u00e9pondu diff\u00e9remment. Les deux r\u00e9ponses sont ici ; celle du juge le plus fiable est la ligne ci-dessus.',
+    agentTwoAnswers: 'Les deux agents ont lu les m\u00eames constats et r\u00e9pondu diff\u00e9remment. Les deux r\u00e9ponses sont ici ; celle de l\u2019agent le plus fiable est la ligne ci-dessus.',
+    agentFailed: 'L\u2019agent n\u2019a pas pu lire ces constats : l\u2019appel n\u2019est pas revenu. C\u2019est une panne, pas une affirmation sur le corpus.',
+    agentAgain: 'Redemander',
     runningAsk: 'interrogation du corpus...',
     secondReading: 'Un second juge relit ces constats...',
     runningTranslate: 'traduction de la question...',
@@ -2427,6 +2431,20 @@ function renderVerdicts(state) {
   var card = state.verdict;
   card.textContent = '';
   if (!state.agent) { card.appendChild(el('div', 'note waiting', t('readingFindings'))); return; }
+  // task-78: a call that never happened is not a verdict. `failed` means the agent could not
+  // run - an empty body, a dropped connection, a reply that was the schema example - and the
+  // card says so instead of borrowing the refusal's sentence ('the question was searched for'
+  // would be a false statement about the corpus). The findings stay on the page: they are
+  // real, and 'Ask again' is one tap away.
+  if (state.agent.failed === true) {
+    card.appendChild(el('div', 'agentfail', t('agentFailed')));
+    card.appendChild(el('p', 'note agentfail-why', String(state.agent.why || '')));
+    var again = el('button', 'agentfail-again', t('agentAgain'));
+    again.type = 'button';
+    again.addEventListener('click', function () { if (state.question) ask({ asked: state.asked }); });
+    card.appendChild(again);
+    return;
+  }
   // A verdict's passage numbers only mean something against the list it judged:
   // a widening renumbers the findings, so citations are shown only while the
   // verdict and the list on screen are the same pass.
