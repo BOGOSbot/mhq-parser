@@ -145,4 +145,43 @@ export function linkify(text, opts) {
   return out;
 }
 
-export default { BARRED, buildLinkMap, esc, linkify, linkMap };
+// task-91: THE SAME LINK PASS, AS OFFSETS RATHER THAN HTML.
+//
+// The native reader renders the record text itself, so it needs to know WHERE the links are
+// and not what to draw. It must never learn a rule name, and the two presentations must not
+// drift, so the spans come from THIS function - the one the page's own body is rendered with.
+//
+// It parses linkify's own output rather than re-running the matcher: the anchor carries the
+// id the href was built from and the text between the tags is the matched text, so a span
+// cannot disagree with what the server drew. Entities in the escaped segments are decoded
+// before offsets are counted, because the app indexes the RAW text.
+const ENTITY = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': String.fromCharCode(34), '&#39;': String.fromCharCode(39) };
+function unesc(s) { return String(s).replace(/&(amp|lt|gt|quot|#39);/g, (m) => ENTITY[m]); }
+export function linkSpans(text, opts) {
+  const raw = String(text == null ? '' : text);
+  if (!raw) return [];
+  const html = linkify(raw, opts);
+  const out = [];
+  // Offsets are counted in the text AS THE APP HOLDS IT, so every segment of the HTML - plain
+  // or anchor - is unescaped before its length is added. Counting the escaped form would put
+  // every span after the first '&amp;' in the wrong place.
+  let at = 0;
+  let cursor = 0;
+  const re = /<a class="wlink" href="([^"]*)">([\s\S]*?)<\/a>/g;
+  let m;
+  while ((m = re.exec(html))) {
+    cursor += unesc(html.slice(at, m.index)).length;
+    const shown = unesc(m[2]);
+    // The href is whatever the caller's own href function returned. When that is the id
+    // itself, the span carries the id; when it is a URL, the id is read back out of it.
+    let id = unesc(m[1]);
+    const q = id.indexOf('id=');
+    if (q !== -1) id = id.slice(q + 3).split('&')[0];
+    out.push({ start: cursor, end: cursor + shown.length, text: shown, id });
+    cursor += shown.length;
+    at = m.index + m[0].length;
+  }
+  return out;
+}
+
+export default { BARRED, buildLinkMap, esc, linkify, linkMap, linkSpans };

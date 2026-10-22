@@ -59,7 +59,9 @@ const walk = (dir, base) => {
   return out;
 };
 const payloadFiles = walk(DATA, DATA).sort();
-const ARTIFACTS = ['manifest.json', 'index/titles.json', 'glossary/fr-en.json'];
+// task-91 added the display artifact (three files, one per book). index.json is the payload's
+// own file REPLACED in place with the app's shape, so it is not an extra path.
+const ARTIFACTS = ['manifest.json', 'index/titles.json', 'glossary/fr-en.json', 'display/factions.json', 'display/rules.json', 'display/rulings.json'];
 const bundleFiles = walk(OUT, OUT).sort();
 const expected = payloadFiles.concat(ARTIFACTS).sort();
 ok('the bundle is the payload plus exactly three artifacts', JSON.stringify(bundleFiles) === JSON.stringify(expected));

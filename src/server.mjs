@@ -959,6 +959,21 @@ async function handleRulesLabels(req, res) {
 // The baked payloads, read straight from workspace/wiki-data. Only the three
 // shapes are addressable - index.json, index/<branch>.json, content/<book>.json -
 // so a crafted path cannot walk out of the directory.
+// task-91: THE APP BUNDLE AT ONE URL. The native reader downloads this once and compares the
+// stamp inside it later; the URL is a constant in the app and does not change when the corpus
+// does. Built by src/app-bundle.mjs (payload + index.json + titles + display artifact, zipped),
+// so the served bytes and the local build are the same artifact.
+function bundleZipPath() {
+  return process.env.APP_BUNDLE_ZIP || path.join(process.cwd(), 'workspace', 'app-bundle.zip');
+}
+function handleBundleZip(req, res) {
+  try {
+    const body = fs.readFileSync(bundleZipPath());
+    res.writeHead(200, { 'content-type': 'application/zip', 'content-length': body.length, 'cache-control': 'no-cache' });
+    return res.end(req.method === 'HEAD' ? undefined : body);
+  } catch (e) { return fail(res, 404, 'no bundle built at ' + bundleZipPath()); }
+}
+
 function handleSurfaceData(req, res, u) {
   const rel = String(u.pathname.slice('/rules/data/'.length));
   if (!/^(index\.json|index\/[a-z0-9-]+\.json|content\/[a-z0-9-]+\.json)$/.test(rel)) return fail(res, 404, 'no such payload: ' + rel);
@@ -1751,6 +1766,8 @@ const server = http.createServer(async (req, res) => {
     } catch (e) { return fail(res, 500, 'the surface file could not be read: ' + String((e && e.message) || e)); }
   }
   if (req.method === 'GET' && u.pathname.indexOf('/rules/data/') === 0) return handleSurfaceData(req, res, u);
+  // task-91: the app bundle at one URL, for the native reader's one download.
+  if ((req.method === 'GET' || req.method === 'HEAD') && u.pathname === '/bundle.zip') return handleBundleZip(req, res);
   // task-69: the French overlay, one record at a time, for the surfaces that need the
   // text itself rather than a rendered body (the quote's translation under the English
   // canon). The server holds the pass's export in memory after the first call.

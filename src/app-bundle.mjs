@@ -20,11 +20,17 @@
 // make 'the bundle changed' mean 'the builder ran', which is the one thing a bundle hash
 // must not say.
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dataStamp, dataDir } from './wiki-surface.mjs';
 import { isDelivered, readAllCorpus } from './rules-corpus.mjs';
+// task-91: the display artifact. The text and the link spans come from the SAME functions the
+// page's record body is built with, so the native reader and the web page cannot drift.
+import { linkSpans } from './wikilinks.mjs';
+import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries } from './wiki-plan.mjs';
+import { markWargearText } from './wargear-marks.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -131,6 +137,108 @@ function titlesFromIndex() {
   return { titles: out, total };
 }
 
+// task-91: THE DISPLAY ARTIFACT, per record.
+//
+// The native reader renders the record itself, so it needs three things the payloads do not
+// carry: the text as the page shows it, WHERE the inline links are (offsets, not HTML), and
+// the display flags. The spans come from linkSpans, which parses the output of the same
+// linkify the server renders with, so the app never learns a rule name and the two
+// presentations cannot drift.
+//
+// The text is the page's own body path: stripBuiltBlock removes the BUILT/SEE ALSO block that
+// the page draws separately, stripSeeAlso removes the see-also tail, and markWargearText marks
+// the wargear values the page sets apart. Nothing here decides what a record says; the corpus
+// does.
+function displayFromCorpus() {
+  const out = {};
+  let total = 0;
+  let spans = 0;
+  let wargear = 0;
+  for (const rec of readAllCorpus()) {
+    if (!isDelivered(rec)) continue;
+    const id = String(rec.id || '');
+    if (!id) continue;
+    const book = String(rec.set || rec.source || 'other');
+    const full = stripSeeAlso({ text: stripBuiltBlock(rec), links: rec.links });
+    const text = String(full == null ? '' : full);
+    const marked = markWargearText(text);
+    const markedFlag = marked !== text;
+    if (markedFlag) wargear++;
+    const sp = linkSpans(text, { selfId: id, href: (target) => String(target), cap: 12 });
+    spans += sp.length;
+    const kids = seeAlsoEntries(rec).map((e) => ({ num: String(e.num || ''), title: String(e.title || ''), child: !!e.child }));
+    if (!out[book]) out[book] = {};
+    out[book][id] = {
+      title: String(rec.title || rec.heading || ''),
+      text,
+      spans: sp,
+      kids,
+      flags: { wargear: markedFlag, fr: false, excluded: false },
+    };
+    total++;
+  }
+  return { books: out, total, spans, wargear };
+}
+// A ZIP with no dependencies. Fixed mtime (1980-01-01, the DOS epoch) so two runs over the same
+// input produce the same bytes, and deflate level 9 because the bundle is JSON.
+function crc32(buf) {
+  let c = ~0;
+  for (let i = 0; i < buf.length; i++) {
+    c ^= buf[i];
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xEDB88320 & -(c & 1));
+  }
+  return (~c) >>> 0;
+}
+function writeZip(zipPath, dir, rels) {
+  // (zlib is imported at the top of this file)
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+  for (const rel of rels) {
+    const raw = fs.readFileSync(path.join(dir, rel));
+    const deflated = zlib.deflateRawSync(raw, { level: 9 });
+    const useDeflate = deflated.length < raw.length;
+    const body = useDeflate ? deflated : raw;
+    const name = Buffer.from(rel.split(path.sep).join('/'), 'utf8');
+    const crc = crc32(raw);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0, 6);
+    local.writeUInt16LE(useDeflate ? 8 : 0, 8);
+    local.writeUInt16LE(0, 10);
+    local.writeUInt16LE(0x0021, 12);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(body.length, 18);
+    local.writeUInt32LE(raw.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    local.writeUInt16LE(0, 28);
+    chunks.push(local, name, body);
+    const cen = Buffer.alloc(46);
+    cen.writeUInt32LE(0x02014b50, 0);
+    cen.writeUInt16LE(20, 4);
+    cen.writeUInt16LE(20, 6);
+    cen.writeUInt16LE(0, 8);
+    cen.writeUInt16LE(useDeflate ? 8 : 0, 10);
+    cen.writeUInt16LE(0, 12);
+    cen.writeUInt16LE(0x0021, 14);
+    cen.writeUInt32LE(crc, 16);
+    cen.writeUInt32LE(body.length, 20);
+    cen.writeUInt32LE(raw.length, 24);
+    cen.writeUInt16LE(name.length, 28);
+    cen.writeUInt32LE(offset, 42);
+    central.push(cen, name);
+    offset += local.length + name.length + body.length;
+  }
+  const cenBuf = Buffer.concat(central);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(rels.length, 8);
+  end.writeUInt16LE(rels.length, 10);
+  end.writeUInt32LE(cenBuf.length, 12);
+  end.writeUInt32LE(offset, 16);
+  fs.writeFileSync(zipPath, Buffer.concat([Buffer.concat(chunks), cenBuf, end]));
+}
 function build() {
   const data = dataDir();
   if (!fs.existsSync(data)) throw new Error('no payload at ' + data);
@@ -204,7 +312,52 @@ function build() {
   const manifestBytes = Buffer.from(stableJson(manifest), 'utf8');
   fs.writeFileSync(path.join(OUT, manifestRel), manifestBytes);
 
-  return { manifest, manifestBytes, titlesBytes, glossaryBytes, payloadFiles };
+  // 5. task-91: the display artifact, one file per book, under display/.
+  const display = displayFromCorpus();
+  const displayFiles = [];
+  for (const book of Object.keys(display.books).sort()) {
+    const rel = 'display/' + book + '.json';
+    const buf = Buffer.from(stableJson({ version: VERSION, book, records: display.books[book] }), 'utf8');
+    fs.mkdirSync(path.join(OUT, 'display'), { recursive: true });
+    fs.writeFileSync(path.join(OUT, rel), buf);
+    displayFiles.push(rel);
+    addFile(rel, buf, 'display');
+  }
+
+  // 6. task-91: index.json in the shape the app reads - the payload's own branch nodes plus the
+  //    two stamps, so the app's 'update the rules' is a comparison and not a re-download. It
+  //    REPLACES the payload's own index.json, which is why it is registered in the manifest here
+  //    rather than copied with the payload.
+  const payloadIndex = JSON.parse(fs.readFileSync(path.join(OUT, 'index.json'), 'utf8'));
+  const appIndex = {
+    version: VERSION,
+    branches: payloadIndex.branches || [],
+    corpusStamp: manifest.corpusStamp,
+    englishStamp: manifest.englishStamp,
+    count: total,
+  };
+  const indexBytes = Buffer.from(stableJson(appIndex), 'utf8');
+  fs.writeFileSync(path.join(OUT, 'index.json'), indexBytes);
+  addFile('index.json', indexBytes, 'index');
+
+  // 7. the manifest, LAST: every file it lists is already on disk, so no entry can be added
+  //    after it is written. That was a real bug: the display files were added afterwards and
+  //    the manifest shipped without them.
+  const manifestFinal = Object.assign({}, manifest, {
+    files,
+    display: { records: display.total, spans: display.spans, wargearMarked: display.wargear, files: displayFiles.length },
+  });
+  const manifestBytes2 = Buffer.from(stableJson(manifestFinal), 'utf8');
+  fs.writeFileSync(path.join(OUT, manifestRel), manifestBytes2);
+
+  // 8. task-91: bundle.zip, the one file the app downloads. Deterministic like everything else
+  //    here: fixed entry order, fixed timestamps, no compression difference between runs.
+  const zipRel = 'app-bundle.zip';
+  const zipPath = path.join(ROOT, 'workspace', zipRel);
+  writeZip(zipPath, OUT, walk(OUT, OUT).sort());
+  const zipBytes = fs.readFileSync(zipPath);
+
+  return { manifest: manifestFinal, manifestBytes: manifestBytes2, titlesBytes, glossaryBytes, payloadFiles, indexBytes, displayFiles, display, zipPath, zipBytes };
 }
 
 // The corpus check the test and a reader both want: every delivered record is in the bundle.
@@ -239,6 +392,10 @@ if (isMain) {
   report(out);
   const check = corpusAgainstBundle();
   console.log('  delivered      ' + check.delivered + ' records, ' + check.missing.length + ' missing from the bundle');
+  // task-91: what the native reader downloads, and what is in it.
+  const d = (out.manifest && out.manifest.display) || {};
+  console.log('  display        ' + (d.records || 0) + ' records, ' + (d.spans || 0) + ' link spans, ' + (d.wargearMarked || 0) + ' wargear-marked, ' + (d.files || 0) + ' files');
+  console.log('  bundle.zip     ' + (out.zipBytes ? out.zipBytes.length : 0) + ' bytes  sha256 ' + (out.zipBytes ? sha256(out.zipBytes) : ''));
   if (check.missing.length) { console.log('MISSING ' + check.missing.slice(0, 10).join(', ')); process.exitCode = 1; }
 }
 
