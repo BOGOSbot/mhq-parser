@@ -80,10 +80,25 @@ export function dataStamp(opts) {
   const key = files.map(f => { try { const s = fs.statSync(f); return f + ':' + s.mtimeMs + ':' + s.size; } catch (e) { return f + ':?'; } }).join('|');
   const memoKey = skip.join(',') + '|' + key;
   if (key && memoKey === DATA_STAMP.key) return DATA_STAMP.stamp;
+  // task-95: THE STAMP IS A CONTENT HASH, and the memo key above stays (name, mtime, size).
+  //
+  // It used to hash the key, which made it a stamp of a DEPLOY of a payload tree rather than of
+  // its content: the Box's files carry the deploy's mtimes and the local bake carries its own,
+  // so the same corpus had two stamps that could never match. As a worker's cache name that was
+  // safe - over-invalidation only costs a download - but the native app compares this stamp
+  // against the server's and TELLS THE READER the rules have moved, so it has to mean content.
+  //
+  // The 18.7 MB is hashed only when (name, mtime, size) changes, which is exactly when the
+  // content may have changed, so a page render does not pay for it.
   const h = crypto.createHash('sha1');
-  h.update(key);
-  // The file NAMES are in the key, so a payload that only loses a book still changes the
-  // stamp; the sizes and mtimes catch a rewrite that keeps every name.
+  for (const f of files) {
+    h.update(path.relative(DATA_DIR, f).split(path.sep).join('/'));
+    h.update('\u0000');
+    try { h.update(fs.readFileSync(f)); } catch (e) { h.update('missing'); }
+    h.update('\u0000');
+  }
+  // The file NAMES are in the hash, so a payload that only loses a book still changes the
+  // stamp; the bytes catch a rewrite that keeps every name.
   const stamp = h.digest('hex').slice(0, 8);
   DATA_STAMP = { key: memoKey, stamp: stamp };
   return stamp;
