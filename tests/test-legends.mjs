@@ -105,7 +105,10 @@ const payloadSrc = read('src/wiki-payload.mjs');
 ok('the route reads legends as a request parameter', /searchParams\.get\('legends'\)/.test(server));
 ok('and never as a module global', !/^(let|var|const)\s+LEGENDS\s*=/m.test(server));
 ok('the gate is the Legends book the page holds', /legendsSlugMap\(\)/.test(server) && /delivered\.has\(id\) \|\| legendIds\.has\(id\)/.test(server));
-ok('findRows takes the caller\'s gate', /typeof o\.allow === 'function'/.test(headerIndex));
+// task-97: asserted on BEHAVIOUR. The row shape moved to src/search-core.mjs (the file the web
+// bundle ships), so grepping header-index.mjs for the string was a test of where the code lives.
+const gateRows = findRows('baneblade', { allow: (id) => String(id).indexOf('datasheet') === 0, slugs: new Map(), cap: 40 });
+ok('findRows takes the caller\'s gate', gateRows.rows.length > 0 && gateRows.rows.every((r) => String(r.id).indexOf('datasheet') === 0));
 ok('the bake writes the Legends book', /write\('index\/legends\.json'/.test(payloadSrc) && /write\('content\/legends\.json'/.test(payloadSrc));
 ok('and never names it in index.json', !/branches\.push\([^)]*legends/.test(payloadSrc));
 ok('the setting is per device', client.indexOf("LEGENDS_KEY = 'mhq.rules.legends'") !== -1 && page.indexOf("LEGENDS_KEY = 'mhq.rules.legends'") !== -1);

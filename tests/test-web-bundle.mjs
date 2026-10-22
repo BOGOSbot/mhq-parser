@@ -13,7 +13,7 @@ import { build, pageHtml, OUT } from '../src/web-bundle.mjs';
 import { recordBody, cardIndex } from '../src/wiki-cards.mjs';
 import { readAllCorpus, isDelivered } from '../src/rules-corpus.mjs';
 import { surfaceSlugMap, dataStamp } from '../src/wiki-surface.mjs';
-import { searchHeadings, buildHeaderIndex, headingVocab, translationTables, termPresent, termCount } from '../src/search-core.mjs';
+import { searchHeadings, buildHeaderIndex, headingVocab, translationTables, termPresent, findRows } from '../src/search-core.mjs';
 
 const N = String.fromCharCode(10);
 let pass = 0, fail = 0;
@@ -46,16 +46,27 @@ for (const rel of fs.readdirSync(path.join(OUT, 'records'))) {
 const flat = {};
 for (const b of Object.keys(books)) for (const id of Object.keys(books[b])) flat[id] = books[b][id];
 ok('every delivered record has a pre-rendered body', Object.keys(flat).length === all.length);
-let mismatched = 0;
-const sample = [];
-for (const rec of all) {
-  const id = String(rec.id);
-  const want = recordBody(rec, { corpora: byId, index: idx, href, selfId: id, frText: '' });
-  if (flat[id] !== want) mismatched++;
-  if (sample.length < 3) sample.push(id);
+// THE COMPARISON IS AGAINST THE ROUTE, over HTTP. A re-render here would be the task-88 trap in
+// a new coat: the before and the after would be the same build, and this test agreed with a
+// bundle whose corpora argument was wrong on 834 records.
+const ROUTE = process.env.MHQ_ROUTE || 'https://optimum-imp-60273-3000.preview.box.upstash.com';
+const ids = [];
+for (const b of Object.keys(books).sort()) {
+  const list = Object.keys(books[b]).sort();
+  for (const i of [0, Math.floor(list.length / 3), Math.floor((2 * list.length) / 3), list.length - 1]) ids.push(list[i]);
 }
-ok('every record body equals what the route renders', mismatched === 0);
-if (mismatched) console.log('  ' + mismatched + ' bodies differ');
+// The record the Lead named, and one from each book by name.
+for (const extra of ['datasheet#000000001', 'core-rules#Introduction', 'faction-rule#000000705', 'wtc11-adepta-soritas-001']) ids.push(extra);
+let same = 0, diff = 0;
+for (const id of ids) {
+  const local = flat[id];
+  if (local === undefined) { diff++; console.log('  MISSING ' + id); continue; }
+  const res = await fetch(ROUTE + '/rules/record?id=' + encodeURIComponent(id) + '&format=html');
+  const route = await res.text();
+  if (route === local) same++;
+  else { diff++; console.log('  DIFF ' + id + ' route ' + route.length + ' bundle ' + local.length); }
+}
+ok('the record bodies equal the ROUTE\'s bytes (' + same + '/' + ids.length + ')', diff === 0);
 // The French half, for the records the overlay covers.
 const frBooks = {};
 for (const rel of fs.readdirSync(path.join(OUT, 'records-fr'))) {
@@ -81,8 +92,18 @@ ok('the shipped matcher is the search core', fs.readFileSync(path.join(OUT, 'sea
 // --- 4. the find matcher agrees with the server's ------------------------------
 const entries = JSON.parse(fs.readFileSync(path.join(OUT, 'search/index.json'), 'utf8')).entries;
 ok('the shipped index has the records', entries.length === all.length);
-const vocab = headingVocab(entries);
-const tables = translationTables({});
+// The tables the bundle SHIPS, loaded the way the app loads them. Without them the French half of
+// the lookup cannot be tested at all, which is what the empty-argument version of this line did.
+const keywords = JSON.parse(fs.readFileSync(path.join(OUT, 'search/keywords.json'), 'utf8')).keywords;
+const glossary = JSON.parse(fs.readFileSync(path.join(OUT, 'search/glossary.json'), 'utf8')).glossary;
+const vocabList = JSON.parse(fs.readFileSync(path.join(OUT, 'search/vocab.json'), 'utf8')).vocab;
+const tables = translationTables({ keywords, glossary });
+// The phonetic leg, built the way the app builds it: from the shipped index and the shipped
+// module, so a misheard name is rescued offline too.
+const phoneticMod = await import('../src/phonetic.mjs');
+const phoneticMatches = phoneticMod.phoneticMatches;
+const phonIndex = phoneticMod.buildPhoneticIndex(entries.filter((e) => e.canonical).map((e) => ({ id: e.id, words: e.segments.flatMap((s) => String(s).split(/[^A-Za-z0-9']+/).filter((w) => w.length >= 3)) })));
+ok('the bundle ships the three tables', Object.keys(keywords).length > 40 && glossary.length > 1000 && vocabList.length > 1000);
 // The shipped matcher's own predicate: the word-start rule from search-core. The vocab set is
 // shipped data for the browser's spelling aid, not the match rule.
 const present = termPresent;
@@ -99,17 +120,36 @@ for (const q of queries) {
   const b = JSON.stringify(server.rows.map((r) => r.id));
   if (a === b) sameRows++; else differed.push(q);
 }
-ok('the browser matcher and the server matcher agree on every query', differed.length === 0);
-if (differed.length) {
-  console.log('  differed: ' + differed.join(', '));
-  const q0 = differed[0];
-  const b0 = searchHeadings(q0, { index: entries, termPresent: present, tables, phonetic: false });
-  const s0 = searchHeadings(q0, { index: serverEntries, termPresent: serverPresent, tables, phonetic: false });
-  console.log('  q=' + q0 + ' words=' + JSON.stringify(b0.words) + ' browser ' + b0.rows.length + ' server ' + s0.rows.length + ' total ' + b0.total + '/' + s0.total);
-  console.log('  browserIds ' + JSON.stringify(b0.rows.slice(0, 3).map((r) => r.id)));
-  console.log('  serverIds  ' + JSON.stringify(s0.rows.slice(0, 3).map((r) => r.id)));
-  console.log('  vocabHasBaneblade ' + vocab.has('baneblade') + '  entries ' + entries.length + '/' + serverEntries.length);
+// THE COMPARISON IS AGAINST THE ROUTE, over HTTP, on the ROWS it returns - not on the ids a
+// second copy of the matcher found. A matcher compared against itself cannot see the server.
+const routeRows = [];
+for (const q of queries) {
+  const res = await fetch(ROUTE + '/rules/find?q=' + encodeURIComponent(q));
+  const body = await res.json();
+  routeRows.push({ q, rows: body.rows || [] });
 }
+let rowSame = 0, rowDiff = [];
+for (const rr of routeRows) {
+  // The browser's own wiring: the shipped index, the shipped tables, and the phonetic leg from
+  // the shipped search/phonetic.js - the same three the app loads.
+  const mine = findRows(rr.q, {
+    index: entries, termPresent: present, tables, slugs,
+    delivered: new Set(all.map((r) => String(r.id))), cap: 40,
+    vocab: new Set(vocabList),
+    phoneticMatches: (text, legOpts) => phoneticMatches(text, phonIndex, legOpts),
+  });
+  // The route's own row shape: id, slug, title, kind, tier, crumbs, phonetic, heard, parts.
+  const shape = (rows) => JSON.stringify(rows.map((r) => ({ id: r.id, slug: r.slug, title: r.title, kind: r.kind, tier: r.tier, crumbs: r.crumbs, parts: r.parts })));
+  if (shape(mine.rows) === shape(rr.rows)) rowSame++;
+  else {
+    rowDiff.push(rr.q);
+    console.log('  ROWS DIFFER ' + rr.q + '  route ' + rr.rows.length + ' mine ' + mine.rows.length);
+    console.log('    route ' + JSON.stringify(rr.rows.slice(0, 2).map((r) => r.id + '/' + r.slug)));
+    console.log('    mine  ' + JSON.stringify(mine.rows.slice(0, 2).map((r) => r.id + '/' + r.slug)));
+  }
+}
+ok('the shipped find rows equal the ROUTE\'s rows (' + rowSame + '/' + queries.length + ')', rowDiff.length === 0);
+ok('and the route rows carry the app\'s shape', routeRows.every((rr) => rr.rows.every((r) => 'id' in r && 'slug' in r && 'title' in r && 'kind' in r && 'tier' in r && 'crumbs' in r && 'parts' in r)));
 
 // --- 5. deterministic ----------------------------------------------------------
 build();

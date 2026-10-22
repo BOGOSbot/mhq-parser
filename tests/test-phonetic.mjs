@@ -72,10 +72,11 @@ ok('the phonetic map is built from the heading projection', phoneticIndexSize(ph
 const SERVER = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
 // task-35: the route's row shape moved into findRows(), so the flag and the heard
 // spelling are pinned where they now live, and the route is pinned to that function.
-const HEADER = fs.readFileSync(path.join(ROOT, 'src', 'header-index.mjs'), 'utf8');
-// task-44 re-anchored this pin: the route now passes the Legends gate as well, which
-// is a request parameter, so the call carries one more option than it did.
-ok('the find route serves the phonetic flag and the heard spelling', /phonetic: r\.phonetic === true/.test(HEADER) && /heard: r\.heard \|\| \[\]/.test(HEADER) && /findRows\(q, \{ slugs: surfaceSlugMap\(\), delivered: delivered, allow: allow, cap: 40 \}\)/.test(SERVER));
+// task-97: the row shape moved to src/search-core.mjs, the file the web bundle ships, so this is
+// pinned where it lives and asserted on a REAL row rather than on a source string.
+const CORE = fs.readFileSync(path.join(ROOT, 'src', 'search-core.mjs'), 'utf8');
+// task-44: the route passes the Legends gate as well, which is a request parameter.
+ok('the find route serves the phonetic flag and the heard spelling', /phonetic: r\.phonetic === true/.test(CORE) && /heard: r\.heard \|\| \[\]/.test(CORE) && /findRows\(q, \{ slugs: surfaceSlugMap\(\), delivered: delivered, allow: allow, cap: 40 \}\)/.test(SERVER));
 
 // The real corpus, not a toy: the two traps the note names.
 const trapIndex = phoneticIndex();

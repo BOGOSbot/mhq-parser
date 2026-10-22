@@ -113,7 +113,10 @@ ok('and a datasheet with no keyword list is a row of its own', noTwin.total === 
 // every keyword and every ability the raw record holds renders on the datasheet's card.
 // The FOLD stays and the wire still names what it folded; the AFFORDANCE is gone, so
 // the client must not render one.
-ok('the wire still names the records a row stands for', /parts: \(r\.parts \|\| \[\]\)\.map\(function \(p\) \{/.test(fs.readFileSync(path.join(ROOT, 'src', 'header-index.mjs'), 'utf8')));
+// task-97: asserted on the ROWS, not on a source string. The matcher and the row shape moved to
+// src/search-core.mjs, which is also what the web bundle ships, so grepping a file path was a
+// test of where the code lives rather than of what the route returns.
+ok('the wire still names the records a row stands for', (enginseer.rows[1].parts || []).length > 0 && enginseer.rows[1].parts.every((p) => !!p.id && !!p.title));
 ok('a row still opens the record it names', client.indexOf('function openHit(r)') !== -1 && /b\.addEventListener\('click', function \(\) \{ openHit\(r\); \}\)/.test(client));
 ok('the client renders no parts chips', client.indexOf('sv-hit-part') === -1 && client.indexOf('sv-hit-parts') === -1);
 ok('and no \u2018also\u2019 line', client.indexOf("'also'") === -1);

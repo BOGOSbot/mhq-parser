@@ -12,6 +12,10 @@
 //   records/<book>.json     the pre-rendered recordBody() HTML, English
 //   records-fr/<book>.json  the same in French, for the records the overlay covers
 //   search/index.json       the header index the find route greps
+//   search/search.js        the matcher, from src/search-core.mjs
+//   search/keywords.json    the keyword vocabulary, the French-to-English table
+//   search/glossary.json    the glossary's French-to-English pairs
+//   search/vocab.json       every word a heading carries, for the phonetic leg
 //   search/search.js        the browser-side matcher, from src/search-core.mjs
 //   manifest.json           sizes, sha256, the corpus stamp, counts. No timestamp, so two runs
 //                           are byte-identical.
@@ -25,6 +29,8 @@ import { recordBody, cardIndex, CARD_CSS } from './wiki-cards.mjs';
 import { readAllCorpus, isDelivered } from './rules-corpus.mjs';
 import { frUsable } from './i18n-fr.mjs';
 import { buildHeaderIndex } from './header-index.mjs';
+import { headingVocab } from './search-core.mjs';
+import { KEYWORDS, glossaryIndex } from './translate-fr-en.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -117,6 +123,13 @@ export function build() {
   const all = readAllCorpus().filter(isDelivered);
   const byId = new Map(all.map((r) => [String(r.id), r]));
   const idx = cardIndex(byId);
+  // task-97 FIX: recordBody reads corpora as the THREE-HALF object the server passes
+  // ({rules, factions, rulings}), not as a Map. With a Map, o.corpora.rules is undefined, so
+  // mergeChunkParts, seeAlsoKids and emptyBodyKids all silently do nothing, and 834 records (37
+  // rules, 797 factions) rendered differently from the route. The halves hold the same records
+  // the server's own corpora() builds.
+  const halves = { rules: [], factions: [], rulings: [] };
+  for (const rec of all) { const s = String(rec.set || ''); if (halves[s]) halves[s].push(rec); }
   const slugs = surfaceSlugMap();
   const href = (id) => { const s = slugs.get(String(id || '')); return s ? '#' + s : ''; };
   const books = {};
@@ -127,12 +140,12 @@ export function build() {
     if (!id) continue;
     const book = String(rec.set || rec.source || 'other');
     if (!books[book]) books[book] = {};
-    books[book][id] = recordBody(rec, { corpora: byId, index: idx, href, selfId: id, frText: '' });
+    books[book][id] = recordBody(rec, { corpora: halves, index: idx, href, selfId: id, frText: '' });
     records++;
     const fr = frUsable(id);
     if (fr) {
       if (!booksFr[book]) booksFr[book] = {};
-      booksFr[book][id] = recordBody(rec, { corpora: byId, index: idx, href, selfId: id, frText: fr });
+      booksFr[book][id] = recordBody(rec, { corpora: halves, index: idx, href, selfId: id, frText: fr });
       french++;
     }
   }
@@ -162,6 +175,26 @@ export function build() {
   const searchBuf = fs.readFileSync(path.join(__dirname, 'search-core.mjs'));
   fs.writeFileSync(path.join(OUT, searchRel), searchBuf);
   add(searchRel, searchBuf, 'search');
+  // The phonetic leg's own module, copied: it has no node imports, so the browser can run it and
+  // the misheard-name rescue works offline instead of being a server-only behaviour.
+  const phonRel = 'search/phonetic.js';
+  const phonBuf = fs.readFileSync(path.join(__dirname, 'phonetic.mjs'));
+  fs.writeFileSync(path.join(OUT, phonRel), phonBuf);
+  add(phonRel, phonBuf, 'search');
+  // task-97: THE TABLES THE MATCHER NEEDS, as data. Without them the app's offline find cannot do
+  // French (the glossary pairs and the keyword vocabulary) and cannot rescue a misheard name (the
+  // vocabulary the phonetic leg tests against). The server builds the same three in memory.
+  const tables = {
+    keywords: KEYWORDS,
+    glossary: Array.from(glossaryIndex().frToEn.entries()).map(([fr, e]) => [fr, e && e.en ? e.en : '']),
+    vocab: Array.from(headingVocab(headerIndex)).sort(),
+  };
+  for (const name of ['keywords', 'glossary', 'vocab']) {
+    const rel = 'search/' + name + '.json';
+    const buf = Buffer.from(stableJson({ version: VERSION, [name]: tables[name] }), 'utf8');
+    fs.writeFileSync(path.join(OUT, rel), buf);
+    add(rel, buf, 'search');
+  }
 
   // 6. the manifest, last: every file it lists is already on disk.
   const booksCount = {};

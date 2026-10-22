@@ -174,6 +174,28 @@ export function searchHeadings(query, opts) {
     crumbs: x.e.segments.slice(0, -1),
     kind: x.e.kind,
   }));
+  // task-18/task-97: THE PHONETIC RESCUE LEG, injected. The literal search requires EVERY word in
+  // the heading, so one misheard name kills the lookup ('arcon' for Archon). It fires only when
+  // the literal pass found NOTHING and a word is absent from the whole vocabulary - a rescue, not
+  // a rewriter. The server passes its own resolver (src/phonetic.mjs over the corpus index); the
+  // browser passes one built from the shipped search/phonetic.js and the shipped vocab.
+  if (typeof o.phoneticMatches === 'function' && rows.length === 0 && words.some(w => !(o.vocab && o.vocab.has ? o.vocab.has(w) : false))) {
+    const have = new Set(rows.map(r => r.id));
+    for (const m of o.phoneticMatches(raw, { limit: limit - rows.length }) || []) {
+      const e = (o.byId && o.byId.get(m.id)) || index.find(x => x.id === m.id);
+      if (!e || have.has(m.id)) continue;
+      rows.push({
+        id: e.id,
+        tier: 4,
+        phonetic: true,
+        heard: m.heard,
+        title: cleanMarker(e.segments.length ? e.segments[e.segments.length - 1] : e.heading),
+        crumbs: e.segments.slice(0, -1),
+        kind: e.kind,
+      });
+      have.add(m.id);
+    }
+  }
   return { words, rows, total: scored.length };
 }
 
@@ -188,4 +210,71 @@ export function rankCmp(a, b) {
     || (a.segments.length - b.segments.length)
     || (a.heading.length - b.heading.length)
     || String(a.id).localeCompare(String(b.id));
+}
+// --- the route's row shape -----------------------------------------------------
+//
+// task-97: findRows and the unit fold live HERE, with the matcher, because the app's local server
+// must answer /rules/find in the route's exact shape (id, slug, title, kind, tier, crumbs,
+// phonetic, heard, parts). header-index.mjs re-exports them, so the server keeps its imports and
+// the browser gets the same code.
+export function unitKey(row) {
+  const id = String((row && row.id) || '');
+  const m = /^(datasheet|unitrules)#([0-9]+)(?:~\d+)?$/.exec(id);
+  return m ? 'unit:' + m[2] : '';
+}
+
+export function foldUnitRows(rows) {
+  const groups = new Map();
+  const order = [];
+  for (const r of rows) {
+    const key = unitKey(r);
+    if (!key) { order.push({ key: '', row: r }); continue; }
+    if (!groups.has(key)) { groups.set(key, []); order.push({ key: key, row: null }); }
+    groups.get(key).push(r);
+  }
+  const out = [];
+  for (const entry of order) {
+    if (!entry.key) { out.push(entry.row); continue; }
+    const group = groups.get(entry.key);
+    const head = group.find(function (r) { return r.kind === 'datasheet' && r.slug; })
+      || group.find(function (r) { return r.kind === 'datasheet'; })
+      || group[0];
+    const parts = group.filter(function (r) { return r !== head; });
+    const row = Object.assign({}, head);
+    if (parts.length) row.parts = parts.map(function (r) { return { id: r.id, kind: r.kind, title: r.title, slug: r.slug || '' }; });
+    out.push(row);
+  }
+  return out;
+}
+
+export function findRows(query, opts) {
+  const o = opts || {};
+  const cap = Math.max(Number(o.cap) || 40, 1);
+  const out = searchHeadings(query, Object.assign({}, o, { limit: 100 }));
+  const slugs = o.slugs || new Map();
+  const delivered = o.delivered || null;
+  const allow = typeof o.allow === 'function' ? o.allow : null;
+  const matched = foldUnitRows((out.rows || []).filter(function (r) {
+    const id = String(r.id);
+    return allow ? allow(id) : (!delivered || delivered.has(id));
+  }));
+  return {
+    q: String(query == null ? '' : query),
+    total: matched.length,
+    rows: matched.slice(0, cap).map(function (r) {
+      return {
+        id: r.id,
+        slug: slugs.get(r.id) || '',
+        title: r.title,
+        kind: r.kind,
+        tier: r.tier,
+        crumbs: r.crumbs,
+        phonetic: r.phonetic === true,
+        heard: r.heard || [],
+        parts: (r.parts || []).map(function (p) {
+          return { id: p.id, kind: p.kind, title: p.title, slug: slugs.get(p.id) || p.slug || '' };
+        }),
+      };
+    }),
+  };
 }
