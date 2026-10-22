@@ -2552,13 +2552,16 @@ async function routeText(route, prompt, key, maxTokens, opts) {
   let budget = maxTokens || 900;
   let last = '';
   let recovering = false;
+  // task-89/task-91: set when a JSON call was cut on LENGTH, so the retry drops the reasoning
+  // instead of buying more room to think. See the length branch below.
+  let reasoningOff = false;
   for (let attempt = 0; attempt < 3; attempt++) {
     ROUTE_STATS.calls++;
     bucket.calls++;
     if (attempt > 0) { ROUTE_STATS.retries++; bucket.retries++; }
     // The route carries a default; a caller may override it for one call - the
     // /rules page's fast mode asks the agent not to reason, deep asks it to.
-    const reasoning = (opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning;
+    const reasoning = reasoningOff ? 'none' : ((opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning);
     // task-76: the reasoning control differs by gateway, and a wrong one is a 400 rather
     // than a bad answer - so both shapes are VERIFIED, not assumed: a live call to
     // OpenRouter's minimax with reasoning_effort returned 200 but reasoning 'null' (the
@@ -2654,7 +2657,19 @@ async function routeText(route, prompt, key, maxTokens, opts) {
       // exactly that at 4000. That is the truncated-JSON case, so it gets the truncated
       // treatment: a bigger budget, not a shrug. Without this the agent answered
       // 'nothing parseable' on a call that had simply run out of room thinking.
-      if (choice && choice.finish_reason === 'length') budget *= 2;
+      //
+      // task-89/task-91: BUT A BIGGER BUDGET ALONE GIVES IT MORE ROOM TO THINK. Measured
+      // with the attribution counter on the Box: the agent-first call returns content null,
+      // finish_reason length, with completion_tokens 4000 EQUAL TO max_tokens 4000 - the model
+      // spent the whole budget deliberating and never wrote. Doubling to 8000 keeps the same
+      // reasoning setting, so it can spend 8000 the same way. The deliberation is the luxury
+      // and the verdict is the product: a JSON call cut on LENGTH is retried WITHOUT reasoning,
+      // which is the cheap path the agent already falls back to on a timeout.
+      const cutOnLength = !!(choice && choice.finish_reason === 'length');
+      if (cutOnLength) {
+        budget *= 2;
+        if (json) reasoningOff = true;
+      }
       if (attempt < 2) { recovering = true; continue; }
       return content;
     }

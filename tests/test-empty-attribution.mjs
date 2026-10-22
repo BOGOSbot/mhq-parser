@@ -35,13 +35,15 @@ ok('the failure result and the empty counter use the same vocabulary', /stage: '
 const freePort = () => new Promise((resolve) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
 const stubPort = await freePort();
 let calls = 0;
+const seen = [];
 const stub = http.createServer((req, res) => {
   let body = '';
   req.on('data', (d) => { body += d; });
   req.on('end', () => {
     calls++;
-    let maxTok = 0;
-    try { maxTok = JSON.parse(body).max_tokens || 0; } catch (e) { maxTok = 0; }
+    let maxTok = 0, reasoning = null;
+    try { const b = JSON.parse(body); maxTok = b.max_tokens || 0; reasoning = b.reasoning_effort === undefined ? null : b.reasoning_effort; } catch (e) { maxTok = 0; }
+    seen.push({ maxTok, reasoning });
     // The provider's own body for a call that spent its whole budget thinking: content null,
     // finish_reason length, and the usage that proves it.
     res.writeHead(200, { 'content-type': 'application/json' });
@@ -89,6 +91,13 @@ if (up) {
     ok('and the record names the attempt', last.attempt >= 1);
   }
   ok('the stub was called', calls > 0);
+  // task-89/task-91: a JSON call cut on LENGTH is retried WITHOUT reasoning, because a bigger
+  // budget with the same reasoning setting just buys more room to think.
+  // The calls are not in order: the agent's own no-reasoning fallback runs alongside the route's
+  // retries, so the assertion is about WHICH KINDS of call happened, not their sequence.
+  ok('a call did ask for reasoning', seen.some(c => c.reasoning && c.reasoning !== 'none'));
+  ok('a length cut is retried WITHOUT reasoning', seen.some(c => c.reasoning === 'none' || c.reasoning === null));
+  ok('the budget stays the caller\'s, the retry drops the reasoning instead', seen.every(c => c.maxTok === 4000));
 }
 
 child.kill();
