@@ -974,6 +974,17 @@ function handleBundleZip(req, res) {
   } catch (e) { return fail(res, 404, 'no bundle built at ' + bundleZipPath()); }
 }
 
+function webBundleZipPath() {
+  return process.env.WEB_BUNDLE_ZIP || path.join(process.cwd(), 'workspace', 'web-bundle.zip');
+}
+function handleWebBundleZip(req, res) {
+  try {
+    const body = fs.readFileSync(webBundleZipPath());
+    res.writeHead(200, { 'content-type': 'application/zip', 'content-length': body.length, 'cache-control': 'no-cache' });
+    return res.end(req.method === 'HEAD' ? undefined : body);
+  } catch (e) { return fail(res, 404, 'no web bundle built at ' + webBundleZipPath()); }
+}
+
 function handleSurfaceData(req, res, u) {
   const rel = String(u.pathname.slice('/rules/data/'.length));
   if (!/^(index\.json|index\/[a-z0-9-]+\.json|content\/[a-z0-9-]+\.json)$/.test(rel)) return fail(res, 404, 'no such payload: ' + rel);
@@ -1768,6 +1779,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && u.pathname.indexOf('/rules/data/') === 0) return handleSurfaceData(req, res, u);
   // task-91: the app bundle at one URL, for the native reader's one download.
   if ((req.method === 'GET' || req.method === 'HEAD') && u.pathname === '/bundle.zip') return handleBundleZip(req, res);
+  // task-97: the LOCAL WEB BUNDLE, the WebView app's one download.
+  if ((req.method === 'GET' || req.method === 'HEAD') && u.pathname === '/web-bundle.zip') return handleWebBundleZip(req, res);
   // task-69: the French overlay, one record at a time, for the surfaces that need the
   // text itself rather than a rendered body (the quote's translation under the English
   // canon). The server holds the pass's export in memory after the first call.
