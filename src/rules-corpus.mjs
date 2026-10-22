@@ -2566,7 +2566,11 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     // The route carries a default; a caller may override it for one call - the
     // /rules page's fast mode asks the agent not to reason, deep asks it to.
     const startedCall = Date.now();
-    const reasoning = reasoningOff ? 'none' : ((opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning);
+    // task-96: RULES_AGENT_EFFORT overrides the reasoning effort for a measurement, so 'low' - a
+    // value this route already uses for the OpenRouter shape - can be measured on the agent's REAL
+    // prompt without a code change per arm. Not a tuning dial; it exists for the three-arm test.
+    const override = process.env.RULES_AGENT_EFFORT;
+    const reasoning = reasoningOff ? 'none' : (override !== undefined && override !== '' ? override : ((opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning));
     // task-76: the reasoning control differs by gateway, and a wrong one is a 400 rather
     // than a bad answer - so both shapes are VERIFIED, not assumed: a live call to
     // OpenRouter's minimax with reasoning_effort returned 200 but reasoning 'null' (the
