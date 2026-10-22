@@ -1537,6 +1537,12 @@ async function handleRulesAsk(req, res) {
     // answer event, no prose to wait for, and no answer segment on the bar (the
     // start event already left it out). The call below is kept, not deleted: its
     // format is going into the agent next.
+    // task-86: the failure flag is set where the result is produced (rules-corpus.mjs,
+    // agentFailure), because this is the point in the request where the page's path returns
+    // and the writer branch below is never reached. The statement stays here as a belt: a
+    // result that came back with nothing and does not carry the flag is still a failure.
+    if (agent && agent.answered === null && agent.failed !== true) agent.failed = true;
+    if (secondAgent && secondAgent.answered === null && secondAgent.failed !== true) secondAgent.failed = true;
     if (!writerOn) {
       await secondRun;
       emitSecond();

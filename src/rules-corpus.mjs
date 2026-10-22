@@ -2602,6 +2602,16 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     if (!choice || !content.trim()) {
       ROUTE_STATS.empty++;
       bucket.empty++;
+      // task-86: WHY it was empty, as a counter rather than a story. The failure is either
+      // 'the gateway said nothing' (no choice, or an empty content field) or 'the gateway
+      // thought instead of writing' (content null with finish_reason length), and the two
+      // want different fixes. Recorded per route so /health can show the shape without a
+      // second measurement round.
+      const shape = !choice ? 'no-choice' : (choice.finish_reason === 'length' ? 'length' : 'empty-content');
+      bucket.emptyShapes = bucket.emptyShapes || {};
+      bucket.emptyShapes[shape] = (bucket.emptyShapes[shape] || 0) + 1;
+      ROUTE_STATS.emptyShapes = ROUTE_STATS.emptyShapes || {};
+      ROUTE_STATS.emptyShapes[shape] = (ROUTE_STATS.emptyShapes[shape] || 0) + 1;
       // A gateway that thinks BEFORE it writes can spend the whole budget on reasoning
       // and return content:null with finish_reason 'length' - OpenRouter's minimax does
       // exactly that at 4000. That is the truncated-JSON case, so it gets the truncated
@@ -3383,6 +3393,28 @@ export function contradictsItself(obj) {
     || /\bcan gain one\b|\bcan have one\b|\bcan obtain one\b/i.test(text);
 }
 
+// task-86: a result the agent could not produce is a FAILURE, and it says so on the result
+// itself.
+//
+// The flag used to be set only in the server's WRITER branch, which is after the
+// `if (!writerOn) return` that the page's request takes, so on the page's own path
+// `agent.failed` was never true and the failure card task-78 built could not be reached: a
+// reader whose agent returned nothing got a ruling card with no ruling. The route is not what
+// failed, the RESULT is, so every failure return carries it and every caller sees it.
+//
+// It also carries the numbers the rate needs: which call died (first, re-ask, parse) and how
+// long it took, so an empty reply can be told from a timeout without a second guess.
+function agentFailure(why, extra) {
+  return Object.assign({
+    rulesQuestion: null,
+    answered: null,
+    failed: true,
+    confidence: '',
+    passages: [],
+    why,
+  }, extra || {});
+}
+
 // One agent call: the prompt, the parse, and the one extra ask the verdict is worth.
 // Split out of agentCoverage so the hop can run it twice on two lists.
 async function agentAsk(question, passages, key, o, manifest) {
@@ -3403,15 +3435,17 @@ async function agentAsk(question, passages, key, o, manifest) {
   // answered without thinking beats a run that died thinking. Measured on the fast
   // model: 27.6s with reasoning medium against 3.6s without, on one 18.6k prompt.
   const asking = !!(o.reasoning && o.reasoning !== 'none');
+  const callStarted = Date.now();
   let raw = '';
   try {
     raw = await fastText(prompt, key, 4000, asking ? Object.assign({}, callOpts, { timeout: AGENT_REASONING_TIMEOUT_MS }) : callOpts);
   } catch (e) {
-    if (!asking) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'the agent did not answer: ' + String((e && e.message) || e), raw: true };
+    const firstMs = Date.now() - callStarted;
+    if (!asking) return agentFailure('the agent did not answer: ' + String((e && e.message) || e), { raw: true, stage: 'first', ms: firstMs });
     try {
       raw = await fastText(prompt, key, 4000, Object.assign({}, callOpts, { reasoning: 'none' }));
     } catch (e2) {
-      return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'the agent did not answer: ' + String((e2 && e2.message) || e2), raw: true };
+      return agentFailure('the agent did not answer: ' + String((e2 && e2.message) || e2), { raw: true, stage: 're-ask', ms: firstMs, reAskMs: Date.now() - callStarted - firstMs });
     }
   }
   let obj = parseJsonObject(raw);
@@ -3443,9 +3477,9 @@ async function agentAsk(question, passages, key, o, manifest) {
     // Three asks and it is still the template. That is not a refusal and not an answer:
     // the records may hold the rule and this call never read them. Reported as such.
     ROUTE_STATS.template = (ROUTE_STATS.template || 0) + 1;
-    return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'the agent returned the schema example instead of an answer', template: true };
+    return agentFailure('the agent returned the schema example instead of an answer', { template: true, stage: 'parse' });
   }
-  if (!obj) return { rulesQuestion: null, answered: null, confidence: '', passages: [], why: 'agent returned nothing parseable', raw: true };
+  if (!obj) return agentFailure('agent returned nothing parseable', { raw: true, stage: 'parse' });
   const answered = obj.answered === true;
   // The model is asked to always give one; when it does not, the verdict itself
   // is the fallback rather than an empty field, because the caller escalates on
