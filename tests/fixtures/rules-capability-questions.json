@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created": "2026-10-21 (task-64): the capability bank. Every question is of the shape 'can X do Y', and every one is built from the corpus rather than from imagination - the answer record and the decoy were found by searching for sentences that grant the capability (see workspace/t64-scan.mjs). The 33-question bank measures retrieval; this one measures APPLICABILITY: whether the record the judge rests on actually reaches the subject of the question.",
-  "note": "Fields: q, kind, answer (the record that ACTUALLY applies, or null when the honest answer is no and no single record is the answer), decoy (a record that grants the same capability to something else - the record a judge cites when it does not check the scope), yes (the honest answer), reason (why, so a later reader can check the bank rather than trust it), scope (the phrase in the record that decides applicability). scopeSource names the record the scope phrase is quoted from when the question's honest answer is no and the rule that decides it is a general one rather than a record about the subject. THE CONDITIONAL-YES SEMANTICS (task-82), which cases 5 and 6 exist to test: a grant has a SUBJECT and often a CONDITION, and the two are read separately. A grant that reaches the SUBJECT of the question under a condition is a YES, and the answer must state the condition in the same sentence because the condition is the answer - never a bare \"Yes\". A grant that reaches a DIFFERENT subject is a NO, however similar the wording. Cases 5 and 6 rest on the same record, the Rampart Crest (unitrules#000002594~3), and have opposite answers: it gives a 5+ invulnerable save to \"models in that unit\" while the bearer is leading a unit, so a unit led by a Kahl has it (6, yes, and the condition is the answer) and the Kahl itself does not have it from its own crest (5, no - the Kahl is the bearer, not a model in the unit it leads). A verdict that is right on one half and wrong on the other is the failure this pair exists to catch.",
+  "note": "Fields: q, kind, answer (the record that ACTUALLY applies, or null when the honest answer is no and no single record is the answer), decoy (a record that grants the same capability to something else - the record a judge cites when it does not check the scope), yes (the honest answer), reason (why, so a later reader can check the bank rather than trust it), scope (the phrase in the record that decides applicability). scopeSource names the record the scope phrase is quoted from when the question's honest answer is no and the rule that decides it is a general one rather than a record about the subject. THE CONDITIONAL-YES SEMANTICS (task-82), which cases 5 and 6 exist to test: a grant has a SUBJECT and often a CONDITION, and the two are read separately. A grant that reaches the SUBJECT of the question under a condition is a YES, and the answer must state the condition in the same sentence because the condition is the answer - never a bare \"Yes\". A grant that reaches a DIFFERENT subject is a NO, however similar the wording. Cases 5 and 6 rest on the same record, the Rampart Crest (unitrules#000002594~3), and have opposite answers: it gives a 5+ invulnerable save to \"models in that unit\" while the bearer is leading a unit, so a unit led by a Kahl has it (6, yes, and the condition is the answer) and the Kahl itself does not have it from its own crest (5, no - the Kahl is the bearer, not a model in the unit it leads). A verdict that is right on one half and wrong on the other is the failure this pair exists to catch. RE-SCORED AND EXTENDED (task-82, second pass): the bank had scored EVERY conditional grant as no, which is the error the app must not make - a grant that reaches the subject under a condition is a yes (cases 5, 8, 9 re-scored), a grant that reaches a different subject is a no. Case 5 is kept as a KNOWN-CONFOUNDED record (the Kahl datasheet already carries inv 4+); case 10 was reworded to what the rule decides; case 16 is the default rule, with faction-rule#000009994 named as the exception it does not cover. Three scope cases were added (Onager aura vs Baneblade, Sanctifiers vs attached priest, Deathstrike after Advancing) so the bank still measures applicability rather than agreement.",
   "questions": [
     {
       "q": "Can a baneblade have an invulnerable save?",
@@ -55,13 +55,13 @@
     {
       "q": "Can a Kahl have an invulnerable save from its Rampart Crest?",
       "kind": "capability",
-      "yes": false,
-      "answer": null,
-      "decoy": [
+      "yes": true,
+      "answer": [
         "unitrules#000002594~3"
       ],
+      "decoy": [],
       "scope": "while the bearer is leading a unit, models in that unit",
-      "reason": "Rampart Crest gives a 5+ invulnerable save to 'models in that unit' while the bearer is LEADING a unit - the Kahl is the leader, not a model in the unit it leads, so the crest does not save the Kahl itself. The same record is the answer to 'does a unit led by a Kahl get a 5+ invulnerable save?', which is the pair of questions this entry exists for."
+      "reason": "RE-SCORED task-82. The Rampart Crest is \"While the bearer is leading a unit, models in that unit have a 5+ invulnerable save\" - a unit-affecting ability, so it reaches the Kahl in the attached unit it leads. CORPUS: core-rules#Abilities-in-Attached-Units - \"abilities/rules that affect a unit (or models in it) apply to every model in an attached unit\", and a leader \"continues to benefit from its own while this model is leading a unit abilities\". A grant that reaches the SUBJECT under a condition is a YES; a grant that reaches a DIFFERENT subject is a NO. The old reason (\"the Kahl is the leader, not a model in the unit it leads\") is FALSE and is removed: an attached unit is a single unit for all rules purposes. THIS CASE IS ALSO CONFOUNDED - the Kahl datasheet carries inv 4+, so the question cannot distinguish whether the crest reaches it - and it is kept only as a known-confounded record, with the unconfounded scope cases below doing the measuring."
     },
     {
       "q": "Does a unit led by a Kahl have a 5+ invulnerable save?",
@@ -90,36 +90,41 @@
     {
       "q": "Does an Autarch have the Scouts ability?",
       "kind": "capability",
-      "yes": false,
-      "answer": null,
+      "yes": true,
+      "answer": [
+        "unitrules#000000577~2"
+      ],
       "decoy": [
-        "unitrules#000000577~2",
         "unitrules#000001553~2"
       ],
       "scope": "while this model is leading a Striking Scorpions unit",
-      "reason": "The Autarch's own keywords carry no Scouts; the ability grants it only 'while this model is leading a Striking Scorpions unit', which is a condition on the game state, not a keyword the Autarch always has. DECOY: the Ministorum Priest's Holy Mission gives Scouts 6\" to a DOMINION SQUAD it is attached to - the same shape, another unit."
+      "reason": "RE-SCORED task-82. unitrules#000000577~2: \"While this model is leading a Striking Scorpions unit, it has the Infiltrators, Scouts 7\" and Stealth abilities.\" The subject is THIS MODEL and the condition is leading that unit, so the grant reaches the subject. CORPUS: core-rules#Abilities-in-Attached-Units - \"abilities/rules that affect a unit (or models in it) apply to every model in an attached unit\", and a leader \"continues to benefit from its own while this model is leading a unit abilities\". A grant that reaches the SUBJECT under a condition is a YES; a grant that reaches a DIFFERENT subject is a NO. The old reason (\"a conditional grant is not a keyword the Autarch always has\") is the wrong test and is removed."
     },
     {
       "q": "Does a Ministorum Priest have the Scouts ability?",
       "kind": "capability",
-      "yes": false,
-      "answer": null,
+      "yes": true,
+      "answer": [
+        "unitrules#000001553~2"
+      ],
       "decoy": [
         "unitrules#000001553~2"
       ],
       "scope": "if this model is attached to a DOMINION SQUAD",
-      "reason": "Holy Mission grants the Scouts 6\" ability to the priest only when it is attached to a Dominion Squad during the Declare Battle Formations step - a conditional grant, not a keyword. A judge that reads the grant as the priest's own answers yes."
+      "reason": "RE-SCORED task-82. unitrules#000001553~2: \"If this model is attached to a DOMINION SQUAD during the Declare Battle Formations step, it gains the Scouts 6\" ability.\" The subject is THIS MODEL under a condition, so it is a conditional yes. CORPUS: core-rules#Abilities-in-Attached-Units - \"abilities/rules that affect a unit (or models in it) apply to every model in an attached unit\", and a leader \"continues to benefit from its own while this model is leading a unit abilities\". A grant that reaches the SUBJECT under a condition is a YES; a grant that reaches a DIFFERENT subject is a NO."
     },
     {
-      "q": "Can a Sanctifiers unit be set up in ambush with the Scouts ability?",
+      "q": "Can a Sanctifiers unit make a scout move?",
       "kind": "capability",
-      "yes": false,
-      "answer": null,
-      "decoy": [
-        "unitrules#000004074~2"
+      "yes": true,
+      "answer": [
+        "unitrules#000004075~1"
       ],
-      "scope": "if a MINISTORUM PRIEST or INQUISITOR model is attached to this unit",
-      "reason": "The Sanctifiers grant Scouts 6\" to an attached MINISTORUM PRIEST or INQUISITOR model - the grant runs the other way, and the unit itself does not have Scouts. The decoy is the same record read without its direction."
+      "decoy": [
+        "unitrules#000004075~3"
+      ],
+      "scope": "Ability (Core): Scouts",
+      "reason": "REWORDED task-82. The old question (\"set up in ambush\") turned on a phrase the rule does not settle, and its reason (\"the unit itself does not have Scouts\") was FALSE: the Sanctifiers own keywords-and-abilities record lists \"Ability (Core): Scouts\" (unitrules#000004075~1, and 000004074~1 in Imperial Agents). The unit has Scouts natively, so a scout move is a plain YES, and the attached-priest grant (000004075~3, \"that model gains the Scouts 6\" ability\") is the DECOY - the grant runs the other way, to the attached model."
     },
     {
       "q": "Can a Starweaver's passengers shoot?",
@@ -189,8 +194,41 @@
         "faction-rule#000009994"
       ],
       "scope": "not eligible to shoot, declare a charge or start an action",
-      "reason": "FALL-BACK MOVE states the no outright ('your unit is not eligible to shoot, declare a charge or start an action'), and the record is named as the decoy-shaped evidence because the rule is the general one rather than a record about the subject. DECOY: the Orks' Thrill Seekers makes a unit eligible to shoot AND declare a charge in a turn in which it Advanced or Fell Back - a real exception that does not apply to a unit without that faction rule.",
+      "reason": "REWORDED task-82. The old reason rested on the core rule alone and the corpus holds faction overrides: faction-rule#000009994 grants an Emperor’s Children unit \"eligible to shoot and declare a charge in a turn in which it Advanced or Fell Back\". So the honest answer to the GENERIC question is no and the honest answer to \"can it, with a named exception\" is a conditional yes, and the bank cannot have it both ways. The question is now the DEFAULT rule, which the corpus states outright.",
       "scopeSource": "core-rules#Movement-Phase->-3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
+    },
+    {
+      "q": "Can an Onager Dunecrawler give a Baneblade an invulnerable save?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000000854~2"
+      ],
+      "scope": "While a friendly ADEPTUS MECHANICUS BATTLELINE model is wholly within 6\" of this model",
+      "reason": "NEW task-82, the scope split. unitrules#000000854~2: \"Emanatus Force Field (Aura) - While a friendly ADEPTUS MECHANICUS BATTLELINE model is wholly within 6\" of this model, that BATTLELINE model has a 4+ invulnerable save.\" The aura reaches ADEPTUS MECHANICUS BATTLELINE models only. A Baneblade is ASTRA MILITARUM and not BATTLELINE, so the grant reaches a different subject and the answer is NO however close it stands. The decoy is that record itself, cited without the scope."
+    },
+    {
+      "q": "Does a Sanctifiers unit gain the Scouts ability from an attached Ministorum Priest?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000004075~3"
+      ],
+      "scope": "that model gains the Scouts 6\" ability",
+      "reason": "NEW task-82, the scope split, and the mirror of case 8. unitrules#000004075~3: \"If a MINISTORUM PRIEST from your army is attached to this unit during the Declare Battle Formations step, THAT MODEL gains the Scouts 6\" ability.\" The grant runs the other way: the priest gains it, the unit does not, so the subject of the question is outside the grant. NO. The decoy is the record a judge cites when it reads the grant without its subject."
+    },
+    {
+      "q": "Can a Deathstrike shoot in a turn in which it Advanced?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000000699"
+      ],
+      "scope": "Remained Stationary",
+      "reason": "NEW task-82, the scope split. unitrules#000000699 carries the Deathstrike’s own restriction: the missile can only be fired if the bearer Remained Stationary. Advancing is not Remaining Stationary, so the grant does not reach the subject in that turn and the answer is NO. The decoy is the record itself, whose restriction is exactly what decides it - read past the restriction and it looks like a grant."
     }
   ]
 }

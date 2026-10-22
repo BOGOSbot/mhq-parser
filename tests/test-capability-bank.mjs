@@ -21,7 +21,8 @@ const byId = new Map(all.map(r => [r.id, r]));
 const delivered = new Set(all.filter(isDelivered).map(r => r.id));
 const fold = s => String(s).toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"');
 
-ok('the bank has 12 to 15 questions', bank.questions.length >= 12 && bank.questions.length <= 16);
+// task-82 added three scope cases, so the range moved with them.
+ok('the bank has 16 to 20 questions', bank.questions.length >= 16 && bank.questions.length <= 20);
 ok('every question is unique', new Set(bank.questions.map(q => q.q)).size === bank.questions.length);
 ok('every question is of the can-X-do-Y shape', bank.questions.every(q => /^(can|does|do|is|are)\b/i.test(q.q)));
 ok('every question states the honest answer', bank.questions.every(q => typeof q.yes === 'boolean'));
@@ -63,11 +64,20 @@ ok('the prompt states the subject/condition split', /A grant has a SUBJECT and o
 ok('the prompt says a conditional yes must state the condition', /MUST state the condition in the same sentence/.test(RULES));
 ok('and forbids a bare yes for one', /Never a bare "Yes" for a conditional grant/.test(RULES));
 ok('the prompt keeps the scope exclusion rule', /scope EXCLUDES the subject cannot support the answer/.test(RULES));
-ok('the pair is really in the bank, with opposite answers', (() => {
+// task-82: the pair was scored as opposite answers, and the corpus says they are the same
+// answer for two different reasons - the crest reaches the Kahl (conditional grant, and the
+// datasheet save makes the case confounded) and it reaches the unit under a condition.
+ok('the Kahl pair is in the bank and both are yes', (() => {
   const five = bank.questions.find(q => /Can a Kahl have an invulnerable save/.test(q.q));
   const six = bank.questions.find(q => /unit led by a K[âa]hl/.test(q.q));
-  return !!five && !!six && five.yes === false && six.yes === true && (six.answer || []).indexOf('unitrules#000002594~3') !== -1;
+  return !!five && !!six && five.yes === true && six.yes === true && (six.answer || []).indexOf('unitrules#000002594~3') !== -1;
 })());
+ok('the confounded case says so', /CONFOUNDED/.test((bank.questions.find(q => /Can a Kahl have an invulnerable save/.test(q.q)) || {}).reason || ''));
+ok('every conditional-grant case was re-scored against the corpus', bank.questions.filter(q => /RE-SCORED task-82/.test(q.reason || '')).length >= 3);
+// The scope split needs cases where the grant reaches a DIFFERENT subject, or the bank
+// measures whether the agent says yes rather than whether it checks the scope.
+const scopeCases = bank.questions.filter(q => q.yes === false && (q.decoy || []).length && /scope split/.test(q.reason || ''));
+ok('the bank keeps scope cases where the grant reaches another subject', scopeCases.length >= 3);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 console.log('bank: ' + bank.questions.length + ' questions, ' + yes + ' yes / ' + (bank.questions.length - yes) + ' no, ' + bank.questions.filter(q => (q.decoy || []).length).length + ' with a decoy, ' + refs + ' record references');
