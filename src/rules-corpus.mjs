@@ -3456,6 +3456,15 @@ export function contradictsItself(obj) {
 //
 // It also carries the numbers the rate needs: which call died (first, re-ask, parse) and how
 // long it took, so an empty reply can be told from a timeout without a second guess.
+// The first call's output budget, and the last latency item (task-89/task-96).
+//
+// The attribution counter settled the question: every empty on the agent's FIRST call comes back
+// with content null, finish_reason 'length', and completion_tokens EQUAL to max_tokens - the
+// model spends the whole budget thinking and never writes. 4000 output tokens is the same wall
+// as the 45s reasoning bound seen from the other end. The knob exists so both arms of the
+// measurement run on ONE deploy; it is not a tuning dial to be turned on a single sample.
+const FIRST_TOKENS = Number(process.env.RULES_AGENT_FIRST_TOKENS) || 4000;
+
 function agentFailure(why, extra) {
   return Object.assign({
     rulesQuestion: null,
@@ -3490,12 +3499,12 @@ async function agentAsk(question, passages, key, o, manifest) {
   const callStarted = Date.now();
   let raw = '';
   try {
-    raw = await fastText(prompt, key, 4000, asking ? Object.assign({}, callOpts, { timeout: AGENT_REASONING_TIMEOUT_MS, stage: 'agent-first' }) : Object.assign({}, callOpts, { stage: 'agent-first' }));
+    raw = await fastText(prompt, key, FIRST_TOKENS, asking ? Object.assign({}, callOpts, { timeout: AGENT_REASONING_TIMEOUT_MS, stage: 'agent-first' }) : Object.assign({}, callOpts, { stage: 'agent-first' }));
   } catch (e) {
     const firstMs = Date.now() - callStarted;
     if (!asking) return agentFailure('the agent did not answer: ' + String((e && e.message) || e), { raw: true, stage: 'first', ms: firstMs });
     try {
-      raw = await fastText(prompt, key, 4000, Object.assign({}, callOpts, { reasoning: 'none', stage: 'agent-re-ask' }));
+      raw = await fastText(prompt, key, FIRST_TOKENS, Object.assign({}, callOpts, { reasoning: 'none', stage: 'agent-re-ask' }));
     } catch (e2) {
       return agentFailure('the agent did not answer: ' + String((e2 && e2.message) || e2), { raw: true, stage: 're-ask', ms: firstMs, reAskMs: Date.now() - callStarted - firstMs });
     }
