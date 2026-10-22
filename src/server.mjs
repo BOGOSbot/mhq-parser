@@ -32,6 +32,7 @@ import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 import crypto from 'crypto';
+import { buildInfo } from './build-info.mjs';
 import { fileURLToPath } from 'url';
 import { URL_RE, checkEvent, clearEventCache, getAllEvents, getMeta, playerWarnings, armyBudget, parseHtml, parseListText, parseUrl, renderMini, totals, loginSession, listOrganizedTournaments } from './parse.mjs';
 import { ARCHIVE_DIR, entryForKey, eventKey, keyOfUrl, loadIndex, readEvent, rowFor } from './archive.mjs';
@@ -1776,6 +1777,11 @@ const server = http.createServer(async (req, res) => {
       archiveError: archiveError || undefined,
       // Which halves of the rules page this machine can run, so a missing key
       // is visible before a question is asked rather than after it fails.
+      // task-90: WHICH BUILD THIS PROCESS IS. Read at boot, not from disk: the archive is
+      // extracted over the tree, so the files are new while the running process is still the
+      // old one, and a deploy that only checks the port cannot tell. The deploy compares this
+      // against the commit it shipped and fails loudly when they differ.
+      build: buildInfo(),
       rules: rulesKeyState(),
       // What the model route actually did since this process started: calls, empty
       // bodies, retries and how many retries landed. The free route returns empty
