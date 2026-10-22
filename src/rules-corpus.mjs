@@ -2538,6 +2538,8 @@ export function routeStats() {
     emptyCalls: (ROUTE_STATS.emptyCalls || []).slice(),
     // task-96: the share of the agent's first JSON replies that did not parse as an object.
     jsonShape: Object.assign({}, ROUTE_STATS.jsonShape || {}),
+    // task-96: the last forty calls' provider usage, for the completion-token distribution.
+    usage: (ROUTE_STATS.usage || []).slice(),
     byRoute,
   };
 }
@@ -2563,6 +2565,7 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     if (attempt > 0) { ROUTE_STATS.retries++; bucket.retries++; }
     // The route carries a default; a caller may override it for one call - the
     // /rules page's fast mode asks the agent not to reason, deep asks it to.
+    const startedCall = Date.now();
     const reasoning = reasoningOff ? 'none' : ((opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning);
     // task-76: the reasoning control differs by gateway, and a wrong one is a 400 rather
     // than a bad answer - so both shapes are VERIFIED, not assumed: a live call to
@@ -2613,6 +2616,24 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     const choice = res && res.choices && res.choices[0];
     const content = String((choice && choice.message && choice.message.content) || '');
     last = content;
+    // task-96: the DISTRIBUTION of what an ordinary call costs, straight from the provider's own
+    // usage. The ladder test answered a one-sentence question for ~347 completion tokens; the
+    // agent's real reply carries an answer, a quote, a why and arrays, so its normal size decides
+    // whether the 4000 ceiling is simply too tight or whether a thin tail is doing something else.
+    // A bounded ring of the last forty, read on /health.
+    if (res && res.usage) {
+      const ring = ROUTE_STATS.usage = ROUTE_STATS.usage || [];
+      ring.push({
+        stage: String((opts && opts.stage) || 'unlabelled'),
+        prompt: Number(res.usage.prompt_tokens || 0),
+        completion: Number(res.usage.completion_tokens || 0),
+        max: budget,
+        finish: choice ? String(choice.finish_reason || '') : '',
+        chars: content.length,
+        ms: Date.now() - startedCall,
+      });
+      if (ring.length > 40) ring.shift();
+    }
     // task-70: an empty reply is RETRIED, not returned. It was returned as it always had
     // been, and the agent then read it as 'the agent did not answer', which the escalation
     // loop treats as 'not answered' - a statement about the corpus made from a call that
@@ -2664,6 +2685,7 @@ async function routeText(route, prompt, key, maxTokens, opts) {
       ROUTE_STATS.emptyByStage[stage] = (ROUTE_STATS.emptyByStage[stage] || 0) + 1;
       // A gateway that thinks BEFORE it writes can spend the whole budget on reasoning
       // and return content:null with finish_reason 'length' - OpenRouter's minimax does
+      // (task-96: the usage of this call is already in the ring above, with chars 0.)
       // exactly that at 4000. That is the truncated-JSON case, so it gets the truncated
       // treatment: a bigger budget, not a shrug. Without this the agent answered
       // 'nothing parseable' on a call that had simply run out of room thinking.
