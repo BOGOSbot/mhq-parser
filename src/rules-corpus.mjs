@@ -2530,12 +2530,19 @@ export function routeStats() {
     calls: ROUTE_STATS.calls, empty: ROUTE_STATS.empty, truncated: ROUTE_STATS.truncated,
     retries: ROUTE_STATS.retries, recovered: ROUTE_STATS.recovered,
     empty_rate: ROUTE_STATS.calls ? Math.round(1000 * ROUTE_STATS.empty / ROUTE_STATS.calls) / 10 : 0,
+    // task-89: the shape, the CALL it came from, and the provider's own usage for the last few.
+    // These were being recorded on the route buckets and never surfaced, so /health could not
+    // answer the one question the counters exist for.
+    emptyShapes: Object.assign({}, ROUTE_STATS.emptyShapes || {}),
+    emptyByStage: Object.assign({}, ROUTE_STATS.emptyByStage || {}),
+    emptyCalls: (ROUTE_STATS.emptyCalls || []).slice(),
     byRoute,
   };
 }
 export function routeStatsReset() {
   ROUTE_STATS.calls = 0; ROUTE_STATS.empty = 0; ROUTE_STATS.truncated = 0;
   ROUTE_STATS.retries = 0; ROUTE_STATS.recovered = 0; ROUTE_STATS.byRoute = {};
+  ROUTE_STATS.emptyShapes = {}; ROUTE_STATS.emptyByStage = {}; ROUTE_STATS.emptyCalls = [];
 }
 
 async function routeText(route, prompt, key, maxTokens, opts) {
@@ -2612,6 +2619,36 @@ async function routeText(route, prompt, key, maxTokens, opts) {
       bucket.emptyShapes[shape] = (bucket.emptyShapes[shape] || 0) + 1;
       ROUTE_STATS.emptyShapes = ROUTE_STATS.emptyShapes || {};
       ROUTE_STATS.emptyShapes[shape] = (ROUTE_STATS.emptyShapes[shape] || 0) + 1;
+      // task-89: WHICH CALL produced it, and WHAT THE PROVIDER SAID IT SPENT.
+      //
+      // The shape alone could not be attributed: three calls in the agent chain take 4000
+      // tokens and an empty can come from any of them, so the last two budget changes were
+      // guesses and one of them was wrong. `opts.stage` is the caller's own label for the call
+      // (first / re-ask / object / terms / translate / sweep / writer), and the provider's
+      // usage settles the 'length' question outright: completion_tokens equal to max_tokens
+      // means the model spent the whole budget thinking, a small completion_tokens means
+      // something else truncated it and the budget was a red herring. From the outside those
+      // two are identical, which is exactly why they are recorded here.
+      const stage = String((opts && opts.stage) || 'unlabelled');
+      const usage = (res && res.usage) || null;
+      const record = {
+        shape,
+        stage,
+        attempt: attempt + 1,
+        maxTokens: budget,
+        promptTokens: usage ? Number(usage.prompt_tokens || 0) : null,
+        completionTokens: usage ? Number(usage.completion_tokens || 0) : null,
+        reportedMax: usage && usage.max_tokens !== undefined ? Number(usage.max_tokens) : null,
+        finishReason: choice ? String(choice.finish_reason || '') : 'no-choice',
+      };
+      ROUTE_STATS.emptyCalls = ROUTE_STATS.emptyCalls || [];
+      // Bounded: the last twenty are enough to attribute a shape and cheap to read on /health.
+      ROUTE_STATS.emptyCalls.push(record);
+      if (ROUTE_STATS.emptyCalls.length > 20) ROUTE_STATS.emptyCalls.shift();
+      bucket.emptyByStage = bucket.emptyByStage || {};
+      bucket.emptyByStage[stage] = (bucket.emptyByStage[stage] || 0) + 1;
+      ROUTE_STATS.emptyByStage = ROUTE_STATS.emptyByStage || {};
+      ROUTE_STATS.emptyByStage[stage] = (ROUTE_STATS.emptyByStage[stage] || 0) + 1;
       // A gateway that thinks BEFORE it writes can spend the whole budget on reasoning
       // and return content:null with finish_reason 'length' - OpenRouter's minimax does
       // exactly that at 4000. That is the truncated-JSON case, so it gets the truncated
@@ -2743,7 +2780,7 @@ export function parseJsonObject(text) {
 // grep simply has nothing to match and the reader never knows.
 export async function expandQuery(question, key, opts) {
   if (!key) return [];
-  return parseTerms(await fastText(expansionPrompt(question), key, 900, { reasoning: 'none' }));
+  return parseTerms(await fastText(expansionPrompt(question), key, 900, { reasoning: 'none', stage: 'terms' }));
 }
 
 // A French question against an English corpus. Grep cannot match a word that is
@@ -2863,7 +2900,7 @@ export async function translateQuestion(question, key, opts) {
   const glossary = hits.map(h => h.en);
   // English that looks English: no call, no translation, nothing to correct.
   if (!o.force && !looksForeign(question)) return { lang: 'en', translated: '', terms: glossary, glossary };
-  const parsed = parseTranslation(await fastText(translationPrompt(question, hits), key, 3000, { json: true }));
+  const parsed = parseTranslation(await fastText(translationPrompt(question, hits), key, 3000, { json: true, stage: 'translate' }));
   // One term spelled twice is one term. The glossary supplies ASURMEN and the
   // model supplies Asurmen, and a case-sensitive dedupe keeps both, so the same
   // word is scored against the same text twice - a doubled weight nobody chose.
@@ -3438,12 +3475,12 @@ async function agentAsk(question, passages, key, o, manifest) {
   const callStarted = Date.now();
   let raw = '';
   try {
-    raw = await fastText(prompt, key, 4000, asking ? Object.assign({}, callOpts, { timeout: AGENT_REASONING_TIMEOUT_MS }) : callOpts);
+    raw = await fastText(prompt, key, 4000, asking ? Object.assign({}, callOpts, { timeout: AGENT_REASONING_TIMEOUT_MS, stage: 'agent-first' }) : Object.assign({}, callOpts, { stage: 'agent-first' }));
   } catch (e) {
     const firstMs = Date.now() - callStarted;
     if (!asking) return agentFailure('the agent did not answer: ' + String((e && e.message) || e), { raw: true, stage: 'first', ms: firstMs });
     try {
-      raw = await fastText(prompt, key, 4000, Object.assign({}, callOpts, { reasoning: 'none' }));
+      raw = await fastText(prompt, key, 4000, Object.assign({}, callOpts, { reasoning: 'none', stage: 'agent-re-ask' }));
     } catch (e2) {
       return agentFailure('the agent did not answer: ' + String((e2 && e2.message) || e2), { raw: true, stage: 're-ask', ms: firstMs, reAskMs: Date.now() - callStarted - firstMs });
     }
@@ -3478,7 +3515,7 @@ async function agentAsk(question, passages, key, o, manifest) {
       // reply that was missing. When the reply we already hold IS the example, or when a
       // plain re-ask has already failed, the prompt says what went wrong instead.
       const prior = ask > 1 || agentTemplate(obj) ? mustNotCopy : '\n\nReply with the JSON object only, in one line, and nothing else.';
-      obj = parseJsonObject(await fastText(prompt + prior, key, REASK_TOKENS, reOpts));
+      obj = parseJsonObject(await fastText(prompt + prior, key, REASK_TOKENS, Object.assign({}, reOpts, { stage: 'agent-object' })));
     } catch (e) { break; }
   }
   if (agentTemplate(obj)) {
@@ -3743,7 +3780,7 @@ export async function sweepChecks(question, checks, opts) {
     // The model call is injectable, like every other network step in this file: the
     // loop's termination and its bounds are the feature's contract, and a test that
     // has to spend real calls to pin them is a test nobody runs.
-    const ask = o.ask || (prompt => fastText(prompt, o.key, 1200, { json: true, reasoning: 'none', timeout: left }));
+    const ask = o.ask || (prompt => fastText(prompt, o.key, 1200, { json: true, reasoning: 'none', timeout: left, stage: 'sweep' }));
     try {
       const raw = await ask(sweepPrompt(question, withText, o), { round: round, checks: withText, leftMs: left });
       obj = parseJsonObject(raw);
@@ -4653,7 +4690,7 @@ export async function compileFindings(question, findings, key, opts) {
   if (!key || !findings.length) return '';
   const o = opts || {};
   // The route carries a reasoning default; a caller may override it for one call.
-  return String(await modelText(compilePrompt(question, findings, o), key, 8000, o.reasoning === undefined ? undefined : { reasoning: o.reasoning })).trim();
+  return String(await modelText(compilePrompt(question, findings, o), key, 8000, Object.assign({ stage: 'writer' }, o.reasoning === undefined ? {} : { reasoning: o.reasoning }))).trim();
 }
 
 // What the writer says when it read the findings and will not answer from them.
