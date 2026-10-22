@@ -2536,6 +2536,8 @@ export function routeStats() {
     emptyShapes: Object.assign({}, ROUTE_STATS.emptyShapes || {}),
     emptyByStage: Object.assign({}, ROUTE_STATS.emptyByStage || {}),
     emptyCalls: (ROUTE_STATS.emptyCalls || []).slice(),
+    // task-96: the share of the agent's first JSON replies that did not parse as an object.
+    jsonShape: Object.assign({}, ROUTE_STATS.jsonShape || {}),
     byRoute,
   };
 }
@@ -2569,17 +2571,25 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     // text. SenseNova is the other way round: it reads reasoning_effort and does not know
     // the nested object. The host decides.
     const nested = /openrouter\.ai$/i.test(String(route.endpoint || ''));
+    const jsonMode = JSON_MODE;
+    const json = !!(opts && opts.json);
     // A nested-reasoning gateway may DEMAND it: OpenRouter's minimax answers 400
     // 'Reasoning is mandatory for this endpoint and cannot be disabled.' to a request
     // without it, so 'no reasoning' is asked for as the provider's cheapest effort rather
     // than by omitting the field. Measured: the agent's own retry (reasoning 'none') was
     // the call that emptied, 18 of 19 calls, and the log named it exactly.
     const effort = reasoning && reasoning !== 'none' ? reasoning : (nested ? 'low' : '');
+    // task-96: A JSON CALLER NOW ASKS THE GATEWAY FOR AN OBJECT, instead of asking in the prompt
+    // text alone and hoping. `json: true` was read only for the truncation treatment, so the
+    // verdict, the terms, the translation and the sweep all left the shape to the model, and a
+    // prose preamble is exactly what eats a 4000-token budget - the object arrives after it.
+    // SenseNova is OpenAI-compatible and accepts this (measured 2026-10-22: 4 of 4 answered 200
+    // with a clean object). RULES_JSON_MODE=0 turns it off for an A/B measurement.
     const body = JSON.stringify(Object.assign({
       model: route.model,
       messages: [{ role: 'user', content: prompt }],
       max_tokens: budget,
-    }, nested ? { reasoning: { effort: effort || 'low' } } : (effort ? { reasoning_effort: effort } : {})));
+    }, nested ? { reasoning: { effort: effort || 'low' } } : (effort ? { reasoning_effort: effort } : {}), jsonMode && json ? { response_format: { type: 'json_object' } } : {}));
     const res = await new Promise((resolve, reject) => {
       const u = new URL(route.endpoint);
       const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) };
@@ -2680,7 +2690,6 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     // know" over findings that were fine. Those get a bigger budget instead.
     const truncated = choice.finish_reason === 'length';
     if (truncated) { ROUTE_STATS.truncated++; bucket.truncated++; }
-    const json = !!(opts && opts.json);
     if (!truncated || (content.trim() && !json)) {
       if (recovering) { ROUTE_STATS.recovered++; bucket.recovered++; }
       return content;
@@ -3465,6 +3474,11 @@ export function contradictsItself(obj) {
 // measurement run on ONE deploy; it is not a tuning dial to be turned on a single sample.
 const FIRST_TOKENS = Number(process.env.RULES_AGENT_FIRST_TOKENS) || 4000;
 
+// task-96: whether a JSON caller asks the gateway for an object (response_format json_object).
+// Measured 2026-10-22 on SenseNova: accepted, 200 with a clean object, 4 of 4. Off with
+// RULES_JSON_MODE=0, which exists so the preamble rate can be measured on both arms.
+const JSON_MODE = process.env.RULES_JSON_MODE !== '0';
+
 function agentFailure(why, extra) {
   return Object.assign({
     rulesQuestion: null,
@@ -3510,6 +3524,14 @@ async function agentAsk(question, passages, key, o, manifest) {
     }
   }
   let obj = parseJsonObject(raw);
+  // task-96: THE PREAMBLE RATE, as a counter rather than a story. The first reply of the agent
+  // chain is a JSON call, and this counts the share of those that did NOT parse as an object on
+  // the first try - which is the shape failure a reader feels as a failure card. Measured before
+  // the gateway was asked for an object (the off counters) and after (calls / clean).
+  ROUTE_STATS.jsonShape = ROUTE_STATS.jsonShape || { calls: 0, clean: 0, off: 0, offClean: 0 };
+  ROUTE_STATS.jsonShape.calls++;
+  if (JSON_MODE) { if (obj) ROUTE_STATS.jsonShape.clean++; }
+  else { ROUTE_STATS.jsonShape.off++; if (obj) ROUTE_STATS.jsonShape.offClean++; }
   // A small model sometimes answers the judgement in prose instead of the object
   // it was asked for. The verdict is binding - an unparseable one is read as
   // "I do not know" - so it is asked once more, for the object alone, rather
