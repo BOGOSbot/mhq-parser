@@ -9,6 +9,8 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import net from 'node:net';
+import { spawn } from 'node:child_process';
 import { build, pageHtml, OUT } from '../src/web-bundle.mjs';
 import { recordBody, cardIndex } from '../src/wiki-cards.mjs';
 import { readAllCorpus, isDelivered } from '../src/rules-corpus.mjs';
@@ -49,7 +51,19 @@ ok('every delivered record has a pre-rendered body', Object.keys(flat).length ==
 // THE COMPARISON IS AGAINST THE ROUTE, over HTTP. A re-render here would be the task-88 trap in
 // a new coat: the before and the after would be the same build, and this test agreed with a
 // bundle whose corpora argument was wrong on 834 records.
-const ROUTE = process.env.MHQ_ROUTE || 'https://optimum-imp-60273-3000.preview.box.upstash.com';
+// THE REFERENCE IS THE ROUTE, and the route is a LOCAL SERVER spawned from this tree, the way
+// tests/test-agent-failure-path.mjs does it. Pointing this at the deployed Box made the suite
+// depend on a machine that costs money, auto-pauses, and may be running a different commit - and
+// comparing against a different build is the task-88 trap in a new dress. The deployed check is
+// kept as a SECOND, optional pass: it runs only when MHQ_ROUTE is set, and never fails the suite.
+const freePort = () => new Promise((resolve) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); }); });
+const serverPort = await freePort();
+const child = spawn(process.execPath, [path.join(ROOT, 'src', 'server.mjs'), '--host', '127.0.0.1', '--port', String(serverPort)], { stdio: ['ignore', 'pipe', 'pipe'] });
+const ROUTE = 'http://127.0.0.1:' + serverPort;
+let up = false;
+// The corpus read at boot takes a few seconds, so this budget is longer than the ask test's.
+for (let i = 0; i < 120; i++) { try { const r = await fetch(ROUTE + '/health'); if (r.ok) { up = true; break; } } catch (e) { /* not up yet */ } await new Promise((r) => setTimeout(r, 500)); }
+ok('the local server the parity is checked against is up', up);
 const ids = [];
 for (const b of Object.keys(books).sort()) {
   const list = Object.keys(books[b]).sort();
@@ -182,5 +196,22 @@ const manifest = JSON.parse(manRaw.toString('utf8'));
 ok('the manifest carries the corpus stamp', manifest.corpusStamp === dataStamp());
 ok('the manifest lists every file except itself', names.filter((e) => e.name !== 'manifest.json').every((e) => manifest.files[e.name]));
 
+// The DEPLOYED comparison, optional and never a pass when it is skipped.
+if (process.env.MHQ_ROUTE) {
+  const deployed = String(process.env.MHQ_ROUTE).replace(/\/$/, '');
+  const id = ids[0];
+  const res = await fetch(deployed + '/rules/record?id=' + encodeURIComponent(id) + '&format=html');
+  const route = await res.text();
+  ok('the deployed route serves the same bytes for ' + id, route === flat[id]);
+  const q = queries[0];
+  const rows = await (await fetch(deployed + '/rules/find?q=' + encodeURIComponent(q))).json();
+  const mine = findRows(q, { index: entries, termPresent: present, tables, slugs, delivered: new Set(all.map((r) => String(r.id))), cap: 40, vocab: new Set(vocabList), phoneticMatches: (text, legOpts) => phoneticMatches(text, phonIndex, legOpts) });
+  const shape = (rws) => JSON.stringify(rws.map((r) => ({ id: r.id, slug: r.slug, title: r.title, kind: r.kind, tier: r.tier, crumbs: r.crumbs, parts: r.parts })));
+  ok('the deployed route serves the same rows for ' + q, shape(mine.rows) === shape(rows.rows || []));
+} else {
+  console.log('  the deployed comparison was SKIPPED (set MHQ_ROUTE to run it)');
+}
+
+child.kill();
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
