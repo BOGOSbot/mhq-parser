@@ -125,5 +125,16 @@ ok('a hit that cannot be fetched reports instead of doing nothing', /is not in t
 ok('a failed rows load is FAILED, never an empty book', /state\.rowsFailed\[b\] = true/.test(CLIENT) && !/catch\(function \(\) \{ state\.rowsCache\[b\] = \{\}; return \{\}; \}\)/.test(CLIENT));
 ok('a failed rows load says so in the tree', /records could not be fetched/.test(CLIENT));
 
+// The capture script is part of the evidence, so it is checked like code. Its first version
+// PASSED a run whose screenshot showed 'The record could not be loaded.': it made a fresh
+// context for the offline phase, warmed only the tree, and asserted the drawer's rect plus the
+// record's rect - and a failure panel is a visible rectangle. A record must be WARMED in the
+// same context that then goes offline, and the assertion must read the TEXT.
+const CAPTURE = (() => { try { return fs.readFileSync(path.join(here, '..', 'workspace', 't81-capture.py'), 'utf8'); } catch (e) { return ''; } })();
+ok('the capture script exists', CAPTURE.length > 0);
+ok('it warms the record ONLINE in the same context that goes offline', CAPTURE.indexOf("tag + ' ONLINE'") !== -1 && CAPTURE.indexOf("TAP_AFTER, '01 Core Concepts'") !== -1 && CAPTURE.indexOf('ctx.set_offline(True)') > CAPTURE.indexOf("tag + ' ONLINE'"));
+ok('it asserts the record TEXT, not only the geometry', /textLen/.test(CAPTURE) && /failedText/.test(CAPTURE) && /could not be loaded/.test(CAPTURE));
+ok('and it refuses a failure panel', /not st\['failedText'\]/.test(CAPTURE) && /st\['textLen'\] > 40/.test(CAPTURE));
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
