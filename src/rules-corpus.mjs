@@ -3460,6 +3460,14 @@ async function agentAsk(question, passages, key, o, manifest) {
   // task-31: these re-asks are a wait too, so they run without reasoning and stay
   // bounded - the verdict's words are what matters, not the deliberation behind it.
   const reOpts = Object.assign({}, callOpts, { reasoning: 'none' });
+  // task-88: the OBJECT re-ask gets the first call's budget, not a tight one. It is the only
+  // call in the chain whose emptiness loses the whole verdict, and it was the only tight
+  // budget in it (1200 against 4000). The provider's empty shape is a BUDGET shape: measured
+  // on this route, 2 of 6 calls came back with content null at max_tokens=16 and none of 6 did
+  // at 4000, and the counters show the same thing as 'length' (content null, finish_reason
+  // 'length' - the model spent the budget thinking and wrote nothing). RULES_AGENT_REASK_TOKENS
+  // moves it for a measurement; it is not a tuning knob.
+  const REASK_TOKENS = Number(process.env.RULES_AGENT_REASK_TOKENS) || 4000;
   // task-75: a reply that IS the schema example is re-asked exactly like a missing object,
   // and with the word that stops the copying. It parses, so nothing else in this file
   // catches it.
@@ -3470,7 +3478,7 @@ async function agentAsk(question, passages, key, o, manifest) {
       // reply that was missing. When the reply we already hold IS the example, or when a
       // plain re-ask has already failed, the prompt says what went wrong instead.
       const prior = ask > 1 || agentTemplate(obj) ? mustNotCopy : '\n\nReply with the JSON object only, in one line, and nothing else.';
-      obj = parseJsonObject(await fastText(prompt + prior, key, 1200, reOpts));
+      obj = parseJsonObject(await fastText(prompt + prior, key, REASK_TOKENS, reOpts));
     } catch (e) { break; }
   }
   if (agentTemplate(obj)) {
