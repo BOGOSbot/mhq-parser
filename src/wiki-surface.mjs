@@ -71,16 +71,21 @@ function payloadFiles() {
   walk(DATA_DIR, 0);
   return out.sort();
 }
-export function dataStamp() {
-  const files = payloadFiles();
+// task-83: an optional SKIP list, so the app bundle can stamp its English half without the
+// French overlay. The memo is keyed on the skip list too, or the second call would return the
+// first call's stamp.
+export function dataStamp(opts) {
+  const skip = (opts && opts.skip) || [];
+  const files = payloadFiles().filter(f => !skip.some(s => path.relative(DATA_DIR, f).split(path.sep).join('/').indexOf(s) === 0));
   const key = files.map(f => { try { const s = fs.statSync(f); return f + ':' + s.mtimeMs + ':' + s.size; } catch (e) { return f + ':?'; } }).join('|');
-  if (key && key === DATA_STAMP.key) return DATA_STAMP.stamp;
+  const memoKey = skip.join(',') + '|' + key;
+  if (key && memoKey === DATA_STAMP.key) return DATA_STAMP.stamp;
   const h = crypto.createHash('sha1');
   h.update(key);
   // The file NAMES are in the key, so a payload that only loses a book still changes the
   // stamp; the sizes and mtimes catch a rewrite that keeps every name.
   const stamp = h.digest('hex').slice(0, 8);
-  DATA_STAMP = { key: key, stamp: stamp };
+  DATA_STAMP = { key: memoKey, stamp: stamp };
   return stamp;
 }
 
