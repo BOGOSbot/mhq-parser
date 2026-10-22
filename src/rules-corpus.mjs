@@ -3129,6 +3129,13 @@ export function agentPrompt(question, passages, opts) {
     'A record that states a rule is not yet a record that APPLIES to the subject of the question.',
     '- Every record names a SCOPE: who the rule reaches. It is written in the record - "models in this model\u2019s unit", "the bearer", "one friendly Astra Militarum Vehicle model", "ADEPTUS MECHANICUS BATTLELINE models", "a friendly unit within 6\"". For each record you rely on, state that scope in "why" and say whether the SUBJECT of the question is inside it.',
     '- A record whose scope EXCLUDES the subject cannot support the answer, whichever way it reads. Name it and look for one that reaches the subject.',
+    // task-82: the conditional-yes rule, and the pair that proves it. The Rampart Crest
+    // gives a 5+ invulnerable save to 'models in that unit' while the bearer LEADS a unit.
+    // The same record answers 'does a unit led by a Kahl have a 5+ save' YES and 'can a Kahl
+    // have a 5+ save from its crest' NO, because the Kahl is the bearer, not a model in the
+    // unit it leads. The bank encodes it and the old prompt left both halves to luck.
+    '- A grant has a SUBJECT and often a CONDITION. Two questions can rest on one record and have opposite answers: yes when the grant reaches the subject of the question, no when it reaches a different one, however similar the wording.',
+    '- A conditional yes is still a YES, and its answer MUST state the condition in the same sentence - "Yes, while the bearer is leading that unit" - because the condition is the answer. Never a bare "Yes" for a conditional grant, and never a yes when the scope puts the subject outside the grant.',
     '- A scope is usually a KEYWORD rather than the subject\u2019s name. When the passages carry the subject\u2019s own keyword list, compare it with the scope: if the subject carries a keyword the scope names, the record APPLIES and the answer is what it says. This is the join, and it is written in the passages, not in what you know about the game.',
     '- Once the scope check is done the answer is DECISIVE: yes when a record that applies grants it, no when none does. Do not answer "no general answer is given" or "it depends" when a record in front of you applies - that is the hedge this check exists to prevent.',
     o.scoped === true

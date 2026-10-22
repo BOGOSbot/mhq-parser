@@ -52,6 +52,23 @@ for (const q of bank.questions) {
 }
 ok('the bank resolves to a real set of records', refs > 20);
 
+// --- task-82: the conditional-yes semantics ----------------------------------
+// The bank's note has to carry the rule, because the pair is unreadable without it: two
+// questions, one record, opposite answers. And the PROMPT has to carry it too - a note in a
+// fixture is documentation, not behaviour, and the old prompt left both halves to luck.
+const RULES = fs.readFileSync(path.join(ROOT, 'src', 'rules-corpus.mjs'), 'utf8');
+ok('the bank note states the conditional-yes rule', /CONDITIONAL-YES SEMANTICS/.test(bank.note) && /condition is the answer/.test(bank.note));
+ok('and names the pair it is about', /cases 5 and 6/i.test(bank.note) && /Rampart Crest/.test(bank.note));
+ok('the prompt states the subject/condition split', /A grant has a SUBJECT and often a CONDITION/.test(RULES));
+ok('the prompt says a conditional yes must state the condition', /MUST state the condition in the same sentence/.test(RULES));
+ok('and forbids a bare yes for one', /Never a bare "Yes" for a conditional grant/.test(RULES));
+ok('the prompt keeps the scope exclusion rule', /scope EXCLUDES the subject cannot support the answer/.test(RULES));
+ok('the pair is really in the bank, with opposite answers', (() => {
+  const five = bank.questions.find(q => /Can a Kahl have an invulnerable save/.test(q.q));
+  const six = bank.questions.find(q => /unit led by a K[âa]hl/.test(q.q));
+  return !!five && !!six && five.yes === false && six.yes === true && (six.answer || []).indexOf('unitrules#000002594~3') !== -1;
+})());
+
 console.log(pass + ' passed, ' + fail + ' failed');
 console.log('bank: ' + bank.questions.length + ' questions, ' + yes + ' yes / ' + (bank.questions.length - yes) + ' no, ' + bank.questions.filter(q => (q.decoy || []).length).length + ' with a decoy, ' + refs + ' record references');
 process.exitCode = fail ? 1 : 0;
