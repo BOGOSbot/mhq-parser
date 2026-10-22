@@ -509,7 +509,7 @@ routeStatsReset();
 // task-89: the stats carry the empty SHAPES, the CALL each came from, and the provider's own
 // usage for the last few. The reset has to clear those too, or a restart would keep yesterday's
 // attribution and the next measurement would read it as today's.
-t('a reset leaves them empty', routeStats(), { calls: 0, empty: 0, truncated: 0, retries: 0, recovered: 0, empty_rate: 0, emptyShapes: {}, emptyByStage: {}, emptyCalls: [], byRoute: {} });
+t('a reset leaves them empty', routeStats(), { calls: 0, empty: 0, truncated: 0, retries: 0, recovered: 0, empty_rate: 0, emptyShapes: {}, emptyByStage: {}, emptyCalls: [], jsonShape: {}, byRoute: {} });
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
