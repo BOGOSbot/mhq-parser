@@ -30,7 +30,7 @@ import { exclusionReason } from './rules-corpus.mjs';
 // block is stripped exactly from the record's own links array (task-72), and the SEE
 // ALSO block is stripped for display only when it names the record's own section links
 // (task-87).
-import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries, mergeChunkParts } from './wiki-plan.mjs';
+import { stripBuiltBlock, stripSeeAlso, seeAlsoEntries, mergeChunkParts, chunkLookup } from './wiki-plan.mjs';
 // task-34: the flat passage marks, the same ones the card builder uses.
 import { markWargearText } from './wargear-marks.mjs';
 
@@ -927,11 +927,19 @@ function seeAlsoHtml(kids, o) {
   });
   return parts.length ? '<div class="wseealso-list">' + parts.join('') + '</div>' : '';
 }
+export { chunkLookup };
+
 export function recordBody(record, opts) {
   const o = opts || {};
   // task-29: a (1/2)/(2/2) part renders the whole rule, once, under its base
   // heading - display only (the corpus and the index keep the parts).
-  if (record && o.corpora) record = mergeChunkParts(record, ([]).concat(o.corpora.rules || [], o.corpora.factions || [], o.corpora.rulings || []));
+  // task-99: the sibling lookup is a property of the CORPUS, so a caller that renders many
+  // records prepares it once and passes o.chunk. Without it, this rebuilt a 7,390-entry Map for
+  // every record - 72% of the render time, measured.
+  if (record && o.corpora) {
+    const sections = ([]).concat(o.corpora.rules || [], o.corpora.factions || [], o.corpora.rulings || []);
+    record = mergeChunkParts(record, sections, o.chunk || null);
+  }
   // The card prose gets the same links as the prose path, and the record's own id
   // is carried so it never links to itself.
   if (record && !o.selfId) o.selfId = record.id;

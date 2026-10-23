@@ -25,7 +25,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { assetStamp, workerStamp, dataStamp, dataDir, surfaceSlugMap } from './wiki-surface.mjs';
-import { recordBody, cardIndex, CARD_CSS } from './wiki-cards.mjs';
+import { recordBody, cardIndex, CARD_CSS, chunkLookup } from './wiki-cards.mjs';
 import { readAllCorpus, isDelivered } from './rules-corpus.mjs';
 import { frUsable } from './i18n-fr.mjs';
 import { buildHeaderIndex } from './header-index.mjs';
@@ -130,6 +130,8 @@ export function build() {
   // the server's own corpora() builds.
   const halves = { rules: [], factions: [], rulings: [] };
   for (const rec of all) { const s = String(rec.set || ''); if (halves[s]) halves[s].push(rec); }
+  // task-99: the sibling lookup, built ONCE for both passes instead of per record.
+  const chunk = chunkLookup(([]).concat(halves.rules, halves.factions, halves.rulings));
   const slugs = surfaceSlugMap();
   const href = (id) => { const s = slugs.get(String(id || '')); return s ? '#' + s : ''; };
   const books = {};
@@ -140,12 +142,12 @@ export function build() {
     if (!id) continue;
     const book = String(rec.set || rec.source || 'other');
     if (!books[book]) books[book] = {};
-    books[book][id] = recordBody(rec, { corpora: halves, index: idx, href, selfId: id, frText: '' });
+    books[book][id] = recordBody(rec, { corpora: halves, chunk, index: idx, href, selfId: id, frText: '' });
     records++;
     const fr = frUsable(id);
     if (fr) {
       if (!booksFr[book]) booksFr[book] = {};
-      booksFr[book][id] = recordBody(rec, { corpora: halves, index: idx, href, selfId: id, frText: fr });
+      booksFr[book][id] = recordBody(rec, { corpora: halves, chunk, index: idx, href, selfId: id, frText: fr });
       french++;
     }
   }

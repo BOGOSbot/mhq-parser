@@ -176,25 +176,50 @@ export const MIN_PART = 80;
 // the heading's own (i/m) is the truth and the ids are <base>~i. A wiki-plan split
 // can leave the first part unlabelled - the sibling then says (2/2) and the group
 // is found by the id.
-export function mergeChunkParts(record, sections) {
+// task-99: THE SIBLING LOOKUP, BUILT ONCE.
+//
+// mergeChunkParts rebuilt a 7,390-entry Map for EVERY record rendered, and did an O(n) find before
+// that: measured, 1,141 ms of 1,591 ms for 200 record bodies (72%), about 36 s of a full-corpus
+// render. The lookup is a property of the CORPUS, not of the record, so it is prepared once and
+// passed in. `lookup` is optional: without it the function behaves exactly as it did.
+export function chunkLookup(sections) {
+  const list = Array.isArray(sections) ? sections : [];
+  const byId = new Map();
+  const byBase = new Map();
+  for (const s of list) {
+    if (!s || !s.id) continue;
+    byId.set(s.id, s);
+    const base = String(s.id).replace(/~\d+$/, '');
+    if (!byBase.has(base)) byBase.set(base, []);
+    byBase.get(base).push(s);
+  }
+  return { byId, byBase, list };
+}
+
+export function mergeChunkParts(record, sections, lookup) {
   if (!record) return record;
   const list = Array.isArray(sections) ? sections : [];
+  const byId = (lookup && lookup.byId) || null;
+  const byBase = (lookup && lookup.byBase) || null;
   const id = String(record.id || '');
   const baseId = id.replace(/~\d+$/, '');
   const marker = /^(.*?) \((\d+)\/(\d+)\)$/.exec(String(record.heading || '').trim());
   let base = marker ? marker[1] : String(record.heading || '');
   let of = marker ? parseInt(marker[3], 10) : 0;
   if (!of) {
-    const sib = list.find(s => s && String(s.id || '').indexOf(baseId + '~') === 0 && /\(\d+\/\d+\)$/.test(String(s.heading || '')));
+    // With a prepared lookup, the candidates are the records sharing this base id - NOT the whole
+    // corpus. Falling back to `list` here was an O(corpus) scan per record: measured 108 s against
+    // 16 s for the whole English corpus, because almost every record has no sibling at all.
+    const candidates = byBase ? (byBase.get(baseId) || []) : list;
+    const sib = candidates.find(s => s && String(s.id || '').indexOf(baseId + '~') === 0 && /\(\d+\/\d+\)$/.test(String(s.heading || '')));
     const mm = sib ? /^(.*?) \((\d+)\/(\d+)\)$/.exec(String(sib.heading)) : null;
     if (mm) { base = mm[1]; of = parseInt(mm[3], 10); }
   }
   if (!(of > 1)) return record;
-  const byId = new Map();
-  for (const s of list) if (s && s.id) byId.set(s.id, s);
+  const at = byId || (() => { const m = new Map(); for (const s of list) if (s && s.id) m.set(s.id, s); return m; })();
   const parts = [];
   for (let i = 1; i <= of; i++) {
-    const p = byId.get(baseId + '~' + i) || (i === 1 ? byId.get(baseId) : null);
+    const p = at.get(baseId + '~' + i) || (i === 1 ? at.get(baseId) : null);
     if (p) parts.push(p);
   }
   if (parts.length < 2) return record;

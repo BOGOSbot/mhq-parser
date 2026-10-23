@@ -44,7 +44,7 @@ import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceS
 // the long corpus import above stays untouched.
 import { corpusDir } from './rules-corpus.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
-import { CARD_CSS, cardIndex, recordBody } from './wiki-cards.mjs';
+import { CARD_CSS, cardIndex, recordBody, chunkLookup } from './wiki-cards.mjs';
 import { findRows, lookupRecord, searchHeadings } from './header-index.mjs';
 import { devHtml, devState } from './dev-report.mjs';
 // Slice 2, additive: the dev route and the surface's static files. The flip in
@@ -878,6 +878,16 @@ function cardIdx() {
   if (!cardIdxCache) cardIdxCache = cardIndex(corpusById());
   return cardIdxCache;
 }
+// task-99: the chunk lookup, built once for the process. recordBody used to rebuild a 7,390-entry
+// Map per record, which was 72% of a record render, measured.
+let chunkIdxCache = null;
+function chunkIdx() {
+  if (!chunkIdxCache) {
+    const c = corpora();
+    chunkIdxCache = chunkLookup(([]).concat(c.rules || [], c.factions || [], c.rulings || []));
+  }
+  return chunkIdxCache;
+}
 
 // A record's address is its slug now (task-77): the surface answers #<slug> on a
 // cold load, so the links inside a record body point at the hash directly. No
@@ -1014,7 +1024,7 @@ async function handleRulesRecord(req, res, u) {
     // `lang=fr` asks for it, and a record with no French keeps the English text.
     const wantFr = String(u.searchParams.get('lang') || '').toLowerCase() === 'fr';
     const frText = wantFr ? frUsable(raw.id) : '';
-    return send(res, 200, recordBody(raw, { corpora: corpora(), index: cardIdx(), href: wikiFileFor, selfId: raw.id, frText: frText }), 'text/html; charset=utf-8');
+    return send(res, 200, recordBody(raw, { corpora: corpora(), chunk: chunkIdx(), index: cardIdx(), href: wikiFileFor, selfId: raw.id, frText: frText }), 'text/html; charset=utf-8');
   }
   return json(res, 200, { ok: true, record, slug: surfaceSlugMap().get(id) || '' });
 }

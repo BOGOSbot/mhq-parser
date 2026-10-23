@@ -47,10 +47,21 @@ export const ABILITY_CHARS = 600;
 
 // Lower case, accents folded, punctuation to spaces: a question typed on a phone
 // has no patience for exact spelling of apostrophes or hyphens.
+// task-99: MEMOISED. The inputs are corpus strings, so the set is bounded, and the scan below
+// called this twice per section per ability - about 13,000 normalisations for one datasheet with
+// ten abilities, which the profile put at 54% of a datasheet body.
+const NORM_CACHE = new Map();
+const NORM_MAX = 400000;
 function norm(s) {
-  return String(s == null ? '' : s)
+  const key = String(s == null ? '' : s);
+  const hit = NORM_CACHE.get(key);
+  if (hit !== undefined) return hit;
+  const out = key
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (NORM_CACHE.size >= NORM_MAX) NORM_CACHE.clear();
+  NORM_CACHE.set(key, out);
+  return out;
 }
 
 function phraseIn(hay, phrase) {
@@ -105,6 +116,43 @@ export function abilityRuleIds(raw) {
 // the heading must start with the ability's name (word-start, so LEADER does not
 // reach Leadership Rolls), and a heading that also carries the rule id the
 // ability cites wins over one that does not.
+// task-99: THE CANDIDATE BUCKETS, built once per half. The old scan looked at every section and
+// normalised two headings for each; this indexes each section under the normalised FIRST WORD of
+// its leaf and of its whole heading, and only the bucket for the name's first word is scored.
+//
+// The bucketing is EXACT, not an approximation: every way `starts` can be true (leaf === name,
+// leaf starts with name + ' ', whole === name, whole starts with name + ' ') requires the
+// heading's first word to equal the name's first word.
+//
+// The ORIGINAL INDEX travels with each candidate, because the old scan's tie-break keeps the
+// FIRST of two equal scores: sorting the bucket by that index before scoring keeps the winner.
+const HALF_INDEX = new WeakMap();
+function halfIndex(sections) {
+  let idx = HALF_INDEX.get(sections);
+  if (idx) return idx;
+  const buckets = new Map();
+  const add = (key, at) => {
+    if (!key) return;
+    let list = buckets.get(key);
+    if (!list) { list = []; buckets.set(key, list); }
+    list.push(at);
+  };
+  for (let i = 0; i < sections.length; i++) {
+    const sec = sections[i];
+    const raw = String((sec && sec.heading) || '');
+    const path = raw.split(' > ').filter(Boolean);
+    const leaf = norm(path[path.length - 1] || '');
+    const whole = norm(raw);
+    add(leaf.split(' ')[0] || '', i);
+    const wf = whole.split(' ')[0] || '';
+    if (wf !== (leaf.split(' ')[0] || '')) add(wf, i);
+  }
+  for (const list of buckets.values()) list.sort((a, b) => a - b);
+  idx = { buckets };
+  HALF_INDEX.set(sections, idx);
+  return idx;
+}
+
 export function findAbilityRecord(ability, rules, factions) {
   const half = ABILITY_HALF[ability && ability.type];
   if (!half) return null;
@@ -113,8 +161,10 @@ export function findAbilityRecord(ability, rules, factions) {
   const name = norm(ability.name);
   const words = name.split(' ').filter(Boolean);
   const ids = (ability.ruleIds || []).map(norm).filter(Boolean);
+  const bucket = halfIndex(sections).buckets.get(words[0] || '') || [];
   let best = null;
-  for (const sec of sections) {
+  for (const at of bucket) {
+    const sec = sections[at];
     // The corpus writes a child's ancestry in front of its own title
     // ('Forming Attached Units > LEADER 24.22 / SUPPORT'), so the ability's name
     // is matched against the last segment as well as the whole heading.
