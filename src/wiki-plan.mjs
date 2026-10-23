@@ -317,8 +317,15 @@ export function planWiki(data, opts) {
   // corpus's own chunker parts have no links array and stay records like any
   // other, which is what keeps a first build from a flat corpus identical to the
   // live one.
+  // The faction rules the build regenerates are exactly the ones it derives from a
+  // CSV ability row, and it stamps them idFrom 'csv-ability-id'. `kind` cannot be the
+  // test: the SCRAPER's own army rules carry the same faction-rule# prefix (the six
+  // Aeldari manoeuvres under Agile Manoeuvres) and the card loop below stamps them the
+  // same kind, so a kind test reads them back as build products, refuses to re-emit
+  // them and deletes six real records on the second pass (measured: 7,272 -> 7,265).
+  const BUILT_FACTION_RULE = 'csv-ability-id';
   const isBuiltRecord = r => Array.isArray(r.links) &&
-    (r.kind === 'index' || r.kind === 'faction-rule' || Number(r.part || 1) > 1);
+    (r.kind === 'index' || r.idFrom === BUILT_FACTION_RULE || Number(r.part || 1) > 1);
   const known = new Set();
   for (const r of rules) if (!isBuiltRecord(r)) known.add(r.id);
   for (const r of factions) if (!isBuiltRecord(r)) known.add(r.id);

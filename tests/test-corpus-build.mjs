@@ -154,8 +154,17 @@ t('the residue is never core', residue.filter(s => s.set === 'rules').length, 0)
   t('a body with no numbered rule is left whole', splitInlineRules('Embarking', 'Once the first battle round has started, a unit can embark.', '18.02', 'Embarking', 'Embarking').length, 1);
   t('a sentence ending in a rule id is not a heading', splitInlineRules('X', 'The rule refers to page 10.04\n\nand continues here with more text.', '', '', 'X').length, 1);
   t('a heading re-stating the parent id is not a sub-rule', splitInlineRules('X', '3. End of Shooting Phase 10.03\n\nbody here', '10.03', '', 'X').length, 1);
+  // task-99: the container rule is now "a lead-in, or a number of its own". A lead-less,
+  // unnumbered label is a heading the page wrote over a run of entries (the appendix's
+  // [ONE SHOT]), and keeping it rendered an empty row. The child still carries the label
+  // in its own heading, so the citation 'Advance > NORMAL MOVE' resolves. A lead-less
+  // container with a number still comes through: the corpus has exactly two lead-less
+  // containers and both are numbered (core-rules#Attached-Units 19,
+  // rules-appendix#Modifiers 02.02.01).
   const empty = splitInlineRules('Advance', 'NORMAL MOVE 09.05\n\nbody', '', '', 'Advance');
-  t('a container with no lead-in still exists for its citation', empty[0].heading + '|' + empty[0].body + '|' + empty.length, 'Advance||2');
+  t('a lead-less unnumbered container is a label, not a record', empty[0].heading + '|' + empty[0].body + '|' + empty.length, 'Advance > NORMAL MOVE|body|1');
+  const numbered = splitInlineRules('Attached Units', 'NORMAL MOVE 09.05\n\nbody', '19', 'Attached-Units', 'Attached Units');
+  t('a lead-less container that numbers itself still exists for its citation', numbered[0].heading + '|' + numbered[0].body + '|' + numbered.length, 'Attached Units||2');
 }
 
   t('it is under the part limit', rules[0].chars < 2000, true);
