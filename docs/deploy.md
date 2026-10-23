@@ -32,9 +32,16 @@ long idle can take longer while the container resumes.
 ## First deploy
 
 1. **Archive the app.** The corpus and the baked payloads are untracked, so a git
-   clone is not enough: `tar -czf mhq-deploy.tgz src img workspace/rules-corpus
-   workspace/wiki-data` (12.7 MB gzipped, 41 MB inside the box). The archive's
-   `sha256` is checked inside the box after the parts are joined.
+   clone is not enough: `tar -czf mhq-deploy.tgz BUILD src img workspace/rules-corpus
+   workspace/wiki-data workspace/web-bundle.zip workspace/app-bundle.zip`.
+   **The two zips are not optional either**: `/web-bundle.zip` is the one download the
+   WebView app makes, and the server serves the file from disk (`WEB_BUNDLE_ZIP` or
+   `workspace/web-bundle.zip`), so an archive without them leaves the Box handing the
+   phone yesterday's client and payload while the server page itself is current
+   (measured 2026-10-24: the Box served a 6,530,707-byte zip while the rebuilt one was
+   6,496,461). `BUILD` is the file `/health` reads to name the build. The archive's
+   `sha256` is checked inside the box after the parts are joined; at ~26 MB split it
+   into 8 parts, not 6, because `files upload` refuses a part past a few MB.
    **img/ is not optional**: `src/server.mjs` reads `img/favicon-32.png` and
    `img/apple-touch-icon.png` at boot, and a missing file falls back to a 119-byte
    placeholder that answers 200. An archive without `img/` deploys a page whose
