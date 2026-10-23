@@ -43,6 +43,9 @@ import { answeredTrace, appendTrace, buildTrace, labelsTrace, newTraceId, traceS
 // task-78: the asset route reads the corpus's asset tree; the import is its own line so
 // the long corpus import above stays untouched.
 import { corpusDir } from './rules-corpus.mjs';
+// The rejected rows - the pre-cut tail the judge never judged - are shaped by the
+// corpus module, so the stream, the JSON reply and the test hold one implementation.
+import { rejectedRows } from './rules-corpus.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
 import { CARD_CSS, cardIndex, recordBody, chunkLookup } from './wiki-cards.mjs';
 import { findRows, lookupRecord, searchHeadings } from './header-index.mjs';
@@ -1314,15 +1317,30 @@ async function handleRulesAsk(req, res) {
     // text's own '- section: X' block is never parsed - one source, or the two
     // drift. A finding whose record is not in the corpus carries none.
     const byId = corpusById();
-    const toPayload = list => list.map(f => ({
+    // Every candidate the retrieval produced travels to the client in ONE ordered
+    // list: the rows the judge selected first, then the rows it did not. `selected`
+    // is a flag on the row, not a second list - what the reader adjusts is the
+    // judge's selection, never a second ranking, and nothing here re-ranks.
+    const toPayload = list => rowPayload(list, true);
+    const toPayloadRejected = list => rowPayload(list, false);
+    const rowPayload = (list, selected) => list.map(f => ({
       id: f.id, n: f.n, set: f.set, source: f.source, faction: f.faction, heading: f.heading,
       ruleId: f.ruleId, url: f.url, href: f.href, excerpt: f.excerpt, passage: f.text || '',
       rank: f.rank || 0, leg: f.leg || '',
       vectorRank: f.vectorRank || 0, vectorScore: f.vectorScore,
       lexicalRank: f.lexicalRank || 0, lexicalScore: f.lexicalScore,
       matchedTerms: f.matchedTerms || [],
+      selected: selected !== false,
       links: resolveRecordLinks((byId.get(f.id) || {}).links, byId),
     }));
+    // The rows the judge did NOT select: the pre-cut net the judged findings were
+    // drawn from, in the order the same retrieval ranked it, capped like the JSON
+    // tail so the streamed list and the reply carry the same rows.
+    const TAIL_ROWS = 20;
+    const rejectedFrom = (dual, judged) => {
+      const preCut = (dual && Array.isArray(dual.tail)) ? dual.tail : [];
+      return toPayloadRejected(rejectedRows(judged, preCut, TAIL_ROWS));
+    };
 
     // The reader picks the setting: fast asks the agent not to reason and takes
     // a narrower, shallower search; deep lets it think and looks wider for
@@ -1341,7 +1359,7 @@ async function handleRulesAsk(req, res) {
       findings = chosen;
       counts = { rules: chosen.filter(f => f.set !== 'factions').length, factions: chosen.filter(f => f.set === 'factions').length };
       const plan = { rules: counts.rules, factions: counts.factions };
-      emit({ type: 'findings', findings: toPayload(chosen), counts, terms, steps, attempt: 0, plan, escalated: false, override: true, elapsedMs: Date.now() - started });
+      emit({ type: 'findings', findings: toPayload(chosen), rejected: [], counts, terms, steps, attempt: 0, plan, escalated: false, override: true, elapsedMs: Date.now() - started });
       const verdict = await timed('agent', () => agentCoverage(asked, chosen, keys.fast, { reasoning: mode.reasoning, lang: answerLang }));
       emit({ type: 'agent', agent: verdict, final: true, attempt: 0, elapsedMs: Date.now() - started });
       outcome = {
@@ -1383,8 +1401,9 @@ async function handleRulesAsk(req, res) {
       onFindings: ({ plan, findings: found, dual, attempt }) => {
         findings = found;
         counts = { rules: dual.rules.length, factions: dual.factions.length };
+        const judgedRows = toPayload(found);
         emit({
-          type: 'findings', findings: toPayload(found), counts, terms, steps,
+          type: 'findings', findings: judgedRows, rejected: rejectedFrom(dual, judgedRows), counts, terms, steps,
           attempt, plan, escalated: attempt > 0, elapsedMs: Date.now() - started,
           // task-45: whether the rerank ran, and on which gateway. The page shows a
           // degraded list as degraded.
@@ -1443,12 +1462,7 @@ async function handleRulesAsk(req, res) {
     // address (the slug is the only thing findingFor cannot know).
     const slugOf = surfaceSlugMap();
     const withSlug = list => list.map(f => Object.assign({}, f, { slug: slugOf.get(f.id) || '' }));
-    const tail = (() => {
-      const shown = new Set(payload.map(f => f.id));
-      const preCut = (outcome.dual && Array.isArray(outcome.dual.tail)) ? outcome.dual.tail : [];
-      const rest = preCut.filter(s => s && s.id && !shown.has(s.id)).slice(0, 20);
-      return toPayload(rest.map((s, i) => findingFor(s, payload.length + i + 1)));
-    })();
+    const tail = rejectedFrom(outcome.dual, payload);
 
     // The SECOND agent: the reasoning setting the reader did not pick, fired
     // beside the writer so the prose never waits for it. In fast mode that is the
@@ -1557,7 +1571,7 @@ async function handleRulesAsk(req, res) {
       const notes = ['nothing in the corpus matched that question'];
       const elapsedMs = Date.now() - started;
       if (stream) {
-        emit({ type: 'findings', findings: [], counts, terms, steps, elapsedMs, notes });
+        emit({ type: 'findings', findings: [], rejected: [], counts, terms, steps, elapsedMs, notes });
         emit({ type: 'done', elapsedMs, steps, notes });
         return res.end();
       }

@@ -184,11 +184,20 @@ body.sv-drawer-open header, body.sv-drawer-open .sv-top{display:none}
 .sv-none{width:100%;min-height:44px}
 .sv-tail{margin-top:18px;border-top:1px solid var(--sv-line);padding-top:10px}
 .sv-tail-h{font:600 13px/1.3 var(--sv-sans);color:var(--sv-dim);margin:.2rem 0 .4rem}
-.sv-tail-row{display:flex;flex-direction:column;width:100%;text-align:left;border:0;
-  border-bottom:1px solid var(--sv-line);background:none;color:var(--sv-ink);padding:11px 2px;
-  font:inherit;cursor:pointer;min-height:44px}
-.sv-tail-row:hover{background:var(--sv-panel)}
+/* A row the judge did NOT select. Dimmed and labelled, and one tap puts it first:
+   it is never hidden, because reranking the judge's own selection is the point. */
+.sv-tail-row{display:flex;flex-direction:row;align-items:center;gap:8px;width:100%;text-align:left;
+  border-bottom:1px solid var(--sv-line);background:none;color:var(--sv-ink);padding:6px 2px;
+  min-height:44px}
+.sv-tail-rejected{opacity:.62}
+.sv-tail-rejected:hover,.sv-tail-rejected:focus-within{opacity:1}
+.sv-tail-open{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;text-align:left;border:0;
+  background:none;color:inherit;font:inherit;cursor:pointer;padding:5px 0}
 .sv-tail-title{display:block;font:500 15px/1.35 var(--sv-serif)}
+.sv-tail-rejlabel{flex:0 0 auto;color:var(--sv-dim);font:10.5px/1.4 var(--sv-sans)}
+.sv-tail-put{flex:0 0 auto;min-height:44px;padding:0 10px;border:1px solid var(--sv-line);
+  border-radius:999px;background:none;color:var(--sv-dim);font:600 12px var(--sv-sans);cursor:pointer}
+.sv-tail-put:hover{color:var(--sv-ok,#2c6a45);border-color:var(--sv-ok,#2c6a45)}
 .sv-recface{display:block;width:100%;max-width:420px;max-height:52vh;object-fit:contain;
   margin:0 auto 12px;border-radius:10px;border:1px solid var(--sv-line);background:var(--sv-bg);cursor:zoom-in}
 .sv-recface.sv-recface-full{max-height:none;cursor:zoom-out}

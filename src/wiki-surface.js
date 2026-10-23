@@ -30,6 +30,9 @@
     legends: false, legendsBranch: null,
     hits: null, searchQ: '', searchTimer: null, rowsFailed: {},
     mode: 'none', record: null, from: '', answer: null, icons: {},
+    // The reader's promote on this surface: the ids they put first, newest first.
+    // One list, one order - the rejected rows travel in it like the judge's.
+    positive: [],
     // task-42: the drawer's own history entries - how many the reader can still go
     // back through (dhist), and the records a back step left behind, so the browser's
     // forward button can put them back (dfwd).
@@ -1308,6 +1311,7 @@ function rowDisplay(headingOrParts) {
     state.answer = null;
     state.from = '';
     state.icons = {};
+    state.positive = [];
     if (v) { v.textContent = ''; v.appendChild(el('h1', 'sv-page-title', 'Findings')); v.appendChild(el('p', 'sv-hint', 'Searching\u2026')); }
     fetch(ASK, { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ question: q, mode: 'fast' }) })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j; }); })
@@ -1332,9 +1336,18 @@ function rowDisplay(headingOrParts) {
       : (tail.length ? 'None of the judged findings states the rule. The tail below is further matched, unjudged.' : 'No judged finding states the rule.');
     v.appendChild(el('p', 'sv-verdict', copy));
     if (a.agent && a.agent.why) v.appendChild(el('p', 'sv-why', String(a.agent.why)));
+    // ONE list, the reader's order first: a rejected row the reader put first leads
+    // it, then the judge's rows, then the rows the judge did not select. The promote
+    // is the only thing that moves a row, and it moves it to the top.
+    var p = state.positive || [];
+    var lead = [], judgeRest = [], rejectRest = [];
+    judged.forEach(function (f) { (p.indexOf(f.id) !== -1 ? lead : judgeRest).push(f); });
+    tail.forEach(function (f) { (p.indexOf(f.id) !== -1 ? lead : rejectRest).push(f); });
+    lead.sort(function (a2, b2) { return p.indexOf(a2.id) - p.indexOf(b2.id); });
     var list = el('div', 'sv-findings');
-    judged.forEach(function (f, i) { list.appendChild(renderFinding(f, i)); });
-    if (!judged.length) list.appendChild(el('div', 'sv-empty', 'No judged findings.'));
+    lead.forEach(function (f, i) { list.appendChild(renderFinding(f, i)); });
+    judgeRest.forEach(function (f, i) { list.appendChild(renderFinding(f, lead.length + i)); });
+    if (!judged.length && !tail.length) list.appendChild(el('div', 'sv-empty', 'No judged findings.'));
     v.appendChild(list);
     // 'None of these' is a judgement about the SET, so it sits at the foot.
     var foot = el('div', 'sv-foot');
@@ -1354,13 +1367,13 @@ function rowDisplay(headingOrParts) {
     });
     foot.appendChild(none);
     v.appendChild(foot);
-    if (tail.length) {
+    if (rejectRest.length) {
       var t = el('section', 'sv-tail');
       t.appendChild(el('h2', 'sv-tail-h', 'Also matched, not judged (' + tail.length + ')'));
       // (2) No two rows in one tail may read the same: a repeated heading's chain
       // is usually enough, and the number settles the rest.
       var seen = {};
-      tail.forEach(function (f) {
+      rejectRest.forEach(function (f) {
         var row = renderTailRow(f);
         var key = row.textContent;
         if (seen[key]) { row.querySelector('.sv-tail-title').textContent += ' (' + (f.n || '') + ')'; key = row.textContent; }
@@ -1414,19 +1427,37 @@ function rowDisplay(headingOrParts) {
     if (snip) art.appendChild(el('div', 'sv-rec-snip', snip));
     return art;
   }
+  // A row the judge did not select. It is never hidden: it is dimmed and labelled,
+  // and one tap puts it first - which is the whole point of showing it.
+  function promoteAsk(id) {
+    if (!id) return;
+    state.positive = state.positive || [];
+    var at = state.positive.indexOf(id);
+    if (at === -1) state.positive.unshift(id); else state.positive.splice(at, 1);
+    renderAnswer();
+  }
   function renderTailRow(f) {
-    var row = el('button', 'sv-tail-row');
-    row.type = 'button';
+    var row = el('div', 'sv-tail-row sv-tail-rejected');
     // (2) A bare heading repeats across books - 'INDIRECT SHOOTING' three times -
     // so the row shows the heading's own chain below the first crumb, and the book
     // beside it. The caller appends the number to any two rows that still read the
     // same, so no two rows in one tail can be told apart only by their order.
+    var open = el('button', 'sv-tail-open');
+    open.type = 'button';
     var chain = String(f.heading || '').split(' > ').filter(Boolean);
     var title = chain.length > 1 ? chain.slice(1).join(' \u203a ') : (chain[0] || leafOfId(f.id));
-    row.appendChild(el('span', 'sv-tail-title', title));
+    open.appendChild(el('span', 'sv-tail-title', title));
     var meta = sourceLine(f);
-    if (meta) row.appendChild(el('span', 'sv-rec-meta', meta));
-    row.addEventListener('click', function () { openFinding(f); });
+    if (meta) open.appendChild(el('span', 'sv-rec-meta', meta));
+    open.addEventListener('click', function () { openFinding(f); });
+    row.appendChild(open);
+    row.appendChild(el('span', 'sv-tail-rejlabel', 'not selected'));
+    var put = el('button', 'sv-tail-put', 'Put first');
+    put.type = 'button';
+    put.setAttribute('aria-label', 'Put first: ' + title);
+    put.title = put.getAttribute('aria-label');
+    put.addEventListener('click', function () { promoteAsk(f.id); });
+    row.appendChild(put);
     return row;
   }
   function openFinding(f) {
@@ -1795,19 +1826,29 @@ function rulingLedger(findings, state, ctx, pending) {
   // either part keeps the record (and its mark) in the used list.
   var rowNs = function (f) { return [f.n].concat(f.mergedNs || []); };
   var used = [];
+  var usedIds = {};
   for (var i = 0; i < order.length; i++) {
     var ns = rowNs(order[i]);
-    for (var x = 0; x < ns.length; x++) if (usedNums.indexOf(ns[x]) !== -1) { used.push(order[i]); break; }
+    var citedRow = false;
+    for (var x = 0; x < ns.length; x++) if (usedNums.indexOf(ns[x]) !== -1) { citedRow = true; break; }
+    // The reader's promote is shown whole, at the top: a row they put first must
+    // not be collapsed, whether or not the judge cited it.
+    if (citedRow || isFirsted(state, order[i])) { used.push(order[i]); usedIds[order[i].id] = true; }
   }
   // A refusal (or a not-a-question) cites nothing: the nearest three are shown in
   // full and the rest collapse like any other residue. Before the ruling exists
   // (pending) the rows are the ranked list the reader is watching arrive, so the
-  // top five are shown, exactly as the list always did.
+  // top five are shown, exactly as the list always did. `order` holds the judge's
+  // rows first, so the nearest three ARE the judge's own unless the reader put a
+  // rejected row above them - and then that row is one of the nearest anyway.
   if (!used.length) used = order.slice(0, pending ? 5 : 3);
-  var usedIds = {};
-  for (var u = 0; u < used.length; u++) usedIds[used[u].id] = true;
+  for (var u0 = 0; u0 < used.length; u0++) usedIds[used[u0].id] = true;
   var rest = [];
   for (var r = 0; r < order.length; r++) if (!usedIds[order[r].id]) rest.push(order[r]);
+  // A rejected row is never hidden and never collapsed: it goes to its own group,
+  // in the same order, with the one control that puts it first.
+  var restKept = [], restRejected = [];
+  for (var rk = 0; rk < rest.length; rk++) (rest[rk].selected === false ? restRejected : restKept).push(rest[rk]);
   // task-25: the ledger is not a card - the mockup has no border around it.
   var card = el('div', 'ledger');
   var head = el('div', 'fhead');
@@ -1818,8 +1859,52 @@ function rulingLedger(findings, state, ctx, pending) {
   var quotedFrom = answered && agent.quote ? agent.from : null;
   for (var k = 0; k < used.length; k++) ol.appendChild(ledgerUsedRow(used[k], state, ctx, rowNs(used[k]).indexOf(quotedFrom) !== -1));
   card.appendChild(ol);
-  if (rest.length) card.appendChild(ledgerResidue(rest, state, ctx));
+  if (restKept.length) card.appendChild(ledgerResidue(restKept, state, ctx));
+  if (restRejected.length) card.appendChild(ledgerRejected(restRejected, state, ctx));
   return card;
+}
+
+// The rows the judge did NOT select. They are never hidden: they sit under its own
+// rows, dimmed and labelled, and each carries ONE control - put this passage first -
+// which moves it to the top of the list. The judge stays the only ranking authority;
+// what the reader changes is its selection, and the order is then the reader's.
+function ledgerRejectedRow(f, state, ctx) {
+  var li = el('li', 'fitem rej');
+  var head = el('div', 'lhead');
+  var btn = el('button', 'lrow');
+  btn.type = 'button';
+  btn.appendChild(el('span', 'lname', ledgerName(f)));
+  var path = ledgerPath(f);
+  if (path) btn.appendChild(el('span', 'lpath', path));
+  btn.setAttribute('aria-label', ctx.t('recordOpen') + ': ' + ledgerName(f));
+  btn.addEventListener('click', function (ev) { ev.preventDefault(); ctx.openDoor(state, f); });
+  head.appendChild(btn);
+  var put = el('button', 'lput', ctx.t('sheetFirst'));
+  put.type = 'button';
+  put.setAttribute('aria-label', ctx.t('promoteRow') + ': ' + ledgerName(f));
+  put.title = put.getAttribute('aria-label');
+  put.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); ctx.toggleFirst(state, f.id); });
+  head.appendChild(put);
+  var more = el('button', 'fmore', String.fromCharCode(8943));
+  more.type = 'button';
+  more.setAttribute('aria-label', ctx.t('findingActions'));
+  more.title = ctx.t('findingActions');
+  more.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); ctx.findingSheet(state, f); });
+  head.appendChild(more);
+  li.appendChild(head);
+  li.appendChild(el('div', 'rejlabel', ctx.t('rejectedLabel')));
+  return li;
+}
+function ledgerRejected(rest, state, ctx) {
+  var box = el('section', 'rejgroup');
+  var head = el('div', 'rejhead');
+  head.appendChild(el('h3', null, ctx.t('rejectedTitle')));
+  head.appendChild(el('span', 'rejcnt', String(rest.length)));
+  box.appendChild(head);
+  var ol = el('ol', 'cites');
+  for (var i = 0; i < rest.length; i++) ol.appendChild(ledgerRejectedRow(rest[i], state, ctx));
+  box.appendChild(ol);
+  return box;
 }
 
 function findingsCard(findings, counts, cited, state, ctx) {
@@ -1887,23 +1972,48 @@ function findingsCard(findings, counts, cited, state, ctx) {
 // task-27: the manual-rerank footer, in one place: the ledger renders it in the
 // pre-ruling and post-ruling states alike, so the reader's marks and the re-ask
 // never depend on which list shape is on screen.
+// Whether a row is one the judge did NOT select, read from the list the client
+// holds. A row with no flag is a judged row: only the server's tail is marked.
+function isRejectedRow(state, id) {
+  var list = (state && state.findings) || [];
+  for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === id) return list[i].selected === false;
+  return false;
+}
 function rerankFooter(state, ctx) {
   var positive = state.positive || [];
   var kept = [];
+  // A row the judge did not select travels into the next answer only because the
+  // reader put it first: those promotes lead the kept list, in the reader's order.
+  for (var k0 = 0; k0 < positive.length; k0++) {
+    if (isRejectedRow(state, positive[k0]) && state.keep[positive[k0]] !== false) kept.push(positive[k0]);
+  }
   for (var k1 = 0; k1 < state.shownIds.length; k1++) {
     var id1 = state.shownIds[k1];
     if (state.keep[id1] !== false && positive.indexOf(id1) !== -1) kept.push(id1);
   }
   for (var k2 = 0; k2 < state.shownIds.length; k2++) {
     var id2 = state.shownIds[k2];
-    if (state.keep[id2] !== false && positive.indexOf(id2) === -1) kept.push(id2);
+    if (state.keep[id2] !== false && positive.indexOf(id2) === -1 && !isRejectedRow(state, id2)) kept.push(id2);
   }
-  var droppedN = state.shownIds.length - kept.length;
+  // One id once: a promoted rejected row is in the list above AND on screen, and the
+  // two passes used to name it twice - one wasted slot in the judge's own cap, and
+  // the same passage numbered twice in the prompt the second answer is written from.
+  var uniqueKeep = [];
+  for (var ku = 0; ku < kept.length; ku++) if (uniqueKeep.indexOf(kept[ku]) === -1) uniqueKeep.push(kept[ku]);
+  kept = uniqueKeep;
+  // The button is for a CHANGED selection. The rows the judge did not select are not
+  // a change until one of them is promoted, and an ignore is one on its own.
+  var ignoredJudged = 0;
+  for (var d = 0; d < state.shownIds.length; d++) {
+    if (state.keep[state.shownIds[d]] === false && !isRejectedRow(state, state.shownIds[d])) ignoredJudged += 1;
+  }
+  var promotedRejected = 0;
+  for (var pr = 0; pr < kept.length; pr++) if (isRejectedRow(state, kept[pr])) promotedRejected += 1;
   var foot = el('div', 'rerunfoot');
   foot.appendChild(el('div', 'note', ctx.t('rerankHelp')));
   var again = el('button', 'rerunbtn', ctx.t('rerankButton'));
   again.type = 'button';
-  again.disabled = !droppedN || !kept.length;
+  again.disabled = !(ignoredJudged > 0 || promotedRejected > 0) || !kept.length;
   again.addEventListener('click', function () {
     ctx.rerank({ question: ctx.questionValue(state), asked: state.asked, over: state.traceId, keep: kept, shown: state.shownIds, append: true, english: true });
   });
@@ -1911,7 +2021,7 @@ function rerankFooter(state, ctx) {
   return foot;
 }
 
-function sortedFindings(list) {
+function byHalf(list) {
   var halves = ['rules', 'factions'];
   var out = [];
   for (var h = 0; h < halves.length; h++) {
@@ -1922,6 +2032,18 @@ function sortedFindings(list) {
   }
   for (var j = 0; j < list.length; j++) if (halves.indexOf(list[j].set || 'rules') === -1) out.push(list[j]);
   return out;
+}
+// The judge's rows first, the rows it did NOT select after them, each group in its
+// own half order. `selected` is a flag on the row, not a second list: the reader
+// promotes a row inside ONE list, so a rejected row is never hidden and one tap
+// can move it to the top where the card and the answer read it.
+function sortedFindings(list) {
+  var selected = [], rejected = [];
+  for (var i = 0; i < (list || []).length; i++) {
+    if (list[i] && list[i].selected === false) rejected.push(list[i]);
+    else selected.push(list[i]);
+  }
+  return byHalf(selected).concat(byHalf(rejected));
 }
 
 

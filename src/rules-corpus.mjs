@@ -4909,6 +4909,21 @@ export function findingFor(section, n) {
   };
 }
 
+// The rows the judge did NOT select, ready for the page: the pre-cut tail the judged
+// findings were drawn from, deduped against them, capped, and numbered after them.
+// Pure, and the cap is the ONLY thing that drops a row - which is what makes 'a
+// rejected row cannot be dropped silently' a fact a test can hold: every row the
+// caller passes comes back, in the retrieval's own order, marked selected:false,
+// unless it is past the cap. Nothing here re-ranks: this is the retrieval's order,
+// and the judge stays the only ranking authority.
+export function rejectedRows(judged, tail, cap) {
+  const shown = new Set((judged || []).map(f => f && f.id));
+  const limit = cap == null ? 20 : cap;
+  const rest = (tail || []).filter(s => s && s.id && !shown.has(s.id)).slice(0, limit);
+  const n0 = (judged || []).length;
+  return rest.map((s, i) => Object.assign(findingFor(s, n0 + i + 1), { selected: false }));
+}
+
 // --- the index --------------------------------------------------------------
 // Two backends behind one interface. Upstash Vector over REST was the original:
 // hosted BGE_M3, payload is raw text, Upstash does the embedding - zero

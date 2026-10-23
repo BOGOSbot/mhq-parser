@@ -330,6 +330,21 @@ details{border-color:var(--line)}
   font:12.5px/1.35 var(--serif);color:var(--txt)}
 .rpath{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   text-align:right;font:10.5px/1.35 var(--mono);color:var(--dim)}
+/* --- the rows the judge did NOT select --------------------------------------
+   Dimmed and labelled, and never hidden: the reader reranks the judge's own
+   selection, so the rows it passed over have to be visible and one tap from the
+   top. The judge stays the only ranking authority - this is a selection, not a
+   second ranking. */
+.rejgroup{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}
+.rejhead{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+.rejhead h3{margin:0;font:600 11px/1.4 var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+.rejhead .rejcnt{font:11px/1.4 var(--mono);color:var(--dim)}
+.fitem.rej{opacity:.6;padding:11px 0 10px}
+.fitem.rej:hover,.fitem.rej:focus-within{opacity:1}
+.rejlabel{font:10.5px/1.4 var(--mono);color:var(--dim);margin-top:4px}
+.lput{flex:0 0 auto;min-height:44px;padding:0 10px;border:1px solid var(--line);border-radius:11px;
+  background:none;color:var(--dim);font:600 12px var(--sans);cursor:pointer;white-space:nowrap}
+.lput:hover{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 50%,transparent)}
 details.secondv{display:block;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
 .secondv summary{list-style:none;cursor:pointer;color:var(--dim);font:12px/1.45 var(--sans)}
 .secondv summary::-webkit-details-marker{display:none}
@@ -797,6 +812,9 @@ var I18N = {
     rankScoreTitle: "the vector leg's similarity - a ranking signal, not a confidence in the answer",
     matchedWords: 'matched: ',
       moreFindings: 'more findings',
+  rejectedTitle: 'Not selected by the judge',
+  rejectedLabel: 'not selected',
+  promoteRow: 'put this passage first',
   rerunTitle: 'Second answer - on the passages you chose',
   rerunNote: 'This is a second answer to the same question. The first one stays above.',
   rerankHelp: 'Rank a passage first with ^, ignore one with x, then ask again on what is left.',
@@ -1021,6 +1039,9 @@ var I18N = {
     rankScoreTitle: "la similarité de la jambe vectorielle — un signal de classement, pas une confiance dans la réponse",
     matchedWords: 'correspondance : ',
       moreFindings: 'autres constats',
+  rejectedTitle: 'Non retenu par le juge',
+  rejectedLabel: 'non retenu',
+  promoteRow: 'mettre ce passage en tête',
   rerunTitle: 'Deuxième réponse - sur les passages que vous avez choisis',
   rerunNote: 'Ceci est une deuxième réponse à la même question. La première reste ci-dessus.',
   rerankHelp: 'Placez un passage en tête avec ^, écartez-en un avec x, puis redemandez sur ce qui reste.',
@@ -3066,7 +3087,11 @@ function applyEvent(ev, state) {
     return;
   }
   if (ev.type === 'findings') {
-    state.findings = ev.findings || [];
+    // Every candidate the retrieval produced, in one ordered list: the rows the
+    // judge selected first, then the rows it did not, each marked `selected`. The
+    // rejected rows stay in the list, so a promote moves one to the top of it and
+    // the answer and the card read the same order.
+    state.findings = (ev.findings || []).concat(ev.rejected || []);
     // The rerank selection starts as "everything the server sent", and the ids
     // are kept in the order the server sent them so the rerun's request order is
     // the order the reader is looking at. A widening re-emits the whole list, so
@@ -3242,7 +3267,7 @@ function showInto(state, j) {
   // translated - a rerun's reply echoes the English it was given.
   if (j.translation && j.translation !== (j.question || '')) applyEvent({ type: 'translation', detected: j.lang, translated: j.translation, elapsedMs: j.elapsedMs }, state);
   if (j.card) applyEvent({ type: 'card', card: j.card, elapsedMs: j.elapsedMs }, state);
-  applyEvent({ type: 'findings', findings: j.findings || [], counts: j.counts, terms: j.terms, steps: j.steps, elapsedMs: j.elapsedMs }, state);
+  applyEvent({ type: 'findings', findings: j.findings || [], rejected: j.tail || [], counts: j.counts, terms: j.terms, steps: j.steps, elapsedMs: j.elapsedMs }, state);
   if (j.agent) applyEvent({ type: 'agent', agent: j.agent, final: true, elapsedMs: j.elapsedMs, quoteFr: j.quoteFr }, state);
   applyEvent({ type: 'answer', answer: j.answer, elapsedMs: j.elapsedMs }, state);
   applyEvent({ type: 'done', elapsedMs: j.elapsedMs, unresolved: j.unresolved, escalated: j.escalated }, state);
