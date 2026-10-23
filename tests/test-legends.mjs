@@ -35,7 +35,7 @@ ok('the corpus still holds its 958 Legends records', legends.length === 958);
 ok('not one of them is delivered', legends.every(r => !isDelivered(r)));
 ok('not one of them is in the indexed set', legends.every(r => !indexed.has(String(r.id))));
 ok('the indexed set is the delivered set minus the navigation pages', indexed.size === delivered.filter(r => r.kind !== 'index').length);
-ok('the delivered count is unchanged by the setting', delivered.length === 6327);
+ok('the delivered count is unchanged by the setting', delivered.length === 6363);
 ok('a Legends record still names its reason', legends.every(r => exclusionReason(r) === 'Warhammer Legends'));
 const tenth = all.filter(r => TENTH_EDITION_RULE_IDS.has(String(r.id)));
 const pack = all.filter(r => String(r.edition) === '0' && !isLegendsRecord(r));

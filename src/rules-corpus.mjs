@@ -679,10 +679,11 @@ export function splitInlineRules(heading, body, ruleId, anchor, parentTitle, sou
       heading: (isFaq && ancestor ? ancestor + ' > ' : heading + ' > ') + marks[k].title,
       title: marks[k].title,
       ruleId: marks[k].ruleId,
-      // The children inherit the parent's anchor. Without it the tree cannot place them,
-      // and the appendix's FAQ topics fell into a local '[ONE SHOT]' chapter instead of
-      // the Universal Rules Updates block the page's own outline names.
-      anchor: anchor,
+      // The child's identity must not be the parent's anchor: every child would get the
+      // same base id ('Duplicated-Abilities~2', ~3). The anchor is a PLACEMENT hint, so it
+      // rides in its own field and the tree reads it without touching the id.
+      anchor: '',
+      placeAnchor: anchor,
       body: lines.slice(from, to).join('\n').trim(),
     });
   }
@@ -1725,6 +1726,10 @@ export function buildAbilityDefsCorpus() {
   // records, not definitions on a page, and counting them here is what made these tests red.
   // The appendix is excluded HERE, not only in the comment: its records are the same entries
   // recovered from divs, and counting them made every definition look already defined.
+  // A page heading for the ability means the page already defines it, so a definition is not
+  // built. The appendix is excluded: its headings are entries the scraper recovered from
+  // blocks the page did not head, and it is exactly what task-99 splits out. Counting them
+  // stopped the definitions from being built at all.
   const hasHeading = name => others.some(r => r.source !== 'rules-appendix' && String(r.heading || '').split(' > ').some(s => s.replace(/^\[|\]$/g, '').trim().toUpperCase() === name));
   const coreUrl = String((readCorpus('core-rules') || {}).url || 'https://wahapedia.ru/wh40k11ed/the-rules/core-rules/').split('#')[0] + '#Abilities';
   const sections = [];

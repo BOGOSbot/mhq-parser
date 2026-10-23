@@ -456,7 +456,10 @@ export function tocTree(records, pageOf, opts) {
     // last resort when the saved page is absent.
     if (r.source === 'rules-appendix') {
       const ap = appendixOutlineDefault();
-      const anchor = r.anchor || (/^[^#]*#(.+)$/.exec(String(r.url || '')) || [])[1];
+      // A split child has no anchor of its own; its placement hint is the parent's, so the
+      // page outline files it where the parent lives (the appendix's FAQ topics belong to
+      // the Universal Rules Updates block, not to the h2 that happens to enclose them).
+      const anchor = r.anchor || r.placeAnchor || (/^[^#]*#(.+)$/.exec(String(r.url || '')) || [])[1];
       const ax = ap && anchor ? ap.byIdName(anchor) : null;
       if (ax) return ax;
       const seg = String(r.heading || '').split(' > ').filter(Boolean)[0];

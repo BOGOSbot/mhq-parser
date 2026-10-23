@@ -25,8 +25,9 @@ t('an empty record is not delivered', isDelivered(null), false);
 // task-33, the 2026-10-19 export with the Legends name rule: 6,327 delivered / 1,063
 // filtered. task-40: the $FAQ$ marker leaves one ability's text, which merges one
 // edition-0 part back, so the corpus is 7,390.
-t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7390, 7390]);
-t('delivered is 6,327 and filtered is 1,063 (task-33 export, task-40 marker)', [delivered.length, filtered.length], [6327, 1063]);
+t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7426, 7426]);
+// task-99: 6,363. The appendix split adds 34 records and the ability definitions 2.
+t('delivered is 6,363 and filtered is 1,063 (task-33 export, task-40 marker, task-99 split)', [delivered.length, filtered.length], [6363, 1063]);
 
 // --- the query path cannot return what the product does not deliver -----------
 const ids = deliveredIds();

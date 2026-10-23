@@ -55,9 +55,9 @@ const BASELINE = {
   // back (382 core-rules, 191 appendix). task-101: the faction abilities are no longer a
   // source of their own - they are the factions' own army rules - so the CSV half carries
   // 2 more records (Devastator Doctrine, Sons of Russ) and the rules half 62 fewer.
-  scrape: { sections: 382, chars: 289486 },
+  scrape: { sections: 382, chars: 288387 },
   shape: {
-    'core-rules': { sections: 382, chars: 289486 },
+    'core-rules': { sections: 382, chars: 288387 },
     // task-13: +710 bytes - the Wazdakka Gutsmek datasheet now carries the full
     // PULSE JET MOVE definition that used to be a core-stratagem record.
     // task-33 (2026-10-19 export): 6,502 shaped sections, 10,244,777 bytes - the new

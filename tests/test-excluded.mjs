@@ -28,7 +28,7 @@ const indexed = new Set(indexedSections(all).map(r => String(r.id)));
 ok('no Legends record is in the indexed set', legends.every(r => !indexed.has(String(r.id))));
 ok('nor the pack line, nor the tenth-edition rule', pack.concat(tenth).every(r => !indexed.has(String(r.id))));
 ok('the indexed set is the delivered set minus the navigation pages', indexed.size === delivered.filter(r => r.kind !== 'index').length);
-ok('and the delivered count is unchanged by any of this', delivered.length === 6327);
+ok('and the delivered count is unchanged by any of this', delivered.length === 6363);
 
 // task-44 moved the payload's own contract to tests/test-legends.mjs, which pins the
 // OFF state (index.json names three books and no Legends payload) and the ON state (the

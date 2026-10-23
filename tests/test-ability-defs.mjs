@@ -22,15 +22,17 @@ const all = readAllCorpus();
 const defs = all.filter(r => r.id.indexOf('ability-def#') === 0);
 const pageText = htmlToText(fs.readFileSync(path.join(ROOT, 'workspace', 'rules-corpus', 'core-rules.html'), 'utf8')).replace(/\s+/g, ' ');
 
-t('19 abilities were recovered', defs.length, 19);
+// 21 since task-99: excluding the appendix from the 'already has a heading' check let
+// [EXTRA ATTACKS] and [ONE SHOT] through, both real page definitions the corpus uses.
+t('21 abilities were recovered', defs.length, 21);
 t('each new record is a section under the Abilities parent', [...new Set(defs.map(r => r.parent))], ['core-rules#Abilities']);
 t('and carries the core rules page as its source', [...new Set(defs.map(r => r.source))], ['core-rules']);
 t('every record is edition 11', [...new Set(defs.map(r => String(r.edition)))], ['11']);
-t('every record is named by its bracketed heading', defs.map(r => r.heading).sort(), ['[ANTI]', '[ASSAULT]', '[BLAST]', '[CLEAVE]', '[CLOSE-QUARTERS]', '[DEVASTATING WOUNDS]', '[HAZARDOUS]', '[HEAVY]', '[IGNORES COVER]', '[INDIRECT FIRE]', '[LANCE]', '[LETHAL HITS]', '[MELTA]', '[PISTOL]', '[PRECISION]', '[PSYCHIC]', '[RAPID FIRE]', '[SUSTAINED HITS]', '[TWIN-LINKED]'].sort());
+t('every record is named by its bracketed heading', defs.map(r => r.heading).sort(), ['[ANTI]', '[ASSAULT]', '[BLAST]', '[CLEAVE]', '[CLOSE-QUARTERS]', '[DEVASTATING WOUNDS]', '[EXTRA ATTACKS]', '[HAZARDOUS]', '[HEAVY]', '[IGNORES COVER]', '[INDIRECT FIRE]', '[LANCE]', '[LETHAL HITS]', '[MELTA]', '[ONE SHOT]', '[PISTOL]', '[PRECISION]', '[PSYCHIC]', '[RAPID FIRE]', '[SUSTAINED HITS]', '[TWIN-LINKED]'].sort());
 
 // The no-fabrication guarantee, checked whole: each record's text is a substring
 // of the page's own text. A single invented sentence would break this.
-t('every definition is verbatim from the page', defs.filter(r => pageText.indexOf(r.text) !== -1).length, 19);
+t('every definition is verbatim from the page', defs.filter(r => pageText.indexOf(r.text) !== -1).length, 21);
 ok('and each carries the rulebook number the page prints', defs.every(r => /^2[0-9]\.[0-9]+$/.test(String(r.ruleId))));
 t('no record is empty', defs.filter(r => !String(r.text || '').trim()).length, 0);
 
