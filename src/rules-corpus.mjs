@@ -668,10 +668,10 @@ export function splitInlineRules(heading, body, ruleId, anchor, parentTitle, sou
   // container's own label is that same number-first form, the children are the content.
   const containerIsRunOn = source === RUN_ON_SOURCE
     && String(parentTitle || '') === (marks[0].ruleId + ' ' + marks[0].title);
-  if (source === RUN_ON_SOURCE && /^\d{2}\.\d{2}/.test(String(parentTitle || ''))) {
-    console.log('DEBUG split parentTitle=' + JSON.stringify(String(parentTitle)) + ' marks0=' + JSON.stringify(marks[0].ruleId + ' ' + marks[0].title) + ' skip=' + containerIsRunOn + ' marks=' + marks.length);
-  }
-  if (!containerIsRunOn) out.push({ heading, title: parentTitle || heading, ruleId: ruleId || '', anchor, body: lead });
+  // A parent with no text before the first boundary and no number of its own is a label,
+  // not a record: it rendered as an empty row ('undefined [ONE SHOT]'). A NUMBERED parent
+  // still comes through, because its id is a citation the reader can follow.
+  if (!containerIsRunOn && (lead || ruleId)) out.push({ heading, title: parentTitle || heading, ruleId: ruleId || '', anchor, body: lead });
   for (let k = 0; k < marks.length; k++) {
     const from = marks[k].line + 1;
     const to = k + 1 < marks.length ? marks[k + 1].line : lines.length;
@@ -679,7 +679,10 @@ export function splitInlineRules(heading, body, ruleId, anchor, parentTitle, sou
       heading: (isFaq && ancestor ? ancestor + ' > ' : heading + ' > ') + marks[k].title,
       title: marks[k].title,
       ruleId: marks[k].ruleId,
-      anchor: '',
+      // The children inherit the parent's anchor. Without it the tree cannot place them,
+      // and the appendix's FAQ topics fell into a local '[ONE SHOT]' chapter instead of
+      // the Universal Rules Updates block the page's own outline names.
+      anchor: anchor,
       body: lines.slice(from, to).join('\n').trim(),
     });
   }

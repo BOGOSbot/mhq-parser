@@ -389,6 +389,10 @@ export function planWiki(data, opts) {
     const parentHeading = parts.slice(0, -1).join(' > ');
     if (!byHeading.has(parentHeading)) continue;
     if (!childrenOf.has(parentHeading)) childrenOf.set(parentHeading, []);
+    // A definition is a leaf. The core rules define an ability called [ONE SHOT], and the
+    // appendix opens a section with the same label: without this guard the appendix's
+    // topics became children of the ability, which dragged them into 24 Core Abilities.
+    if (/^ability-def#/.test(String(byHeading.get(parentHeading)[0].id || ''))) continue;
     for (const kid of byHeading.get(h)) if (!childrenOf.get(parentHeading).some(k => k.id === kid.id)) childrenOf.get(parentHeading).push(kid);
   }
   // A child names its parent too, not only the other way round: navigation is
@@ -400,6 +404,7 @@ export function planWiki(data, opts) {
     if (parts.length < 2) continue;
     const parentHeading = parts.slice(0, -1).join(' > ');
     if (!byHeading.has(parentHeading)) continue;
+    if (/^ability-def#/.test(String(byHeading.get(parentHeading)[0].id || ''))) continue;
     for (const kid of byHeading.get(h)) parentIdOf.set(kid.id, byHeading.get(parentHeading)[0].id);
   }
   for (const r of rules) {
