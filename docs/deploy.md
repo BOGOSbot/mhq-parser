@@ -7,12 +7,15 @@ startup command, and the way back to nothing.*
 dependencies), so it needs a container, not a serverless function. The Box is the
 one host in the current stack that runs it unchanged.
 
-## What is live (2026-10-18)
+## What is live (2026-10-23)
 
 | | |
 |---|---|
 | Box | `optimum-imp-60273`, runtime node, size small, network `allow-all` |
 | App | `/workspace/home/mhq-parser`, started by the box's init command |
+| Build | `0afeb1a16714`, from the `BUILD` file the archive carries (`/health` reports it; `source:file`) |
+| Corpus | payloadStamp `6d92e794`, 7,426 records / 6,363 delivered, 771 rules + 6,501 faction, export June 2026 |
+| Owed | the vector index is 36 `rules` records behind the corpus, so `--ingest` then `--prune` are still to run - the drawer and the lexical find read the payload and are current, `ask` retrieves from the index |
 | URL | `https://optimum-imp-60273-3000.preview.box.upstash.com` - **no auth during the mobile test**; `box public-url 3000 --basic-auth` puts it back (it overwrites the URL's credentials) |
 | Short link | `https://tinyurl.com/2y7uju8c` -> `/rules` (a tinyurl redirect; the Box URL is the real one) |
 | Keys | `/home/boxuser/.dsh/.credentials.yaml`, five keys: Upstash Vector URL +
