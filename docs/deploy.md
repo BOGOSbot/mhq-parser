@@ -58,12 +58,16 @@ long idle can take longer while the container resumes.
 7. **Publish the port.** `box public-url 3000 --basic-auth --json` returns the URL
    and the generated user/password. One URL per port; recreating it overwrites the
    old credentials.
-8. **Check the brand icons, not just the status code.** A 200 is not evidence: the
-   fallback answers 200 too. `node src/deploy-check.mjs <url>` fetches `/health`,
-   `/favicon.png`, `/favicon.ico` and `/apple-touch-icon.png`, and fails unless the
-   bytes are the real files' (2,620 and 32,093) and `/health` says so. Run it against
-   the public URL after every deploy; it is the check that would have caught task-63
-   on the first deploy rather than the tenth.
+8. **Check the build and the brand icons, not just the status code.** A 200 is not
+   evidence: the fallback answers 200 too, and a process that was never restarted keeps
+   answering from the modules it loaded at boot. `node src/deploy-check.mjs <url>
+   --expect $(git rev-parse --short=12 HEAD)` fetches `/health`, compares its `build.commit`
+   with the commit this deploy shipped, and then fetches `/favicon.png`, `/favicon.ico` and
+   `/apple-touch-icon.png` and fails unless the bytes are the real files' (2,620 and 32,093).
+   Run it against the public URL after every deploy. It is the check that would have caught
+   task-63 on the first deploy rather than the tenth, and task-90 every time it happened
+   (measured 2026-10-24: the check fails with 'THE BOX IS SERVING ANOTHER BUILD' when the
+   expectation and `/health` disagree, and also when `/health` cannot name its build at all).
 
 ## Refresh the app after a change
 

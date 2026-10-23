@@ -25,7 +25,16 @@ import https from 'node:https';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
-const BASE = String(process.argv[2] || process.env.DEPLOY_URL || 'http://127.0.0.1:8787').replace(/\/+$/, '');
+// task-90: WHICH BUILD. A deploy that extracts over the tree but never restarts the
+// process serves yesterday's rules and answers 200 while it does, which is exactly what
+// happened for several rounds. So the deploy states the commit it shipped and this check
+// FAILS when the running build is a different one.
+function argValue(name) { const i = process.argv.indexOf(name); return i === -1 ? '' : String(process.argv[i + 1] || ''); }
+const positional = process.argv.slice(2).filter((a, i, arr) => a.indexOf('--') !== 0 && arr[i - 1] !== '--expect');
+const BASE = String(positional[0] || process.env.DEPLOY_URL || 'http://127.0.0.1:8787').replace(/\/+$/, '');
+const EXPECT = String(argValue('--expect') || process.env.DEPLOY_BUILD || '').trim();
+// A short commit and a full one are the same build: compare one as a prefix of the other.
+const sameBuild = (a, b) => !!a && !!b && (a === b || a.indexOf(b) === 0 || b.indexOf(a) === 0);
 
 export function readBrandIcons(dir) {
   const read = f => { try { return fs.readFileSync(path.join(dir || ROOT, 'img', f)); } catch { return null; } };
@@ -57,9 +66,21 @@ if (!local.icon32 || !local.icon180) {
 }
 
 const health = await get(BASE + '/health');
-let brand = null;
-try { brand = JSON.parse(health.body.toString('utf8')).brand || null; } catch (e) { brand = null; }
+let payload = null;
+try { payload = JSON.parse(health.body.toString('utf8')); } catch (e) { payload = null; }
+const brand = (payload && payload.brand) || null;
 say(health.status === 200 && !!brand, '/health answers with a brand field');
+// task-90: the build first, because everything else here is a claim about a process that
+// may not be the one this deploy started. Read once at boot (src/build-info.mjs).
+const build = (payload && payload.build) || null;
+if (!build || !build.commit || build.commit === 'unknown') {
+  say(false, '/health does not say which build it is' + (build ? ' (commit ' + build.commit + ')' : ' (no build field)') + ': a build that cannot name its commit cannot be measured');
+} else if (!EXPECT) {
+  say(true, '/health reports build ' + build.commit + ' from ' + (build.source || '?') + ', booted ' + (build.bootedAt || '?'));
+  console.log('note  no --expect and no DEPLOY_BUILD: the running build was not compared with the one this deploy shipped');
+} else {
+  say(sameBuild(String(build.commit), EXPECT), 'the running build is the one this deploy shipped: /health says ' + build.commit + ', the deploy shipped ' + EXPECT + (sameBuild(String(build.commit), EXPECT) ? '' : ' - THE BOX IS SERVING ANOTHER BUILD, so the modules it loaded are not the ones you just extracted'));
+}
 if (brand) {
   say(brand.favicon !== 'fallback', '/health says the favicon is ' + brand.favicon + (brand.favicon === 'fallback' ? ' (the placeholder is being served)' : ''));
   say(brand.appleTouchIcon !== 'fallback', '/health says the touch icon is ' + brand.appleTouchIcon);
@@ -77,7 +98,9 @@ for (const [route, want] of [['/favicon.png', local.icon32], ['/favicon.ico', lo
 console.log('');
 if (failures.length) {
   console.log(failures.length + ' check(s) failed against ' + BASE + ' - the deploy is not proven');
-  process.exitCode = 1;
 } else {
-  console.log('deploy proven against ' + BASE + ': the brand icons are the real files');
+  console.log('deploy proven against ' + BASE + ': the brand icons are the real files' + (EXPECT ? ' and it runs ' + EXPECT : ''));
 }
+// An explicit exit: a keep-alive socket to the deployment would otherwise hold the event
+// loop open and a deploy script that waits on this check would hang after it had answered.
+process.exit(failures.length ? 1 : 0);
