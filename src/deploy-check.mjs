@@ -98,9 +98,11 @@ for (const [route, want] of [['/favicon.png', local.icon32], ['/favicon.ico', lo
 console.log('');
 if (failures.length) {
   console.log(failures.length + ' check(s) failed against ' + BASE + ' - the deploy is not proven');
+  process.exitCode = 1;
 } else {
   console.log('deploy proven against ' + BASE + ': the brand icons are the real files' + (EXPECT ? ' and it runs ' + EXPECT : ''));
 }
-// An explicit exit: a keep-alive socket to the deployment would otherwise hold the event
-// loop open and a deploy script that waits on this check would hang after it had answered.
+// process.exitCode says it the conventional way and tests/test-brand.mjs pins it; the explicit
+// exit is what guarantees the process ends, because a keep-alive socket to the deployment would
+// otherwise hold the event loop open and a deploy script waiting on this check would hang.
 process.exit(failures.length ? 1 : 0);

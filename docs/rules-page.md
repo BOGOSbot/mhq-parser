@@ -788,6 +788,20 @@ must exist in both, and a reader-facing label may not be written as a literal in
 the code. Commit 864ad28 is why - one hardcoded `Findings - N` was the only
 English left on an otherwise French page.
 
+**The judge's selection is the reader's to change (task-100).** Every candidate the
+retrieval produced reaches the client, not only the rows the judge selected: the
+judged rows come first, the rest follow in the retrieval's own order, each row
+carries `selected`, and the rejected ones are dimmed, labelled *not selected*, and
+shown in their own group rather than behind a collapse. Each rejected row carries
+one control, **Put first**, which moves it to the top and shows it whole. The order
+is then the reader's for that question: the ledger renders it, the record's swipe
+walks it, and the manual rerun sends the promoted id first, so the second answer is
+written from the reader's order. The judge stays the only ranking authority - what
+the reader adjusts is its selection, never a second ranking, and the reorder costs
+no model call. The `findings` event carries `rejected` beside `findings`; the JSON
+reply's `tail` is the same list from the same helper (`rejectedRows`, capped at 20),
+so the stream and the reply cannot disagree (`node tests/test-rerank-rows.mjs`).
+
 ## The unit card
 
 A datasheet question - "donne moi le profil de fuegan" - used to be answered with
