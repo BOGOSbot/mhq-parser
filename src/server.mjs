@@ -812,7 +812,12 @@ async function handleFeedback(req, res) {
     title = (firstLine || 'Feedback').trim();
   }
   if (title.length > 256) title = title.slice(0, 253) + '\u2026';   // GitHub caps titles at 256
-  const fullBody = detail.length > 62000 ? detail.slice(0, 62000) + '\n\n_(truncated)_' : detail;
+  // The build rides on every report: an issue about a record is only actionable when it
+  // says which corpus the reporter was reading. Appended here, not by each caller, so the
+  // landing page's own feedback and a record report both carry it.
+  const stamp = buildInfo();
+  const withBuild = detail + '\n\n*Build:* ' + (stamp && stamp.commit ? stamp.commit : 'unknown');
+  const fullBody = withBuild.length > 62000 ? withBuild.slice(0, 62000) + '\n\n_(truncated)_' : withBuild;
 
   const fallback = newIssueUrl(title, fullBody);
   if (!GITHUB_TOKEN) return json(res, 200, { created: false, url: fallback });

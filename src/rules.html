@@ -2257,6 +2257,14 @@ function renderRecord(state) {
   source.target = '_blank';
   source.rel = 'noopener';
   ctl.appendChild(source);
+  // task-101: the record's own report control, the same button the drawer builds.
+  ctl.appendChild(window.WIKI_SURFACE_API.reportButton({
+    id: f.id,
+    heading: (data && data.title) || f.heading || '',
+    kind: (data && data.kind) || f.kind || '',
+    slug: deepSlug,
+    book: (data && data.set) || f.set || ''
+  }));
   body.appendChild(ctl);
   // The dev control opens the same provenance panel it opens on the card.
   if (state.devOpen && state.devOpen[f.id]) body.appendChild(window.WIKI_SURFACE_API.meta(f, PAGE_CTX));

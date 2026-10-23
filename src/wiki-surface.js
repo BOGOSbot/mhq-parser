@@ -905,6 +905,11 @@ function rowDisplay(headingOrParts) {
     v.appendChild(el('h1', 'sv-page-title', displayTitle(titleOf(record))));
     var meta = [kindLabel(record.kind), bookLabel(record.slug)].filter(Boolean).join(' \u00b7 ');
     if (meta) v.appendChild(el('p', 'sv-page-meta', meta));
+    // task-101: the reader is looking at the record when they decide it is wrong, so the
+    // control is on the record and not only in the footer.
+    var actions = el('div', 'sv-page-actions');
+    actions.appendChild(reportButton(record));
+    v.appendChild(actions);
     var body = el('div', 'sv-page-body');
     body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
     v.appendChild(body);
@@ -1059,6 +1064,12 @@ function rowDisplay(headingOrParts) {
     if (note) panel.appendChild(el('p', 'sv-inline-fallback', note));
     var meta = [kindLabel(record.kind), bookLabel(record.slug)].filter(Boolean).join(' \u00b7 ');
     if (meta) panel.appendChild(el('p', 'sv-drawer-meta', meta));
+    // task-101: the control rides with the record in the drawer's own view too. Three
+    // surfaces show a record (the drawer's view, the page view, the page's dialog), and
+    // all three place the same button from the same implementation.
+    var recActions = el('div', 'sv-page-actions');
+    recActions.appendChild(reportButton(record));
+    panel.appendChild(recActions);
     var body = el('div', 'sv-inline-body');
     body.appendChild(el('div', 'sv-loading', 'Loading the record...'));
     panel.appendChild(body);
@@ -1197,7 +1208,9 @@ function rowDisplay(headingOrParts) {
     return null;
   }
   function recordLike(f) {
-    return { id: f.id, title: titleOf(f), slug: f.slug || '', snippet: f.excerpt || '' };
+    // task-101: the kind and the book ride along, so a report says what the record is
+    // without the reader having to describe it.
+    return { id: f.id, title: titleOf(f), heading: f.heading || '', kind: f.kind || '', book: f.set || '', slug: f.slug || '', snippet: f.excerpt || '' };
   }
   // Not every delivered record is a tree row: the fold hides duplicates and the
   // section leads own their nested rules, so a finding can name a record the tree
@@ -1451,6 +1464,174 @@ function rowDisplay(headingOrParts) {
       b.setAttribute('aria-label', next === 'yes' ? 'This is the one' : next === 'no' ? 'Wrong or irrelevant' : 'Not rated');
       st = next;
     });
+    return b;
+  }
+
+  // --- reporting a record ----------------------------------------------------
+  // task-101: one control on the record, in both doors, and one behaviour here. The
+  // issue goes through the server's own POST /feedback, which already knows how: with
+  // GITHUB_TOKEN it files the issue itself, without it returns a prefilled GitHub link.
+  // The link is rendered as a real anchor the reader clicks, never window.open after an
+  // await: a popup opened that way is eaten by the blocker, which this repo measured on
+  // the landing page's own feedback sheet.
+  var REPORT_STRINGS = {
+    en: {
+      title: 'Report this record',
+      record: 'Record',
+      label: 'What looks wrong (optional)',
+      hint: 'Sends the record id and your note. If the server cannot file it, you get a GitHub link to finish by hand.',
+      send: 'Report',
+      close: 'Close',
+      sending: 'Sending\u2026',
+      filed: 'Issue filed.',
+      ready: 'Ready to submit on GitHub:',
+      view: 'View the issue',
+      open: 'Open GitHub',
+      failed: 'The report could not be sent:'
+    },
+    fr: {
+      title: 'Signaler cet enregistrement',
+      record: 'Enregistrement',
+      label: 'Ce qui vous semble faux (facultatif)',
+      hint: 'Envoie l\u2019identifiant de l\u2019enregistrement et votre note. Si le serveur ne peut pas la d\u00e9poser, vous obtenez un lien GitHub pour le faire \u00e0 la main.',
+      send: 'Signaler',
+      close: 'Fermer',
+      sending: 'Envoi\u2026',
+      filed: 'Issue d\u00e9pos\u00e9e.',
+      ready: 'Pr\u00eat \u00e0 d\u00e9poser sur GitHub :',
+      view: 'Voir l\u2019issue',
+      open: 'Ouvrir GitHub',
+      failed: 'Le signalement n\u2019a pas pu \u00eatre envoy\u00e9 :'
+    }
+  };
+  var REPORT = null;
+  function reportText() { return REPORT_STRINGS[recordLang() === 'fr' ? 'fr' : 'en']; }
+  function reportHeading(rec) {
+    return String(rec.heading || titleOf(rec) || rec.id || '').split(' > ').pop();
+  }
+  // What a maintainer needs to act without asking: which record, in which book, read in
+  // which language, on which page. The build rides along from the server's side.
+  function reportContext(rec) {
+    return [
+      '',
+      '---',
+      '',
+      '*Record:* ' + reportHeading(rec),
+      '*id:* ' + (rec.id || ''),
+      '*kind:* ' + (rec.kind || 'unknown') + (rec.book ? ' \u00b7 ' + rec.book : ''),
+      '*read in:* ' + recordLang(),
+      '*page:* ' + location.origin + location.pathname + (rec.slug ? '#' + rec.slug : ''),
+      '*browser:* ' + navigator.userAgent,
+      '*sent:* ' + new Date().toISOString()
+    ].join('\n');
+  }
+  function reportSheet() {
+    if (REPORT) return REPORT;
+    var pop = el('div', 'sv-reportpop hidden');
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-modal', 'true');
+    pop.setAttribute('aria-labelledby', 'sv-reporttitle');
+    var sheet = el('div', 'sv-reportsheet');
+    var head = el('div', 'sv-reporthead');
+    var title = el('strong', '', '');
+    title.id = 'sv-reporttitle';
+    head.appendChild(title);
+    var closeTop = el('button', 'sv-reportclose', '');
+    closeTop.type = 'button';
+    head.appendChild(closeTop);
+    sheet.appendChild(head);
+    var what = el('p', 'sv-reportwhat', '');
+    sheet.appendChild(what);
+    var label = el('label', 'sv-reportlabel', '');
+    label.setAttribute('for', 'sv-reportnote');
+    sheet.appendChild(label);
+    var note = el('textarea', 'sv-reportnote');
+    note.id = 'sv-reportnote';
+    note.setAttribute('rows', '4');
+    sheet.appendChild(note);
+    var hint = el('p', 'sv-reporthint', '');
+    sheet.appendChild(hint);
+    var result = el('p', 'sv-reportresult', '');
+    sheet.appendChild(result);
+    var row = el('div', 'sv-reportrow');
+    var cancel = el('button', 'sv-reportcancel', '');
+    cancel.type = 'button';
+    var send = el('button', 'sv-reportsend', '');
+    send.type = 'button';
+    row.appendChild(cancel);
+    row.appendChild(send);
+    sheet.appendChild(row);
+    pop.appendChild(sheet);
+    document.body.appendChild(pop);
+    function close() {
+      pop.classList.add('hidden');
+      document.body.classList.remove('sheetopen');
+    }
+    pop.addEventListener('click', function (ev) { if (ev.target === pop) close(); });
+    closeTop.addEventListener('click', close);
+    cancel.addEventListener('click', close);
+    send.addEventListener('click', function () {
+      var rec = REPORT.rec;
+      if (!rec) return;
+      var tx = reportText();
+      var said = note.value.trim();
+      send.disabled = true;
+      result.textContent = tx.sending;
+      fetch('/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Record looks wrong: ' + reportHeading(rec),
+          body: (said || '(no description)') + reportContext(rec)
+        })
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok) throw new Error((j && j.error) || ('HTTP ' + r.status));
+          return j;
+        });
+      }).then(function (j) {
+        result.textContent = (j.created ? tx.filed : tx.ready) + ' ';
+        var link = el('a', '', j.created ? tx.view : tx.open);
+        link.href = j.url || 'https://github.com/BOGOSbot/mhq-parser/issues';
+        link.target = '_blank';
+        link.rel = 'noopener';
+        result.appendChild(link);
+        note.value = '';
+        send.disabled = false;
+      }).catch(function (e) {
+        result.textContent = tx.failed + ' ' + String((e && e.message) || e);
+        send.disabled = false;
+      });
+    });
+    REPORT = { pop: pop, rec: null, note: note, title: title, what: what, label: label, hint: hint, result: result, close: closeTop, cancel: cancel, send: send };
+    return REPORT;
+  }
+  function openReport(rec) {
+    if (!rec) return;
+    var s = reportSheet();
+    var tx = reportText();
+    s.rec = rec;
+    s.title.textContent = tx.title;
+    s.what.textContent = tx.record + ': ' + reportHeading(rec);
+    s.label.textContent = tx.label;
+    s.hint.textContent = tx.hint;
+    s.close.textContent = tx.close;
+    s.cancel.textContent = tx.close;
+    s.send.textContent = tx.send;
+    s.send.disabled = false;
+    s.result.textContent = '';
+    s.note.value = '';
+    s.pop.classList.remove('hidden');
+    document.body.classList.add('sheetopen');
+    try { s.note.focus(); } catch (e) { /* not focusable yet */ }
+  }
+  // The control itself, so every surface places the SAME button and no surface owns
+  // the behaviour: the page's record dialog, the drawer's page, and the inline box.
+  function reportButton(rec) {
+    var b = el('button', 'sv-report', reportText().title);
+    b.type = 'button';
+    b.setAttribute('data-report', rec && rec.id ? rec.id : '');
+    b.addEventListener('click', function () { openReport(rec); });
     return b;
   }
 
@@ -2035,6 +2216,9 @@ function devPanel(f, state, ctx) {
       var pickFoot = pickRow(state, ctx);
       if (pickFoot) host.appendChild(pickFoot);
     },
+    // task-101: the record's own report control and the sheet behind it.
+    reportButton: reportButton,
+    openReport: openReport,
     findingOrder: function (findings, cited, state, ctx) { return heroOrder(mergeChunks(findings), cited, state, ctx); },
     displayTitle: displayTitle,
     shortName: shortName,

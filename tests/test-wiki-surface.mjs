@@ -123,5 +123,16 @@ ok('(81-F) and the filter still reads the payload snippet', js.body.indexOf('mat
 ok('(81-3) a page or owned id renders through the on-demand rows file', js.body.indexOf('function rowFromBranch(id)') !== -1 && js.body.indexOf("'-rows.json'") !== -1 && /p\.recs\.map\(function \(id\) \{ return rowFromBranch\(id\); \}\)/.test(js.body) && /r\.own\.map\(function \(id\) \{ return rowFromBranch\(id\); \}\)/.test(js.body));
 ok('(81-3b) the rows file is fetched once per branch and cached', js.body.indexOf('state.rowsLoading[b]') !== -1 && js.body.indexOf('state.rowsCache[b] =') !== -1);
 ok('(81-3) a detachment row lists what it owns', js.body.indexOf("'Its enhancements and stratagems ('") !== -1 && js.body.indexOf('sv-ownlist') !== -1);
+// (101) reporting a record: one behaviour, three surfaces, and the server's own route.
+const rulesPage = fs.readFileSync(path.join(ROOT, 'src/rules.html'), 'utf8');
+ok('(101-1) the module exposes the control and the sheet, and the page uses them', js.body.indexOf('reportButton: reportButton') !== -1 && js.body.indexOf('openReport: openReport') !== -1 && rulesPage.indexOf('window.WIKI_SURFACE_API.reportButton(') !== -1);
+ok('(101-2) the drawer page, the drawer record view and the page dialog all place it', (js.body.match(/reportButton\(record\)/g) || []).length === 2 && rulesPage.indexOf('WIKI_SURFACE_API.reportButton(') !== -1);
+ok('(101-3) the issue goes through POST /feedback, not a second link builder in the client', js.body.indexOf("fetch('/feedback'") !== -1 && js.body.indexOf('issues/new?title=') === -1);
+ok('(101-4) the report carries what triage needs: the id, the kind, the language and the page', ['*id:*', '*kind:*', '*read in:*', '*page:*'].every(k => js.body.indexOf(k) !== -1));
+ok('(101-5) the sheet speaks both languages', js.body.indexOf('Report this record') !== -1 && js.body.indexOf('Signaler cet enregistrement') !== -1);
+// (101-6) the scoping trap this cost: a declaration inside boot() is invisible to the
+// drawer, which is module level. Strict mode makes a block-scoped function declaration
+// local, so the control MUST sit at module level, before boot.
+ok('(101-6) the control is declared at module level, not inside boot', js.body.indexOf('function reportButton(') !== -1 && js.body.indexOf('function reportButton(') < js.body.indexOf('function boot('));
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
