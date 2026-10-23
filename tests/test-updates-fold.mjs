@@ -24,12 +24,15 @@ t('a number that is not at the front yields nothing', updateRuleNumber({ kind: '
 const all = readAllCorpus();
 const tree = wikiTree(all);
 const updates = all.filter(r => updateRuleNumber(r));
-t('the corpus carries 22 numbered updates', updates.length, 22);
+// task-99: 21, not 22. The appendix's own copy of 01.02.06 Splitting Units became its own record,
+// and one 13.09 errata record in the appendix folded into the entry it belonged to. Both are the
+// corpus saying a rule once per source, which is the shape the rest of the corpus already has.
+t('the corpus carries 21 numbered updates', updates.length, 21);
 const resolved = updates.filter(u => tree.attachTarget.has(u.id));
 const visible = updates.filter(u => !tree.attachTarget.has(u.id));
 // task-90: the heading hierarchy is the number's depth now, so one more update's
 // heading carries the number its target does. 17 resolve, 5 stay visible.
-t('17 of them resolve to the rule they name', resolved.length, 17);
+t('16 of them resolve to the rule they name', resolved.length, 16);
 t('and 5 do not, and stay visible', visible.length, 5);
 ok('no update is silently unattached', !updates.some(u => tree.unattached.indexOf(u.id) !== -1));
 ok('every unresolved update is a row of the tree, labelled by its number', visible.every(u => tree.paths.has(u.id) && /^\d{2}(\.\d{2}){1,2}\b/.test(String(u.heading).split(' > ').pop().trim())));

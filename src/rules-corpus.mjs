@@ -152,6 +152,10 @@ export const RULINGS = { name: 'rulings', set: 'rulings', url: '', built: true }
 // disk (never fetched again, never written by hand): see buildAbilityDefsCorpus.
 export const ABILITY_DEFS = { name: 'ability-defs', set: 'rules', url: '', built: true };
 
+// The one source whose 'headings' are not headings on the page: the appendix marks its entries as
+// divs, so a run of them lands inside whichever record was open (task-99).
+const RUN_ON_SOURCE = 'rules-appendix';
+
 export const ALL_SOURCES = SOURCES.concat([FACTIONS_CSV, CORE_STRATAGEMS, RULINGS, ABILITY_DEFS]);
 
 export function sourcesFor(setName) {
@@ -480,7 +484,7 @@ export function extractSections(html, source) {
     const full = path.length ? path.concat([title]).join(' > ') : title;
     // The rules the page wrote inside this body become records of their own; the
     // parent keeps its id and whatever came before the first of them.
-    for (const part of splitInlineRules(full, body, ruleId, anchor, title)) {
+    for (const part of splitInlineRules(full, body, ruleId, anchor, title, source.name)) {
       const pieces = splitSection(part.body, MAX_CHARS);
       for (const piece of pieces) {
         out.push({
@@ -585,16 +589,55 @@ export function splitLong(text, max) {
 // citation that already exists still resolves; each boundary becomes a record
 // the parent owns ('3. End of Shooting Phase > NORMAL SHOOTING'), which is the
 // shape childSections already attaches to a parent.
-const INLINE_RULE_LINE = /^([A-Z][^\n]{1,69}?)\s+(\d{2}(?:\.\d{2}){1,2})$/;
+// task-99: THE APPENDIX WRITES THREE SHAPES, and the old pattern matched one of them. The entries
+// are divs on the page, not headings, so a run of them lands in whichever record was open:
+//   'Deadly Demise 24.12'            a name then the number   (the shape this was written for)
+//   '[EXTRA ATTACKS] 24.11'          a BRACKETED name, which starts with '[' and was missed
+//   '13.08 Benefit of Cover'         the NUMBER FIRST, which starts with a digit and was missed
+// A missed boundary leaves the rule inside the previous record's body, which is how 13.08 ended up
+// inside the Feel No Pain FAQ. The three alternatives are anchored and exact, so prose that merely
+// ends in a number still is not a heading.
+// Each alternative carries its OWN terminator, which the first version got wrong: a number-first
+// entry has the number first and the title after it, with nothing at the end, so an alternative
+// that still demanded a trailing number matched none of them. Measured on the three shapes:
+//   'Deadly Demise 24.12'            name, then the number
+//   '[EXTRA ATTACKS] 24.11'          a bracketed name, then the number
+//   '13.08 Benefit of Cover'         the number, then the name - and nothing after it
+const INLINE_RULE_LINE = /^(?:\[([^\]\n]{1,60})\]\s+(\d{2}(?:\.\d{2}){1,2})|(\d{2}(?:\.\d{2}){1,2})\s+([^\n]{2,80})|([A-Z][^\n]{1,69}?)\s+(\d{2}(?:\.\d{2}){1,2}))$/;
+// The NUMBER-FIRST shape is the one that needs care: '13.08 Benefit of Cover' is also a legitimate
+// heading elsewhere ('Terrain > Benefit of Cover' in the core rules, and a FAQ answer), and
+// splitting those in place makes a SECOND record with the same rule id. The run-on it fixes is a
+// property of the SOURCE: the appendix writes its entries as divs, so only there can a run of them
+// land inside another record. The two other shapes are exact enough to stay general.
+// (declared near the top of the module: buildAbilityDefsCorpus reads it too.)
 
-export function splitInlineRules(heading, body, ruleId, anchor, parentTitle) {
+export function splitInlineRules(heading, body, ruleId, anchor, parentTitle, source) {
   const text = String(body == null ? '' : body);
   const lines = text.split('\n');
   const marks = [];
   for (let i = 0; i < lines.length; i++) {
     const m = lines[i].trim().match(INLINE_RULE_LINE);
     if (!m) continue;
-    const title = m[1].trim();
+    // The name and the number, by shape: bracketed, number-first, or plain with a trailing number.
+    // The number-first shape only, and only where the run-on happens (the appendix). It is also
+    // refused when the title itself opens with a number, because the ERRATA sections write
+    // '17.03 - Change to First Sentence' and '2.08 - Consolidation Move': those are the page's own
+    // numbered headings, and splitting them created 26 records where the corpus had 22 updates.
+    // The number-first shape, only where the run-on happens and only when it is not an errata
+    // heading: the ERRATA sections write '17.03 - Change to First Sentence', which is the page's
+    // own numbered heading, not a swallowed entry.
+    // The bracketed shape is the appendix's own: that page writes its entries as
+    // <div class="abName">[PRECISION] 24.28</div>, which is not a heading, so a run of
+    // them lands in whichever record was open. On the core rules page the same abilities
+    // already exist as records (Core Abilities and the ability-def set), so splitting
+    // there only duplicates them, with the same id twice and the ability defs suppressed.
+    if (m[1] && source !== RUN_ON_SOURCE) continue;
+    if (m[3]) {
+      if (source !== RUN_ON_SOURCE) continue;
+      if (String(m[4] || '').indexOf('- ') === 0) continue;
+    }
+    const title = String(m[1] || m[4] || m[5] || '').trim();
+    const number = String(m[2] || m[3] || m[6] || '');
     if (title.indexOf('. ') !== -1 || title.endsWith('.')) continue;
     if (title.split(/\s+/).length > 10) continue;
     // Prose that ends in a number is not a heading. Every observed sub-rule
@@ -602,22 +645,38 @@ export function splitInlineRules(heading, body, ruleId, anchor, parentTitle) {
     // these, and 'The rule refers to page 10.04' is exactly the false positive
     // this line is for.
     if (/^(the|this|that|these|those|it|if|when|where|a|an|you|your|once|each|every|any|in|on|at|for|to|see|page)\b/i.test(title)) continue;
-    if (m[2] === ruleId) continue;
+    if (number === ruleId) continue;
     if (i > 0 && lines[i - 1].trim() !== '') continue;
-    marks.push({ line: i, title, ruleId: m[2] });
+    marks.push({ line: i, title, ruleId: number });
   }
   if (!marks.length) return [{ heading, title: parentTitle || heading, ruleId: ruleId || '', anchor, body: text }];
   const out = [];
+  // task-99: A PROMOTED FAQ QUESTION IS A LEAF. The split children are rules the appendix page
+  // filed after the question, not under it, so they hang under the FAQ's own ancestor path and
+  // the question keeps no children. Its heading keeps the question, because that is the path the
+  // reader was reading when the rule appeared.
+  const isFaq = /^Q:/.test(String(parentTitle || ''));
+  const ancestor = isFaq ? String(heading).split(' > ').slice(0, -1).join(' > ') : '';
   // The parent is emitted even when nothing precedes the first boundary: its id
   // is a citation that already exists, and a container heading is a weak but real
   // signal. The children are the content.
   const lead = lines.slice(0, marks[0].line).join('\n').trim();
-  out.push({ heading, title: parentTitle || heading, ruleId: ruleId || '', anchor, body: lead });
+  // task-99: a number-first CONTAINER whose own text is only the run it swallowed is not a rule.
+  // The appendix writes 'Units and Models' as a heading and then the entry '01.02.06 Splitting
+  // Units' inside it; keeping the container as well left TWO records for rule 01.02.06, and the
+  // corpus carries 22 numbered updates, not 23. When nothing precedes the first boundary and the
+  // container's own label is that same number-first form, the children are the content.
+  const containerIsRunOn = source === RUN_ON_SOURCE
+    && String(parentTitle || '') === (marks[0].ruleId + ' ' + marks[0].title);
+  if (source === RUN_ON_SOURCE && /^\d{2}\.\d{2}/.test(String(parentTitle || ''))) {
+    console.log('DEBUG split parentTitle=' + JSON.stringify(String(parentTitle)) + ' marks0=' + JSON.stringify(marks[0].ruleId + ' ' + marks[0].title) + ' skip=' + containerIsRunOn + ' marks=' + marks.length);
+  }
+  if (!containerIsRunOn) out.push({ heading, title: parentTitle || heading, ruleId: ruleId || '', anchor, body: lead });
   for (let k = 0; k < marks.length; k++) {
     const from = marks[k].line + 1;
     const to = k + 1 < marks.length ? marks[k + 1].line : lines.length;
     out.push({
-      heading: heading + ' > ' + marks[k].title,
+      heading: (isFaq && ancestor ? ancestor + ' > ' : heading + ' > ') + marks[k].title,
       title: marks[k].title,
       ruleId: marks[k].ruleId,
       anchor: '',
@@ -1653,7 +1712,17 @@ export function buildAbilityDefsCorpus() {
       if (base) used.add(base);
     }
   }
-  const hasHeading = name => others.some(r => String(r.heading || '').split(' > ').some(s => s.replace(/^\[|\]$/g, '').trim().toUpperCase() === name));
+  // A page heading for the ability means the page already defines it, so a definition is not built.
+  // The APPENDIX is excluded: its headings are not headings on the page, they are div entries the
+  // scraper recovered, and they are exactly what task-99 split out. Counting them here stopped the
+  // definitions from being built at all, so 'find ignores cover' started answering with the
+  // appendix's copy instead of ability-def#ignores-cover.
+  // task-99: the APPENDIX is not a page that defines an ability. Its headings are div entries the
+  // scraper recovered, so its copies of [PRECISION] and [IGNORES COVER] are the appendix's own
+  // records, not definitions on a page, and counting them here is what made these tests red.
+  // The appendix is excluded HERE, not only in the comment: its records are the same entries
+  // recovered from divs, and counting them made every definition look already defined.
+  const hasHeading = name => others.some(r => r.source !== 'rules-appendix' && String(r.heading || '').split(' > ').some(s => s.replace(/^\[|\]$/g, '').trim().toUpperCase() === name));
   const coreUrl = String((readCorpus('core-rules') || {}).url || 'https://wahapedia.ru/wh40k11ed/the-rules/core-rules/').split('#')[0] + '#Abilities';
   const sections = [];
   const skipped = [];
