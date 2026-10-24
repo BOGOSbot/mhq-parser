@@ -26,6 +26,8 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { assetStamp, workerStamp, dataStamp, dataDir, surfaceSlugMap } from './wiki-surface.mjs';
 import { recordBody, cardIndex, CARD_CSS, chunkLookup } from './wiki-cards.mjs';
+// The record render's one input shape (tasks/render-context.md).
+import { renderContext } from './render-context.mjs';
 import { readAllCorpus, isDelivered } from './rules-corpus.mjs';
 import { frUsable } from './i18n-fr.mjs';
 import { buildHeaderIndex } from './header-index.mjs';
@@ -134,6 +136,9 @@ export function build() {
   const chunk = chunkLookup(([]).concat(halves.rules, halves.factions, halves.rulings));
   const slugs = surfaceSlugMap();
   const href = (id) => { const s = slugs.get(String(id || '')); return s ? '#' + s : ''; };
+  // One context per render, built by the factory: the corpus halves are validated once
+  // per call rather than trusted, and recordBody never writes into the context.
+  const parts = { corpora: halves, chunk, index: idx, href };
   const books = {};
   const booksFr = {};
   let records = 0, french = 0;
@@ -142,12 +147,12 @@ export function build() {
     if (!id) continue;
     const book = String(rec.set || rec.source || 'other');
     if (!books[book]) books[book] = {};
-    books[book][id] = recordBody(rec, { corpora: halves, chunk, index: idx, href, selfId: id, frText: '' });
+    books[book][id] = recordBody(rec, renderContext(Object.assign({}, parts, { selfId: id, frText: '' })));
     records++;
     const fr = frUsable(id);
     if (fr) {
       if (!booksFr[book]) booksFr[book] = {};
-      booksFr[book][id] = recordBody(rec, { corpora: halves, chunk, index: idx, href, selfId: id, frText: fr });
+      booksFr[book][id] = recordBody(rec, renderContext(Object.assign({}, parts, { selfId: id, frText: fr })));
       french++;
     }
   }

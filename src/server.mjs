@@ -48,6 +48,8 @@ import { corpusDir } from './rules-corpus.mjs';
 import { rejectedRows } from './rules-corpus.mjs';
 import { recordCard, resolveRecordLinks, unitCard } from './unit-card.mjs';
 import { CARD_CSS, cardIndex, recordBody, chunkLookup } from './wiki-cards.mjs';
+// The record render's one input shape (tasks/render-context.md).
+import { renderContext } from './render-context.mjs';
 import { findRows, lookupRecord, searchHeadings } from './header-index.mjs';
 import { devHtml, devState } from './dev-report.mjs';
 // Slice 2, additive: the dev route and the surface's static files. The flip in
@@ -1032,7 +1034,10 @@ async function handleRulesRecord(req, res, u) {
     // `lang=fr` asks for it, and a record with no French keeps the English text.
     const wantFr = String(u.searchParams.get('lang') || '').toLowerCase() === 'fr';
     const frText = wantFr ? frUsable(raw.id) : '';
-    return send(res, 200, recordBody(raw, { corpora: corpora(), chunk: chunkIdx(), index: cardIdx(), href: wikiFileFor, selfId: raw.id, frText: frText }), 'text/html; charset=utf-8');
+    // One context per request, built by the factory: the shape is validated here rather
+    // than trusted, and recordBody never writes into it.
+    const ctx = renderContext({ corpora: corpora(), chunk: chunkIdx(), index: cardIdx(), href: wikiFileFor, selfId: raw.id, frText: frText });
+    return send(res, 200, recordBody(raw, ctx), 'text/html; charset=utf-8');
   }
   return json(res, 200, { ok: true, record, slug: surfaceSlugMap().get(id) || '' });
 }

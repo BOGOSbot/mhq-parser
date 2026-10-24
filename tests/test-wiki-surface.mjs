@@ -73,7 +73,14 @@ ok('(G) the filter re-renders from memory, with no fetch in the handler', js.bod
 // the record id rather than for the exact literal it used to be.
 // task-99: the route now also passes the prepared chunk lookup, so the pin reads for the call
 // and the options it must carry rather than for the exact literal it used to be.
-ok('(E) a record body comes from the server route that calls recordBody, with the record id', /recordBody\(raw, \{ corpora: corpora\(\),[^}]*index: cardIdx\(\), href: wikiFileFor, selfId: raw\.id/.test(fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8')));
+// tasks/render-context.md: the route now builds its input through the factory, so the pin
+// reads for the factory's parts and for recordBody taking the context - the same claim
+// (the route carries the corpus, the index, the resolver and the record id), new spelling.
+ok('(E) a record body comes from the server route that calls recordBody, with the record id', (function () {
+  const srv = fs.readFileSync(path.join(ROOT, 'src', 'server.mjs'), 'utf8');
+  return /renderContext\(\{ corpora: corpora\(\), chunk: chunkIdx\(\), index: cardIdx\(\), href: wikiFileFor, selfId: raw\.id/.test(srv)
+    && /recordBody\(raw, ctx\)/.test(srv);
+})());
 ok('(E2) the client never calls recordBody itself', (js.body.match(/recordBody\(/g) || []).length === 0);
 
 // (3) the ask, the tail, the icon and the copy - the slice-3 targets.

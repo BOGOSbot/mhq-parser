@@ -21,6 +21,9 @@
  */
 
 import { buildUnitCard, resolveRecordLinks } from './unit-card.mjs';
+// The render context: the one input shape recordBody reads, built by a factory and never
+// written to (tasks/render-context.md).
+import { asRenderContext } from './render-context.mjs';
 // task-66: one escaper and one linkifier for the whole card and prose path.
 import { linkify, esc } from './wikilinks.mjs';
 import { looksFrench } from './lang-detect.mjs';
@@ -930,23 +933,23 @@ function seeAlsoHtml(kids, o) {
 export { chunkLookup };
 
 export function recordBody(record, opts) {
-  const o = opts || {};
+  // The context comes from src/render-context.mjs. A context is immutable and so is the
+  // caller's object: what used to be two writes into the argument (selfId, the link
+  // budget) are derived here, on a local view, and the context owns the budget.
+  const ctx = asRenderContext(opts);
   // task-29: a (1/2)/(2/2) part renders the whole rule, once, under its base
   // heading - display only (the corpus and the index keep the parts).
   // task-99: the sibling lookup is a property of the CORPUS, so a caller that renders many
-  // records prepares it once and passes o.chunk. Without it, this rebuilt a 7,390-entry Map for
+  // records prepares it once and passes ctx.chunk. Without it, this rebuilt a 7,390-entry Map for
   // every record - 72% of the render time, measured.
-  if (record && o.corpora) {
-    const sections = ([]).concat(o.corpora.rules || [], o.corpora.factions || [], o.corpora.rulings || []);
-    record = mergeChunkParts(record, sections, o.chunk || null);
+  if (record && ctx.corpora) {
+    const sections = ([]).concat(ctx.corpora.rules || [], ctx.corpora.factions || [], ctx.corpora.rulings || []);
+    record = mergeChunkParts(record, sections, ctx.chunk || null);
   }
   // The card prose gets the same links as the prose path, and the record's own id
-  // is carried so it never links to itself.
-  if (record && !o.selfId) o.selfId = record.id;
-  // task-42: one link budget per RECORD, not per fragment: the prose, the legend, the
-  // ability rows and the field table all draw on the same 12 links and on the same
-  // "first mention only" set, so a record cannot become a wall of blue.
-  if (!o.state) o.state = { used: new Set(), count: 0 };
+  // is carried so it never links to itself. A caller that passed selfId keeps its own
+  // view; one that did not gets a derived view, not a mutation.
+  const o = (record && !ctx.selfId) ? Object.freeze(Object.assign({}, ctx, { selfId: String(record.id) })) : ctx;
   // task-87: the two display-only strips happen once, here. The stored text keeps both
   // blocks; the vector sees them and the corpus is unchanged.
   const kids = seeAlsoKids(record, o);

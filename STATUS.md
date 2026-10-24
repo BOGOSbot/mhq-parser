@@ -12,7 +12,6 @@
 - **P1** [Design the next wiki](tasks/wiki-redesign.md) - waiting on Mandal's shape.
 - **P2** [Address bodies by content](tasks/bodies-by-content.md) - 57.7% of the baked HTML store repeats; about 0.6 MB of the phone download.
 - **P2** [Give the client a tree model](tasks/client-model.md) - the reader is tested by regex on its own source, and it keeps the last copy of the row rule.
-- **P2** [recordBody takes a context](tasks/render-context.md) - the six-key bag rendered 834 records wrong once, silently.
 - **P2** [Re-ingest and prune the vector index](tasks/index-ingest.md) - owed since the corpus cuts.
 - **P2** [Re-translate the stale French](tasks/french-overlay.md) - 3,263 records; metered, waiting on a yes.
 - **P3** [Make tree placement testable](tasks/tree-placement-tests.md) - placement is asserted by census, not by rule.
