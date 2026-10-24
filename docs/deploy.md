@@ -83,6 +83,15 @@ node and start it again (or `box pause` then a request to the URL, which runs th
 init command). The corpus and payloads are part of the archive, so a rebake is a
 redeploy.
 
+**The extract leaves dropped payload files behind.** The archive goes OVER the old tree,
+so a payload file the new bake no longer writes survives the deploy, and
+`dataStamp()` content-hashes every JSON under the payload directory. Measured
+2026-10-24: the three retired Legends files stayed on the Box and moved
+`payloadStamp` from `085515a0` to `a32af4d1` until they were deleted. After
+extracting, diff the payload tree against the archive (`find . -type f` in the box,
+compared with the local bake) and remove what the archive does not carry;
+`/health`'s `payloadStamp` must equal the local bake's.
+
 **Kill and start in two execs, never one.** `pkill -f "node src/server.mjs"`
 matches the exec wrapper's own command line when the start command is in the same
 string - the pattern appears in it - so the shell kills itself before the restart
