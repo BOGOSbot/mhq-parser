@@ -1,5 +1,6 @@
 # Translation dictionaries
 
+*The French path: dictionaries, the glossary, and why the overlay is frozen.*
 The parser treats these FR/EN variants as equivalent. All entries are
 case-insensitive. Some French words aren't translated in the mini view
 (unit names, detachment names, force-disposition labels are kept verbatim);

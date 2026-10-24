@@ -1,5 +1,6 @@
 # Question traces
 
+*The traces kept for a question, what they contain, and how to read one.*
 What the /rules page keeps about a question, where it is written, and why the
 writer is off until the reader has been told. The page is described in
 `docs/rules-page.md`; the corpus it searches in `docs/corpus-storage.md`; the

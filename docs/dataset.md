@@ -1,13 +1,6 @@
----
-tags:
-  - mhq
-  - corpus
-updated: 2026-10-14
----
+# The dataset
 
 *The training set the traces produce: one JSONL record per question, the bank as the eval split, and the counts it is honest about.*
-
-# The dataset
 
 `node tests/build-dataset.mjs` reads `workspace/rules-traces/*.ndjson` and writes
 `workspace/dataset/dataset.jsonl`, with `manifest.json` beside it carrying the
@@ -221,8 +214,6 @@ is the expected direction, not a regression: v2's high rank-20 number was partly
 copied passage words, and a correct pair the retriever cannot find is the training
 signal - see the framing above.
 
-
-
 The strategic half: this lane supplies the **easy mass** - a player who names the
 rule they want. The hard cases, a player who describes a situation without knowing
 the rule's name, can only come from real questions; that is another reason the
@@ -331,9 +322,4 @@ Everything else is the third sample.
 Both readings now sit between the name-allowed sample and the one-in-three sample -
 exact 18.7% against the bank's 15.2%, any 36.7% against 54.5% - and length is on the
 bank's population. This is the distribution to scale.
-
-
-
-
-
-
+

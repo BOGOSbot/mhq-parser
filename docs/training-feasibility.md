@@ -1,13 +1,6 @@
----
-tags:
-  - mhq
-  - corpus
-updated: 2026-10-15
----
+# Training feasibility
 
 *What can be trained and hosted without a GPU, what Upstash can and cannot do, and what the new machine changes.*
-
-# Training feasibility
 
 Asked 2026-10-15, when the generated pairs needed a named consumer: "a LLaMA model, and or a reranker / embedder, but we need a feasibility study. What can we host on Upstash with no GPU, and can we run the training there? Or do we need to wait for my new machine?"
 

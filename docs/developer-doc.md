@@ -1,5 +1,6 @@
 # Developer documentation
 
+*How the army-list parser is built: URL shapes, the exporter, and the seams a change crosses.*
 How the parser works and why. Read this before modifying parse.mjs.
 
 The /rules page is a separate subject with its own document: [rules-page.md](./rules-page.md).

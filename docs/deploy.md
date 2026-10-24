@@ -1,5 +1,6 @@
 # Deploying /rules on an Upstash Box
 
+*Deploying /rules on an Upstash Box: the archive, the split, the restart, and the check that proves it.*
 *The public test deployment: a small Box behind a public URL with basic auth, its
 startup command, and the way back to nothing.*
 

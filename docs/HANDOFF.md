@@ -1,5 +1,6 @@
 # /rules — handoff (2026-10-12)
 
+*The 2026-10-12 restart point for /rules: what was live, what was measured, and the traps found.*
 > **Current state (2026-10-16).** The wiki revamp has landed: `/rules` is one page - an ask box, a viewscreen and the wiki as a drawer - over the payloads `src/wiki-payload.mjs` bakes into `workspace/wiki-data/` (31 files, 9.85 MB raw, 2.4 s for 6,307 delivered records - the corpus was rebuilt from source on 2026-10-17 by task-86: the dice values are text again and the faction abilities are records). `/wiki/*`, the zip, `map.json`, `legacy.json` and the static render are deleted, and the server runs on 127.0.0.1:8787 through `start.ps1`. The restart point - server, verification commands, the measured numbers and the gotchas - is `notes/mhq-handoff.md` in the vault (`C:\agentic\bulle`). **Everything below predates the revamp**: its chunking notes, index counts and open items are history, not state. Current detail lives in `docs/wiki-revamp-prd.md`, `docs/corpus-wiki.md`, `docs/corpus-storage.md`, `docs/rules-page.md` and `docs/question-traces.md`.
 
 Everything below is on the `rules-page` branch, which carries the source layout

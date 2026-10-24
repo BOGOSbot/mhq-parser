@@ -1,5 +1,6 @@
 # Glossary FR / EN
 
+*The FR to EN glossary, the reference table the translation pass reads.*
 Built from the Munitorum Field Manual, published in both languages with the same structure.
 Generated 2026-10-18 from 25 faction pairs.
 

@@ -1,5 +1,6 @@
 # Parser warnings
 
+*The warnings the parser raises, what each means, and the weekly recompute.*
 Which warnings the parser emits, how often, and which repeats are the parser's
 fault. [src/warnings.mjs](../src/warnings.mjs) is the survey:
 

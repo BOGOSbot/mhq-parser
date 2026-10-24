@@ -1,5 +1,6 @@
 # The corpus as a wiki (phase A)
 
+*The original design of the corpus as a wiki, with the phase A and B measurements behind it.*
 *Design and dry run for a link-first corpus. Nothing here is built: no corpus
 write, no index write, no model call. `node src/wiki-plan.mjs` reproduces every
 number below from the corpus on disk.*

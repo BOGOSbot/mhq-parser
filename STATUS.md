@@ -4,14 +4,15 @@
 
 ## In progress
 
-- None recorded yet. A task is an artifact in `tasks/<slug>.md`; open its line here.
+- **P1** [Give every delivered record one address](tasks/rows-contract.md) - the rows contract, phase 1. Running.
 
 ## Pending
 
-- None recorded yet.
+- **P1** [Design the next wiki](tasks/wiki-redesign.md) - waiting on Mandal's shape.
+- **P2** [Re-ingest and prune the vector index](tasks/index-ingest.md) - owed since the corpus cuts.
+- **P2** [Decide what to do with the stale French overlay](tasks/french-overlay.md) - Mandal picks the route.
+- **P3** [Rebuild and republish the Android APK](tasks/android-apk.md) - the shell change has not reached the phone.
 
-<!--
-Task artifact fields: State (pending | in progress), Priority (P1 | P2 | P3), Owner, Where it stands,
-Next action, Notes for a fresh session. Reference template: C:\agentic\bulle\tasks\_template.md.
-A completed task is backed up, then deleted in the commit that carries what landed.
--->
+## Landed, for orientation
+
+The corpus is tournament-only since 2026-10-24: Legends, the CSV lore column, the ability flavour sentence and the navigation stubs are out, which is 7,408 records and 6,171 delivered. The deployed build and its owed work are named in [docs/deploy.md](docs/deploy.md). The payload's next shapes are ordered in the architecture review (vault workspace, 2026-10-24): rows contract, then bodies by content, then the client model.

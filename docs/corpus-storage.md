@@ -1,5 +1,6 @@
 # Corpus storage
 
+*Where the corpus lives on disk, how it is snapshotted, and what a rebuild re-downloads.*
 Where the /rules corpus lives, why it is not in this repository, and what the
 off-disk copy is. What the corpus *is* and how it is built is in
 `docs/rules-page.md`; this is the storage posture only.

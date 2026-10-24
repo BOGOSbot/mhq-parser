@@ -1,5 +1,6 @@
 # Key hygiene and box hardening
 
+*Where the keys live, how the Box is hardened, and what to rotate when one leaks.*
 Where the keys live, what must never touch a prompt or a command line, and the
 checklist for the box that serves the /rules preview. The credential-store path
 is in `src/rules.mjs`; the corpus it searches is described in

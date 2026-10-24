@@ -1,5 +1,6 @@
 # The /rules page
 
+*The /rules page: the corpora, the ask path, the reader, the wiki tree, and the decision behind each.*
 The page that answers a Warhammer 40,000 11th-edition rules question by citing
 the rules, rather than by trusting what a model already believes. This is the
 functionality document for that page; the army-list parser has its own in
@@ -154,10 +155,9 @@ corpus and its full definition (MAXIMUM DISTANCE … BEFORE/WHILE/AFTER MOVING) 
 rides that datasheet's own ability list, so the text is not lost. The nine
 `Challenger - …` mission-format stratagems are outside matched play and left the
 corpus with the Missions > Events > Challenger chapter. The enhancement titles
-keep Mandal's 2026-10-18 form, detachment inside the title. Measured: delivered
-6,258 → **6,248**, Missions 115 → **106**, Rules 781 → **780**, Core Rules entries
-344 → **343**, corpus 7,296 → **7,286**, filtered 1,038 unchanged, and the index
-reads MATCH (1 upsert, 10 deletes).
+keep Mandal's 2026-10-18 form, detachment inside the title. The current counts and the
+build that carries them live in [deploy.md](deploy.md), the one place a number is
+recorded.
 
 **One rule, two sources, one row.** The core page and the appendix print the same
 definition for eight numbers, and the core page splits three more out as
