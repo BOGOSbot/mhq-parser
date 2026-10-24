@@ -17,7 +17,9 @@ t('every record carries a numeric edition', all.filter(r => !/^\d+$/.test(String
 // task-33: the 2026-10-19 export re-tags the 15 '<faction> (Warhammer Legends)' source
 // rows to edition 11, so edition 0 is down to the 121 records the export still calls
 // 0 (the Forge World / pack line) and edition 11 carries 7,303 (task-99: +36).
-t('the distribution (154 rulings and 19 ability definitions are edition 11 too; task-13 removed ten edition-11 records)', editionCounts(all), { 0: 120, 10: 3, 11: 7303 });
+// 2026-10-24: the lore cut merged 34 edition-11 detachment halves into 17, so edition 11
+// is 18 records lighter. Editions 0 and 10 are untouched.
+t('the distribution (154 rulings and 19 ability definitions are edition 11 too; task-13 removed ten edition-11 records)', editionCounts(all), { 0: 120, 10: 3, 11: 7285 });
 // task-33: the Legends rows are edition 11 now, so the edition-0 set is the Forge World
 // pack alone - the Legends records are filtered by the name rule instead.
 t('edition 0 is the Forge World / pack line, every kind (task-33; task-40: one part merged)', tally(all.filter(r => String(r.edition) === '0')), { datasheet: 41, unitrules: 79 });

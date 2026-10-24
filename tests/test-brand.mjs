@@ -77,7 +77,9 @@ ok('/health carries the brand field', /brand: \{/.test(serverSrc) && /faviconByt
 ok('and names the fallback when it is serving it', /favicon: ICON_32 \? 'img\/favicon-32\.png' : 'fallback'/.test(serverSrc));
 // The recipe is the thing that forgot img/ in the first place.
 const deployDoc = fs.readFileSync(path.join(ROOT, 'docs', 'deploy.md'), 'utf8');
-ok('the deploy recipe archives img/', /tar -czf mhq-deploy\.tgz src img /.test(deployDoc));
+// The recipe grew the build marker and the corpus on top of src and img; the pin follows
+// the doc's own order, and the two lines below still catch the img/ regression it was born for.
+ok('the deploy recipe archives img/', /tar -czf mhq-deploy\.tgz BUILD src img workspace\/rules-corpus/.test(deployDoc));
 ok('and says why it is not optional', /img\/ is not optional/.test(deployDoc));
 ok('and points at the check', /node src\/deploy-check\.mjs/.test(deployDoc));
 

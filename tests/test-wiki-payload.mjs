@@ -30,7 +30,10 @@ t('(a) index.json is exactly the branches with name, count and key', Object.keys
 t('(a) the three branch keys are rules, missions and factions', index.branches.map(b => b.b), ['rules', 'missions', 'factions']);
 // task-33: the faction branch is the indexable count - 5,438 delivered minus the 175
 // kind 'index' pages - and the rules branch is 781 with the export's extra core record.
-t('(a) the branch names and counts are the tree index (task-13: -1 rule, -9 missions)', index.branches.map(b => b.n + ':' + b.c), ['Rules:817', 'Missions:106', 'Factions:5263']);
+// 2026-10-24: the faction branch is the 5,246 delivered faction records - the 174 kind
+// 'index' pages are filtered by the predicate now, and the lore cut merged 34 detachment
+// halves into 17.
+t('(a) the branch names and counts are the tree index (task-13: -1 rule, -9 missions)', index.branches.map(b => b.n + ':' + b.c), ['Rules:817', 'Missions:106', 'Factions:5246']);
 for (const b of index.branches) {
   const p = read('index/' + b.b + '.json');
   t('(a) index/' + b.b + '.json carries n, lvl, c, kids, recs, pages', ['n', 'lvl', 'c', 'kids', 'recs', 'pages'].every(k => k in p) && p.n === b.n && p.lvl === 'branch', true);
@@ -49,7 +52,7 @@ for (const book of books) {
   for (const [id, rec] of Object.entries(c.records)) { if (seen.has(id)) { console.log('DUPLICATE ' + id + ' in ' + seen.get(id) + ' and ' + book); } seen.set(id, book); slugBook.set(id, rec.slug.split('--')[0]); }
 }
 t('(b) every delivered record appears exactly once', seen.size, stats.delivered);
-t('(b) the delivered count is the render rule: pageNamer minus tree.filtered (task-13: -10; task-33: 6,327)', stats.delivered, 6363);
+t('(b) the delivered count is the render rule: pageNamer minus tree.filtered (task-13: -10; task-33: 6,327)', stats.delivered, 6171);
 // task-77: map.json is deleted. The witness is the corpus's own delivery rule
 // (rules-corpus isDelivered), computed here without the payload builder.
 const modelDelivered = readAllCorpus().filter(isDelivered).length;

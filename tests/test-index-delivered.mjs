@@ -17,7 +17,9 @@ t('the named tenth-edition rule is not delivered', isDelivered({ id: 'faction-ru
 ok('and it is the only id in that set', TENTH_EDITION_RULE_IDS.size === 1 && TENTH_EDITION_RULE_IDS.has('faction-rule#000008445'));
 t('an edition-0 datasheet is not delivered', isDelivered({ id: 'datasheet#000000524', edition: '0' }), false);
 t('an edition-11 datasheet is', isDelivered({ id: 'datasheet#000000882', edition: '11' }), true);
-t('an index stub is delivered (counted navigation, not filtered content)', isDelivered({ id: 'faction-index#faction-ae', edition: '11' }), true);
+// 2026-10-24: a kind 'index' page is a faction's card list, not a rule, so the predicate
+// filters it. The tree never showed one and no reader could reach one.
+t('an index stub is not delivered (a card list is not a rule)', isDelivered({ id: 'faction-index#faction-ae', kind: 'index', edition: '11' }), false);
 t('an empty record is not delivered', isDelivered(null), false);
 // task-13 dropped ten rules-branch records: the core-stratagem copy of PULSE JET
 // MOVE (its definition now rides the Wazdakka Gutsmek datasheet) and the nine
@@ -25,9 +27,12 @@ t('an empty record is not delivered', isDelivered(null), false);
 // task-33, the 2026-10-19 export with the Legends name rule: 6,327 delivered / 1,063
 // filtered. task-40: the $FAQ$ marker leaves one ability's text, which merges one
 // edition-0 part back, so the corpus is 7,390.
-t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7426, 7426]);
-// task-99: 6,363. The appendix split adds 34 records and the ability definitions 2.
-t('delivered is 6,363 and filtered is 1,063 (task-33 export, task-40 marker, task-99 split)', [delivered.length, filtered.length], [6363, 1063]);
+t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7408, 7408]);
+// 2026-10-24: the tournament cut. 6,171 delivered, 1,237 filtered - the 1,063 of the
+// task-33 export plus the 174 kind 'index' pages the predicate now filters. The corpus
+// also lost 18 records because the CSV lore column was what pushed 34 long detachments
+// over the split threshold, and they are 17 whole records now.
+t('delivered is 6,171 and filtered is 1,237 (tournament cut, 2026-10-24)', [delivered.length, filtered.length], [6171, 1237]);
 
 // --- the query path cannot return what the product does not deliver -----------
 const ids = deliveredIds();
@@ -40,15 +45,16 @@ ok('both query backends return through that filter', (src.match(/deliveredHits\(
 
 // --- the ingest plan skips the filtered records -------------------------------
 const dry = await ingest(null, { set: 'factions', dryRun: true });
-t('a dry-run faction ingest filtered exactly the 1,063', dry.filtered, 1063);
+t('a dry-run faction ingest filtered exactly the 1,237', dry.filtered, 1237);
 const row = dry.sources.find(s => s.source === 'factions-csv');
 ok('and the source row reports its delivered sections, not the corpus count', !!row && row.sections + row.filtered > row.sections);
-// task-33: the ingest plans the indexable sections - the 175 kind 'index' pages are
-// delivered but never embedded - so the factions plan is 5,438 delivered minus 175.
-ok('the source row reports its indexable, filtered and index-excluded counts', row.sections === 5263 && row.filtered === 1063 && row.indexExcluded === 175);
-t('and the dry run totals the exclusion', dry.indexExcluded, 175);
+// 2026-10-24: the index pages are filtered by the predicate itself, so the source row's
+// indexable count and its filtered count are the same 5,246 and the index-excluded gap
+// the report computes (delivered minus indexable) is now structurally zero.
+ok('the source row reports its indexable, filtered and index-excluded counts', row.sections === 5246 && row.filtered === 1237 && row.indexExcluded === 0);
+t('and the dry run totals the exclusion', dry.indexExcluded, 0);
 const indexIds = indexedIds();
-ok('an index page is delivered but never indexed', isDelivered({ id: 'faction-index#faction-ae', kind: 'index', edition: '11' }) && !indexIds.has('faction-index#faction-ae') && indexIds.size === delivered.length - 175);
+ok('an index page is neither delivered nor indexed', !isDelivered({ id: 'faction-index#faction-ae', kind: 'index', edition: '11' }) && !indexIds.has('faction-index#faction-ae') && indexIds.size === delivered.length);
 t('and a hit on an index page is dropped even if the index still holds it', deliveredHits([{ id: 'faction-index#faction-ac', score: 0.99 }]), []);
 
 console.log(pass + ' passed, ' + fail + ' failed');

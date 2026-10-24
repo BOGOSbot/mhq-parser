@@ -27,8 +27,10 @@ ok('the reason names what the record is', exclusionReason(legends[0]) === 'Warha
 const indexed = new Set(indexedSections(all).map(r => String(r.id)));
 ok('no Legends record is in the indexed set', legends.every(r => !indexed.has(String(r.id))));
 ok('nor the pack line, nor the tenth-edition rule', pack.concat(tenth).every(r => !indexed.has(String(r.id))));
-ok('the indexed set is the delivered set minus the navigation pages', indexed.size === delivered.filter(r => r.kind !== 'index').length);
-ok('and the delivered count is unchanged by any of this', delivered.length === 6363);
+// 2026-10-24: the navigation pages are no longer delivered, so the two sets are the same
+// size without a local filter, and the delivered count is the tournament set.
+ok('the indexed set is the delivered set', indexed.size === delivered.filter(r => r.kind !== 'index').length);
+ok('and the delivered count is unchanged by any of this', delivered.length === 6171);
 
 // task-107 took the Legends book out of the payload entirely, so there is no toggle and
 // no branch to pin: what stays here is the corpus predicate and the banner, which is

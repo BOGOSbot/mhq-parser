@@ -123,147 +123,6 @@ function row(rec, slugOf, byId, chapter) {
   return out;
 }
 
-// task-44: the records the product filters out are still readable - Mandal's call is
-// to label them, never to 404 - and since 2026-10-20 they are a payload of their own.
-// The whole point of the branch is that its cost is ZERO while the setting is off:
-// index.json lists the three real books and never this one, and nothing else writes
-// these three files into a reader's page. A reader who turns the setting on fetches
-// index/legends.json and gets a book the tree can walk like any other.
-//
-// What is in it: every record the exclusion predicate names (Legends, the pack line,
-// the named tenth-edition rule), grouped by faction with the Rules tree's own three
-// groups. A record whose reason is not Legends keeps its own honest banner when it is
-// opened - the branch is the door, the label is the record's.
-//
-// The slug is what makes the door work with no server change: the client resolves a
-// record by its slug's book prefix ('legends--...'), fetches content/<book>.json and
-// posts the record's id to /rules/record, which renders the banner. The same map is
-// written to index/legends-slugs.json - the ids only, 60 KB against the content's
-// 1.2 MB - because that is all /rules/find?legends=1 and the record route need.
-export function legendsPayload(corpus, roster, factionOf) {
-  const all = (corpus || readAllCorpus()).filter(isLegendsRecord);
-  const byId = new Map(all.map(r => [r.id, r]));
-  const legacy = (a, b) => String(a.heading || '').localeCompare(String(b.heading || ''));
-  const baseOf = id => String(String(id).split('#')[1] || '').split('~')[0];
-  const groupsByFaction = new Map();
-  for (const r of all) {
-    const f = factionOf(r) || 'Other';
-    if (!groupsByFaction.has(f)) groupsByFaction.set(f, []);
-    groupsByFaction.get(f).push(r);
-  }
-  // A record reaches its faction through the role its KIND gives it in the real tree:
-  // a faction rule or an 'Army Rules' stratagem is an army rule, a detachment groups
-  // its own enhancements and stratagems, everything else is a unit. The real tree merges
-  // a datasheet with its unitrules half and shows one row; here BOTH halves get a row,
-  // because this book's job is that every filtered record is reachable - 563 of the 958
-  // are unitrules halves, and folding them away would leave them with no door. The rows
-  // cost nothing a default reader downloads: the branch is fetched only when the
-  // setting is on.
-  const shapeOf = list => {
-    const army = [], dets = new Map(), units = new Map();
-    for (const r of list) {
-      if (r.kind === 'faction-rule') { army.push(r); continue; }
-      if (r.kind === 'stratagem' || r.kind === 'enhancement') {
-        const d = detachmentName(r);
-        if (!d || d === 'Army Rules') { army.push(r); continue; }
-        if (!dets.has(d)) dets.set(d, []);
-        dets.get(d).push(r);
-        continue;
-      }
-      const n = baseOf(r.id);
-      if (!units.has(n)) units.set(n, []);
-      units.get(n).push(r);
-    }
-    army.sort(legacy);
-    const detRows = [];
-    for (const n of [...dets.keys()].sort((a, b) => a.localeCompare(b))) {
-      const g = dets.get(n);
-      const d = g.filter(x => x.kind === 'detachment')[0] || null;
-      detRows.push({ head: d, rows: g.slice().sort(legacy), label: d ? leafTitle(d) : n });
-    }
-    detRows.sort((a, b) => String(a.label).localeCompare(String(b.label)));
-    // One row per record; the half that is not the unit's representative gets its own
-    // row beside it, so a reader looking for it has a door. The reader can tell the two
-    // apart because the second carries its own heading.
-    const unitRows = [];
-    for (const n of [...units.keys()].sort()) {
-      const parts = units.get(n).sort(legacy);
-      const d = parts.filter(x => x.kind === 'datasheet')[0] || parts[0];
-      unitRows.push({ head: d, label: leafTitle(d) });
-      for (const x of parts) if (x !== d) unitRows.push({ head: x, label: leafTitle(x) });
-    }
-    unitRows.sort((a, b) => String(a.label).localeCompare(String(b.label)));
-    return { army: army, dets: detRows, units: unitRows };
-  };
-  const order = new Map(roster.map((f, i) => [f.name, i]));
-  const factions = [...groupsByFaction.keys()].sort((a, b) => {
-    const ia = order.has(a) ? order.get(a) : order.size, ib = order.has(b) ? order.get(b) : order.size;
-    return ia - ib || String(a).localeCompare(String(b));
-  });
-  const slugOf = id => {
-    const raw = byId.get(id) || {};
-    return 'legends--' + pageTitleSlug(raw) + '-' + hash8(String(id));
-  };
-  // A child pays for its book once, but a page the reader never opens is not worth a
-  // fetch: a record's children ride in content/legends.json with the rows, not twice.
-  const kids = [];
-  const content = {};
-  const slugs = {};
-  const seen = new Set();
-  const childRows = [];
-  for (const id of all.map(r => r.id)) {
-    if (!seen.has(id)) { seen.add(id); childRows.push(id); }
-  }
-  for (const id of childRows) {
-    const raw = byId.get(id) || {};
-    const slug = slugOf(id);
-    content[id] = {
-      id: id, slug: slug, heading: raw.heading || '', kind: raw.kind || '', source: raw.source || '',
-      ruleId: raw.ruleId || '', set: raw.set || '', text: stripSeeAlso({ text: textOf(raw), links: raw.links }),
-      links: Array.isArray(raw.links) ? raw.links : [], parent: raw.parent || '',
-      children: Array.isArray(raw.children) ? raw.children : [], at: '',
-    };
-    slugs[id] = slug;
-  }
-  for (const fac of factions) {
-    const { army, dets, units } = shapeOf(groupsByFaction.get(fac) || []);
-    const facKids = [];
-    if (army.length) {
-      facKids.push({ n: 'Army rules', lvl: 'group', c: army.length, recs: army.map(r => row({ i: r.id, t: r.heading || '' }, slugOf, byId)) });
-    }
-    if (dets.length) {
-      const detRows2 = [];
-      for (const d of dets) {
-        // A detachment with no detachment record among the Legends is the name its own
-        // enhancements and stratagems carry ('Pactbound Zealots'). It still needs a row
-        // the reader can open, so it opens its first owned record and the rest are its
-        // siblings: a row with a title and no id renders a button that does nothing.
-        const head = d.head || d.rows[0];
-        const rowOf = row({ i: head.id, t: d.label }, slugOf, byId);
-        // The row is named for the DETACHMENT, not for the record it opens: on a
-        // synthetic row the head is an enhancement, and its own name is not the door's.
-        rowOf.title = d.label;
-        rowOf.own = [...new Set(d.rows.map(x => x.id))].filter(id => id !== head.id);
-        detRows2.push(rowOf);
-      }
-      facKids.push({ n: 'Detachments', lvl: 'group', c: dets.reduce((n, d) => n + d.rows.length, 0), recs: detRows2 });
-    }
-    if (units.length) {
-      facKids.push({ n: 'Units', lvl: 'group', c: units.length, recs: units.map(u => row({ i: u.head.id, t: u.label }, slugOf, byId)) });
-    }
-    // Every node carries its own key: the client fetches index/<b>.json per branch, and a
-    // faction the name list does not hold (a Legends record with no faction url) would
-    // otherwise read as a branch with no address. The 24-faction roster has no 'Other',
-    // so it takes the node slug the tree would have given it.
-    if (facKids.length) {
-      const slug = (roster.find(f => f.name === fac) || {}).slug || nodeSlug(fac);
-      kids.push({ n: fac, b: 'legends-' + slug, lvl: 'faction', c: facKids.reduce((n, k) => n + (k.c || 0), 0), kids: facKids });
-    }
-  }
-  const total = all.length;
-  const branch = { n: 'Warhammer Legends', b: 'legends', lvl: 'branch', c: total, kids: kids };
-  return { branch: branch, content: content, slugs: slugs, total: total };
-}
 // One node of a branch, inlined: the file references ('f') become nested objects
 // and the record rows lose their page file for the slug. A single-page node keeps
 // a marker and is listed in the branch's pages.
@@ -293,7 +152,11 @@ export function buildPayloads(corpus, outDir) {
   // tree's filtered set. This is wiki-render.mjs's own rule, so the bake keeps the
   // same 6,271 the render pages, not an approximation.
   const filtered = new Set(tree.filtered || []);
-  const live = [...pageOf.keys()].filter(id => !filtered.has(id));
+  // Mandal, 2026-10-24: a kind 'index' page is navigation (a faction's card list), not a
+  // rule, and the tree does not show it - so it gets no body either. It was 174 stubs of
+  // 43 to 175 characters that no reader could reach.
+  const isNavOnly = id => String(((byId.get(id) || {}).kind) || '') === 'index';
+  const live = [...pageOf.keys()].filter(id => !filtered.has(id)).filter(id => !isNavOnly(id));
 
   // The book is the tree's own placement, never set or source: stratagems,
   // enhancements and detachments carry source 'stratagems' and an empty faction,
@@ -392,11 +255,11 @@ export function buildPayloads(corpus, outDir) {
   // bytes do not move; content/legends.json is where the branch's records live, and
   // index/legends-slugs.json is the id -> slug map the search and the record route read
   // without pulling the content's megabyte.
+  // Mandal, 2026-10-24: Legends is out of the product. A Legends datasheet is not legal at
+  // a tournament table, so the branch, its slug map and its book are no longer written; the
+  // corpus keeps the records (isDelivered already excludes them from retrieval and the
+  // index) and the build stays one predicate away from bringing them back if that changes.
   const legendRecs = all.filter(isLegendsRecord);
-  const legends = legendsPayload(legendRecs, roster, factionOf);
-  write('index/legends.json', legends.branch);
-  write('index/legends-slugs.json', { slugs: legends.slugs });
-  write('content/legends.json', { book: 'legends', records: legends.content });
 
   for (const [book, ids] of books) {
     const recordsOut = {};
@@ -445,7 +308,7 @@ export function buildPayloads(corpus, outDir) {
   for (const [book, ids] of books) byBook[book] = ids.length;
   const stats = {
     outDir: out, records: all.length, delivered: live.length, filtered: filtered.size,
-    legends: legendRecs.length,
+    legendsExcluded: legendRecs.length,
     branches: branches, books: [...books.keys()].sort(), bookRecords: byBook,
     files: files.map(f => f.name).sort(), fileCount: files.length, bytes: bytes,
     biggest: biggest,
@@ -461,7 +324,7 @@ function main() {
   const stats = buildPayloads(readAllCorpus(), out);
   const seconds = (Date.now() - t0) / 1000;
   console.log('wiki-payload -> ' + path.relative(REPO, out));
-  console.log('  delivered           ' + stats.delivered + ' of ' + stats.records + ' (' + stats.filtered + ' filtered, ' + stats.legends + ' in the Legends branch)');
+  console.log('  delivered           ' + stats.delivered + ' of ' + stats.records + ' (' + stats.filtered + ' filtered, ' + stats.legendsExcluded + ' excluded as Legends)');
   console.log('  books               ' + stats.books.length + ': ' + stats.books.join(', '));
   console.log('  files               ' + stats.fileCount + ' (' + fmtMB(stats.bytes) + ' MB)');
   console.log('  biggest             ' + stats.biggest.name + ' ' + fmtMB(stats.biggest.bytes) + ' MB');

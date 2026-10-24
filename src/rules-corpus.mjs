@@ -1005,17 +1005,22 @@ export function isLegendsRecord(section) {
 }
 
 // Delivered means the render will give it a page and the index may return it.
-// Three things are filtered: a Warhammer Legends source (the named rule above, which
+// Four things are filtered: a Warhammer Legends source (the named rule above, which
 // holds whatever edition the export claims - the 2026-10-19 export re-tagged those
-// rows to edition 11), edition 0 (the Forge World / pack line), and the one named
-// tenth-edition faction rule. The tree, the index build, the prune and the query path
-// all read this one predicate; no side re-derives it. Index stubs are counted
-// navigation, not filtered content, so they are delivered.
+// rows to edition 11), edition 0 (the Forge World / pack line), the one named
+// tenth-edition faction rule, and a kind 'index' navigation page. The tree, the index
+// build, the prune and the query path all read this one predicate; no side re-derives it.
+//
+// The index pages were delivered until 2026-10-24: a faction's card list, 174 of them,
+// which the tree never showed and no reader could reach, and which the ingest and the
+// payload had to filter again by hand. Mandal's tournament rule settled it - a card list
+// is not a rule - so they are filtered here, where every side already looks.
 export const TENTH_EDITION_RULE_IDS = new Set(['faction-rule#000008445']);
 export function isDelivered(record) {
   if (!record) return false;
   if (isLegendsRecord(record)) return false;
   if (String(record.edition == null ? '' : record.edition) === '0') return false;
+  if (String(record.kind || '') === 'index') return false;
   return !TENTH_EDITION_RULE_IDS.has(String(record.id || ''));
 }
 
@@ -1128,7 +1133,7 @@ export function buildFactionSections() {
     strayAbilities.set(foldAbility(name), {
       id: 'core-stratagem#' + s.id, name: name, type: type,
       cp: String(s.cp_cost || ''), turn: clean(s.turn), phase: clean(s.phase),
-      body: [clean(s.legend), clean(s.description)].filter(Boolean).join(' ').trim(),
+      body: clean(s.description),
       done: false,
     });
   }
@@ -1280,7 +1285,6 @@ export function buildFactionSections() {
         clean(type) ? 'Type: ' + type : '',
         String(s.cp_cost == null ? '' : s.cp_cost).trim() ? 'CP: ' + s.cp_cost : '',
         'Turn: ' + clean(s.turn) + '  Phase: ' + clean(s.phase),
-        clean(s.legend),
         clean(s.description),
       ];
       corePending.push({ id: 'core-stratagem#' + s.id, name: clean(s.name), type: type, cp: String(s.cp_cost || ''), lines: lines });
@@ -1297,7 +1301,6 @@ export function buildFactionSections() {
         s.name + ' - ' + faction + ' army rule',
         clean(s.type) ? 'Type: ' + clean(s.type) : '',
         'Turn: ' + clean(s.turn) + '  Phase: ' + clean(s.phase),
-        clean(s.legend),
         clean(s.description),
       ];
       push('faction-rule#' + s.id, 'factions-csv', s.name + ' - ' + faction + ' army rule', factionLink.get(s.faction_id) || '', ruleLines);
@@ -1309,7 +1312,6 @@ export function buildFactionSections() {
       String(s.cp_cost == null ? '' : s.cp_cost).trim() ? 'CP: ' + s.cp_cost : '',
       'Turn: ' + clean(s.turn) + '  Phase: ' + clean(s.phase),
       s.detachment ? 'Detachment: ' + clean(s.detachment) : '',
-      clean(s.legend),
       clean(s.description),
     ];
     push('stratagem#' + s.id, 'stratagems', s.name + ' (' + faction + ')', factionLink.get(s.faction_id) || '', lines);
@@ -1325,6 +1327,11 @@ export function buildFactionSections() {
     for (const c of corePending) if (best.get(c.name) === c) push(c.id, 'core-stratagems', c.name, CORE_STRATAGEMS.url, c.lines);
   }
 
+  // Mandal, 2026-10-24: the corpus answers at a tournament table, so the CSV 'legend'
+  // column is out. It is lore, not a rule, and it used to be appended to the body of every
+  // detachment, stratagem, enhancement and army rule - which is why an Aeldari detachment
+  // rendered 1,300 characters of story before its ability. Every site that appended it is
+  // gone; do not put one back.
   const detachmentAbilities = new Map();
   for (const a of read('Detachment_abilities.csv')) {
     if (!detachmentAbilities.has(a.detachment_id)) detachmentAbilities.set(a.detachment_id, []);
@@ -1336,7 +1343,6 @@ export function buildFactionSections() {
     const lines = [
       d.name + ' - ' + faction + ' detachment',
       'Detachment points: ' + (d.dp || '-') + '  Force disposition: ' + (d.force_disposition || '-'),
-      clean(d.legend),
       ...(detachmentAbilities.get(d.id) || []).map(a => 'Ability: ' + clean(a.name) + ' - ' + clean(a.description)),
     ];
     push('detachment#' + d.id, 'detachments', d.name + ' (' + faction + ')', factionLink.get(d.faction_id) || '', lines);
@@ -1349,7 +1355,6 @@ export function buildFactionSections() {
       e.name + ' - ' + faction + ' enhancement',
       'Cost: ' + e.cost + ' pts' + (e.upgrade === 'true' ? ' (upgrade)' : ''),
       'Detachment: ' + clean(e.detachment),
-      clean(e.legend),
       clean(e.description),
     ];
     // Mandal, 2026-10-18: the heading names the KIND and where the enhancement lives -

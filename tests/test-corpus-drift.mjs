@@ -63,7 +63,10 @@ const BASELINE = {
     // task-33 (2026-10-19 export): 6,502 shaped sections, 10,244,777 bytes - the new
     // export's records with task-32's three fixes still in. task-40: the $FAQ$ marker
     // leaves one ability's text, which merges one part back - 6,501 / 10,243,873.
-    'factions-csv': { sections: 6501, bytes: 10243873 },
+    // 2026-10-24: the CSV 'legend' column is no longer written (lore is not a rule), which
+    // also stopped 34 long detachments from being split, so 17 whole records replace them:
+    // 6,483 sections and 402,171 fewer bytes.
+    'factions-csv': { sections: 6483, bytes: 9841702 },
   },
 };
 
@@ -145,7 +148,7 @@ t('(drift) the CSV path reproduces factions-csv.json', {
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
   added: csvAdded,
   missing: csvMissing,
-}, { sections: 6501, bytes: 10243873, added: 0, missing: 0 });
+}, { sections: 6483, bytes: 9841702, added: 0, missing: 0 });
 
 const rebuiltPool = fs.readdirSync(root).filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')))
