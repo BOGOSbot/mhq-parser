@@ -25,7 +25,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readAllCorpus, isLegendsRecord } from './rules-corpus.mjs';
-import { allianceAssigner, cleanTitle, detachmentName, factionAssigner, factionRoster, hash8, nodeSlug, pageNamer, pageTitleSlug, tocTree } from './wiki-toc.mjs';
+import { allianceAssigner, detachmentName, factionAssigner, factionRoster, nodeSlug, pageNamer, tocTree } from './wiki-toc.mjs';
+// The naming model: the heading path, the marker strip, the page address (tasks/title-module.md).
+import { cleanTitle, leafOf, pageSlug, splitHeading } from './title.mjs';
 import { stripSeeAlso } from './wiki-plan.mjs';
 import { cardTables } from './unit-card.mjs';
 import { frFresh } from './i18n-fr.mjs';
@@ -79,7 +81,7 @@ export function frByBook(ids, bookOf, enOf) {
 
 const textOf = rec => String((rec && rec.text) || '');
 // The name a row carries: the heading's own leaf, the same read wiki-toc's own rows use.
-const leafTitle = r => { const p = String((r && r.heading) || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : String((r && r.id) || ''); };
+
 // The drawer's one-line row: id, slug, title, source and a plain-text snippet of
 // at most 100 characters, so a branch renders its lines without fetching content.
 function row(rec, slugOf, byId, chapter) {
@@ -97,7 +99,7 @@ function row(rec, slugOf, byId, chapter) {
   const isSection = /^\d{2}\.\d{2} /.test(chLabel);
   const chName = chLabel.replace(/^\d{2}(?:\.\d+)?\s*/, '').trim();
   const chNum = (chLabel.match(isSection ? /^(\d{2}\.\d{2})/ : /^(\d{2})/) || [])[1] || '';
-  const segs = String(raw.heading || '').split(' > ').map(s => s.trim()).filter(Boolean);
+  const segs = splitHeading(raw.heading).map(s => s.trim()).filter(Boolean);
   // task-4: the appendix's ability tag is a container, not a parent - the page
   // headings the Universal Rules Updates block '[ONE SHOT] > Universal Rules
   // Updates', and task-88's lead-row rule would print that row as '[ONE SHOT]'
@@ -110,7 +112,7 @@ function row(rec, slugOf, byId, chapter) {
   // into the row's own slot and the title loses it. A record whose text is an errata
   // ('Add: ...', 'Change: ...') says so: two rows named 'Splitting Units' read as a
   // duplicate otherwise, and one of them is the errata to the other.
-  const leaf = String(raw.heading || '').split(' > ').pop().trim();
+  const leaf = (splitHeading(raw.heading).pop() || '').trim();
   // The stored text carries its heading in front (the corpus writes it there so the
   // vector sees the context), so the errata verb is read after that echo.
   const body = plain.indexOf(String(raw.heading || '')) === 0 ? plain.slice(String(raw.heading || '').length).trim() : plain;
@@ -193,10 +195,8 @@ export function buildPayloads(corpus, outDir) {
 
   const books = new Map();
   for (const id of live) { const b = bookOf(id); if (!books.has(b)) books.set(b, []); books.get(b).push(id); }
-  const slugOf = id => {
-    const raw = byId.get(id) || {};
-    return bookOf(id) + '--' + pageTitleSlug(raw) + '-' + hash8(String(id));
-  };
+  // The one page address (src/title.mjs): its book, the readable title, the id hash.
+  const slugOf = id => pageSlug(byId.get(id) || {}, bookOf(id));
 
   // --- write ----------------------------------------------------------------
   // Sweep first: the bake owns these two directories, and without this the output
@@ -286,7 +286,7 @@ export function buildPayloads(corpus, outDir) {
     const raw = byId.get(id) || {};
     // A record the tree carries keeps the row it was given there; one the tree never names
     // gets the tree's own title rule applied to its heading, so there is one naming rule.
-    const known = treeRows.get(id) || row({ i: id, t: cleanTitle(leafTitle(raw)) }, slugOf, byId);
+    const known = treeRows.get(id) || row({ i: id, t: cleanTitle(leafOf(raw.heading) || String(raw.id || '')) }, slugOf, byId);
     const entry = { slug: slugOf(id), title: String(known.title || ''), book: bookOf(id), source: String(known.source || '') };
     if (known.num) entry.num = String(known.num);
     const chain = tree.paths.get(id) || [];

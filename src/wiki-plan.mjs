@@ -31,6 +31,7 @@
 import fs from 'fs';
 import path from 'path';
 import { MAX_CHARS, csvRows, csvDir, htmlToText, readAllCorpus, splitSection, trimAbilityTail , corpusDir} from './rules-corpus.mjs';
+import { splitHeading } from './title.mjs';
 
 export const WIKI_BUDGET = 2000;
 export const LINK_BLOCK_MAX = 40;
@@ -55,7 +56,7 @@ export function withHeading(rec, body) {
   const h = String(rec.heading || '');
   return h ? h + '\n' + body : body;
 }
-export const lastCrumb = h => { const p = String(h || '').split(' > ').filter(Boolean); return p.length ? p[p.length - 1] : String(h || ''); };
+export const lastCrumb = h => { const p = splitHeading(h); return p.length ? p[p.length - 1] : String(h || ''); };
 
 // The input's links first, then the derived ones, deduped by target: the build may
 // not drop a link the record already carried, and may not duplicate one.
@@ -391,7 +392,7 @@ export function planWiki(data, opts) {
   }
   const childrenOf = new Map();
   for (const h of byHeading.keys()) {
-    const parts = String(h).split(' > ').filter(Boolean);
+    const parts = splitHeading(h);
     if (parts.length < 2) continue;
     const parentHeading = parts.slice(0, -1).join(' > ');
     if (!byHeading.has(parentHeading)) continue;
@@ -407,7 +408,7 @@ export function planWiki(data, opts) {
   // be followed upward.
   const parentIdOf = new Map();
   for (const h of byHeading.keys()) {
-    const parts = String(h).split(' > ').filter(Boolean);
+    const parts = splitHeading(h);
     if (parts.length < 2) continue;
     const parentHeading = parts.slice(0, -1).join(' > ');
     if (!byHeading.has(parentHeading)) continue;

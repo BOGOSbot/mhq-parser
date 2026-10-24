@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 'use strict';
+
+// The naming model lives in one module (tasks/title-module.md). The page address, the
+// marker strip and the heading path are imported here and re-exported, so a module that
+// already reads them from wiki-toc keeps working while the definition has one home.
+import { cleanTitle, firstSegment, hash8, leafOf, pageTitleSlug, splitHeading } from './title.mjs';
+export { cleanTitle, hash8, pageTitleSlug };
 /**
  * wiki-toc: the index model - the area tree, page naming, the rosters and the
  * assigners. The two-pane UI that used to live here (TOC_JS/TOC_CSS) is gone
@@ -44,7 +50,7 @@ export function tocData(records, pageOf, factionNames, factionSlug) {
   for (const [name, list] of areas) {
     const groups = new Map();
     for (const r of list) {
-      const path = String(r.heading || '').split(' > ').filter(Boolean);
+      const path = splitHeading(r.heading);
       const leaf = path.length ? path[path.length - 1] : (r.heading || r.id);
       const g = groupOf(r);
       if (!groups.has(g)) groups.set(g, []);
@@ -100,27 +106,11 @@ export const MISSION_PARTS = [
   { name: 'Secondary', heading: 'Secondary Mission deck' },
 ];
 
-// The page name of a record, one implementation for the render and for this
-// tree: the slug carries a hash only this function knows, so a second copy
-// would drift.
-export function hash8(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
 // pageSlug is the OLD name, kept only to build the redirect map: <kind>_<id>-<hash>
 // was served in the wild (traces, docs, bookmarks) and has to keep resolving.
 export function pageSlug(id) { return String(id).replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 60) + '-' + hash8(String(id)); }
 
-// The page a record gets now: readable first (its kind and its title), stable
-// last (the id hash keeps two records with the same title apart and keeps the URL
-// when a heading is edited). The old name led with the id, which says nothing.
-export function pageTitleSlug(record) {
-  const r = record || {};
-  // The heading's own leaf, not leafTitle's id fallback: an untitled record is
-  // named by its kind and the id hash, never by a positional id in the path.
-  const leaf = String(r.heading || '').split(' > ').filter(Boolean).pop() || '';
-  const slug = (String(r.kind || 'record') + '-' + cleanTitle(leaf))
-    .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/g, '');
-  return slug || 'record';
-}
+// The page a record gets: the readable title and the id hash, both from src/title.mjs.
 export function pageName(record) { return pageTitleSlug(record) + '-' + hash8(String((record && record.id) || '')) + '.html'; }
 export function pageNamer(records) { const m = new Map(); for (const r of records) m.set(r.id, pageName(r)); return m; }
 
@@ -182,13 +172,8 @@ export function detachmentName(r) {
   return m ? stripSuffix(m[1]) : null;
 }
 function leafTitle(r) {
-  const path = String(r.heading || '').split(' > ').filter(Boolean);
-  return path.length ? path[path.length - 1] : String(r.id);
-}
-// A record split into parts carries " (1/2)" in its title and a unitrules twin
-// carries " - keywords and abilities": both are markers, not names.
-export function cleanTitle(t) {
-  return String(t).replace(/\s*\(\d+\/\d+\)$/, '').replace(/\s*-\s*keywords and abilities(\s*\(\d+\/\d+\))?$/i, '');
+  const parts = splitHeading(r && r.heading);
+  return parts.length ? parts[parts.length - 1] : String(r && r.id);
 }
 
 // --- the rule's number, and the order the book prints it in ------------------
@@ -255,7 +240,7 @@ export function sortChapterRows(rows, chapterTitle) {
 // something, so it never appeared as a row and 02.02.01 rendered empty. Measured over
 // the 61 question-leaf records with no FAQ ancestor: one is 19 characters, one is 29 and
 // starts with 'Q:', the other 59 run past 40.
-export function headingSegments(r) { return String(r.heading || '').split(' > ').filter(Boolean); }
+export function headingSegments(r) { return splitHeading(r && r.heading); }
 export function isAnnotation(r) {
   if (r.kind !== 'rule') return false;
   for (const seg of headingSegments(r)) {
@@ -434,7 +419,7 @@ export function tocTree(records, pageOf, opts) {
       const anchor = cur.anchor || (/^[^#]*#(.+)$/.exec(String(cur.url || '')) || [])[1];
       ch = anchor ? outline.byIdName(anchor) : null;
       if (!ch && cur.ruleId) ch = outline.byNumber(cur.ruleId);
-      if (!ch && cur.heading) ch = outline.byText(String(cur.heading).split(' > ')[0]);
+      if (!ch && cur.heading) ch = outline.byText(firstSegment(cur.heading));
       if (!ch && cur.parent && byIdAll.has(cur.parent)) { cur = byIdAll.get(cur.parent); continue; }
       break;
     }
@@ -462,7 +447,7 @@ export function tocTree(records, pageOf, opts) {
       const anchor = r.anchor || r.placeAnchor || (/^[^#]*#(.+)$/.exec(String(r.url || '')) || [])[1];
       const ax = ap && anchor ? ap.byIdName(anchor) : null;
       if (ax) return ax;
-      const seg = String(r.heading || '').split(' > ').filter(Boolean)[0];
+      const seg = splitHeading(r.heading)[0];
       if (seg) return { key: 'local:' + seg, name: seg, order: 1000 };
     }
     return null;
@@ -972,7 +957,7 @@ export function tocTree(records, pageOf, opts) {
   const missionsRef = { n: 'Missions', lvl: 'branch', f: 'tree/missions.js' };
   for (const part of MISSION_PARTS) {
     const recs = evSections.filter(r => {
-      const h = String(r.heading || '').split(' > ')[0];
+      const h = firstSegment(r.heading);
       return part.heading === null ? (h !== 'Primary Mission deck' && h !== 'Secondary Mission deck') : h === part.heading;
     });
     const partFile = 'tree/missions/' + nodeSlug(part.name) + '.js';

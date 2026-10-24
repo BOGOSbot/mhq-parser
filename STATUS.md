@@ -4,7 +4,6 @@
 
 ## In progress
 
-- **P1** [One title module](tasks/title-module.md) - the worker has it; six copies of "what is this record called" collapse to one.
 
 ## Pending
 
@@ -12,7 +11,7 @@
 
 - **P1** [Design the next wiki](tasks/wiki-redesign.md) - waiting on Mandal's shape.
 - **P2** [Address bodies by content](tasks/bodies-by-content.md) - 57.7% of the baked HTML store repeats; about 0.6 MB of the phone download.
-- **P2** [Give the client a tree model](tasks/client-model.md) - the reader is tested by regex on its own source.
+- **P2** [Give the client a tree model](tasks/client-model.md) - the reader is tested by regex on its own source, and it keeps the last copy of the row rule.
 - **P2** [recordBody takes a context](tasks/render-context.md) - the six-key bag rendered 834 records wrong once, silently.
 - **P2** [Re-ingest and prune the vector index](tasks/index-ingest.md) - owed since the corpus cuts.
 - **P2** [Re-translate the stale French](tasks/french-overlay.md) - 3,263 records; metered, waiting on a yes.
@@ -24,4 +23,6 @@
 
 ## Landed, for orientation
 
-The corpus is tournament-only since 2026-10-24: Legends, the CSV lore column, the ability flavour sentence and the navigation stubs are out, which is 7,408 records and 6,171 delivered. The deployed build and its owed work are named in [docs/deploy.md](docs/deploy.md). The architecture review of 2026-10-24 put nine candidates on the table; they are carded above in the order it argued for, minus the two that are not code.
+The corpus is tournament-only since 2026-10-24: Legends, the CSV lore column, the ability flavour sentence and the navigation stubs are out, which is 7,408 records and 6,171 delivered. The deployed build and its owed work are named in [docs/deploy.md](docs/deploy.md).
+
+Naming has one home since 2026-10-24: `src/title.mjs` owns the heading path, the marker strip, the page address and the row label, and the bake, the tree and the cards read it (the client keeps a copy until [the client model](tasks/client-model.md) lands, because the WebView loads `wiki-surface.js` as a plain script). The architecture review behind the remaining tasks is in the vault workspace under 2026-10-24-mhq-arch-review.

@@ -32,6 +32,7 @@ import { csvDir, csvRows, htmlToText, trimAbilityTail } from './rules-corpus.mjs
 // task-34: the two marks the export leaves bare, one home for the card and the flat text.
 import { markRange, markHit, markWargearText } from './wargear-marks.mjs';
 import { mergeChunkParts } from './wiki-plan.mjs';
+import { rowLabel, splitHeading } from './title.mjs';
 
 const clean = s => htmlToText(String(s == null ? '' : s)).replace(/\s+/g, ' ').trim();
 
@@ -140,7 +141,7 @@ function halfIndex(sections) {
   for (let i = 0; i < sections.length; i++) {
     const sec = sections[i];
     const raw = String((sec && sec.heading) || '');
-    const path = raw.split(' > ').filter(Boolean);
+    const path = splitHeading(raw);
     const leaf = norm(path[path.length - 1] || '');
     const whole = norm(raw);
     add(leaf.split(' ')[0] || '', i);
@@ -169,7 +170,7 @@ export function findAbilityRecord(ability, rules, factions) {
     // ('Forming Attached Units > LEADER 24.22 / SUPPORT'), so the ability's name
     // is matched against the last segment as well as the whole heading.
     const raw = String(sec.heading || '');
-    const path = raw.split(' > ').filter(Boolean);
+    const path = splitHeading(raw);
     const leaf = norm(path[path.length - 1] || '');
     const whole = norm(raw);
     const starts = leaf === name || leaf.indexOf(name + ' ') === 0 || whole === name || whole.indexOf(name + ' ') === 0;
@@ -442,30 +443,10 @@ export function resolveRecordLinks(links, byId) {
 // builder for the four categories the view opens - unit, faction, detachment,
 // rules section - so the page renders one shape instead of a renderer per kind.
 // Null when the id is not in the corpus: a half card is never shown.
-// task-23: the record's own name, not the section it hangs under. Same rule and
-// same shape as src/wiki-surface.js's rowName (tests pin both against the same
-// headings): a Q&A / errata / '[ONE SHOT]' record's path ends at the rule it
-// answers about, so its leaf is that section's name and three records printed
-// 'FALL-BACK MOVE'; the record's own name is the question segment above the leaf,
-// and the breadcrumb stops before it. A heading whose leaf IS the name is
-// untouched.
-function rowName(parts) {
-  const list = (parts || []).map(p => String(p == null ? '' : p).trim());
-  if (!list.length) return { name: '', at: -1 };
-  const last = list.length - 1;
-  for (let i = last - 1; i >= 0; i--) {
-    if (/\?$/.test(list[i]) || /^q\s*:/i.test(list[i])) return { name: list[i], at: i };
-  }
-  const low = list[last].toLowerCase();
-  for (let i = last - 1; i >= 0; i--) {
-    if (list[i].toLowerCase() !== low) continue;
-    for (let k = i - 1; k >= 0; k--) {
-      if (list[k].toLowerCase() !== low) return { name: list[k], at: k };
-    }
-    break;
-  }
-  return { name: list[last], at: last };
-}
+// task-23: the record's own name, not the section it hangs under. The rule now lives
+// in src/title.mjs (rowLabel); the client keeps its own copy because wiki-surface.js is
+// an IIFE the WebView loads as a plain script and the bundle copies it verbatim, so it
+// cannot import a module. Same headings, same answers.
 
 export function recordCard(id, opts) {
   const o = opts || {};
@@ -488,8 +469,8 @@ export function recordCard(id, opts) {
   const card = (kind === 'datasheet' || kind === 'unitrules')
     ? buildUnitCard(bare, o.corpora ? { corpora: o.corpora } : undefined)
     : null;
-  const parts = String(rec.heading || '').split(' > ').filter(Boolean);
-  const named = rowName(parts);
+  const parts = splitHeading(rec.heading);
+  const named = rowLabel(parts);
   return {
     id: rec.id,
     kind,
