@@ -4,9 +4,10 @@
 
 ## In progress
 
-- **P1** [Give every delivered record one address](tasks/rows-contract.md) - the rows contract, phase 1. Running.
 
 ## Pending
+
+- **P1** [Finish the rows contract](tasks/rows-contract-phase2.md) - the tree shapes and the Android address map still walk the payloads.
 
 - **P1** [Design the next wiki](tasks/wiki-redesign.md) - waiting on Mandal's shape.
 - **P2** [Re-ingest and prune the vector index](tasks/index-ingest.md) - owed since the corpus cuts.
