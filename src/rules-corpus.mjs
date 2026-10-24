@@ -2626,6 +2626,24 @@ export function routeStatsReset() {
   ROUTE_STATS.emptyShapes = {}; ROUTE_STATS.emptyByStage = {}; ROUTE_STATS.emptyCalls = [];
 }
 
+// task-105: what a length cut retries WITH. Every empty reply is shape 'length' with
+// completion_tokens equal to max_tokens - the model spent the whole output budget thinking
+// and never wrote - and the old recovery made the answer worse: it doubled the ceiling and
+// dropped the reasoning to 'none', while the repo's own bank measured the same agent at 61.8%
+// with reasoning off against 79.4% with it on. The reserve buys the ANSWER room instead and
+// keeps the reasoning at the provider's cheapest explicit rung ('low'), with a brevity clause
+// so the object cannot run long again. RULES_AGENT_RESERVE_TOKENS names the tokens to add;
+// unset uses the default, and 0 restores the old behaviour exactly (double the ceiling, drop
+// the reasoning) so both arms can be measured on one build.
+const RESERVE_DEFAULT_TOKENS = 0;
+const RESERVE_TOKENS = process.env.RULES_AGENT_RESERVE_TOKENS === undefined
+  ? RESERVE_DEFAULT_TOKENS
+  : (Number(process.env.RULES_AGENT_RESERVE_TOKENS) || 0);
+// The retry instruction for a JSON call that was cut: an agent reply is 787-1,113 characters
+// while an ordinary call spends 1,299-2,147 completion tokens, so the room is there to reclaim
+// by asking for the object alone rather than for another round of thinking.
+const RESERVE_BREVITY = '\n\nYour previous reply was cut off at the output limit before it finished. Reply with the JSON object only, on one line, and keep every string short: no preamble, no restating the question, no reasoning inside the fields.';
+
 async function routeText(route, prompt, key, maxTokens, opts) {
   if (!key) return '';
   const name = route.name || route.model || 'route';
@@ -2636,6 +2654,9 @@ async function routeText(route, prompt, key, maxTokens, opts) {
   // task-89/task-91: set when a JSON call was cut on LENGTH, so the retry drops the reasoning
   // instead of buying more room to think. See the length branch below.
   let reasoningOff = false;
+  // task-105: the retry's own reasoning setting and prompt when the reserve is on.
+  let retryReasoning = '';
+  let sendPrompt = prompt;
   for (let attempt = 0; attempt < 3; attempt++) {
     ROUTE_STATS.calls++;
     bucket.calls++;
@@ -2647,7 +2668,7 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     // value this route already uses for the OpenRouter shape - can be measured on the agent's REAL
     // prompt without a code change per arm. Not a tuning dial; it exists for the three-arm test.
     const override = process.env.RULES_AGENT_EFFORT;
-    const reasoning = reasoningOff ? 'none' : (override !== undefined && override !== '' ? override : ((opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning));
+    const reasoning = retryReasoning || (reasoningOff ? 'none' : (override !== undefined && override !== '' ? override : ((opts && opts.reasoning !== undefined) ? opts.reasoning : route.reasoning)));
     // task-76: the reasoning control differs by gateway, and a wrong one is a 400 rather
     // than a bad answer - so both shapes are VERIFIED, not assumed: a live call to
     // OpenRouter's minimax with reasoning_effort returned 200 but reasoning 'null' (the
@@ -2671,7 +2692,7 @@ async function routeText(route, prompt, key, maxTokens, opts) {
     // with a clean object). RULES_JSON_MODE=0 turns it off for an A/B measurement.
     const body = JSON.stringify(Object.assign({
       model: route.model,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: sendPrompt }],
       max_tokens: budget,
     }, nested ? { reasoning: { effort: effort || 'low' } } : (effort ? { reasoning_effort: effort } : {}), jsonMode && json ? { response_format: { type: 'json_object' } } : {}));
     const res = await new Promise((resolve, reject) => {
@@ -2749,6 +2770,9 @@ async function routeText(route, prompt, key, maxTokens, opts) {
       const record = {
         shape,
         stage,
+        // task-105: the reasoning setting THIS call actually used, so an arm is provable
+        // from /health rather than inferred from the code path.
+        reasoning: String(reasoning || ''),
         attempt: attempt + 1,
         maxTokens: budget,
         promptTokens: usage ? Number(usage.prompt_tokens || 0) : null,
@@ -2780,8 +2804,15 @@ async function routeText(route, prompt, key, maxTokens, opts) {
       // which is the cheap path the agent already falls back to on a timeout.
       const cutOnLength = !!(choice && choice.finish_reason === 'length');
       if (cutOnLength) {
-        budget *= 2;
-        if (json) reasoningOff = true;
+        if (RESERVE_TOKENS > 0) {
+          // task-105: the reserve. Keep the reasoning at the cheapest explicit rung, buy the
+          // answer room the doubling never measured, and ask for the object alone.
+          budget += RESERVE_TOKENS;
+          if (json) { retryReasoning = 'low'; sendPrompt = prompt + RESERVE_BREVITY; }
+        } else {
+          budget *= 2;
+          if (json) reasoningOff = true;
+        }
       }
       if (attempt < 2) { recovering = true; continue; }
       return content;
@@ -2797,7 +2828,15 @@ async function routeText(route, prompt, key, maxTokens, opts) {
       if (recovering) { ROUTE_STATS.recovered++; bucket.recovered++; }
       return content;
     }
-    budget *= 2;
+    if (RESERVE_TOKENS > 0) {
+      // task-105: a JSON object cut mid-string is the same length cut, so it gets the same
+      // treatment: the reserve, the cheapest explicit reasoning rung, and the brevity clause.
+      budget += RESERVE_TOKENS;
+      retryReasoning = 'low';
+      sendPrompt = prompt + RESERVE_BREVITY;
+    } else {
+      budget *= 2;
+    }
     recovering = true;
   }
   return last;
