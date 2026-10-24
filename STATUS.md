@@ -11,7 +11,7 @@
 
 - **P1** [Design the next wiki](tasks/wiki-redesign.md) - waiting on Mandal's shape.
 - **P2** [Re-ingest and prune the vector index](tasks/index-ingest.md) - owed since the corpus cuts.
-- **P2** [Make the French record route work on the Box](tasks/french-route.md) - it has always answered English there.
+- **P3** [Carry the French overlay without the 14 MB store](tasks/french-route.md) - the route works now; it reads the whole export to serve one record.
 - **P2** [Re-translate the stale French](tasks/french-overlay.md) - 3,263 records; metered, waiting on a yes.
 - **P3** [Rebuild and republish the Android APK](tasks/android-apk.md) - the shell change has not reached the phone.
 

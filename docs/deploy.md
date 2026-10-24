@@ -34,7 +34,14 @@ long idle can take longer while the container resumes.
 
 1. **Archive the app.** The corpus and the baked payloads are untracked, so a git
    clone is not enough: `tar -czf mhq-deploy.tgz BUILD src img workspace/rules-corpus
-   workspace/wiki-data workspace/web-bundle.zip workspace/app-bundle.zip`.
+   workspace/wiki-data workspace/web-bundle.zip workspace/app-bundle.zip
+   workspace/i18n/fr-full.json`.
+   **The French overlay is not optional in the same way as img/**: `/rules/record?...&lang=fr`
+   reads `workspace/i18n/fr-full.json` directly (`src/i18n-fr.mjs`, its `sourcePath()`), and
+   the payload's per-book French carries the text but not the source hash, so it cannot
+   answer the freshness check on its own. An archive without the file leaves the Box on
+   whatever overlay an older deploy left behind (measured 2026-10-24: an Oct 21 copy with
+   no hashes, so every request fell back to English) or on none at all.
    **The two zips are not optional either**: `/web-bundle.zip` is the one download the
    WebView app makes, and the server serves the file from disk (`WEB_BUNDLE_ZIP` or
    `workspace/web-bundle.zip`), so an archive without them leaves the Box handing the

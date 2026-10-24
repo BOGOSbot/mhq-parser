@@ -1,19 +1,19 @@
-# Make the French record route work on the Box
+# Carry the French overlay without the 14 MB store
 
-*The server-side French never works in production: the translation store is not in the deploy archive, so every lang=fr request answers English.*
+*The record route reads the whole translation export to answer one record. The payload already carries the filtered French, per book.*
 
 - **State:** pending
-- **Priority:** P2
+- **Priority:** P3
 - **Owner:** me
 
 ## Where it stands
 
-`/rules/record?...&lang=fr` and `/rules/fr` read `workspace/i18n/fr-full.json`, and the archive carries BUILD, src, img, workspace/rules-corpus, workspace/wiki-data and the two zips - not `workspace/i18n`. So the route has always fallen back to English on the Box. What a French reader actually sees comes from the pre-baked `records-fr` in the bundle, which is built locally and is current. The payload data route also refuses `i18n/` paths by design (server.mjs:1008), so the baked French is not served as data either; only the Android shell reads it, off its own disk.
+The route works now: the deploy archive carries `workspace/i18n/fr-full.json`, so `lang=fr` answers French for a current record and English for a stale one (verified 2026-10-24: `core-rules#Introduction` French, `ability-def#blast` English). What is left is the shape of it: `src/i18n-fr.mjs` loads a 14 MB export to serve one record's French, when the payload's own `i18n/fr/<book>.json` is already filtered by the source hash and is 2.87 MB in total. The export is needed at bake time to decide freshness; the server only needs the decision's result.
 
 ## Next action
 
-Point the route at the payload's own `i18n/fr/<book>.json` (it is already in the archive and already filtered by the source hash), and drop the dependency on the 14 MB store.
+Point `frText` at the payload's per-book files when they exist, fall back to the export when they do not, and drop the export from the archive once the payload is the source.
 
 ## Notes for a fresh session
 
-The filtering lives in `frFresh` (src/i18n-fr.mjs): a French body is served only while the hash of its English still holds. Today 2,908 of 6,171 records carry French and 3,263 are stale; re-translating them is metered and needs a yes.
+The freshness rule is `frFresh` in `src/i18n-fr.mjs`: an entry is served only while the hash of its English still holds. 2,908 of 6,171 records carry French; 3,263 are stale and wait on a metered re-translation (tasks/french-overlay.md).
