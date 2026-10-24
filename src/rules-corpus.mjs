@@ -3303,13 +3303,25 @@ export function agentPrompt(question, passages, opts) {
     'A record that states a rule is not yet a record that APPLIES to the subject of the question.',
     '- Every record names a SCOPE: who the rule reaches. It is written in the record - "models in this model\u2019s unit", "the bearer", "one friendly Astra Militarum Vehicle model", "ADEPTUS MECHANICUS BATTLELINE models", "a friendly unit within 6\"". For each record you rely on, state that scope in "why" and say whether the SUBJECT of the question is inside it.',
     '- A record whose scope EXCLUDES the subject cannot support the answer, whichever way it reads. Name it and look for one that reaches the subject.',
-    // task-82: the conditional-yes rule, and the pair that proves it. The Rampart Crest
-    // gives a 5+ invulnerable save to 'models in that unit' while the bearer LEADS a unit.
-    // The same record answers 'does a unit led by a Kahl have a 5+ save' YES and 'can a Kahl
-    // have a 5+ save from its crest' NO, because the Kahl is the bearer, not a model in the
-    // unit it leads. The bank encodes it and the old prompt left both halves to luck.
+    // task-82: the conditional-yes rule, and the two pairs that prove it. The Rampart Crest
+    // reads 'While this model is leading a unit, models in that unit have a 5+ invulnerable
+    // save'. That is a UNIT-affecting ability, so it reaches every model in the attached unit
+    // the bearer leads, the Kahl included (core-rules#Abilities-in-Attached-Units: 'abilities/
+    // rules that affect a unit (or models in it) apply to every model in an attached unit',
+    // and a leader 'continues to benefit from its own while this model is leading a unit
+    // abilities'). The Kahl question is therefore a CONDITIONAL YES whose condition is the
+    // answer, not a no: 'does a unit led by a Kahl have a 5+ save' takes the same answer.
+    // The different-subject half needs a record that really misses its subject, and
+    // Omnissiah's Blessing supplies it - it reaches 'one friendly Astra Militarum Vehicle
+    // model', so it is a yes for a Baneblade and a no for an Infantry squad, one record and
+    // two answers decided by the scope. (An earlier comment here claimed the Kahl sat outside
+    // its own crest and scored the pair opposite; that reading contradicted the attached-units
+    // rule and is removed. The bank's Kahl pair is yes/yes, and the no cases are the scope
+    // decoys.)
     '- A grant has a SUBJECT and often a CONDITION. Two questions can rest on one record and have opposite answers: yes when the grant reaches the subject of the question, no when it reaches a different one, however similar the wording.',
     '- A conditional yes is still a YES, and its answer MUST state the condition in the same sentence - "Yes, while the bearer is leading that unit" - because the condition is the answer. Never a bare "Yes" for a conditional grant, and never a yes when the scope puts the subject outside the grant.',
+    '- The condition does not turn it into a no: an answer that reads "it does not have it by default, but it gains it while the bearer leads that unit" is a conditional YES, and its verdict is "yes", not "no". The answer line starts with Yes and carries the condition.',
+    '- Worked pair for the different-subject half: Omnissiah’s Blessing reaches "one friendly Astra Militarum Vehicle model", so "can a Baneblade have an invulnerable save?" is a YES and "can an Infantry squad have one from a Tech-Priest Enginseer?" is a NO, on the same record - the scope decides, not the wording.',
     '- A scope is usually a KEYWORD rather than the subject\u2019s name. When the passages carry the subject\u2019s own keyword list, compare it with the scope: if the subject carries a keyword the scope names, the record APPLIES and the answer is what it says. This is the join, and it is written in the passages, not in what you know about the game.',
     '- Once the scope check is done the answer is DECISIVE: yes when a record that applies grants it, no when none does. Do not answer "no general answer is given" or "it depends" when a record in front of you applies - that is the hedge this check exists to prevent.',
     o.scoped === true

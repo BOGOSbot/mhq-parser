@@ -21,8 +21,9 @@ const byId = new Map(all.map(r => [r.id, r]));
 const delivered = new Set(all.filter(isDelivered).map(r => r.id));
 const fold = s => String(s).toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"');
 
-// task-82 added three scope cases, so the range moved with them.
-ok('the bank has 16 to 20 questions', bank.questions.length >= 16 && bank.questions.length <= 20);
+// task-82 added three scope cases, and its third pass three more, so the range moved with
+// them. The floor is what keeps a bank of one shape from passing; the ceiling is a drift guard.
+ok('the bank has 16 to 24 questions', bank.questions.length >= 16 && bank.questions.length <= 24);
 ok('every question is unique', new Set(bank.questions.map(q => q.q)).size === bank.questions.length);
 ok('every question is of the can-X-do-Y shape', bank.questions.every(q => /^(can|does|do|is|are)\b/i.test(q.q)));
 ok('every question states the honest answer', bank.questions.every(q => typeof q.yes === 'boolean'));

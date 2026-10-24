@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created": "2026-10-21 (task-64): the capability bank. Every question is of the shape 'can X do Y', and every one is built from the corpus rather than from imagination - the answer record and the decoy were found by searching for sentences that grant the capability (see workspace/t64-scan.mjs). The 33-question bank measures retrieval; this one measures APPLICABILITY: whether the record the judge rests on actually reaches the subject of the question.",
-  "note": "Fields: q, kind, answer (the record that ACTUALLY applies, or null when the honest answer is no and no single record is the answer), decoy (a record that grants the same capability to something else - the record a judge cites when it does not check the scope), yes (the honest answer), reason (why, so a later reader can check the bank rather than trust it), scope (the phrase in the record that decides applicability). scopeSource names the record the scope phrase is quoted from when the question's honest answer is no and the rule that decides it is a general one rather than a record about the subject. THE CONDITIONAL-YES SEMANTICS (task-82), which cases 5 and 6 exist to test: a grant has a SUBJECT and often a CONDITION, and the two are read separately. A grant that reaches the SUBJECT of the question under a condition is a YES, and the answer must state the condition in the same sentence because the condition is the answer - never a bare \"Yes\". A grant that reaches a DIFFERENT subject is a NO, however similar the wording. Cases 5 and 6 rest on the same record, the Rampart Crest (unitrules#000002594~3), and have opposite answers: it gives a 5+ invulnerable save to \"models in that unit\" while the bearer is leading a unit, so a unit led by a Kahl has it (6, yes, and the condition is the answer) and the Kahl itself does not have it from its own crest (5, no - the Kahl is the bearer, not a model in the unit it leads). A verdict that is right on one half and wrong on the other is the failure this pair exists to catch. RE-SCORED AND EXTENDED (task-82, second pass): the bank had scored EVERY conditional grant as no, which is the error the app must not make - a grant that reaches the subject under a condition is a yes (cases 5, 8, 9 re-scored), a grant that reaches a different subject is a no. Case 5 is kept as a KNOWN-CONFOUNDED record (the Kahl datasheet already carries inv 4+); case 10 was reworded to what the rule decides; case 16 is the default rule, with faction-rule#000009994 named as the exception it does not cover. Three scope cases were added (Onager aura vs Baneblade, Sanctifiers vs attached priest, Deathstrike after Advancing) so the bank still measures applicability rather than agreement.",
+  "note": "Fields: q, kind, answer (the record that ACTUALLY applies, or null when the honest answer is no and no single record is the answer), decoy (a record that grants the same capability to something else - the record a judge cites when it does not check the scope), yes (the honest answer), reason (why, so a later reader can check the bank rather than trust it), scope (the phrase in the record that decides applicability). scopeSource names the record the scope phrase is quoted from when the question's honest answer is no and the rule that decides it is a general one rather than a record about the subject. THE CONDITIONAL-YES SEMANTICS (task-82), which cases 5 and 6 exist to test: a grant has a SUBJECT and often a CONDITION, and the two are read separately. A grant that reaches the SUBJECT of the question under a condition is a YES, and the answer must state the condition in the same sentence because the condition is the answer - never a bare \"Yes\". A grant that reaches a DIFFERENT subject is a NO, however similar the wording. Cases 5 and 6 rest on the same record, the Rampart Crest (unitrules#000002594~3), and have opposite answers: it gives a 5+ invulnerable save to \"models in that unit\" while the bearer is leading a unit, so a unit led by a Kahl has it (6, yes, and the condition is the answer) and so does the Kahl in the attached unit it leads, because core-rules#Abilities-in-Attached-Units makes an attached unit a single unit for all rules purposes and a leader keeps benefiting from its own ‘while this model is leading a unit’ abilities (5, conditional yes; ALSO CONFOUNDED, since the Kahl datasheet carries inv 4+, which is why the pair is kept only as a known-confounded record and the different-subject half is carried by the scope decoys). A verdict that is right on one half and wrong on the other is the failure this pair exists to catch. RE-SCORED AND EXTENDED (task-82, second pass): the bank had scored EVERY conditional grant as no, which is the error the app must not make - a grant that reaches the subject under a condition is a yes (cases 5, 8, 9 re-scored), a grant that reaches a different subject is a no. Case 5 is kept as a KNOWN-CONFOUNDED record (the Kahl datasheet already carries inv 4+); case 10 was reworded to what the rule decides; case 16 is the default rule, with faction-rule#000009994 named as the exception it does not cover. Three scope cases were added (Onager aura vs Baneblade, Sanctifiers vs attached priest, Deathstrike after Advancing) so the bank still measures applicability rather than agreement. THIRD PASS (task-82): the Deathstrike case was a SECOND bank error of the same shape - ‘can a Deathstrike shoot after it moved?’ is a yes for the unit (normal shooting needs only that it did not Advance, and the missile’s Remained Stationary restriction reaches the missile, not the unit), so the question now names the missile; the ‘turn in which it Advanced’ case keeps its no but its reason moved to NORMAL/ASSAULT SHOOTING; and three more scope decoys joined (Enginseer vs an Infantry squad, Abaddon’s aura vs DAMNED, Firing Deck vs a Land Raider).",
   "questions": [
     {
       "q": "Can a baneblade have an invulnerable save?",
@@ -164,7 +164,7 @@
       "scopeSource": "core-rules#Movement-Phase->-3.-End-of-Movement-Phase->-09.05.01-More-Than-One-Normal-Move-in-a-Phase->-FALL-BACK-MOVE"
     },
     {
-      "q": "Can a Deathstrike shoot after it moved?",
+      "q": "Can a Deathstrike fire its Deathstrike missile after it moved?",
       "kind": "capability",
       "yes": false,
       "answer": null,
@@ -172,7 +172,7 @@
         "unitrules#000000699"
       ],
       "scope": "only if it Remained Stationary this turn",
-      "reason": "The Deathstrike missile can only be fired if the bearer Remained Stationary. NO RECORD IS THE ANSWER: the no comes from a restriction inside the unit's own keyword list ('can only shoot with this weapon ... only if it Remained Stationary this turn'), which is the record named as the decoy-shaped evidence rather than a record that states the rule. It is in the bank to test whether a no survives when the evidence names the subject itself."
+      "reason": "REWORDED task-82, third pass: the old question was a BANK ERROR, and the agent's yes was right. A unit that made a normal move is still eligible to shoot - NORMAL SHOOTING at core-rules#Shooting-Phase->-3.-End-of-Shooting-Phase->-NORMAL-SHOOTING is 'eligible if your unit is unengaged and did not make an advance move this turn' - and the Deathstrike carries a heavy bolter, a heavy flamer and a hunter-killer missile, so the honest answer for the unit is YES. The Restriction in unitrules#000000699 reaches the weapon, not the unit: 'Plasma Warhead - The bearer can only shoot with this weapon in your Shooting phase, and only if it Remained Stationary this turn.' The question now names the missile, so the no is honest and its scope decides it. This is the same instrument error as case 10: the question did not name the subject the rule is about."
     },
     {
       "q": "Does a unit have to Remain Stationary to fire a Hazardous weapon?",
@@ -227,8 +227,42 @@
       "decoy": [
         "unitrules#000000699"
       ],
-      "scope": "Remained Stationary",
-      "reason": "NEW task-82, the scope split. unitrules#000000699 carries the Deathstrike’s own restriction: the missile can only be fired if the bearer Remained Stationary. Advancing is not Remaining Stationary, so the grant does not reach the subject in that turn and the answer is NO. The decoy is the record itself, whose restriction is exactly what decides it - read past the restriction and it looks like a grant."
+      "scope": "did not make an advance move this turn",
+      "reason": "REASON CORRECTED task-82, third pass. The no is right; the old reason reached it by the wrong route. A unit that Advanced may not fire normally: NORMAL SHOOTING at core-rules#Shooting-Phase->-3.-End-of-Shooting-Phase->-NORMAL-SHOOTING is eligible only for a unit that 'did not make an advance move this turn', and ASSAULT SHOOTING needs one or more [ASSAULT] weapons, which no Deathstrike weapon carries. So the Deathstrike cannot shoot at all that turn, and the missile's Remained Stationary restriction (unitrules#000000699) is a second, independent bar rather than the deciding one. The decoy is that record, cited without the shooting-type rule that actually settles it.",
+      "scopeSource": "core-rules#Shooting-Phase->-3.-End-of-Shooting-Phase->-NORMAL-SHOOTING"
+    },
+    {
+      "q": "Can a Cadian Shock Troops squad have an invulnerable save from a Tech-Priest Enginseer?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000001396"
+      ],
+      "scope": "select one friendly Astra Militarum Vehicle model within 3\"",
+      "reason": "NEW task-82, third pass, the scope split, and the mirror of case 1. unitrules#000001396: 'Omnissiah’s Blessing - In your Command phase, select one friendly Astra Militarum Vehicle model within 3\" of this model. That VEHICLE model regains up to D3 lost wounds and, until the start of your next Command phase, that VEHICLE model has a 4+ invulnerable save.' The scope is VEHICLE. A Cadian Shock Troops squad (unitrules#000002612, keywords ASTRA MILITARUM, INFANTRY, BATTLELINE) carries no invulnerable save of its own, so the grant reaches a different subject: NO. The same record answers case 1 YES for a Baneblade - one record, two answers, decided by the scope."
+    },
+    {
+      "q": "Does an Accursed Cultists unit within 6\" of Abaddon the Despoiler have a 4+ invulnerable save?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000000924~2"
+      ],
+      "scope": "excluding DAMNED units",
+      "reason": "NEW task-82, third pass, the scope split. unitrules#000000924~2: 'Mark of Chaos Ascendant (Aura) - While a friendly Heretic Astartes Infantry or Heretic Astartes Mounted unit (excluding DAMNED units) is within 6\" of this model, models in that unit have a 4+ invulnerable save.' Accursed Cultists (unitrules#000002571~1) carry the Damned keyword, so the aura’s own exclusion puts them outside it: NO. The decoy is that record, cited without its 'excluding DAMNED units' clause - the same join failure the bank exists to catch, on a keyword the scope EXCLUDES rather than one it names."
+    },
+    {
+      "q": "Can a unit embarked within a Land Raider shoot?",
+      "kind": "capability",
+      "yes": false,
+      "answer": null,
+      "decoy": [
+        "unitrules#000002541~1"
+      ],
+      "scope": "if one or more units are embarked within it",
+      "reason": "NEW task-82, third pass, the scope split. Firing Deck travels with the transport’s own record, not with the TRANSPORT keyword: unitrules#000002541~1 (Starweaver) carries 'Ability (Core): Firing Deck', while the Space Marines Land Raider (unitrules#000000065~1 and ~2) carries none. A unit embarked in a transport is not on the battlefield, and core-rules#2.-Shoot makes eligibility to shoot require being on the battlefield, so a Land Raider’s passengers cannot shoot: NO. The decoy is the Starweaver record - a real grant of the same capability to the passengers of a different transport, which is what a judge cites when it reads the ability and not the transport it belongs to."
     }
   ]
 }
