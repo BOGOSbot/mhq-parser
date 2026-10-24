@@ -50,10 +50,13 @@ ok('a 0x chapter is not a cut entry', kids('tree/rules/core-rules.js').filter(x 
 // 2026-10-19 (task-33): the export adds one core-book record, so 343 -> 344.
 // task-99: 349. The appendix's entries reach the core book, and the two new ability
 // definitions (EXTRA ATTACKS, ONE SHOT) are rows there too.
-ok('and its children are the entries: 349 under Core Rules', (function () {
+// task-102: 347. A recovered ability definition is a leaf that rides the appendix row
+// its number names (three section rows leave the list), and the appendix's [TORRENT]
+// clarification is a section of its own again (24.37, one row enters).
+ok('and its children are the entries: 347 under Core Rules', (function () {
   const entryCount = f => (f.kids || []).reduce((n, k) => n + entryCount(files[k.f] || { recs: [] }), (f.recs || []).length);
   const flat = b => (files[b].kids || []).reduce((n, k) => n + entryCount(files[k.f] || {}), 0);
-  return flat('tree/rules/core-rules.js') === 349;
+  return flat('tree/rules/core-rules.js') === 347;
 })());
 ok('a book is never a cutoff', !files['tree/rules/core-rules.js'].cut);
 ok('the two ruling books are waypoints, their chapters are the cutoffs', !files['tree/rulings/wtc.js'].cut && !files['tree/rulings/feq.js'].cut && kids('tree/rulings/wtc.js').every(x => x.cut) && kids('tree/rulings/feq.js').every(x => x.cut));

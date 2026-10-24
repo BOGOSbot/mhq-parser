@@ -472,6 +472,17 @@ export function tocTree(records, pageOf, opts) {
   // longest heading prefix that is a section; the nearest earlier section with
   // the same first heading segment (the entry an errata annotates sits above
   // it). No target means unattached, counted per book, never invented.
+  //
+  // task-102: the appendix is the one page whose heading path is no use. Its whole
+  // Universal Rules Updates block sits under the [ONE SHOT] h2, so the heading path
+  // names that h2 for a hundred entries, and the recovered ability definition whose
+  // heading is exactly [ONE SHOT] swallowed every one of them by longest-prefix. An
+  // appendix entry is placed by the PAGE'S OWN OUTLINE and its OWN NUMBER instead:
+  // the entry names the rule it updates in ruleId, the page outline says which of
+  // those numbers is a section on the page (and the header's anchor resolves to the
+  // appendix's own record), and an entry whose number names no page section rides
+  // the updates block it belongs to. A record that is the section its own number
+  // names is a section, not an annotation.
   // The record an update names, by its number: a rule carrying that ruleId, else
   // the numbered section whose own leaf leads with it. An update is not its own
   // target (it is an annotation), so the map is built from sections and rules.
@@ -479,6 +490,34 @@ export function tocTree(records, pageOf, opts) {
   const noteNumber = (r, n) => { if (n && !targetByNumber.has(n)) targetByNumber.set(n, r); };
   for (const r of records) if (r.ruleId) noteNumber(r, String(r.ruleId));
   for (const r of records) if (!isAnnotation(r)) noteNumber(r, updateRuleNumber(r));
+  // task-102: the appendix page's outline, by number. Each numbered heading's anchor
+  // resolves to the appendix's own record, so the entry lands on the section the page
+  // shows. exact wins; otherwise the heading whose number the entry's number leads
+  // (24.26 is 24.26.01's section, 18.02 is 18.02.01's).
+  const apSectionFor = (() => {
+    const ap = appendixOutlineDefault();
+    if (!ap) return () => null;
+    const byAnchor = new Map();
+    for (const r of records) if (r.source === 'rules-appendix' && r.anchor && !byAnchor.has(String(r.anchor))) byAnchor.set(String(r.anchor), r);
+    const exact = new Map(), prefixed = [];
+    for (const h of ap.headings) {
+      if (!h.num) continue;
+      const rec = byAnchor.get(String(h.id)) || null;
+      if (!rec) continue;
+      if (!exact.has(h.num)) exact.set(h.num, rec);
+      prefixed.push({ num: h.num, rec: rec });
+    }
+    return num => {
+      const s = String(num || '');
+      if (!s) return null;
+      if (exact.has(s)) return exact.get(s);
+      for (const e of prefixed) if (e.num.indexOf(s + '.') === 0) return e.rec;
+      return null;
+    };
+  })();
+  // The Universal Rules Updates header: the 00 chapter's own row, and the home of every
+  // appendix entry the page gives no section of its own.
+  const uruNode = records.find(r => r.source === 'rules-appendix' && String(r.id).indexOf('Universal-Rules-Updates') !== -1) || null;
   const attach = new Map();
   const attachTarget = new Map();
   const unattached = [];
@@ -497,7 +536,19 @@ export function tocTree(records, pageOf, opts) {
       // row of its own, labelled by the number it names, never silently tucked
       // into a rule it does not update.
       const un = updateRuleNumber(a);
-      let target = un ? (targetByNumber.get(un) || null) : null;
+      // task-102: an appendix entry is placed by the page's own outline and its own
+      // number, never by the heading path. The update-number branch is for a core
+      // errata that names its rule in its leaf; an appendix entry does not use it,
+      // because its page is the authority and its entries ride the block whose outline
+      // header opens the 00 chapter.
+      let target = null;
+      if (a.source === 'rules-appendix') {
+        const hit = a.ruleId ? apSectionFor(a.ruleId) : null;
+        if (hit && hit.id === a.id) { keptVisible.push(a); annotationTotal -= 1; continue; }
+        target = hit || uruNode;
+      } else {
+        target = un ? (targetByNumber.get(un) || null) : null;
+      }
       if (!target && !un) {
         let cur = a.parent ? byIdAll.get(a.parent) : null, guard = 0;
         while (cur && guard++ < 24) { if (!isAnnotation(cur)) { target = cur; break; } cur = cur.parent ? byIdAll.get(cur.parent) : null; }
@@ -611,6 +662,8 @@ export function tocTree(records, pageOf, opts) {
       // Abilities keeps exactly one [ONE SHOT] section (24.26).
       const chapterTitle = String(ch.title || '').trim();
       const allRows = sortChapterRows(primaryOf(ch.recs), ch.title);
+      // task-102: the definitions that ride a section rather than being listed twice.
+      const defsHidden = new Set();
       // The section each appendix definition names: its number's first two parts.
       // Only the appendix names a section; the core's own 3-part rows are the book's
       // sub-rules and keep the home they had.
@@ -644,6 +697,22 @@ export function tocTree(records, pageOf, opts) {
         if (rn.split('.').length !== 2) continue;
         const g = groups.get(rn);
         if (!g) continue;
+        const lead = g.rows[0];
+        // task-102: a recovered ability definition (ability-def#...) is a leaf, not a row:
+        // it rides the appendix row its number names, so 24.26 [ONE SHOT] reads the one
+        // row the page prints (24.26.01) and the definition is still counted once. The
+        // definition's own leaf titles the section, and the page-container rename below
+        // must leave it alone.
+        if (String(r.id).indexOf('ability-def#') === 0 && lead && lead.id !== r.id) {
+          if (!attach.has(lead.id)) attach.set(lead.id, []);
+          attach.get(lead.id).push(r);
+          attachTarget.set(r.id, lead.id);
+          defsHidden.add(r.id);
+          g.name = cleanTitle(leafTitle(r));
+          g.defName = true;
+          loose.splice(loose.indexOf(r), 1);
+          continue;
+        }
         g.rows.push(r);
         g.name = cleanTitle(leafTitle(r));
         g.seg = '';
@@ -683,6 +752,7 @@ export function tocTree(records, pageOf, opts) {
         segOwners.get(g.seg).add(g.num);
       }
       for (const g of groups.values()) {
+        if (g.defName) continue;
         if (!/^\[[^\]]+\]$/.test(g.name)) continue;
         const owners = segOwners.get(g.name.toLowerCase());
         if (!owners || owners.size < 2) continue;
@@ -697,7 +767,7 @@ export function tocTree(records, pageOf, opts) {
       // is attached to it: still delivered, still found by its own slug, counted in
       // the section's annotation badge. The groups are read first, so a hidden
       // appendix row still opened its section.
-      const hidden = new Set();
+      const hidden = new Set(defsHidden);
       const byTitle = new Map();
       const titleOf = r => cleanTitle(leafTitle(r)).replace(/^\d{2}(?:\.\d{2}){1,2}\s*[-\u2013]?\s*/, '').toLowerCase();
       const visible = [];
@@ -723,6 +793,10 @@ export function tocTree(records, pageOf, opts) {
           if (!attach.has(keep.id)) attach.set(keep.id, []);
           attach.get(keep.id).push(r);
           attachTarget.set(r.id, keep.id);
+          // task-102: the annotations of the copy that is hidden ride the copy that stays,
+          // or they are counted in the book and in no chapter.
+          for (const a of (attach.get(r.id) || [])) { attach.get(keep.id).push(a); attachTarget.set(a.id, keep.id); }
+          attach.delete(r.id);
           hidden.add(r.id);
           // A record the importer split rides its primary: hide the parts with it.
           for (const t of (mergedOn.get(r.id) || [])) {
@@ -837,6 +911,7 @@ export function tocTree(records, pageOf, opts) {
     // The URU block and its topics left this book for the 00 chapter below, with
     // their annotations: subtract them or the Rules total counts them twice.
     const bookC = bookRecs.length - (unattached.length - before) - (dropped.length - beforeDropped) - (u >= 0 ? 1 : 0)
+      - (u >= 0 && uruRecord ? (attach.get(uruRecord.id) || []).length : 0)
       - uruExtra.reduce((n, r) => n + 1 + (attach.get(r.id) || []).length, 0);
     const file = 'tree/rules/' + book.slug + '.js';
     files[file] = { n: book.name, lvl: 'book', c: bookC, kids: kids };
