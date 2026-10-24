@@ -10,7 +10,7 @@
 - **P1** [Finish the rows contract](tasks/rows-contract-phase2.md) - part A landed: the client and the phone read the addressing table. Part B, the twelve lvl names and the tree shapes, is open.
 
 - **P1** [Design the next wiki](tasks/wiki-redesign.md) - waiting on Mandal's shape.
-- **P2** [Address bodies by content](tasks/bodies-by-content.md) - 57.7% of the baked HTML store repeats; about 0.6 MB of the phone download.
+- **P2** [Address bodies by content](tasks/bodies-by-content.md) - the bake half landed: the web bundle's HTML store is content addressed and 0.75 MB smaller. The phone's record route patch is carded in tasks/android-apk.md.
 - **P2** [Give the client a tree model](tasks/client-model.md) - the reader is tested by regex on its own source, and it keeps the last copy of the row rule.
 - **P2** [Re-ingest and prune the vector index](tasks/index-ingest.md) - owed since the corpus cuts.
 - **P2** [Re-translate the stale French](tasks/french-overlay.md) - 3,263 records; metered, waiting on a yes.

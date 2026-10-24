@@ -9,7 +9,8 @@
 //   index.html              the bytes GET /rules returns today, stamps substituted the same way
 //   assets/*                the real client files, copied
 //   data/**                 a copy of workspace/wiki-data
-//   records/<book>.json     the pre-rendered recordBody() HTML, English
+//   records/<book>.json     the pre-rendered recordBody() HTML, English, addressed by
+//                           content: bodies keyed by their hash, and an id -> hash map
 //   records-fr/<book>.json  the same in French, for the records the overlay covers
 //   search/index.json       the header index the find route greps
 //   search/search.js        the matcher, from src/search-core.mjs
@@ -24,7 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
-import { assetStamp, workerStamp, dataStamp, dataDir, surfaceSlugMap } from './wiki-surface.mjs';
+import { assetStamp, bodyFiles, workerStamp, dataStamp, dataDir, surfaceSlugMap } from './wiki-surface.mjs';
 import { recordBody, cardIndex, CARD_CSS, chunkLookup } from './wiki-cards.mjs';
 // The record render's one input shape (tasks/render-context.md).
 import { renderContext } from './render-context.mjs';
@@ -165,7 +166,20 @@ export function build() {
       add(rel, buf, group);
     }
   };
-  writeBooks('records', books, 'records');
+  // task-109: the English store is content addressed (one body per distinct HTML, id ->
+  // hash); see bodyFiles() in src/wiki-surface.mjs for the shape and why. The French store
+  // stays a flat id -> HTML map: its 2,900 bodies hold only 16 duplicates and the map
+  // costs more than they save (measured 2026-10-24: 545,147 -> 613,685 compressed).
+  for (const book of Object.keys(books).sort()) {
+    const files = bodyFiles(VERSION, book, books[book]);
+    const bodyBuf = Buffer.from(files.bodies, 'utf8');
+    const idsBuf = Buffer.from(files.ids, 'utf8');
+    fs.mkdirSync(path.join(OUT, 'records'), { recursive: true });
+    fs.writeFileSync(path.join(OUT, 'records', book + '.json'), bodyBuf);
+    fs.writeFileSync(path.join(OUT, 'records', book + '-ids.json'), idsBuf);
+    add('records/' + book + '.json', bodyBuf, 'records');
+    add('records/' + book + '-ids.json', idsBuf, 'records');
+  }
   writeBooks('records-fr', booksFr, 'records-fr');
 
   // 5. the find index and the matcher. The INDEX is the same structure the server builds, so the

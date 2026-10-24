@@ -14,7 +14,7 @@ import { spawn } from 'node:child_process';
 import { build, pageHtml, OUT } from '../src/web-bundle.mjs';
 import { recordBody, cardIndex } from '../src/wiki-cards.mjs';
 import { readAllCorpus, isDelivered } from '../src/rules-corpus.mjs';
-import { surfaceSlugMap, dataStamp } from '../src/wiki-surface.mjs';
+import { surfaceSlugMap, dataStamp, bodyById } from '../src/wiki-surface.mjs';
 import { searchHeadings, buildHeaderIndex, headingVocab, translationTables, termPresent, findRows } from '../src/search-core.mjs';
 
 const N = String.fromCharCode(10);
@@ -40,14 +40,28 @@ const byId = new Map(all.map((r) => [String(r.id), r]));
 const idx = cardIndex(byId);
 const slugs = surfaceSlugMap();
 const href = (id) => { const s = slugs.get(String(id || '')); return s ? '#' + s : ''; };
-const books = {};
-for (const rel of fs.readdirSync(path.join(OUT, 'records'))) {
-  const book = rel.replace(/\.json$/, '');
-  books[book] = JSON.parse(fs.readFileSync(path.join(OUT, 'records', rel), 'utf8')).records;
+// task-109: records/<book>.json is the hash -> HTML bodies file and records/<book>-ids.json
+// the id -> hash map, so the flat view is resolved through bodyById, the shipping reader.
+const stores = {};
+for (const rel of fs.readdirSync(path.join(OUT, 'records')).sort()) {
+  const parsed = JSON.parse(fs.readFileSync(path.join(OUT, 'records', rel), 'utf8'));
+  stores[parsed.book] = stores[parsed.book] || { ids: null, bodies: null };
+  if (rel.endsWith('-ids.json')) stores[parsed.book].ids = parsed; else stores[parsed.book].bodies = parsed;
 }
 const flat = {};
-for (const b of Object.keys(books)) for (const id of Object.keys(books[b])) flat[id] = books[b][id];
+let bodies = 0;
+for (const b of Object.keys(stores)) {
+  const s = stores[b];
+  for (const id of Object.keys((s.ids && s.ids.records) || {})) flat[id] = bodyById(s.ids, s.bodies, id);
+  bodies += Object.keys((s.bodies && s.bodies.bodies) || {}).length;
+}
 ok('every delivered record has a pre-rendered body', Object.keys(flat).length === all.length);
+ok('the bodies are content addressed and fewer than the records (' + bodies + ' < ' + Object.keys(flat).length + ')', bodies > 1000 && bodies < Object.keys(flat).length);
+ok('and every id points at a hash the bodies file carries', Object.keys(stores).every(b => {
+  const s = stores[b];
+  return s.ids && s.bodies && Object.keys(s.ids.records).every(id => /^[0-9a-f]{16}$/.test(s.ids.records[id]) && s.bodies.bodies[s.ids.records[id]] !== undefined);
+}));
+ok('and the bodies file carries no id map an old reader could mistake', Object.keys(stores).every(b => stores[b].bodies && !('records' in stores[b].bodies)));
 // THE COMPARISON IS AGAINST THE ROUTE, over HTTP. A re-render here would be the task-88 trap in
 // a new coat: the before and the after would be the same build, and this test agreed with a
 // bundle whose corpora argument was wrong on 834 records.
@@ -65,8 +79,8 @@ let up = false;
 for (let i = 0; i < 120; i++) { try { const r = await fetch(ROUTE + '/health'); if (r.ok) { up = true; break; } } catch (e) { /* not up yet */ } await new Promise((r) => setTimeout(r, 500)); }
 ok('the local server the parity is checked against is up', up);
 const ids = [];
-for (const b of Object.keys(books).sort()) {
-  const list = Object.keys(books[b]).sort();
+for (const b of Object.keys(stores).sort()) {
+  const list = Object.keys(stores[b].ids.records).sort();
   for (const i of [0, Math.floor(list.length / 3), Math.floor((2 * list.length) / 3), list.length - 1]) ids.push(list[i]);
 }
 // The record the Lead named, and one from each book by name.
