@@ -57,7 +57,10 @@ const BASELINE = {
   // 2 more records (Devastator Doctrine, Sons of Russ) and the rules half 62 fewer.
   scrape: { sections: 382, chars: 288387 },
   shape: {
-    'core-rules': { sections: 382, chars: 288387 },
+    // 2026-10-24: the flavour sentence is stripped on the way to disk (5,919 characters
+    // over the 34 distinct sentences the page marks). The section count does not move,
+    // because the strip runs after the chunker and never before it.
+    'core-rules': { sections: 382, chars: 282468 },
     // task-13: +710 bytes - the Wazdakka Gutsmek datasheet now carries the full
     // PULSE JET MOVE definition that used to be a core-stratagem record.
     // task-33 (2026-10-19 export): 6,502 shaped sections, 10,244,777 bytes - the new
@@ -65,8 +68,9 @@ const BASELINE = {
     // leaves one ability's text, which merges one part back - 6,501 / 10,243,873.
     // 2026-10-24: the CSV 'legend' column is no longer written (lore is not a rule), which
     // also stopped 34 long detachments from being split, so 17 whole records replace them:
-    // 6,483 sections and 402,171 fewer bytes.
-    'factions-csv': { sections: 6483, bytes: 9841702 },
+    // 6,483 sections and 402,171 fewer bytes. The ability flavour then takes another
+    // 193,257 bytes off the same file, with the section count still 6,483.
+    'factions-csv': { sections: 6483, bytes: 9648445 },
   },
 };
 
@@ -148,7 +152,7 @@ t('(drift) the CSV path reproduces factions-csv.json', {
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
   added: csvAdded,
   missing: csvMissing,
-}, { sections: 6483, bytes: 9841702, added: 0, missing: 0 });
+}, { sections: 6483, bytes: 9648445, added: 0, missing: 0 });
 
 const rebuiltPool = fs.readdirSync(root).filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')))

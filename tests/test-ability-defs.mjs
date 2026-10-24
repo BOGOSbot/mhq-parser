@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readAllCorpus, htmlToText } from '../src/rules-corpus.mjs';
+import { readAllCorpus, htmlToText, stripAbilityFlavour } from '../src/rules-corpus.mjs';
 import { lookupRecord } from '../src/header-index.mjs';
 
 // task-50: the 19 universal abilities the core rules page defines verbatim but
@@ -20,7 +20,10 @@ function ok(name, got) { t(name, !!got, true); }
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const all = readAllCorpus();
 const defs = all.filter(r => r.id.indexOf('ability-def#') === 0);
-const pageText = htmlToText(fs.readFileSync(path.join(ROOT, 'workspace', 'rules-corpus', 'core-rules.html'), 'utf8')).replace(/\s+/g, ' ');
+// 2026-10-24: the page is read through the same strip the corpus build applies, so the
+// verbatim guarantee survives the flavour cut - the record is still page text, minus the
+// one sentence Wahapedia marks as flavour.
+const pageText = stripAbilityFlavour(htmlToText(fs.readFileSync(path.join(ROOT, 'workspace', 'rules-corpus', 'core-rules.html'), 'utf8')).replace(/\s+/g, ' '));
 
 // 21 since task-99: excluding the appendix from the 'already has a heading' check let
 // [EXTRA ATTACKS] and [ONE SHOT] through, both real page definitions the corpus uses.
@@ -32,7 +35,7 @@ t('every record is named by its bracketed heading', defs.map(r => r.heading).sor
 
 // The no-fabrication guarantee, checked whole: each record's text is a substring
 // of the page's own text. A single invented sentence would break this.
-t('every definition is verbatim from the page', defs.filter(r => pageText.indexOf(r.text) !== -1).length, 21);
+t('every definition is verbatim from the page, minus the flavour sentence', defs.filter(r => pageText.indexOf(r.text) !== -1).length, 21);
 ok('and each carries the rulebook number the page prints', defs.every(r => /^2[0-9]\.[0-9]+$/.test(String(r.ruleId))));
 t('no record is empty', defs.filter(r => !String(r.text || '').trim()).length, 0);
 

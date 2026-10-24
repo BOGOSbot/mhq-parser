@@ -1777,9 +1777,53 @@ export function corpusPath(name, dir) {
   return path.join(dir || corpusDir(), name + '.json');
 }
 
+// Mandal, 2026-10-24: the flavour sentence is out, and it leaves AFTER the chunking.
+// Wahapedia marks it with its own class (<p class="ShowFluff abLegend">...</p>) and the
+// rule text always follows that paragraph rather than sitting inside it, so the sentences
+// can be named exactly and removed. It has to happen on the way to disk and not in the
+// converter: the extractor drops a section under MIN_CHARS and splits one over MAX_CHARS,
+// so stripping first re-chunked the corpus and silently lost two core-rules sections that
+// were only above the floor because of their flavour. Measured on all 59 paragraphs of the
+// core-rules page: every one is prose, no roll, no keyword, no number.
+let FLAVOUR = null;
+export function abilityFlavourSentences() {
+  if (FLAVOUR) return FLAVOUR;
+  let page = '';
+  try { page = fs.readFileSync(path.join(corpusDir(), 'core-rules.html'), 'utf8'); } catch (e) { page = ''; }
+  const set = new Set();
+  for (const m of page.matchAll(/<p[^>]*class="[^"]*abLegend[^"]*"[^>]*>([\s\S]*?)<\/p>/g)) {
+    const t = htmlToText(m[1]).replace(/\s+/g, ' ').trim();
+    if (t.length > 20) set.add(t);
+  }
+  FLAVOUR = set;
+  return set;
+}
+export function stripAbilityFlavour(text) {
+  const original = String(text == null ? '' : text);
+  let s = original;
+  let hit = false;
+  for (const f of abilityFlavourSentences()) {
+    if (s.indexOf(f) === -1) continue;
+    s = s.split(f).join(' ');
+    hit = true;
+  }
+  // A record with no flavour is returned byte for byte: the tidy-up below is only there
+  // to close the gap the sentence leaves, and running it on every record rewrote the
+  // whitespace of 43 mission cards for no reason (caught by the before/after check).
+  if (!hit) return original;
+  return s.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
 export function writeCorpus(name, payload, dir) {
+  // Every section that reaches disk passes here, whichever source built it - the page
+  // scrape, the CSV path, the ability definitions - so the flavour cannot come back
+  // through a path nobody remembered.
+  const sections = Array.isArray(payload && payload.sections) ? payload.sections.map(s => {
+    const text = stripAbilityFlavour(s.text);
+    return text === s.text ? s : Object.assign({}, s, { text: text, chars: text.length, hash: textHash(text) });
+  }) : null;
+  const out = sections ? Object.assign({}, payload, { sections: sections }) : payload;
   fs.mkdirSync(dir || corpusDir(), { recursive: true });
-  fs.writeFileSync(corpusPath(name, dir), JSON.stringify(payload));
+  fs.writeFileSync(corpusPath(name, dir), JSON.stringify(out));
   return corpusPath(name, dir);
 }
 
