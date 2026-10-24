@@ -7,7 +7,7 @@
 
 ## Pending
 
-- **P1** [Finish the rows contract](tasks/rows-contract-phase2.md) - the tree shapes and the Android address map still walk the payloads.
+- **P1** [Finish the rows contract](tasks/rows-contract-phase2.md) - part A landed: the client and the phone read the addressing table. Part B, the twelve lvl names and the tree shapes, is open.
 
 - **P1** [Design the next wiki](tasks/wiki-redesign.md) - waiting on Mandal's shape.
 - **P2** [Address bodies by content](tasks/bodies-by-content.md) - 57.7% of the baked HTML store repeats; about 0.6 MB of the phone download.

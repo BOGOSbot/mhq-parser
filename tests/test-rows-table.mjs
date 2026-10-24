@@ -72,7 +72,9 @@ ok('and refuses a payload with no table instead of shipping a partial list', /ha
 const web = readSrc('web-bundle.mjs');
 ok('the web bundle resolves its internal hrefs through the same view', /const slugs = surfaceSlugMap\(\);/.test(web) && web.indexOf('-rows.json') === -1);
 const client = readSrc('wiki-surface.js');
-ok('the client still reads the display rows, which phase 1 does not move', client.indexOf('-rows.json') !== -1);
+// task-108 part A moved this: the drawer's rows are the table's rows now, and the
+// per-branch file is no longer fetched.
+ok('the client reads the display rows from the one table', client.indexOf("DATA + '/index/rows.json'") !== -1 && client.indexOf("'/index/' + b + '-rows.json'") === -1);
 
 console.log(pass + ' passed, ' + fail + ' failed   table ' + ids.length + ' rows, delivered ' + delivered.length);
 process.exitCode = fail ? 1 : 0;

@@ -12,9 +12,14 @@
  *   content/<book>.json   { book, records: { id: { ...record } } }
  *
  * And, since task-108, ONE addressing table:
- *   index/rows.json       { rows: { <id>: { slug, title, book, source, num?, path?, own? } } }
- *                         every delivered record, so an id becomes an address in one place
- *                         (src/rows-table.mjs) instead of four partial ones.
+ *   index/rows.json       { rows: { <id>: { slug, title, book, source, snippet,
+ *                          num?, path?, own? } } }
+ *                         every delivered record, so an id becomes an address AND the
+ *                         drawer's own row in one place (src/rows-table.mjs), instead of
+ *                         the four partial shapes that phase 1 replaced. The per-branch
+ *                         index/<b>-rows.json files are gone (part A, 2026-10-24): the
+ *                         tree's pages and a detachment's owned list are ids, and every
+ *                         one of them now resolves through this table.
  *
  * A record's slug carries its book ('<book>--<readable>-<hash>'), so a cold
  * address resolves with no manifest: split on '--', fetch that one content file,
@@ -241,31 +246,16 @@ export function buildPayloads(corpus, outDir) {
     if (root.kids) node.kids = root.kids.map(k => (k.f && tree.files[k.f]) ? inlineNode(k.f, tree, slugOf, byId, new Set([k.f])) : { n: k.n, lvl: k.lvl, c: k.c, ...(k.cut ? { cut: true } : {}), ...(k.pg ? { page: true } : {}) });
     if (root.recs) node.recs = root.recs.map(r => row(r, slugOf, byId));
     node.pages = (tree.pages || []).filter(p => p.path && p.path[0] && p.path[0].f === ref.f).map(p => ({ n: p.n, lvl: p.lvl, area: p.area || '', recs: p.recs || [] }));
-    // task-81: the rows only reachable through this branch's pages (Army rules)
-    // or a detachment's owned list. Built per branch so each row is carried once,
-    // and only for the ids this branch actually mentions.
-    const branchIds = new Set();
-    for (const p of node.pages) for (const id of (p.recs || [])) branchIds.add(id);
+    // task-81: a detachment's owned list stays in the branch as ids (cheap), and the
+    // client resolves each id through the one table (task-108 part A). The per-branch
+    // index/<branch>-rows.json files are gone: index/rows.json addresses every delivered
+    // record and carries the display row, so a page or an owned id is one lookup away.
     const annotate = n => {
-      for (const r of (n.recs || [])) { const own = ownedBy(r.id); if (own && own.length) { r.own = own; for (const id of own) branchIds.add(id); } }
+      for (const r of (n.recs || [])) { const own = ownedBy(r.id); if (own && own.length) r.own = own; }
       for (const k of (n.kids || [])) annotate(k);
     };
     annotate(node);
     collectTreeRows(node);
-    // The rows ride in their OWN file, fetched the first time a reader opens a
-    // page or a detachment: the branch payload is on the critical path of every
-    // Factions open, and 2,082 rows there cost 736 KB for a feature most opens
-    // never touch (task-81 step 3b). `own` (ids) stays in the branch, which is
-    // cheap; the rows are one fetch, cached by the client.
-    if (branchIds.size) {
-      const rowMap = {};
-      for (const id of branchIds) {
-        const raw = byId.get(id);
-        if (!raw) continue;
-        rowMap[id] = row({ i: id, t: raw.heading || '' }, slugOf, byId);
-      }
-      write('index/' + b.b + '-rows.json', { rows: rowMap });
-    }
     write('index/' + b.b + '.json', node);
   }
 
@@ -287,7 +277,12 @@ export function buildPayloads(corpus, outDir) {
     // A record the tree carries keeps the row it was given there; one the tree never names
     // gets the tree's own title rule applied to its heading, so there is one naming rule.
     const known = treeRows.get(id) || row({ i: id, t: cleanTitle(leafOf(raw.heading) || String(raw.id || '')) }, slugOf, byId);
-    const entry = { slug: slugOf(id), title: String(known.title || ''), book: bookOf(id), source: String(known.source || '') };
+    // The display row rides in the table now (part A): the client used to fetch a
+    // per-branch rows file for the page and owned ids, and that file is gone, so the
+    // table carries the same five fields the drawer row reads (title, slug, source and
+    // this 100-character snippet, which the tree's own filter matches on).
+    const plain = textOf(raw).replace(/\s+/g, ' ').trim();
+    const entry = { slug: slugOf(id), title: String(known.title || ''), book: bookOf(id), source: String(known.source || ''), snippet: plain.slice(0, 100) };
     if (known.num) entry.num = String(known.num);
     const chain = tree.paths.get(id) || [];
     const chainPath = chain.slice(1).map(x => x && x.n).filter(Boolean).join(' > ');

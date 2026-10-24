@@ -531,9 +531,10 @@ function rowDisplay(headingOrParts) {
   // task-81: a page id or an owned id resolves through the branch's own row map
   // (built for exactly those ids), so it renders with its real title/snippet
   // instead of an id leaf.
-  // task-81 step 3b: the rows live in index/<branch>-rows.json now, fetched the
-  // first time a page or a detachment is opened and cached per branch, so a plain
-  // Factions open never pays for them.
+  // task-108 part A: the rows the drawer reads are the ONE addressing table,
+  // index/rows.json - the same file the server's slug map comes from. The per-branch
+  // index/<branch>-rows.json files are gone: the table is fetched once for the whole
+  // surface and kept, and the branch key only says which open asked for it.
   function loadRows() {
     var b = state.branch;
     if (!b) return Promise.resolve({});
@@ -542,22 +543,42 @@ function rowDisplay(headingOrParts) {
     // task-81: a FAILED load is remembered as failed, not as an empty book. Caching {} on a
     // failure made 'offline' and 'this book has no rows' the same state, and the retry could
     // never run: the empty object was already in the cache.
-    state.rowsLoading[b] = getJson(DATA + '/index/' + b + '-rows.json').then(function (j) {
-      state.rowsCache[b] = (j && j.rows) || {};
+    if (!state.rowsTableLoading) {
+      state.rowsTableLoading = getJson(DATA + '/index/rows.json').then(function (j) {
+        state.rowsTable = (j && j.rows) || {};
+        return state.rowsTable;
+      });
+    }
+    state.rowsLoading[b] = (state.rowsTable ? Promise.resolve(state.rowsTable) : state.rowsTableLoading).then(function (table) {
+      state.rowsCache[b] = table;
       delete state.rowsFailed[b];
-      return state.rowsCache[b];
+      return table;
     }).catch(function () {
       state.rowsFailed[b] = true;
       delete state.rowsLoading[b];
+      state.rowsTableLoading = null;
       return {};
     });
     return state.rowsLoading[b];
   }
+  // --- task-108 row reader (pure; tests/test-rows-reader.mjs extracts this block) ---
+  // One table row in the shape the drawer draws. An id the table does not carry (a cold
+  // address, a payload older than the table) keeps the id leaf and no slug, as before.
+  function rowFromTable(table, id) {
+    var r = table && table[id];
+    if (!r) {
+      var s = String(id);
+      var h = s.indexOf('#');
+      return { id: id, title: h === -1 ? s : s.slice(h + 1), slug: '', source: '', snippet: '' };
+    }
+    // A payload older than the table's own shape (no snippet field) reads as the empty
+    // string, never as undefined: the tree's filter calls String methods on these.
+    return { id: id, slug: r.slug || '', title: r.title || '', source: r.source || '', snippet: r.snippet || '' };
+  }
+  // --- end task-108 row reader --------------------------------------------------
   function rowFromBranch(id) {
     var b = state.branch;
-    var m = (b && state.rowsCache[b]) || {};
-    var r = m[id];
-    return r ? { id: r.id, slug: r.slug, title: r.title, source: r.source, snippet: r.snippet } : { id: id, title: leafOfId(id), slug: '', snippet: '' };
+    return rowFromTable((b && state.rowsCache[b]) || {}, id);
   }
   // task-14: the number a section or a row sorts by, as [chapter, section, rule].
   // A label that carries no number has no key.

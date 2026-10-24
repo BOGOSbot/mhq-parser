@@ -105,8 +105,11 @@ const frIndex = read('i18n/fr/index.json');
 const FR_FILES = 1 + Object.keys(frIndex.books).length;
 // task-108: the addressing table is one more file at the payload's root, and it is the file
 // every id-to-address answer comes from (tests/test-rows-table.mjs owns its invariant).
-t('(g) the file count is index + one per branch + one per book + the rows file + the addressing table + the French overlay', written.length, 1 + index.branches.length + books.length + 1 + 1 + FR_FILES);
+// Part A (2026-10-24): the per-branch index/<branch>-rows.json files are gone, so the count
+// is one file shorter and the absence is asserted rather than assumed.
+t('(g) the file count is index + one per branch + one per book + the addressing table + the French overlay', written.length, 1 + index.branches.length + books.length + 1 + FR_FILES);
 t('(g) and the addressing table is written', written.indexOf('index/rows.json') === -1 ? ['index/rows.json'] : [], []);
+t('(g) and no per-branch rows file is written', written.filter(f => /-rows\.json$/.test(f)), []);
 t('(g) and the French files are one per translated book plus its index', written.filter(f => /^i18n\/fr\//.test(f)).length, FR_FILES);
 t('(g) and no Legends file is written', LEGENDS_FILES.filter(f => written.indexOf(f) !== -1), []);
 t('(g) and it is the count the stats report', written.length, stats.fileCount);
@@ -210,17 +213,19 @@ ok('(b) some content records carry an annotation target in at', annotated.length
 const facPayload = read('index/factions.json');
 // step 3b: the rows live in their own on-demand file, not in the branch payload.
 ok('(81-3b) the branch payload carries no rows map', facPayload.rows === undefined);
-const rowsFile = read('index/factions-rows.json');
-const rowMapIds = Object.keys(rowsFile.rows || {});
-t('(81-3) the rows file carries the page and owned ids', rowMapIds.length, 2086);
-ok('(81-3b) and the branch file is small again', fs.statSync(path.join(ROOT, 'workspace', 'wiki-data', 'index', 'factions.json')).size < 420000);
+// task-108 part A: the display rows are the addressing table's own rows now; the
+// per-branch index/<branch>-rows.json file is no longer written (see (g) above).
+const table = read('index/rows.json').rows || {};
+const rowMapIds = Object.keys(table);
+t('(81-3) the table addresses every delivered record', rowMapIds.length, 6171);
+ok('(81-3b) and the branch file is small again', fs.statSync(path.join(OUT, 'index', 'factions.json')).size < 420000);
 let ownRows = 0, ownIds = new Set(), biggestOwn = 0;
 const walkOwn = n => { for (const r of (n.recs || [])) { if (r.own && r.own.length) { ownRows++; biggestOwn = Math.max(biggestOwn, r.own.length); for (const id of r.own) ownIds.add(id); } } for (const k of (n.kids || [])) walkOwn(k); };
 walkOwn(facPayload);
 t('(81-3) detachments carrying their owned ids', ownRows, 256);
 t('(81-3) the biggest owned list is Lords of Dread (12)', biggestOwn, 12);
-t('(81-3) every owned id has a row in the rows file', [...ownIds].filter(id => !(rowsFile.rows || {})[id]).length, 0);
-t('(81-3) and a page id does too', (facPayload.pages || []).every(pg => (pg.recs || []).every(id => (rowsFile.rows || {})[id])), true);
-ok('(81-3) a row in the map has the drawer shape', ['id', 'slug', 'title', 'source', 'snippet'].every(k => k in ((rowsFile.rows || {})[rowMapIds[0]] || {})));
+t('(81-3) every owned id has a row in the table', [...ownIds].filter(id => !table[id]).length, 0);
+t('(81-3) and a page id does too', (facPayload.pages || []).every(pg => (pg.recs || []).every(id => table[id])), true);
+ok('(81-3) a row in the table has the drawer shape', ['slug', 'title', 'source', 'snippet'].every(k => k in (table[rowMapIds[0]] || {})));
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
