@@ -413,14 +413,9 @@ body.sheetopen{overflow:hidden}
 .sheetlabel{font:600 15.5px var(--serif);color:var(--ink)}
 .sheethint{color:var(--dim);font:11.5px/1.4 var(--sans)}
 .sheetrow .doorseg{flex:0 0 auto}
-/* task-44: the Legends setting. The state word sits under the switch so the reader can
-   see it without tapping anything, and the badge repeats it in the drawer, which is
-   where the records it changes actually live. */
+/* The state word sits under a switch so the reader can see it without tapping anything. */
 .sheetstate{margin:2px 0 0;color:var(--dim);font:600 11.5px var(--sans)}
 .sheetstate[data-on="1"]{color:var(--acc)}
-.sv-legends-badge{margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid var(--acc);
-  color:var(--acc);font:600 10.5px/1.5 var(--sans);letter-spacing:.02em;white-space:nowrap}
-.sv-legends-badge[hidden]{display:none}
 .sheetmeta{color:var(--dim);font:11.5px/1.5 var(--mono);margin:18px 0 0}
 @media (min-width:760px){.sheet-head,.sheet-body{width:100%;max-width:640px;margin:0 auto}}
 
@@ -679,21 +674,6 @@ details pre{background:var(--bg);border:1px solid var(--line);border-radius:10px
         <button type="button" data-door="inline">Inline</button>
       </span>
     </div>
-    <!-- task-44: Warhammer Legends. Off by default, and off costs nothing: the book is
-         not fetched, not searched and not in the tree. On makes it readable and
-         findable, and it is NEVER embedded - no answer can cite one either way. The
-         state word under the switch is the reader's proof of which way it is set. -->
-    <div class="sheetrow" id="legendssetting" data-legends-state="off">
-      <div class="sheetwhat">
-        <span class="sheetlabel" id="legendsSettingLabel">Warhammer Legends</span>
-        <span class="sheethint" id="legendsSettingHint">Legends records are readable here, and never part of an answer.</span>
-        <span class="sheetstate" id="legendsState" data-on="0">Legends are off</span>
-      </div>
-      <span class="doorseg" role="tablist" aria-label="Warhammer Legends" id="legendsseg">
-        <button type="button" data-legends="off">Off</button>
-        <button type="button" data-legends="on">On</button>
-      </span>
-    </div>
     <!-- task-69: the record language. The English corpus is the canon and the French is an
          overlay keyed by record id, so this switch changes what a record BODY renders and
          never what a quote quotes. It follows the interface language by default: a reader
@@ -838,10 +818,6 @@ var I18N = {
   findingsSettingLabel: 'Findings',
   findingsBookHint: 'A row opens the drawer at the record\u2019s chapter, with the record inline.',
   findingsQuickHint: 'A row opens the record on its own, full screen.',
-  legendsSetting: 'Warhammer Legends',
-  legendsSettingHint: 'Legends records are readable here, and never part of an answer.',
-  legendsStateOn: 'Legends are on \u2014 readable and searchable, never cited.',
-  legendsStateOff: 'Legends are off',
   frSetting: 'Record language',
   frSettingHint: 'Headings and keywords stay English; the body is translated.',
   frStateOn: 'Records are French \u2014 headings and keywords stay English',
@@ -1064,10 +1040,6 @@ var I18N = {
   findingsSettingLabel: 'Constats',
   findingsBookHint: 'Une ligne ouvre le tiroir au chapitre de la fiche, avec la fiche dedans.',
   findingsQuickHint: 'Une ligne ouvre la fiche seule, en plein écran.',
-  legendsSetting: 'Warhammer Legends',
-  legendsSettingHint: 'Les fiches Legends se lisent ici, et ne font jamais partie d’une réponse.',
-  legendsStateOn: 'Legends activés — lisibles et cherchables, jamais cités.',
-  legendsStateOff: 'Legends désactivés',
   frSetting: 'Langue des fiches',
   frSettingHint: 'Les titres et les mots-clés restent en anglais ; le corps est traduit.',
   frStateOn: 'Fiches en français — titres et mots-clés en anglais',
@@ -1691,9 +1663,6 @@ function sendPick(state, by, none) {
 // The storage keys are the readers': 'mhq.rules.door' and 'mhq.rules.voice'.
 var DOOR_KEY = 'mhq.rules.door';
 var VOICE_KEY = 'mhq.rules.voice';
-// task-44: the Legends setting's key is the reader's, like the two above. The wiki
-// surface owns the branch and the search; this sheet owns the switch and its state.
-var LEGENDS_KEY = 'mhq.rules.legends';
 // task-69: the record language. 'mhq.rules.fr' is the reader's, like the three above.
 // It FOLLOWS the interface language by default - a French UI means French records - and
 // an explicit choice sticks. The English corpus stays the canon either way: this switch
@@ -1721,9 +1690,6 @@ function voiceEngine() {
 function setVoiceEngine(engine) {
   try { localStorage.setItem(VOICE_KEY, engine === 'browser' ? 'browser' : 'gemini'); } catch (e) { /* private mode */ }
   paintSettings();
-}
-function legendsMode() {
-  try { return localStorage.getItem(LEGENDS_KEY) === '1' ? 'on' : 'off'; } catch (e) { return 'off'; }
 }
 // The default is the interface language, and only an explicit choice overrides it. A
 // stored 'en' from a reader who chose English stays English when they switch the UI.
@@ -1761,13 +1727,6 @@ function frRecordText(id) {
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (j) { FR_TEXT[id] = (j && j.fr) || ''; return FR_TEXT[id]; })
     .catch(function () { FR_TEXT[id] = ''; return ''; });
-}
-function setLegendsMode(mode) {
-  var on = mode === 'on';
-  try { localStorage.setItem(LEGENDS_KEY, on ? '1' : '0'); } catch (e) { /* private mode */ }
-  var api = window.WIKI_SURFACE_API;
-  if (api && api.setLegends) api.setLegends(on);
-  paintSettings();
 }
 function setDoor(mode) {
   try { localStorage.setItem(DOOR_KEY, mode === 'inline' ? 'inline' : 'wiki'); } catch (e) { /* private mode */ }
@@ -1810,26 +1769,22 @@ function openInline(state, f) {
 // the same one the page footer prints.
 function gearSheet() { return document.getElementById('gearsheet'); }
 function paintSettings() {
-  var v = voiceEngine(), d = doorMode(), lg = legendsMode(), frl = frMode();
+  var v = voiceEngine(), d = doorMode(), frl = frMode();
   // The door's own row carries the mode for a test to read, like the two rows below.
-  ['voiceseg', 'findingsseg', 'legendsseg', 'frseg'].forEach(function (id) {
+  ['voiceseg', 'findingsseg', 'frseg'].forEach(function (id) {
     var seg = document.getElementById(id);
     if (!seg) return;
     Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) {
-      var which = b.hasAttribute('data-voice') ? 'voice' : (b.hasAttribute('data-door') ? 'door' : (b.hasAttribute('data-fr') ? 'fr' : 'legends'));
-      var key = which === 'voice' ? b.getAttribute('data-voice') : which === 'door' ? b.getAttribute('data-door') : which === 'fr' ? b.getAttribute('data-fr') : b.getAttribute('data-legends');
-      var sel = (which === 'voice' ? v : which === 'door' ? d : which === 'fr' ? frl : lg) === key;
+      var which = b.hasAttribute('data-voice') ? 'voice' : (b.hasAttribute('data-door') ? 'door' : 'fr');
+      var key = which === 'voice' ? b.getAttribute('data-voice') : which === 'door' ? b.getAttribute('data-door') : b.getAttribute('data-fr');
+      var sel = (which === 'voice' ? v : which === 'door' ? d : frl) === key;
       b.classList.toggle('on', sel);
       b.setAttribute('aria-pressed', sel ? 'true' : 'false');
     });
   });
   // The state word, so a reader can see the setting without tapping anything, and the
   // row itself carries it for a test to read.
-  var row = document.getElementById('legendssetting');
-  if (row) row.setAttribute('data-legends-state', lg);
-  var st = document.getElementById('legendsState');
-  if (st) { st.textContent = lg === 'on' ? t('legendsStateOn') : t('legendsStateOff'); st.setAttribute('data-on', lg === 'on' ? '1' : '0'); }
-  // task-69: the record language's own row and state word, the same shape as Legends'.
+  // task-69: the record language's own row and state word, the same shape as the door's.
   var frrow = document.getElementById('frsetting');
   if (frrow) frrow.setAttribute('data-fr-state', frl);
   var frst = document.getElementById('frState');
@@ -1841,8 +1796,6 @@ function paintSettings() {
   txt('voiceSettingHint', t('voiceSettingHint'));
   txt('findingsSettingLabel', t('findingsSettingLabel'));
   txt('findingsSettingHint', d === 'book' ? t('findingsBookHint') : t('findingsQuickHint'));
-  txt('legendsSettingLabel', t('legendsSetting'));
-  txt('legendsSettingHint', t('legendsSettingHint'));
   var gm = document.getElementById('gearmeta');
   var foot = document.getElementById('footdata');
   if (gm) gm.textContent = foot ? foot.textContent : '';
@@ -1891,11 +1844,6 @@ function closeSettings() {
   if (fs) fs.addEventListener('click', function (ev) {
     var b2 = ev.target && ev.target.closest ? ev.target.closest('[data-door]') : null;
     if (b2) setDoor(b2.getAttribute('data-door'));
-  });
-  var ls = document.getElementById('legendsseg');
-  if (ls) ls.addEventListener('click', function (ev) {
-    var b2 = ev.target && ev.target.closest ? ev.target.closest('[data-legends]') : null;
-    if (b2) setLegendsMode(b2.getAttribute('data-legends'));
   });
   // task-69: the record language, the same one-click shape as the three above.
   var frs = document.getElementById('frseg');

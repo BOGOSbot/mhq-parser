@@ -28,7 +28,6 @@ const USAGE = `rules - ask the 40k rules corpus
   --json                        one JSON object on stdout, nothing else
   --lang <en|fr>                the language of the answer (default en)
   --server <url>                the local server (default http://127.0.0.1:8787)
-  --legends                     include Legends records in find
   --limit <n>                   rows for find (default 20)
   --help
 `;
@@ -36,7 +35,7 @@ const USAGE = `rules - ask the 40k rules corpus
 // --- arguments ---------------------------------------------------------------
 // Parsing is separated from doing so the test can pin the shapes without a server.
 export function parseArgs(argv) {
-  const out = { verb: '', words: [], json: false, lang: 'en', server: '', legends: false, limit: 20, help: false };
+  const out = { verb: '', words: [], json: false, lang: 'en', server: '', limit: 20, help: false };
   const args = (argv || []).slice();
   if (!args.length) return out;
   const first = args[0];
@@ -45,7 +44,6 @@ export function parseArgs(argv) {
   for (let i = 1; i < args.length; i++) {
     const a = args[i];
     if (a === '--json') out.json = true;
-    else if (a === '--legends') out.legends = true;
     else if (a === '--help' || a === '-h') out.help = true;
     else if (a === '--lang') { out.lang = String(args[++i] || 'en').toLowerCase(); }
     else if (a === '--server') { out.server = String(args[++i] || ''); }
@@ -68,11 +66,9 @@ export async function find(o) {
   if (!q) throw new Error('find needs words');
   const { findRows } = await import('./header-index.mjs');
   const { deliveredIds } = await import('./rules-corpus.mjs');
-  const { legendsSlugMap, surfaceSlugMap } = await import('./wiki-surface.mjs');
+  const { surfaceSlugMap } = await import('./wiki-surface.mjs');
   const delivered = deliveredIds();
-  const legendIds = o.legends ? legendsSlugMap() : null;
-  const allow = legendIds ? (id => delivered.has(id) || legendIds.has(id)) : null;
-  return findRows(q, { slugs: surfaceSlugMap(), delivered, allow, cap: o.limit || 20 });
+  return findRows(q, { slugs: surfaceSlugMap(), delivered, cap: o.limit || 20 });
 }
 
 // --- ask / deep: the server's own pipeline -----------------------------------

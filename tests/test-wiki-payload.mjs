@@ -92,18 +92,17 @@ ok('(e) the biggest payload is named', !!stats.biggest.name);
 const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => d.isDirectory() ? walk(path.join(dir, d.name)) : [path.join(dir, d.name)]);
 const written = walk(OUT).map(f => path.relative(OUT, f).replace(/\\/g, '/'));
 t('(f) no .html, no map.json, no legacy.json', written.filter(f => /\.html$/.test(f) || /(^|\/)map\.json$/.test(f) || /(^|\/)legacy\.json$/.test(f)), []);
-// task-44 added exactly three files, and this pin names them rather than absorbing
-// them: the Legends branch, its content book, and the ids-only slug map the search
-// and the record route read. None of the three is named by index.json, so the default
-// reader never fetches one (tests/test-legends.mjs pins that half).
+// task-107 took the Legends book out of the payload with the rest of the feature: the
+// branch, its content book and the ids-only slug map are not written. The pin names the
+// three so the absence is asserted rather than assumed.
 const LEGENDS_FILES = ['index/legends.json', 'content/legends.json', 'index/legends-slugs.json'];
 // task-69: the French overlay is baked per book, one file per book plus its index, and
 // only for the books that actually carry a translation.
 const frIndex = read('i18n/fr/index.json');
 const FR_FILES = 1 + Object.keys(frIndex.books).length;
-t('(g) the file count is index + one per branch + one per book + the rows file + the Legends three + the French overlay', written.length, 1 + index.branches.length + books.length + 1 + LEGENDS_FILES.length + FR_FILES);
+t('(g) the file count is index + one per branch + one per book + the rows file + the French overlay', written.length, 1 + index.branches.length + books.length + 1 + FR_FILES);
 t('(g) and the French files are one per translated book plus its index', written.filter(f => /^i18n\/fr\//.test(f)).length, FR_FILES);
-t('(g) and the Legends three are the only files beyond that count', LEGENDS_FILES.filter(f => written.indexOf(f) === -1), []);
+t('(g) and no Legends file is written', LEGENDS_FILES.filter(f => written.indexOf(f) !== -1), []);
 t('(g) and it is the count the stats report', written.length, stats.fileCount);
 
 // (h) the branch row carries a drawer line -------------------------------------

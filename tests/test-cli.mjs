@@ -23,7 +23,6 @@ t('deep is a verb', parseArgs(['deep', 'fall', 'back']).verb, 'deep');
 t('--json', parseArgs(['find', 'x', '--json']).json, true);
 t('--lang fr', parseArgs(['ask', 'q', '--lang', 'fr']).lang, 'fr');
 t('--limit', parseArgs(['find', 'x', '--limit', '5']).limit, 5);
-t('--legends', parseArgs(['find', 'x', '--legends']).legends, true);
 t('--server', parseArgs(['ask', 'q', '--server', 'http://x:1']).server, 'http://x:1');
 t('the default server is the local one', serverUrl({ server: '' }), 'http://127.0.0.1:8787');
 t('and a trailing slash is trimmed', serverUrl({ server: 'http://x:1/' }), 'http://x:1');

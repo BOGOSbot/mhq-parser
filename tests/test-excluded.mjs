@@ -30,10 +30,9 @@ ok('nor the pack line, nor the tenth-edition rule', pack.concat(tenth).every(r =
 ok('the indexed set is the delivered set minus the navigation pages', indexed.size === delivered.filter(r => r.kind !== 'index').length);
 ok('and the delivered count is unchanged by any of this', delivered.length === 6363);
 
-// task-44 moved the payload's own contract to tests/test-legends.mjs, which pins the
-// OFF state (index.json names three books and no Legends payload) and the ON state (the
-// branch, the content, every record reachable) in one place. What stays here is the
-// corpus predicate and the banner, which is this file's job.
+// task-107 took the Legends book out of the payload entirely, so there is no toggle and
+// no branch to pin: what stays here is the corpus predicate and the banner, which is
+// this file's job. tests/test-wiki-payload.mjs asserts the three files are not written.
 const index = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-data', 'index.json'), 'utf8'));
 ok('the default reader is still handed exactly three books', (index.branches || []).length === 3);
 

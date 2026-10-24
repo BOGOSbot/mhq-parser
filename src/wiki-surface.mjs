@@ -122,30 +122,14 @@ export function surfaceAsset(name) {
 
 export function dataDir() { return DATA_DIR; }
 
-// task-44: the slugs of the payload the Legends setting opens, from the ids-only file
-// the bake writes for exactly this. Read on request and NOT cached in the process: a
-// bake replaces the file under a running server, and a stale map would offer a row the
-// reader's page cannot open. The map is also the search's gate - a row is offered only
-// when the record it names is in the book the asking page actually holds.
-export function legendsSlugMap() {
-  const out = new Map();
-  try {
-    const j = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'index', 'legends-slugs.json'), 'utf8'));
-    for (const [id, slug] of Object.entries((j && j.slugs) || {})) if (slug) out.set(String(id), String(slug));
-  } catch (e) { /* no bake, or no Legends: the setting opens nothing rather than erroring */ }
-  return out;
-}
-
 // Every record with a payload page's slug, from the index payloads rather than the
 // content payloads. The findings and the tail carry no slug of their own, and a record
 // opened from the answer must have one to become an address - this is the one map that
-// answers it. task-44: the Legends book is part of it, so a record the reader turned on
-// is addressable by the same route as every other; the branch itself is still fetched
-// only when the setting is on.
+// answers it.
 let SLUGS = null;
 export function surfaceSlugMap() {
   if (SLUGS) return SLUGS;
-  const map = legendsSlugMap();
+  const map = new Map();
   let index = null;
   try { index = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'index.json'), 'utf8')); } catch (e) { index = null; }
   for (const b of ((index && index.branches) || [])) {

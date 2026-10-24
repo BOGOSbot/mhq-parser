@@ -253,10 +253,9 @@ export function findRows(query, opts) {
   const out = searchHeadings(query, Object.assign({}, o, { limit: 100 }));
   const slugs = o.slugs || new Map();
   const delivered = o.delivered || null;
-  const allow = typeof o.allow === 'function' ? o.allow : null;
   const matched = foldUnitRows((out.rows || []).filter(function (r) {
     const id = String(r.id);
-    return allow ? allow(id) : (!delivered || delivered.has(id));
+    return !delivered || delivered.has(id);
   }));
   return {
     q: String(query == null ? '' : query),

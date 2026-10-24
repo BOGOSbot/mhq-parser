@@ -16,9 +16,6 @@
   // in the drawer reaches all 6,000+ records without a payload download.
   var FIND = CFG.find || '/rules/find';
   var DRAWER_KEY = 'wikiDrawer';
-  // task-44: the Legends setting, per device like the language and the voice. Its key
-  // is the reader's; the page's own sheet writes it through setLegends().
-  var LEGENDS_KEY = 'mhq.rules.legends';
   // task-69: the record language. The page's sheet writes it through setRecordLang();
   // the surface reads the same key so a reader who chose French sees French records in
   // the drawer and the reading view too. The corpus stays English; this only asks the
@@ -27,7 +24,6 @@
   var ROW_CAP = 500;
   var state = {
     branches: null, branch: null, cache: {}, open: {}, rows: {}, rowsCache: {}, rowsLoading: {}, filter: '',
-    legends: false, legendsBranch: null,
     hits: null, searchQ: '', searchTimer: null, rowsFailed: {},
     mode: 'none', record: null, from: '', answer: null, icons: {},
     // The reader's promote on this surface: the ids they put first, newest first.
@@ -60,14 +56,6 @@
     if (sel && sel.charAt(0) === '#') return document.getElementById(sel.slice(1));
     return $('sv-drawer-toggle');
   }
-  // --- the Legends setting (task-44) -----------------------------------------
-  // A Warhammer Legends record is NEVER embedded: not in the vector index, not in any
-  // ask's findings, whatever this setting says. What the setting moves is the tree and
-  // the lexical search. It is OFF by default, and while it is off nothing of the
-  // Legends book is fetched: index.json names three branches and this one is not one
-  // of them. Turning it on fetches index/legends.json once and puts the branch at the
-  // head of the list; turning it off drops the branch and its cached payload.
-  function legendsWanted() { try { return localStorage.getItem(LEGENDS_KEY) === '1'; } catch (e) { return false; } }
   // The record language, as the page's sheet set it. A surface with no page (a cold
   // deep link) reads the stored choice; with nothing stored it stays English, which is
   // the corpus's own language.
@@ -97,57 +85,6 @@
       }
     }
   }
-  function legendsOn() { return state.legends === true; }
-  function legendsBranch() {
-    var key = 'legends';
-    for (var i = 0; i < (state.branches || []).length; i++) if (state.branches[i].b === key) return key;
-    return '';
-  }
-  function paintLegendsBadge() {
-    var b = $('sv-legends-badge');
-    if (!b) return;
-    // The badge is the SETTING, not the fetch: a reader who turned it on is told so
-    // before the drawer is ever opened, and the branch is fetched when the tree is.
-    var on = legendsOn();
-    b.hidden = !on;
-    b.textContent = on ? 'Legends on' : '';
-  }
-  function ensureLegendsBranch() {
-    if (legendsBranch()) { paintLegendsBadge(); return Promise.resolve(); }
-    // The setting can be turned on from the sheet while the drawer has never been
-    // opened, and the tree is not built until it is. The branch is fetched once and
-    // HELD, so opening the drawer later puts it at the head of the list instead of
-    // paying for a second fetch of the same file.
-    if (state.legendsBranch) { state.branches.unshift(state.legendsBranch); renderTree(); paintLegendsBadge(); return Promise.resolve(); }
-    return getJson(DATA + '/index/legends.json').then(function (j) {
-      if (!j || !j.n) return;
-      // The branch's own key is the file it lives in, so openBranch() fetches the same
-      // payload the tree names and nothing has to special-case the Legends book.
-      j.b = 'legends';
-      state.legendsBranch = j;
-      if (state.branches) { state.branches.unshift(j); renderTree(); }
-      paintLegendsBadge();
-    }).catch(function () { paintLegendsBadge(); });
-  }
-  // The page's sheet calls this; it is also the boot path (a remembered ON).
-  function setLegends(on) {
-    var want = on === true;
-    state.legends = want;
-    try { localStorage.setItem(LEGENDS_KEY, want ? '1' : '0'); } catch (e) { /* private mode */ }
-    if (want) return ensureLegendsBranch();
-    // Dropped, not kept warm: a bake replaces the payload, and a remembered copy would
-    // let a stale branch outlive it. Turning it on again is one small fetch.
-    state.legendsBranch = null;
-    if (state.branches) {
-      state.branches = state.branches.filter(function (b) { return b.b !== 'legends'; });
-      delete state.cache['legends'];
-      if (state.branch === 'legends') state.branch = null;
-    }
-    renderTree();
-    paintLegendsBadge();
-    searchLater();
-    return Promise.resolve();
-  }
   function ensureChrome() {
     if (!DRAWER_MODE) return;
     if (!$('sv-drawer')) {
@@ -157,13 +94,6 @@
       aside.setAttribute('aria-label', 'Wiki');
       var head = el('div', 'sv-drawer-head');
       head.appendChild(el('strong', null, 'Wiki'));
-      // task-44: the setting's state on screen, where the records it changes live. A
-      // reader who turned it on must be able to see it, because it changes what an
-      // answer can cite.
-      var badge = el('span', 'sv-legends-badge');
-      badge.id = 'sv-legends-badge';
-      badge.hidden = true;
-      head.appendChild(badge);
       var close = el('button', 'sv-btn sv-close', 'Close');
       close.type = 'button'; close.id = 'sv-drawer-close';
       head.appendChild(close);
@@ -397,13 +327,10 @@ function rowDisplay(headingOrParts) {
     box.appendChild(offlineNoteEl(what, retry));
   }
   function openIndex() {
-    if (state.branches) { renderTree(); if (legendsOn()) ensureLegendsBranch(); return Promise.resolve(); }
+    if (state.branches) { renderTree(); return Promise.resolve(); }
     return getJson(DATA + '/index.json').then(function (j) {
       state.branches = j.branches || [];
       renderTree();
-      // The default reader's bytes stop here: index.json names three books and the
-      // Legends book is not one of them (task-44).
-      if (legendsOn()) return ensureLegendsBranch();
     })
       .catch(function () { offlineNote('the list of books could not be loaded', function () { openIndex(); }); });
   }
@@ -499,10 +426,7 @@ function rowDisplay(headingOrParts) {
   }
   function runSearch(q) {
     state.searchQ = q;
-    // task-44: the Legends setting rides as a REQUEST parameter, and only when it is on
-    // and the branch is actually held. The server returns rows the asking page can open,
-    // so a page that has not fetched the Legends book is never handed one of its rows.
-    var url = FIND + '?q=' + encodeURIComponent(q) + (legendsOn() && legendsBranch() ? '&legends=1' : '');
+    var url = FIND + '?q=' + encodeURIComponent(q);
     fetch(url, { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
       .then(function (j) { if (state.searchQ !== q) return; state.hits = j; renderHits(q); })
@@ -1669,10 +1593,6 @@ function rowDisplay(headingOrParts) {
   function boot() {
     ensureChrome();
     wireDrawerLinks();
-    // task-44: the remembered setting is applied before the tree is first drawn, so a
-    // reader who turned it on does not watch the branch appear a moment later.
-    state.legends = legendsWanted();
-    paintLegendsBadge();
     var form = $('sv-ask'), toggle = toggleEl(), close = $('sv-drawer-close'), filter = $('sv-filter');
     if (toggle) toggle.addEventListener('click', function (ev) { if (ev && ev.preventDefault) ev.preventDefault(); var d = $('sv-drawer'); drawerOpen(!(d && d.classList.contains('sv-open'))); });
     if (close) close.addEventListener('click', function () { drawerOpen(false); });
@@ -2356,9 +2276,6 @@ function devPanel(f, state, ctx) {
     // inline mode expands where the record lives and falls back to the page when it has
     // no place there, saying so (revealInTree's own fallback sets data-surface='page').
     openRecordPage: showRecordPage,
-    // task-44: the settings sheet's Legends switch, and the state it paints.
-    setLegends: setLegends,
-    legendsOn: legendsOn,
     // task-69: the settings sheet's record-language switch, and the two record fetches
     // below it read the same key.
     setRecordLang: setRecordLang,
