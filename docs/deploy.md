@@ -14,7 +14,7 @@ one host in the current stack that runs it unchanged.
 | Box | `optimum-imp-60273`, runtime node, size small, network `allow-all` |
 | App | `/workspace/home/mhq-parser`, started by the box's init command |
 | Build | `5c3e1910bd07`, from the `BUILD` file the archive carries (`/health` reports it; `source:file`) |
-| Corpus | payloadStamp `085515a0`, 7,408 records / 6,171 delivered, 771 rules + 6,483 faction, export June 2026. Tournament-only since 2026-10-24: Legends, the CSV lore column and the 174 navigation stubs are out |
+| Corpus | payloadStamp `f3320b89`, build `19671fa6fd65`, 7,408 records / 6,171 delivered, 771 rules + 6,483 faction, export June 2026. Tournament-only since 2026-10-24: Legends, the CSV lore column, the ability flavour sentence (34 distinct, named from the page's own `abLegend` class and stripped in `writeCorpus`, after the chunker) and the 174 navigation stubs are out |
 | Owed | `--ingest` then `--prune`: the index is 17 faction ids ahead (the merged detachment halves) and still holds the pre-cut body for every record whose text changed. Only `ask` reads the index; the drawer, the record route and the lexical find read the payload and are current |
 | URL | `https://optimum-imp-60273-3000.preview.box.upstash.com` - **no auth during the mobile test**; `box public-url 3000 --basic-auth` puts it back (it overwrites the URL's credentials) |
 | Short link | `https://tinyurl.com/2y7uju8c` -> `/rules` (a tinyurl redirect; the Box URL is the real one) |
