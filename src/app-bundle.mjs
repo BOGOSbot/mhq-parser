@@ -10,9 +10,9 @@
 //                      per book, for an offline find.
 //   glossary/fr-en.json  src/glossary-fr-en.json copied as-is, for transcript correction.
 //
-// WHY A PROJECTION AND NOT A NEW SOURCE. titles.json is built FROM the index payloads,
-// which already carry recs[{id, slug, title, source, snippet, num}] - the same records the
-// page's tree is drawn from. Nothing here decides what a record is; the corpus does.
+// WHY A PROJECTION AND NOT A NEW SOURCE. titles.json is built FROM the payload's addressing
+// table (index/rows.json, task-108), which carries one row per DELIVERED record, already
+// named and addressed by the bake. Nothing here decides what a record is; the corpus does.
 //
 // WHY IT IS IDEMPOTENT. The manifest carries NO timestamp: every field is either read from
 // the input or derived from it, and the JSON is written with sorted keys and a fixed
@@ -25,6 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dataStamp, dataDir } from './wiki-surface.mjs';
+import { readRows, ROWS_FILE } from './rows-table.mjs';
 import { isDelivered, readAllCorpus } from './rules-corpus.mjs';
 // task-91: the display artifact. The text and the link spans come from the SAME functions the
 // page's record body is built with, so the native reader and the web page cannot drift.
@@ -64,70 +65,37 @@ function walk(dir, base) {
   return out;
 }
 
-// Every DELIVERED record, projected from the corpus, enriched with the navigation the index
-// payloads carry.
+// Every delivered record's row, from the payload's ONE addressing table (index/rows.json).
 //
-// WHY THE CORPUS IS THE SOURCE. The first version of this walked the index tree alone and
-// found 1,923 records where the corpus delivers 6,327: a faction book's tree names its army
-// rules and detachments as tree rows and its datasheets only as PAGE records, and a page's
-// own rows live in index/<book>-rows.json. A titles list built from the tree is therefore a
-// list of what the tree happens to name, not of what the corpus has, and an offline find
-// over it would be missing four thousand records while looking complete. The corpus decides
-// what a record is; the index and the rows payloads decide what PATH it hangs under.
-function titlesFromIndex() {
+// task-108. This used to REASSEMBLE the same information from three traversals - the branch
+// payloads' recs and kids, the per-branch row maps, and the page lists - and between them
+// they reached 2,086 of the 6,171 delivered records. A titles list that looks complete while
+// a whole offline find cannot be opened is the defect the architecture walk measured, so this
+// is now a projection of the table and nothing else: no corpus loop, no fallback for a record
+// the tree forgot, because the table IS the delivered set (tests/test-rows-table.mjs asserts
+// that against the corpus's own predicate, in both directions).
+//
+// It is a hard read. A payload with no table is a payload from before the bake that writes
+// one, and a titles file built from it would silently lose exactly the records this task is
+// about; the message names the command that fixes it instead.
+function titlesFromTable() {
   const data = dataDir();
-  const index = JSON.parse(fs.readFileSync(path.join(data, 'index.json'), 'utf8'));
-  // id -> { book, path, slug, num } from the tree and the per-book row maps.
-  const where = new Map();
-  for (const b of index.branches || []) {
-    let payload = null;
-    try { payload = JSON.parse(fs.readFileSync(path.join(data, 'index', b.b + '.json'), 'utf8')); } catch (e) { payload = null; }
-    if (!payload) continue;
-    const visit = (node, chain) => {
-      const here = node.n ? chain.concat([node.n]) : chain;
-      for (const r of node.recs || []) {
-        if (r && r.id && !where.has(String(r.id))) where.set(String(r.id), { book: String(b.b), path: here.slice(1).join(' > '), slug: String(r.slug || ''), num: String(r.num || '') });
-      }
-      for (const kid of node.kids || []) visit(kid, here);
-    };
-    visit(payload, [payload.n || b.n || b.b]);
-    // A page's rows: the tree names the page, the row map names the records under it.
-    let rows = null;
-    try { rows = JSON.parse(fs.readFileSync(path.join(data, 'index', b.b + '-rows.json'), 'utf8')).rows || null; } catch (e) { rows = null; }
-    const pages = payload.pages || [];
-    for (const p of pages) {
-      for (const id of p.recs || []) {
-        const key = String(id);
-        const row = (rows && rows[key]) || null;
-        const area = p.area ? String(p.area) : '';
-        const path = area ? area + ' > ' + String(p.n || '') : String(p.n || '');
-        if (!where.has(key)) where.set(key, { book: String(b.b), path, slug: row ? String(row.slug || '') : '', num: row ? String(row.num || '') : '' });
-      }
-    }
-    if (rows) {
-      for (const key of Object.keys(rows)) {
-        if (where.has(key)) continue;
-        where.set(key, { book: String(b.b), path: '', slug: String(rows[key].slug || ''), num: String(rows[key].num || '') });
-      }
-    }
-  }
+  const rows = readRows(data);
+  if (!rows) throw new Error('the payload under ' + data + ' has no ' + ROWS_FILE + ': run node src/wiki-payload.mjs before building the app bundle');
   const out = {};
   let total = 0;
-  for (const rec of readAllCorpus()) {
-    if (!isDelivered(rec)) continue;
-    const id = String(rec.id || '');
-    if (!id) continue;
-    const nav = where.get(id) || null;
-    const book = nav ? nav.book : String(rec.set || rec.source || 'other');
+  for (const id of Object.keys(rows)) {
+    const r = rows[id] || {};
+    const book = String(r.book || 'other');
     if (!out[book]) out[book] = [];
     out[book].push({
       id,
-      slug: nav && nav.slug ? nav.slug : String(rec.slug || ''),
-      title: String(rec.title || rec.heading || ''),
+      slug: String(r.slug || ''),
+      title: String(r.title || ''),
       book,
-      path: nav ? nav.path : '',
-      num: nav ? nav.num : '',
-      source: String(rec.source || ''),
+      path: String(r.path || ''),
+      num: String(r.num || ''),
+      source: String(r.source || ''),
     });
     total++;
   }
@@ -264,7 +232,7 @@ function build() {
   }
 
   // 2. index/titles.json
-  const { titles, total } = titlesFromIndex();
+  const { titles, total } = titlesFromTable();
   const titlesRel = 'index/titles.json';
   const titlesBytes = Buffer.from(stableJson({ version: VERSION, generated: null, count: total, books: Object.keys(titles).sort(), records: titles }), 'utf8');
   fs.mkdirSync(path.join(OUT, 'index'), { recursive: true });

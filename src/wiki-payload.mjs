@@ -11,6 +11,11 @@
  *   index/<b>.json        { n, lvl, c, kids: [...], recs: [...], pages: [...] }
  *   content/<book>.json   { book, records: { id: { ...record } } }
  *
+ * And, since task-108, ONE addressing table:
+ *   index/rows.json       { rows: { <id>: { slug, title, book, source, num?, path?, own? } } }
+ *                         every delivered record, so an id becomes an address in one place
+ *                         (src/rows-table.mjs) instead of four partial ones.
+ *
  * A record's slug carries its book ('<book>--<readable>-<hash>'), so a cold
  * address resolves with no manifest: split on '--', fetch that one content file,
  * find the record. The record's fields are the seam's; the text is the STORED
@@ -20,9 +25,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readAllCorpus, isLegendsRecord } from './rules-corpus.mjs';
-import { allianceAssigner, detachmentName, factionAssigner, factionRoster, hash8, nodeSlug, pageNamer, pageTitleSlug, tocTree } from './wiki-toc.mjs';
+import { allianceAssigner, cleanTitle, detachmentName, factionAssigner, factionRoster, hash8, nodeSlug, pageNamer, pageTitleSlug, tocTree } from './wiki-toc.mjs';
 import { stripSeeAlso } from './wiki-plan.mjs';
 import { cardTables } from './unit-card.mjs';
+import { frFresh } from './i18n-fr.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.join(__dirname, '..');
@@ -51,22 +57,22 @@ function project(r) {
 // here. It is NOT read when the file is absent (a checkout with no translation still
 // bakes) - the function reports zero and the bake writes an empty index.
 const FR_SOURCE = path.join(REPO, 'workspace', 'i18n', 'fr-full.json');
-export function frByBook(ids, bookOf) {
-  const out = { source: '', translated: 0, blocked: 0 };
+// Mandal, 2026-10-24: only French whose English has not moved is baked. The freshness
+// decision lives in i18n-fr (one place, one hash), so the payload and the server cannot
+// disagree about which records are still translated.
+export function frByBook(ids, bookOf, enOf) {
+  const out = { source: '', translated: 0, blocked: 0, stale: 0 };
   let raw = null;
   try { raw = JSON.parse(fs.readFileSync(FR_SOURCE, 'utf8')); } catch (e) { return out; }
   out.source = String(raw.exported_at || '');
-  const byId = new Map();
-  for (const rec of (raw.records || [])) {
-    if (!rec || !rec.id) continue;
-    if (rec.fr) { byId.set(String(rec.id), String(rec.fr)); out.translated++; } else out.blocked++;
-  }
+  for (const rec of (raw.records || [])) { if (rec && rec.fr) out.translated++; else out.blocked++; }
   for (const id of (ids || [])) {
-    const fr = byId.get(String(id));
-    if (!fr) continue;
-    const book = bookOf(String(id));
+    const key = String(id);
+    const fr = frFresh(key, enOf ? enOf(key) : undefined);
+    if (fr === null) { out.stale++; continue; }
+    const book = bookOf(key);
     if (!out[book]) out[book] = { text: {} };
-    out[book].text[String(id)] = fr;
+    out[book].text[key] = fr;
   }
   return out;
 }
@@ -215,6 +221,19 @@ export function buildPayloads(corpus, outDir) {
   const branches = tree.index.branches.map(b => ({ n: b.n, c: b.c, b: path.basename(String(b.f || ''), '.js') }));
   write('index.json', { branches: branches });
 
+  // task-108: the rows the TREE carries, id -> the row object its branch payload got. The
+  // title in there is chapter-aware (a chapter's lead block is titled by its parent path),
+  // and the addressing table below must not invent a second name for a record the tree
+  // already names. Filled while the branches are written, read once, after the loop.
+  const treeRows = new Map();
+  const collectTreeRows = n => {
+    for (const r of (n.recs || [])) { const id = String(r.id); if (!treeRows.has(id)) treeRows.set(id, r); }
+    for (const k of (n.kids || [])) collectTreeRows(k);
+  };
+  // The ids a detachment owns (its enhancements and stratagems): the branch payload carries
+  // them as `own`, and the table carries the same list for the same ids.
+  const ownedBy = id => (tree.owned && tree.owned.get(id)) ? tree.owned.get(id).enh.concat(tree.owned.get(id).strat) : null;
+
   for (const b of branches) {
     const ref = tree.index.branches.find(x => path.basename(String(x.f || ''), '.js') === b.b) || {};
     const node = { n: b.n, lvl: 'branch', c: b.c, kids: [], recs: [], pages: [] };
@@ -227,12 +246,12 @@ export function buildPayloads(corpus, outDir) {
     // and only for the ids this branch actually mentions.
     const branchIds = new Set();
     for (const p of node.pages) for (const id of (p.recs || [])) branchIds.add(id);
-    const ownOf = id => (tree.owned && tree.owned.get(id)) ? tree.owned.get(id).enh.concat(tree.owned.get(id).strat) : null;
     const annotate = n => {
-      for (const r of (n.recs || [])) { const own = ownOf(r.id); if (own && own.length) { r.own = own; for (const id of own) branchIds.add(id); } }
+      for (const r of (n.recs || [])) { const own = ownedBy(r.id); if (own && own.length) { r.own = own; for (const id of own) branchIds.add(id); } }
       for (const k of (n.kids || [])) annotate(k);
     };
     annotate(node);
+    collectTreeRows(node);
     // The rows ride in their OWN file, fetched the first time a reader opens a
     // page or a detachment: the branch payload is on the critical path of every
     // Factions open, and 2,082 rows there cost 736 KB for a feature most opens
@@ -249,6 +268,35 @@ export function buildPayloads(corpus, outDir) {
     }
     write('index/' + b.b + '.json', node);
   }
+
+  // --- ONE addressing table (task-108) ---------------------------------------
+  // The defect the architecture walk measured: an id became an address in four different
+  // ways, three of them partial, and 2,159 of the 6,171 delivered records were in none of
+  // them - so a search hit or a finding on one could not become an address the drawer
+  // could open. This is the one answer: every DELIVERED record, keyed by id, with its
+  // address (slug), its name (title, num), the book the slug lives in, where the tree
+  // hangs it, and the ids a detachment owns.
+  //
+  // The invariant is the loop, not a promise: it runs over `live`, which is the same set
+  // the content books below are written from, so an address always names a book that holds
+  // the record. tests/test-rows-table.mjs asserts the same thing against the corpus's own
+  // delivered predicate, in both directions, and does not take `live` on trust.
+  const tableRows = {};
+  for (const id of live) {
+    const raw = byId.get(id) || {};
+    // A record the tree carries keeps the row it was given there; one the tree never names
+    // gets the tree's own title rule applied to its heading, so there is one naming rule.
+    const known = treeRows.get(id) || row({ i: id, t: cleanTitle(leafTitle(raw)) }, slugOf, byId);
+    const entry = { slug: slugOf(id), title: String(known.title || ''), book: bookOf(id), source: String(known.source || '') };
+    if (known.num) entry.num = String(known.num);
+    const chain = tree.paths.get(id) || [];
+    const chainPath = chain.slice(1).map(x => x && x.n).filter(Boolean).join(' > ');
+    if (chainPath) entry.path = chainPath;
+    const own = ownedBy(id);
+    if (own && own.length) entry.own = own;
+    tableRows[id] = entry;
+  }
+  write('index/rows.json', { rows: tableRows });
 
   // task-44: the excluded records, in their own book. Written AFTER the three real
   // branches and named by no index a default reader fetches, so the default reader's
@@ -288,7 +336,7 @@ export function buildPayloads(corpus, outDir) {
   // render, and its French would be dead weight. A record with no French (the pass
   // blocked 39) is simply absent from the file, which is how the reader falls back to
   // the English rather than to nothing.
-  const fr = frByBook(live, bookOf);
+  const fr = frByBook(live, bookOf, id => textOf(byId.get(id)));
   fs.rmSync(path.join(out, 'i18n'), { recursive: true, force: true });
   fs.mkdirSync(path.join(out, 'i18n', 'fr'), { recursive: true });
   const frIndex = {};
@@ -298,7 +346,7 @@ export function buildPayloads(corpus, outDir) {
     files.push({ name: 'i18n/fr/' + book + '.json', bytes: Buffer.byteLength(body) });
     frIndex[book] = { file: book + '.json', records: fr[book].text.length, bytes: Buffer.byteLength(body) };
   }
-  const frIndexBody = JSON.stringify({ source: fr.source, translated: fr.translated, blocked: fr.blocked, books: frIndex });
+  const frIndexBody = JSON.stringify({ source: fr.source, translated: fr.translated, blocked: fr.blocked, stale: fr.stale, books: frIndex });
   fs.writeFileSync(path.join(out, 'i18n', 'fr', 'index.json'), frIndexBody);
   files.push({ name: 'i18n/fr/index.json', bytes: Buffer.byteLength(frIndexBody) });
 

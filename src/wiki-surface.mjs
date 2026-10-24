@@ -13,6 +13,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { slugMap } from './rows-table.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SURFACE_DIR = process.env.WIKI_SURFACE_DIR || __dirname;
@@ -122,28 +123,17 @@ export function surfaceAsset(name) {
 
 export function dataDir() { return DATA_DIR; }
 
-// Every record with a payload page's slug, from the index payloads rather than the
-// content payloads. The findings and the tail carry no slug of their own, and a record
-// opened from the answer must have one to become an address - this is the one map that
-// answers it.
-let SLUGS = null;
+// Every delivered record's address, from the payload's ONE addressing table
+// (index/rows.json, written by src/wiki-payload.mjs, read by src/rows-table.mjs).
+//
+// task-108: this used to walk index.json and the branch payloads' own recs and kids, and
+// reached 1,926 of the 6,171 delivered records - so a finding, the tail of an answer or a
+// search hit on any of the other 4,245 had no address to open. The NAME stays, because the
+// server, the web bundle and three tests ask for it; the body is now the table's slug view,
+// which answers for every record the corpus delivers and re-reads itself when the bake
+// replaces the file under a running server.
 export function surfaceSlugMap() {
-  if (SLUGS) return SLUGS;
-  const map = new Map();
-  let index = null;
-  try { index = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'index.json'), 'utf8')); } catch (e) { index = null; }
-  for (const b of ((index && index.branches) || [])) {
-    let payload = null;
-    try { payload = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'index', b.b + '.json'), 'utf8')); } catch (e) { payload = null; }
-    if (!payload) continue;
-    const walk = n => {
-      for (const r of (n.recs || [])) if (r && r.id && r.slug) map.set(r.id, r.slug);
-      for (const k of (n.kids || [])) walk(k);
-    };
-    walk(payload);
-  }
-  SLUGS = map;
-  return map;
+  return slugMap(DATA_DIR);
 }
 
 // The page. One ask box and one viewscreen; the drawer is markup here and behaviour

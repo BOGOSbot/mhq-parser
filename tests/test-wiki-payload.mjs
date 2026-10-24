@@ -103,7 +103,10 @@ const LEGENDS_FILES = ['index/legends.json', 'content/legends.json', 'index/lege
 // only for the books that actually carry a translation.
 const frIndex = read('i18n/fr/index.json');
 const FR_FILES = 1 + Object.keys(frIndex.books).length;
-t('(g) the file count is index + one per branch + one per book + the rows file + the French overlay', written.length, 1 + index.branches.length + books.length + 1 + FR_FILES);
+// task-108: the addressing table is one more file at the payload's root, and it is the file
+// every id-to-address answer comes from (tests/test-rows-table.mjs owns its invariant).
+t('(g) the file count is index + one per branch + one per book + the rows file + the addressing table + the French overlay', written.length, 1 + index.branches.length + books.length + 1 + 1 + FR_FILES);
+t('(g) and the addressing table is written', written.indexOf('index/rows.json') === -1 ? ['index/rows.json'] : [], []);
 t('(g) and the French files are one per translated book plus its index', written.filter(f => /^i18n\/fr\//.test(f)).length, FR_FILES);
 t('(g) and no Legends file is written', LEGENDS_FILES.filter(f => written.indexOf(f) !== -1), []);
 t('(g) and it is the count the stats report', written.length, stats.fileCount);
