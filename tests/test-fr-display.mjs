@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { frReady, frText, frStats, frUsable, frKeywordCheck, enTerms } from '../src/i18n-fr.mjs';
+import { frReady, frText, frFresh, frWhy, frSourceHash, frStats, frUsable, frKeywordCheck, enTerms } from '../src/i18n-fr.mjs';
 import { readAllCorpus } from '../src/rules-corpus.mjs';
 import { recordBody } from '../src/wiki-cards.mjs';
 
@@ -31,14 +31,21 @@ ok('frUsable refuses a record whose text is not French', frUsable('datasheet#000
 // prose, because it is referenced across languages. The pass enforced it with a mask;
 // this is the spot check that it held, on the records the reader actually opens.
 const all = readAllCorpus();
-const samples = ['unitrules#000000024', 'datasheet#000000702', 'unitrules#000000702', 'core-rules#Introduction', 'stratagem#000010917004'];
+// 2026-10-24: the samples must be records whose French is still current. The pass
+// translated the pre-cut corpus, so a stratagem that lost its lore no longer serves
+// French at all; picking fixed ids made this test fail for the right reason.
+const samples = all
+  .filter(r => /^(unitrules|datasheet|stratagem|core-rules)#/.test(String(r.id)))
+  .filter(r => frFresh(String(r.id), String(r.text || '')) !== null)
+  .slice(0, 6)
+  .map(r => String(r.id));
 let checked = 0, keptAll = 0;
 const misses = [];
 // The export's own ROW LABELS are not defined terms: WHEN/TARGET/EFFECT are the stratagem
 // card's layout slots and the pass translated them (QUAND/CIBLE/EFFET). Mandal's rule is
 // about a term with a DEFINITION - a keyword, a unit name, a rule name - and those are
 // what this checks. The labels are reported in the task-69 report rather than hidden here.
-const ROW_LABELS = new Set(['WHEN', 'TARGET', 'EFFECT', 'TYPE', 'CP', 'TURN', 'PHASE', 'DETACHMENT', 'SOURCE', 'POINTS', 'COMPOSITION', 'WARGEAR', 'KEYWORDS', 'ABILITY', 'RANGE', 'MODEL', 'MODELS', 'UNIT', 'UNITS', 'MAXIMUM DISTANCE', 'FORCE DISPOSITION', 'DETACHMENT POINTS']);
+const ROW_LABELS = new Set(['WHEN', 'TARGET', 'EFFECT', 'TYPE', 'CP', 'TURN', 'PHASE', 'DETACHMENT', 'SOURCE', 'POINTS', 'COMPOSITION', 'WARGEAR', 'KEYWORDS', 'ABILITY', 'RANGE', 'MODEL', 'MODELS', 'UNIT', 'UNITS', 'MAXIMUM DISTANCE', 'FORCE DISPOSITION', 'DETACHMENT POINTS', 'SEE ALSO']);
 for (const id of samples) {
   const rec = all.find(r => r.id === id);
   const fr = frText(id);
@@ -50,6 +57,23 @@ for (const id of samples) {
 }
 ok('the sample records were found', checked >= 4);
 t('every ALL-CAPS term in the English survives in the French', misses, []);
+
+// --- the source stamp ----------------------------------------------------------
+// Mandal, 2026-10-24: a French body is served only while the English it was translated
+// from still holds. Half the overlay predates the lore cut and the flavour cut, and a
+// French rule that says something the English no longer says is worse than English.
+const live = all.filter(r => r.kind !== 'index');
+const freshId = samples[0];
+const staleId = live.map(r => String(r.id)).find(id => frWhy(id, String((live.find(x => String(x.id) === id) || {}).text || '')) === 'stale');
+ok('a current translation is marked fresh', !!freshId && frWhy(freshId) === 'fresh');
+ok('one whose English moved is marked stale', !!staleId);
+ok('and it is not served in French, so the reader gets the English', !!staleId && frText(staleId) === '' && frFresh(staleId) === null);
+t('the hash is stable', frSourceHash('abc') === frSourceHash('abc'), true);
+t('and it moves with the text', frSourceHash('abc') === frSourceHash('abd'), false);
+// 12 translated records have no English in the pre-cut snapshot they could be stamped
+// against (they were added or renamed between exports). They count as stale, which is the
+// safe side: no French rather than French nobody can check.
+ok('the store carries a stamp for all but a handful of translated records', stats.stamped >= stats.translated - 20);
 ok('the keyword line of a unit record stays English', /MOTS-CL\u00c9S\s*:\s*Orks, Infantry, Mega Armour, Explosives/.test(frText('unitrules#000000024')));
 ok('and the card\u2019s own keywords are the English ones', /ASSAULT/.test(frText('unitrules#000000024')));
 

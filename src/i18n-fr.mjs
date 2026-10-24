@@ -19,6 +19,7 @@
  * Nothing here is cached in the process across a bake: the file's mtime is the key, so
  * a re-export under a running server is picked up on the next request.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,30 +48,96 @@ function loadSource() {
   const map = new Map();
   for (const rec of (raw.records || [])) {
     if (!rec || !rec.id) continue;
-    map.set(String(rec.id), { fr: String(rec.fr || ''), gate: String(rec.gate || ''), kind: String(rec.kind || '') });
+    map.set(String(rec.id), { fr: String(rec.fr || ''), gate: String(rec.gate || ''), kind: String(rec.kind || ''), src: String(rec.src || '') });
   }
   SOURCE = map;
   SOURCE_MTIME = mtime;
   return SOURCE;
 }
 
-// The French text for one record, or '' when there is none. A blocked record (the pass
-// refused 39) and a record the pass never saw both return '' - the caller falls back to
-// the English, which is the rule: a record with no French shows English, not nothing.
-export function frText(id) {
+// --- the source stamp ---------------------------------------------------------
+// Mandal, 2026-10-24: the pass translated a specific English text, and the corpus has
+// moved twice since (the lore column, then the ability flavour). A French body that says
+// something the English no longer says is worse than English, so every entry carries the
+// hash of the English it was made from and is served only while that English still holds.
+// The stamp was backfilled from the pre-cut corpus snapshot, which is the text the pass
+// actually read; a record whose English moved since is not served in French until it is
+// translated again, and the store keeps its text for that pass.
+export function frSourceHash(text) {
+  return crypto.createHash('sha1').update(String(text == null ? '' : text), 'utf8').digest('hex').slice(0, 16);
+}
+
+const CORPUS_DIR = process.env.RULES_CORPUS_DIR || path.join(__dirname, '..', 'workspace', 'rules-corpus');
+let EN = null;
+let EN_MTIME = -1;
+function loadEnglish() {
+  const files = [];
+  let newest = 0;
+  try {
+    for (const f of fs.readdirSync(CORPUS_DIR)) {
+      if (!f.endsWith('.json') || /(index|rebuilds)\.json$/.test(f)) continue;
+      files.push(f);
+      try { newest = Math.max(newest, fs.statSync(path.join(CORPUS_DIR, f)).mtimeMs); } catch (e) { /* a file that vanished is not fatal */ }
+    }
+  } catch (e) { return null; }
+  if (EN && newest === EN_MTIME) return EN;
+  const map = new Map();
+  for (const f of files) {
+    let raw = null;
+    try { raw = JSON.parse(fs.readFileSync(path.join(CORPUS_DIR, f), 'utf8')); } catch (e) { continue; }
+    for (const s of (raw.sections || [])) map.set(String(s.id), String(s.text || ''));
+  }
+  EN = map;
+  EN_MTIME = newest;
+  return EN;
+}
+
+// The French for a record whose English has not moved, or null when it has (or when the
+// pass never translated it, or refused it). Callers fall back to English on null.
+export function frFresh(id, enText) {
   const map = loadSource();
-  if (!map) return '';
+  if (!map) return null;
   const hit = map.get(String(id || ''));
-  if (!hit || !hit.fr) return '';
-  return hit.fr;
+  if (!hit || !hit.fr || !hit.src) return null;
+  let en = enText;
+  if (en === undefined || en === null) {
+    const all = loadEnglish();
+    en = all ? all.get(String(id)) : undefined;
+  }
+  if (en === undefined) return null;
+  return hit.src === frSourceHash(en) ? hit.fr : null;
+}
+
+// Why a record has no French, for a test or a report: fresh, stale (the English moved),
+// blocked (the pass refused it), none (never translated).
+export function frWhy(id, enText) {
+  const map = loadSource();
+  if (!map) return 'none';
+  const hit = map.get(String(id || ''));
+  if (!hit) return 'none';
+  if (!hit.fr) return 'blocked';
+  if (!hit.src) return 'stale';
+  let en = enText;
+  if (en === undefined || en === null) { const all = loadEnglish(); en = all ? all.get(String(id)) : undefined; }
+  if (en === undefined) return 'stale';
+  return hit.src === frSourceHash(en) ? 'fresh' : 'stale';
+}
+
+// The French text for one record, or '' when there is none. A blocked record (the pass
+// refused 39), a record the pass never saw, and a record whose English has moved all
+// return '' - the caller falls back to the English, which is the rule: a record with no
+// French shows English, not nothing and not a stale French.
+export function frText(id, enText) {
+  const fr = frFresh(id, enText);
+  return fr === null ? '' : fr;
 }
 
 export function frStats() {
   const map = loadSource();
-  if (!map) return { ready: false, records: 0, translated: 0, blocked: 0 };
-  let translated = 0, blocked = 0;
-  for (const v of map.values()) { if (v.fr) translated++; else blocked++; }
-  return { ready: true, records: map.size, translated: translated, blocked: blocked };
+  if (!map) return { ready: false, records: 0, translated: 0, blocked: 0, stamped: 0 };
+  let translated = 0, blocked = 0, stamped = 0;
+  for (const v of map.values()) { if (v.fr) translated++; else blocked++; if (v.src) stamped++; }
+  return { ready: true, records: map.size, translated: translated, blocked: blocked, stamped: stamped };
 }
 
 // --- the keyword spot check ---------------------------------------------------
@@ -125,4 +192,4 @@ export function frUsable(id, minWords) {
   return fr;
 }
 
-export default { frReady, frText, frStats, frUsable, frKeywordCheck, frBeneath, enTerms };
+export default { frReady, frText, frFresh, frWhy, frSourceHash, frStats, frUsable, frKeywordCheck, frBeneath, enTerms };
