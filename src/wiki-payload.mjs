@@ -344,7 +344,7 @@ export function buildPayloads(corpus, outDir) {
     const body = JSON.stringify({ book: book, records: fr[book].text });
     fs.writeFileSync(path.join(out, 'i18n', 'fr', book + '.json'), body);
     files.push({ name: 'i18n/fr/' + book + '.json', bytes: Buffer.byteLength(body) });
-    frIndex[book] = { file: book + '.json', records: fr[book].text.length, bytes: Buffer.byteLength(body) };
+    frIndex[book] = { file: book + '.json', records: Object.keys(fr[book].text).length, bytes: Buffer.byteLength(body) };
   }
   const frIndexBody = JSON.stringify({ source: fr.source, translated: fr.translated, blocked: fr.blocked, stale: fr.stale, books: frIndex });
   fs.writeFileSync(path.join(out, 'i18n', 'fr', 'index.json'), frIndexBody);

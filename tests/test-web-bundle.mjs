@@ -88,7 +88,18 @@ for (const rel of fs.readdirSync(path.join(OUT, 'records-fr'))) {
 }
 let frCount = 0;
 for (const b of Object.keys(frBooks)) frCount += Object.keys(frBooks[b]).length;
-ok('the French half covers the overlay', frCount > 6000);
+// 2026-10-24: the overlay is filtered to the records whose English has not moved, so the
+// bundle must render exactly the payload's own French, not the whole corpus. The old
+// > 6000 pin described the unfiltered pass; the invariant is now the equality.
+const frIndex = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-data', 'i18n', 'fr', 'index.json'), 'utf8'));
+let frPayload = 0;
+for (const b of Object.values(frIndex.books || {})) {
+  const body = JSON.parse(fs.readFileSync(path.join(ROOT, 'workspace', 'wiki-data', 'i18n', 'fr', b.file), 'utf8'));
+  frPayload += Object.keys(body.records || {}).length;
+}
+// The bundle applies one more gate than the payload: the text must look French, or a pass
+// that echoed the English would render English under a French label.
+ok('the French half is the payload overlay minus what does not look French (' + frCount + '/' + frPayload + ')', frCount <= frPayload && frPayload - frCount <= 50 && frCount > 2000);
 
 // --- 3. the browser module graph has no node builtins ---------------------------
 const browserFiles = ['search/search.js', 'assets/surface.js', 'assets/surface-sw.js'];
