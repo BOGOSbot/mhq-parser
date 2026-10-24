@@ -336,6 +336,29 @@ the spoiler toggles (`Show`, `Hide`) no longer appear as ancestors.
 Moving records changes ids, so the benchmark grades two readings of every
 question - see *Measuring it*.
 
+**Three shapes the display reassembles, and the split stays retrieval-side.**
+A SEE ALSO block is the rulebook's own navigation list inside a parent body: the
+display strips its text, parses the entries, and renders a child - one whose
+number extends the record's own - as a container holding that child's own body,
+closed by default, with an echo of the body dropped. The `(1/2)` and `(2/2)`
+parts are the retrieval unit, cut at the passage budget, and the display
+reassembles them so the reader sees one rule. Undoing either changes what the
+judge reads, and the merge is display only.
+
+One corpus special case sits with them. `The Aeldari Agile Manoeuvres rule is one
+record with six children`: the parent carried all six manoeuvres inline and the
+six also existed as their own records, so the same six rules were in the corpus
+twice. The parent's id plus a three-digit suffix already said who the children
+were, the way the chunk parts say it, but the children's parent pointed at the CSV
+index and the parent's ruleId was empty, so nothing attached them. The shape built
+is the appendix's: a heading with the six children, each with its own body, the
+text said once, each child findable and openable on its own. Exactly six records
+in the corpus are a child of another by id suffix, and all six belong to this
+parent, so it is not a rule to generalise.
+
+If any of the three is judged noise, the change belongs in the route, never in
+the app.
+
 The link-first rewrite of this corpus - a record's own text plus links to what
 sits under it, the overflow rule, and the id-stability rule - is designed and dry
 run in `docs/corpus-wiki.md` (phase A; nothing is built).
