@@ -3,7 +3,7 @@
 *The Android shell changed when Legends left and no APK has been built since, so the phone still runs the old shell.*
 
 - **State:** pending
-- **Priority:** P3
+- **Priority:** P1, and it gates the next deploy
 - **Owner:** me
 
 ## Where it stands

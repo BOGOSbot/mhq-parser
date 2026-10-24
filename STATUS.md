@@ -17,7 +17,7 @@
 - **P3** [Make tree placement testable](tasks/tree-placement-tests.md) - placement is asserted by census, not by rule.
 - **P3** [Give rules-corpus a seam](tasks/corpus-seam.md) - 5,735 lines, 204 exports, the interface is the implementation.
 - **P3** [Carry the French overlay without the 14 MB store](tasks/french-route.md) - the route works now; it reads the whole export to serve one record.
-- **P3** [Rebuild and republish the Android APK](tasks/android-apk.md) - the shell change has not reached the phone.
+- **P1 (before the next deploy)** [Rebuild and republish the Android APK](tasks/android-apk.md) - the new bundle keys record bodies by hash and the phone's Kotlin reader still scans by id, so a deploy before this patch breaks the English record view on every phone that updates.
 - **P4** [Name the five stages of retrieveWide](tasks/retrieve-wide-stages.md) - 22 knobs; maintenance behind everything a table can see.
 
 ## Landed, for orientation
