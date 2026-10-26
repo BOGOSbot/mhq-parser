@@ -246,13 +246,18 @@ function baseRecord(r, extra) {
   }, extra || {});
 }
 
-export function readPlanInput(dir) {
+export function readPlanInput(dir, opts) {
   if (!dir) throw new Error('readPlanInput: a corpus directory is required - no silent fallback to the live corpus');
   const read = f => csvRows(fs.readFileSync(path.join(csvDir(dir), f), 'utf8'));
+  // The CSV's Abilities.csv is where the plan used to mint a faction rule per
+  // army ability. Those rows exist because the faction half WAS the CSV; when
+  // the corpus carries the army rules itself (the MFM build), minting them again
+  // duplicates every rule, so the mint is switched off at the source.
+  const noCsvFactionRules = !!(opts && opts.noCsvFactionRules);
   return {
     rules: readAllCorpus('rules', dir),
     factions: readAllCorpus('factions', dir),
-    abilities: read('Abilities.csv').map(a => ({ id: a.id, name: a.name, faction_id: a.faction_id || '', description: a.description || '', legend: a.legend || '' })),
+    abilities: noCsvFactionRules ? [] : read('Abilities.csv').map(a => ({ id: a.id, name: a.name, faction_id: a.faction_id || '', description: a.description || '', legend: a.legend || '' })),
     factionsCsv: read('Factions.csv').map(f => ({ id: f.id, name: f.name })),
   };
 }

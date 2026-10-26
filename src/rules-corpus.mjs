@@ -46,6 +46,7 @@ import { TRACE_RETENTION_MONTHS, sweepTraces } from './rules-traces.mjs';
 // task-34: the flat passage text gets the wargear marks at display time - the corpus
 // bytes are untouched, the finding's excerpt and the passage sheet are not bare.
 import { markWargearText } from './wargear-marks.mjs';
+import { buildMfmFactions, mfmDumpPath } from './mfm-factions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // task-83: the corpus directory is resolved PER CALL. Captured at import it was a
@@ -1080,7 +1081,36 @@ export function deliveredHits(hits) {
 // One record per thing a reader could be shown. A datasheet is assembled from
 // six tables because that is how the export splits it; the reader wants the
 // datasheet, not the sixth of it that happens to live in one file.
+// The faction half now comes from Games Workshop's own Munitorum Field Manual
+// export, not from the community CSV. The CSV path stays whole underneath as the
+// rollback: MHQ_FACTIONS_SOURCE=csv, or a tree with no dump on disk, builds the
+// corpus exactly as before.
+function factionSourceIsMfm() {
+  if (String(process.env.MHQ_FACTIONS_SOURCE || 'mfm').toLowerCase() === 'csv') return false;
+  try { return fs.existsSync(mfmDumpPath()); } catch (e) { return false; }
+}
+
+function mfmFactionSections() {
+  const built = buildMfmFactions({ dumpPath: mfmDumpPath() });
+  const sections = [];
+  for (const sec of built.corpus.sections) {
+    // The same cut the CSV half applies: a card is not one idea, and the
+    // reader's passage window is the budget.
+    const pieces = splitSection(sec.text, MAX_CHARS);
+    for (const piece of pieces) {
+      const part = pieces.length > 1 ? '~' + (piece.part + 1) : '';
+      sections.push(Object.assign({}, sec, {
+        id: sec.id + part,
+        heading: pieces.length > 1 ? sec.heading + ' (' + (piece.part + 1) + '/' + pieces.length + ')' : sec.heading,
+        text: piece.text, chars: piece.text.length, hash: textHash(piece.text),
+      }));
+    }
+  }
+  return { lastUpdate: built.stats.version, sections: sections, boarding: { stratagems: 0, detachments: 0, enhancements: 0 } };
+}
+
 export function buildFactionSections() {
+  if (factionSourceIsMfm()) return mfmFactionSections();
   const read = f => csvRows(fs.readFileSync(path.join(csvDir(), f), 'utf8'));
   const lastUpdate = (read('Last_update.csv')[0] || {}).last_update || '';
   const factions = read('Factions.csv');
@@ -1429,7 +1459,9 @@ export function buildFactionCorpus() {
     throw new Error('duplicate ids: ' + built.sections.length + ' sections, ' + ids.size + ' ids');
   }
   const stamp = new Date().toISOString();
-  const marker = { kind: 'CSV export', edition: '11', version: '', lastUpdate: built.lastUpdate };
+  const marker = factionSourceIsMfm()
+    ? { kind: 'MFM dump', edition: '11', version: String(built.lastUpdate || ''), lastUpdate: String(built.lastUpdate || '') }
+    : { kind: 'CSV export', edition: '11', version: '', lastUpdate: built.lastUpdate };
   // Two files from one download, because they belong in two namespaces and the
   // reader is told which half a finding came from.
   const halves = [
@@ -5556,7 +5588,7 @@ async function buildWikiShape(dir) {
   // Dynamic import: wiki-build.mjs imports this module, so a static import would
   // be a cycle at load time.
   const { writeWikiCorpus } = await import('./wiki-build.mjs');
-  const m = writeWikiCorpus(dir, null, { blockInText: true });
+  const m = writeWikiCorpus(dir, null, { blockInText: true, noCsvFactionRules: factionSourceIsMfm() });
   console.log('wiki shape  ' + String(m.records).padStart(5) + ' records, ' + String(m.links).padStart(6) + ' links (block in text)');
   return m;
 }

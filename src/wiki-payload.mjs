@@ -89,6 +89,28 @@ const textOf = rec => String((rec && rec.text) || '');
 
 // The drawer's one-line row: id, slug, title, source and a plain-text snippet of
 // at most 100 characters, so a branch renders its lines without fetching content.
+// The row's one-line summary. The corpus writes the heading as the section's
+// first line and a Source line right after it, both of which the reader already
+// sees above the row; a hard slice then cut mid-word ('Codex: Adeptus Custodes
+// (e'), which reads as a broken record rather than a summary. Drop the echo,
+// drop the Source line, and cut on a word end.
+export function snippetOf(text, heading, max) {
+  const limit = max || 100;
+  const head = String(heading || '').replace(/\s+/g, ' ').trim();
+  // Work line by line while the lines still exist: the echo and the Source line
+  // are whole lines, and collapsing first glues them into the sentence.
+  const lines = String(text || '').split('\n').map(function (line) { return line.trim(); }).filter(Boolean);
+  if (lines.length && head && lines[0].indexOf(head) === 0) lines.shift();
+  if (lines.length && /^Source: /i.test(lines[0])) lines.shift();
+  let t = lines.join(' ').replace(/\s+/g, ' ').trim();
+  if (t.length <= limit) return t;
+  const cut = t.slice(0, limit);
+  const sentence = cut.match(/^[\s\S]*[.!?](?=\s|$)/);
+  if (sentence && sentence[0].length >= limit * 0.4) return sentence[0].trim();
+  const space = cut.lastIndexOf(' ');
+  return (space > 20 ? cut.slice(0, space) : cut).trim() + '\u2026';
+}
+
 function row(rec, slugOf, byId, chapter) {
   const raw = byId.get(rec.i) || {};
   const plain = textOf(raw).replace(/\s+/g, ' ').trim();
@@ -131,7 +153,7 @@ function row(rec, slugOf, byId, chapter) {
   }
   // task-87: the rule's own number ('01.05'); the row renders 'num title' when set. Omitted
   // when empty (the factions branch's 5,185 rows) and when it is only the chapter's number.
-  const out = { id: rec.i, slug: slugOf(rec.i), title: title, source: raw.source || '', snippet: plain.slice(0, 100) };
+  const out = { id: rec.i, slug: slugOf(rec.i), title: title, source: raw.source || '', snippet: snippetOf(textOf(raw), raw.heading, 100) };
   if (num && num !== chNum) out.num = num;
   return out;
 }
@@ -282,7 +304,7 @@ export function buildPayloads(corpus, outDir) {
     // table carries the same five fields the drawer row reads (title, slug, source and
     // this 100-character snippet, which the tree's own filter matches on).
     const plain = textOf(raw).replace(/\s+/g, ' ').trim();
-    const entry = { slug: slugOf(id), title: String(known.title || ''), book: bookOf(id), source: String(known.source || ''), snippet: plain.slice(0, 100) };
+    const entry = { slug: slugOf(id), title: String(known.title || ''), book: bookOf(id), source: String(known.source || ''), snippet: snippetOf(textOf(raw), raw.heading, 100) };
     if (known.num) entry.num = String(known.num);
     const chain = tree.paths.get(id) || [];
     const chainPath = chain.slice(1).map(x => x && x.n).filter(Boolean).join(' > ');

@@ -65,7 +65,7 @@ export function carryStamps(src, sections) {
 
 export function writeWikiCorpus(dir, data, opts) {
   if (!data && !dir) throw new Error('writeWikiCorpus: a corpus directory is required - no silent fallback to the live corpus');
-  const input = data || readPlanInput(dir);
+  const input = data || readPlanInput(dir, opts);
   const plan = planWiki(input, opts);
   fs.mkdirSync(dir, { recursive: true });
   // The rules half is four files by source; the faction half is ONE file that
