@@ -19,3 +19,13 @@ Run `--ingest` then `--prune`, then confirm /health reads behind: [] and ahead: 
 `docs/mfm-source.md` carries the endpoint, the refresh recipe, the record shape and what the dump does not have. The four slices it opened are listed there: missions from the dump instead of the scraped event companion, wargear options and choice groups, conditional keywords and FAQs, and the French locale.
 
 The old corpus is one environment variable away, and the CSV download still runs because `wiki-plan` reads `Factions.csv` for display names. Do not drop the download until that read moves to the dump.
+## Known red after the swap
+
+The corpus, the payload and the shaped tree are verified. Four test files still assert the CSV corpus and need re-baselining, each for a stated reason:
+
+- `tests/test-corpus-drift.mjs` - the shape baseline is a stored count and byte size (6,483 / 9,648,445). The build now emits 4,972 / 6,100,122. Update the two numbers and the comment that explains them.
+- `tests/test-index-delivered.mjs` - delivered 5,666 and filtered 134 replace 6,171 / 1,237, and the kept id `datasheet#000000958~1` no longer exists because ids are dump UUIDs now. Pick the ids from the corpus instead of hardcoding them.
+- `tests/test-editions.mjs` - asserts the Aeldari Seer Council record and `faction-rule#000008445`. Under the dump the army rules are named per rule, not per CSV ability id.
+- `tests/test-record-shapes.mjs` - classifies the 21 core ability records and counts 12 mid-line rows and 13 cards; the corpus census moved. Recount, then check the classifier still finds the families it names.
+
+Until these are green the branch is not mergeable, and the ingest row reports `vanishedPlanned: 5263` - the index holds 5,263 ids the new corpus no longer has, which is why the re-ingest is P1 rather than housekeeping.
