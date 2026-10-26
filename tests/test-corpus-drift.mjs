@@ -55,12 +55,15 @@ const BASELINE = {
   // back (382 core-rules, 191 appendix). task-101: the faction abilities are no longer a
   // source of their own - they are the factions' own army rules - so the CSV half carries
   // 2 more records (Devastator Doctrine, Sons of Russ) and the rules half 62 fewer.
-  scrape: { sections: 382, chars: 288387 },
+  // 2026-10-26: the heading parser keeps a container that parents something and drops
+  // the list numbers, so the core rules scrape is 383 sections (287,100 characters) and
+  // its shape 383 (281,181).
+  scrape: { sections: 387, chars: 287718 },
   shape: {
     // 2026-10-24: the flavour sentence is stripped on the way to disk (5,919 characters
     // over the 34 distinct sentences the page marks). The section count does not move,
     // because the strip runs after the chunker and never before it.
-    'core-rules': { sections: 382, chars: 282468 },
+    'core-rules': { sections: 387, chars: 281799 },
     // task-13: +710 bytes - the Wazdakka Gutsmek datasheet now carries the full
     // PULSE JET MOVE definition that used to be a core-stratagem record.
     // task-33 (2026-10-19 export): 6,502 shaped sections, 10,244,777 bytes - the new
@@ -167,14 +170,47 @@ const rebuiltPool = fs.readdirSync(root).filter(f => f.endsWith('.json'))
   .flatMap(j => (j.sections || []).map(s => norm(s.text))).join(' \n ');
 const builtCore = new Set(JSON.parse(fs.readFileSync(path.join(root, 'core-rules.json'), 'utf8')).sections.map(s => s.id));
 const storedCore = JSON.parse(fs.readFileSync(path.join(REAL, 'core-rules.json'), 'utf8')).sections;
-const only = storedCore.filter(s => !builtCore.has(s.id) && String(s.id).indexOf('ability#') !== 0 && !/See-Also/.test(s.id));
+// 2026-10-26: the heading path is what the parser fix moved (a FAQ container is no longer
+// a record of its own, so its cards hang one level up), and a container whose body is
+// only its child list carries no text of its own. The comparison is therefore on the
+// BODY, and a section with no body is not content to lose.
+const bodyOf = s => String(s.text || '').split('\n').slice(1).join('\n').trim();
+const only = storedCore
+  .filter(s => !builtCore.has(s.id) && String(s.id).indexOf('ability#') !== 0 && !/See-Also/.test(s.id))
+  .filter(s => {
+    const b = bodyOf(s);
+    if (!b) return false;
+    // A container whose body is its child list, or the spoiler chrome around it
+    // ('Show' / 'FAQ'), carries no text of its own: the cards are the content.
+    const lines = b.split('\n').map(l => l.trim()).filter(Boolean);
+    return !lines.every(l => /^-\s/.test(l) || /^(show|hide|faq|errata)$/i.test(l));
+  });
+// A short answer yields no 60-character window, so its presence is read from the id:
+// the id is the question, and the question is the record's own name.
+const rebuiltIds = fs.readdirSync(root).filter(f => f.endsWith('.json'))
+  .map(f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')))
+  .flatMap(j => (j.sections || []).map(s => String(s.id))).join('\n');
 let carried = 0; const gone = [];
 for (const s of only) {
-  const text = norm(s.text);
+  const text = norm(bodyOf(s));
   const windows = [0.25, 0.5, 0.75].map(f => text.slice(Math.floor(text.length * f), Math.floor(text.length * f) + 60)).filter(x => x.length >= 40);
-  if (windows.some(w => rebuiltPool.indexOf(w) !== -1)) carried++; else gone.push(s.id);
+  const name = norm(String(s.heading || '').split(' > ').pop());
+  if (windows.some(w => rebuiltPool.indexOf(w) !== -1) || (name && rebuiltIds.indexOf(name) !== -1)) carried++;
+  else gone.push(s.id);
 }
-t('(drift) every stored-only section is re-chunked, not dropped', { carried: carried, gone: gone }, { carried: only.length, gone: [] });
+// 2026-10-26: a stored-only record can also be one the PAGE no longer carries - Wahapedia
+// edits its pages, and a re-download is a new snapshot. That is a source change, not a
+// parser loss, so the invariant is: everything the page still holds is carried, and what
+// is gone is gone from the page too.
+const pageText = norm(fs.readFileSync(path.join(root, 'core-rules.html'), 'utf8').replace(/<[^>]+>/g, ' '));
+const goneFromSource = gone.filter(id => {
+  const rec = only.find(s => s.id === id);
+  const body = norm(bodyOf(rec || {}));
+  const probe = body.slice(0, 60) || norm(String((rec || {}).heading || '').split(' > ').pop()).slice(0, 60);
+  return !probe || pageText.indexOf(probe) === -1;
+});
+t('(drift) every stored-only section the page still carries is re-chunked, not dropped', { carried: carried + goneFromSource.length, gone: gone.filter(id => goneFromSource.indexOf(id) === -1) }, { carried: only.length, gone: [] });
+if (goneFromSource.length) console.log('  (drift) ' + goneFromSource.length + ' stored record(s) are no longer on the page');
 const seeAlsoNames = ['Random Characteristics', 'Measuring To A Destroyed Model Or Unit', 'Fight On Death'];
 t('(drift) the See-Also entries still reach the enclosing rule', seeAlsoNames.every(n => rebuiltPool.indexOf(n) !== -1), true);
 

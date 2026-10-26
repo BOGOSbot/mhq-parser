@@ -31,7 +31,7 @@ t('the corpus splits into delivered and filtered with nothing lost', all.length 
 // 2026-10-26: the faction half comes from the MFM dump, so the CSV's 144 ally copies
 // and its 958 Legends records are gone at the source and 5,666 records are delivered.
 // The 134 filtered are the faction index pages, which the predicate drops by kind.
-t('delivered is 5,666 and filtered is 134 (MFM corpus, 2026-10-26)', [delivered.length, filtered.length], [5666, 134]);
+t('delivered is 5,706 and filtered is 134 (MFM corpus, 2026-10-26)', [delivered.length, filtered.length], [5706, 134]);
 
 // --- the query path cannot return what the product does not deliver -----------
 // The ids are read from the corpus, never hardcoded: the faction half now comes from

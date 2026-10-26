@@ -411,12 +411,14 @@ export function extractSections(html, source) {
     // the span form: invisible here, so the list stays in the enclosing rule's body
     // and the link builder turns those names into links.
     if (/^See Also$/i.test(raw) && /CornerSeeAlso/.test(page.slice(Math.max(0, m.index - 300), m.index))) continue;
+    const classMatch = attrs.match(/\bclass="([^"]*)"/i);
     marks.push({
       at: m.index,
       end: head.lastIndex,
       anchor: idMatch ? idMatch[1] : '',
       heading: raw,
       level: parseInt(m[1], 10),
+      promoted: /(?:^|\s)(?:faq-heading|errata-heading)(?:\s|$)/.test(classMatch ? classMatch[1] : ''),
     });
   }
 
@@ -439,8 +441,18 @@ export function extractSections(html, source) {
   const stack = [];
   for (let i = 0; i < marks.length; i++) {
     const body = stripMarker(htmlToText(page.slice(marks[i].end, i + 1 < marks.length ? marks[i + 1].at : page.length)));
-    let title = marks[i].heading.replace(/\s+\d{2}(?:\.\d{2})*\s*$/, '').trim() || marks[i].heading;
-    const ruleId = (marks[i].heading.match(/\s(\d{2}(?:\.\d{2})*)\s*$/) || [])[1] || '';
+    const pageTitle = marks[i].heading.replace(/\s+\d{2}(?:\.\d{2})*\s*$/, '').trim() || marks[i].heading;
+    let title = pageTitle;
+    let ruleId = (marks[i].heading.match(/\s(\d{2}(?:\.\d{2})*)\s*$/) || [])[1] || '';
+    // The number is not always trailing: the appendix prints '01.02.06 Splitting Units'
+    // with the number in front, and that heading kept it in its text while every other
+    // heading carried its number in ruleId. An errata heading ('17.03 - Change to First
+    // Sentence') is refused, because what follows the number there is a change, not a
+    // name.
+    if (!ruleId) {
+      const lead = title.match(/^(\d{2}(?:\.\d{2})+)\s+(?![-\u2013])(.+)$/);
+      if (lead) { ruleId = lead[1]; title = lead[2].trim(); }
+    }
     // task-90: the page's tag level is NOT the hierarchy - a SECTION is an h2 and a
     // CHAPTER an h3, so chapter '02 Datasheets' was filed under the section before it
     // ('01.07 Battle-shock Rolls'). The heading's own dotted number is the depth:
@@ -454,7 +466,15 @@ export function extractSections(html, source) {
     if (tagLevel === 1) { stack.length = 0; continue; }
     // The export's own stamp, as a heading: "Book Kind Edition Version Last
     // update". It dates the copy; nobody asks about it.
-    if (/^Book\s+Kind\s+Edition\s+Version\s+Last update/i.test(title)) continue;
+    if (/Book\s+Kind\s+Edition\s+Version\s+Last update/i.test(title)) continue;
+    // The page's own table of contents and its book-history table are navigation.
+    // Both are tested against the heading the PAGE wrote, never against the title
+    // derived from the body: deriveTitle replaces 'Books' with the table's column
+    // headers, and the skip then missed - which is how nine event-companion
+    // records came to be headed 'History Book Kind Edition Version Last update ...'
+    // and every card under them inherited it as their parent path.
+    if (/^(books|contents)$/i.test(pageTitle)) continue;
+    if (/Book\s+Kind\s+Edition\s+Version\s+Last update/i.test(body.slice(0, 300))) continue;
     while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
     // 'Show' and 'Hide' are the spoiler toggles: they end up as ancestors once a
     // promoted card hangs under them, and they say nothing about the rule.
@@ -467,17 +487,43 @@ export function extractSections(html, source) {
     if (GENERIC_HEADING.test(title) || (titleCount.get(title) || 0) > 1) {
       title = deriveTitle(body) || title;
     }
-    stack.push({ level, title });
+    // The page numbers some of its sub-headings positionally ('1. Datasheet Name',
+    // '2. Profiles') while the official number rides in the h_number span (02.01,
+    // 02.02). Keeping the positional prefix left 36 headings numbered and the rest
+    // not, and the dotted number was already in ruleId - so the positional one is
+    // dropped and a heading never carries half a numbering scheme.
+    // Unconditional: the appendix numbers the same containers positionally and carries
+    // no h_number span at all ('<h2 id="1.-Datasheet-Name">1. Datasheet Name</h2>'),
+    // so gating on ruleId fixed the core rules page and left 17 appendix headings
+    // numbered. A leading 'N. ' is a list position, never a rule's name - and the
+    // errata's '17.03 - Change to First Sentence' cannot match, because it has no space
+    // after the dot.
+    title = title.replace(/^\d{1,2}\.\s+/, '').trim() || title;
     // A heading with no body is a label in a card, not a section. A NUMBERED heading is a
     // rule whatever its length, though: the appendix defines some in one line ('The term
     // Battle-shock test is the same as battle-shock roll.', 57 chars, 01.07.02), and the
     // 80-char floor was dropping 11 of its numbered sections - the empty containers Mandal
     // saw under a SEE ALSO entry (2026-10-18).
-    if (body.length < MIN_CHARS && !ruleId) continue;
-    // A table of contents is navigation, not a rule. The core rules page carries
-    // one under "Books", and its only content is the list of pages.
-    if (/^(books|contents)$/i.test(title) && body.length < 400) continue;
-    if (/^Book\s+Kind\s+Edition\s+Version\s+Last update/i.test(body)) continue;
+    // A heading with no body is a label, not a section - and a label that parents
+    // nothing must not join the stack, or every card after it cites a parent the
+    // corpus does not contain. That was 'Fight Phase > FAQ / Errata', 'Primary
+    // Mission deck' and 'Muster Armies > Fill Your Army Roster > Errata'.
+    //
+    // A label that DOES parent something is a container the page wrote, and it is
+    // kept: 'Primary Mission deck' is what makes its ten cards readable, so it
+    // becomes a short record of its own rather than an ancestor that does not
+    // exist. The generic labels are the exception - 'FAQ' and 'Errata' name a
+    // container without saying anything, and their content gets its title from
+    // itself instead.
+    const nextLevel = i + 1 < marks.length
+      ? ((marks[i + 1].heading.match(/\s(\d{2}(?:\.\d{2})*)\s*$/) || [])[1] || '').split('.').filter(Boolean).length || marks[i + 1].level
+      : 0;
+    const hasChildren = nextLevel > level;
+    // A promoted question or errata title is a record whatever its length: 'Q: ...'
+    // with a one-word answer is still the thing the reader searched for, and the floor
+    // was dropping the short ones now that each card gets its own body.
+    if (body.length < MIN_CHARS && !ruleId && !marks[i].promoted && !(hasChildren && !GENERIC_HEADING.test(pageTitle))) continue;
+    stack.push({ level, title });
     const anchor = marks[i].anchor || '';
     // The ancestors go in front of the body, so the vector is embedded with the
     // context it belongs to rather than as an orphan paragraph, and grep can
@@ -488,16 +534,31 @@ export function extractSections(html, source) {
     for (const part of splitInlineRules(full, body, ruleId, anchor, title, source.name)) {
       const pieces = splitSection(part.body, MAX_CHARS);
       for (const piece of pieces) {
+        // A body the chunker had to cut is not one rule. The page's own title line,
+        // when the piece opens with one, names the piece: without this a 20,000-
+        // character mission deck became twelve records all headed by the last heading
+        // above them ('Secondary Mission deck > 13.09 - Change to First Bullet
+        // Point'), which is the label of one errata entry and the content of twelve
+        // different cards.
+        let pieceTitle = part.title;
+        let pieceHeading = part.heading;
+        if (pieces.length > 1) {
+          const firstLine = String(piece.text).split('\n')[0].trim();
+          if (isTitleLine(firstLine)) {
+            pieceTitle = firstLine.replace(/^\d{1,2}\.\s+/, '').trim() || firstLine;
+            pieceHeading = path.length ? path.concat([pieceTitle]).join(' > ') : pieceTitle;
+          }
+        }
         out.push({
           source: source.name,
-          title: part.title,
+          title: pieceTitle,
           path,
-          heading: part.heading,
+          heading: pieceHeading,
           ruleId: part.ruleId,
           anchor: part.anchor,
           hasAnchor: !!part.anchor,
           url: source.url + (part.anchor ? '#' + part.anchor : ''),
-          text: part.heading + '\n' + piece.text,
+          text: pieceHeading + '\n' + piece.text,
           part: piece.part,
           parts: pieces.length,
           chars: piece.text.length,
@@ -706,6 +767,21 @@ export function stripMarker(text) {
     .replace(/^[\s\u00a0]+/, '');
 }
 
+// A line that names what follows: short, no sentence punctuation, and either all
+// capitals or every word capitalised. 'END OF THE BATTLE' and 'Meatgrinder' are
+// titles; 'You control your opponent’s home objective' is a sentence and is not.
+export function isTitleLine(line) {
+  const t = String(line == null ? '' : line).trim();
+  if (!t || t.length > 80) return false;
+  if (/[.!?:;]$/.test(t)) return false;
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length > 9) return false;
+  const letters = t.replace(/[^A-Za-z]/g, '');
+  if (letters.length < 3) return false;
+  if (letters === letters.toUpperCase()) return words.length > 1 || letters.length >= 6;
+  return words.length > 1 && words.every(w => /^[^a-z]/.test(w));
+}
+
 export function deriveTitle(text) {
   const flat = String(stripMarker(text)).replace(/\s+/g, ' ').replace(/^Show\s+/, '').trim();
   if (!flat || /^Book\s+Kind\s+Edition/i.test(flat)) return '';
@@ -715,7 +791,10 @@ export function deriveTitle(text) {
   // and the heading is the record's id and its citation label. A title is a label, not
   // a slug budget: keep it whole and let the id be as long as it is.
   const first = flat.split(/(?<=[.!?])\s+/)[0] || flat;
-  return first;
+  // A derived title is still a heading, so it carries no list position either: the
+  // attack-sequence examples open '2. WOUND ROLLS' inside their body, and that step
+  // number is not the rule's number.
+  return first.replace(/^\d{1,2}\.\s+/, '').trim() || first;
 }
 
 export function sectionId(source, section) {
