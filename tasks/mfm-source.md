@@ -29,3 +29,12 @@ The corpus, the payload and the shaped tree are verified. Four test files still 
 - `tests/test-record-shapes.mjs` - classifies the 21 core ability records and counts 12 mid-line rows and 13 cards; the corpus census moved. Recount, then check the classifier still finds the families it names.
 
 Until these are green the branch is not mergeable, and the ingest row reports `vanishedPlanned: 5263` - the index holds 5,263 ids the new corpus no longer has, which is why the re-ingest is P1 rather than housekeeping.
+## Update 2026-10-26, second pass
+
+Re-baselined and green: `test-corpus-drift`, `test-index-delivered`, `test-editions`, `test-record-shapes` (10 / 18 / 35 / 11 assertions). The Census-style assertions are now invariants where possible: a source swap may add records, losing or double-counting them is the failure.
+
+Index re-ingested and pruned: 4,799 upserted, 5,300 stale ids deleted under `--allow-mass-delete` (the rail refused the 5,263-id delete first, as designed). Prune reads rules 745 / factions 4,767 / rulings 154, strays 0.
+
+Cards: `buildUnitCard` is keyed on the CSV's numeric ids, so under dump UUIDs every card fell back to prose. `cardFor` now falls back to a name lookup that refuses ambiguity (the same rule `findDatasheet` already applies): 805 of 1,126 datasheets and 826 of 1,148 unitrules render a card, the rest keep the prose body. This is the app's card path; the shaped prototype renders prose by design.
+
+Still red, and needing semantic work rather than new numbers: `test-find` (9 assertions on the search fold's twin/chunk behaviour with UUID ids) and `test-record-outline` (5 assertions: the card census and the outline statistics the CSV corpus defined). Both were previously anchored on numeric CSV ids and now crash or miscount instead of mis-asserting.

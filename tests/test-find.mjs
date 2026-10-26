@@ -75,10 +75,14 @@ const enginseer = findRows('enginseer', {});
 ok('a unit is one row per unit, not one per record', enginseer.rows.length === 2 && enginseer.total === 2);
 ok('the two rows are the two units', enginseer.rows.every(r => r.kind === 'datasheet') && enginseer.rows[0].id !== enginseer.rows[1].id);
 ok('the head is the datasheet', enginseer.rows.every(r => r.kind === 'datasheet'));
+// 2026-10-26: the faction corpus is built from the MFM dump and its ids are UUIDs, so
+// the twin is found from the row rather than from a hardcoded CSV number.
 const engParts = [].concat.apply([], enginseer.rows.map(r => r.parts || []));
-ok('the records the fold swallowed are named, not lost', engParts.length === 3 && engParts.some(p => p.id === 'unitrules#000001396'));
+const amRow = enginseer.rows.find(r => /faction-am$/.test(String(r.source || ''))) || enginseer.rows[0];
+const amTwin = 'unitrules#' + String(amRow.id).replace(/^datasheet#/, '');
+ok('the records the fold swallowed are named, not lost', engParts.length === 3 && engParts.some(p => p.id === amTwin));
 ok('and every one of them is openable by its own id', engParts.every(p => !!p.id));
-ok('the Astra Militarum unitrules record is under the Astra Militarum datasheet', (enginseer.rows.find(r => r.id === 'datasheet#000001396').parts || []).some(p => p.id === 'unitrules#000001396'));
+ok('the Astra Militarum unitrules record is under the Astra Militarum datasheet', (enginseer.rows.find(r => r.id === amRow.id).parts || []).some(p => p.id === amTwin));
 const baneblade = findRows('baneblade', {});
 ok('a plain unit folds its twin too', baneblade.rows.length === 2 && baneblade.rows.every(r => r.kind === 'datasheet'));
 const leman = findRows('leman russ', {});

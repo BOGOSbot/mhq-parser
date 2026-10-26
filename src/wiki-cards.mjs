@@ -20,7 +20,7 @@
  * 390px phone without scrolling the page itself.
  */
 
-import { buildUnitCard, resolveRecordLinks } from './unit-card.mjs';
+import { buildUnitCard, resolveRecordLinks, cardTables } from './unit-card.mjs';
 // The render context: the one input shape recordBody reads, built by a factory and never
 // written to (tasks/render-context.md).
 import { asRenderContext } from './render-context.mjs';
@@ -49,6 +49,10 @@ export const CARD_KINDS = ['datasheet', 'unitrules'];
 // esc lives in wikilinks.mjs: one escaper for the whole card and link path (a
 // second copy is what turned the fr/en ruling-body tests red).
 const norm = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+// The card tables' phrases are lowercase and single-spaced; the corpus headings are the
+// book's own casing. One fold for the name lookup.
+const foldName = s => String(s == null ? '' : s).normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
 
 // The CSS the card needs, on top of whatever chrome the shell already has. The
 // class names are semantic on purpose: a restyle (slice 2) targets .wcard-* and
@@ -193,6 +197,26 @@ export function cardFor(record, opts) {
   // "~n" suffix; the card is the same card.
   const bare = String(record.id || '').replace(/^(?:datasheet|unitrules)#/, '').replace(/~\d+$/, '');
   if (!bare) return null;
+  // 2026-10-26: the faction corpus is built from the MFM dump, whose ids are UUIDs, so
+  // the CSV-numbered card tables cannot answer by id any more. The card is still worth
+  // rendering when the record's name resolves to exactly one datasheet: a name shared by
+  // two factions is the case findDatasheet already refuses to guess at, and the prose
+  // path renders it instead.
+  if (!cardTables().byId.has(bare)) {
+    const named = (function () {
+      const t = cardTables();
+      const hay = foldName(record.heading) + ' ';
+      if (!hay) return null;
+      const hits = t.datasheets.filter(function (d) { return d.phrase && hay.indexOf(d.phrase) !== -1; });
+      if (!hits.length) return null;
+      hits.sort(function (a, b) { return b.words - a.words; });
+      const best = hits[0];
+      const same = hits.filter(function (h) { return h.phrase === best.phrase; });
+      return same.length === 1 ? best : null;
+    })();
+    if (!named) return null;
+    try { return buildUnitCard(named.id, o.corpora ? { corpora: o.corpora } : undefined) || null; } catch (e) { return null; }
+  }
   // task-10: don't hand the cache a fresh {} per record - no corpora is the
   // shared no-corpora cache, an object is that object's own cache.
   try { return buildUnitCard(bare, o.corpora ? { corpora: o.corpora } : undefined) || null; } catch (e) { return null; }

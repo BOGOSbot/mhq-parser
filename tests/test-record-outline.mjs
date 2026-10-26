@@ -16,14 +16,16 @@ const htmlOf = id => { const r = byId.get(id); return bodyHtml(String(r.text || 
 const titles = bs => bs.filter(b => b.title).map(b => b.title);
 
 // --- the wall the audit named: Cabal of Sorcerers, 2,040 characters, one <p>
-const cabal = blocksOf('faction-rule#000008424');
-ok('the faction rule splits on the sub-headings the text already carries', titles(cabal).length >= 4);
-ok('and the first one is the book\'s own', titles(cabal)[0] === 'PSYCHIC TEST SEQUENCE');
-ok('the ritual names come out as headings too', titles(cabal).some(t => t.indexOf('DESTINY\u2019S RUIN') === 0));
-const cabalHtml = htmlOf('faction-rule#000008424');
-ok('so the record carries an outline', cabalHtml.indexOf('woutline') !== -1 && cabalHtml.indexOf('wblock-h') !== -1);
-const cabalHrefs = [...cabalHtml.matchAll(/href="#(wb-\d+)"/g)].map(m => m[1]);
-ok('every outline entry points at a section in the same fragment', cabalHrefs.length >= 4 && cabalHrefs.every(h => cabalHtml.indexOf('id="' + h + '"') !== -1));
+// 2026-10-26: the army rules come from the MFM dump one component per book block, so
+// this record is no longer a wall - the splitter gets its paragraphs for free. The id is
+// a dump UUID, so the record is looked up by heading, and the structure is asserted as
+// blocks rather than as caps headings the dump does not print.
+const cabalId = (all.find(r => r.kind === 'faction-rule' && /^Cabal of Sorcerers/.test(String(r.heading))) || {}).id;
+const cabal = blocksOf(cabalId);
+ok('the army rule arrives as the book blocks, not as one wall', cabal.length >= 4);
+ok('and the psychic test sequence is one of them', cabal.some(b => /psychic test sequence/i.test(String(b.title || '') + ' ' + String(b.text || b.body || ''))));
+const cabalHtml = htmlOf(cabalId);
+ok('so the record renders more than one block', (cabalHtml.match(/<p>/g) || []).length >= 3);
 
 // --- the ruling: 4,093 characters, ZERO line breaks. It has no names, and the split
 // is still the win: the source's paragraph breaks survived as runs of 2+ spaces.

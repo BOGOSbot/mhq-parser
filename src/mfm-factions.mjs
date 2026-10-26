@@ -409,7 +409,7 @@ export function buildMfmFactions(options) {
       .filter(Boolean);
     const lines = [name + ' - ' + factionName + ' detachment'];
     lines.push('Detachment points: ' + (det.detachmentPointsCost == null ? '-' : det.detachmentPointsCost) +
-      (dispositions.length ? '  Force disposition: ' + dispositions.join(', ') : ''));
+      (dispositions.length ? '; force disposition: ' + dispositions.join(', ') : ''));
     for (const rule of rulesByDetachment.get(det.id) || []) {
       const rl = en(rule);
       const body = ruleComponents(componentsByDetachmentRule, rule.id);
@@ -429,7 +429,7 @@ export function buildMfmFactions(options) {
       const stratLines = [String(sl.name).toUpperCase() + ' - ' + factionName + ' stratagem'];
       stratLines.push('Type: ' + (typeWord ? typeWord + ' Stratagem' : 'Stratagem') + (detachmentById.has(det.id) ? ' (' + name + ')' : ''));
       stratLines.push('CP: ' + (strat.cpCost == null ? '-' : strat.cpCost));
-      stratLines.push('Turn: ' + (TURN_NAME[strat.key] || '') + (phases.length ? '  Phase: ' + phases.join(', ') : ''));
+      stratLines.push('Turn: ' + (TURN_NAME[strat.key] || '') + (phases.length ? '; phase: ' + phases.join(', ') : ''));
       stratLines.push('Detachment: ' + name);
       for (const field of ['whenRules', 'targetRules', 'effectRules', 'restrictionRules']) {
         const value = plainText(sl[field]);
@@ -467,7 +467,7 @@ export function buildMfmFactions(options) {
     const lines = [name.toUpperCase() + ' - core stratagem'];
     lines.push('Type: ' + (typeWord ? typeWord + ' Stratagem' : 'Stratagem'));
     lines.push('CP: ' + (strat.cpCost == null ? '-' : strat.cpCost));
-    lines.push('Turn: ' + (TURN_NAME[strat.key] || '') + (phases.length ? '  Phase: ' + phases.join(', ') : ''));
+    lines.push('Turn: ' + (TURN_NAME[strat.key] || '') + (phases.length ? '; phase: ' + phases.join(', ') : ''));
     for (const field of ['whenRules', 'targetRules', 'effectRules', 'restrictionRules']) {
       const value = plainText(sl[field]);
       if (!value || value === '-') continue;

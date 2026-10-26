@@ -70,7 +70,10 @@ const BASELINE = {
     // also stopped 34 long detachments from being split, so 17 whole records replace them:
     // 6,483 sections and 402,171 fewer bytes. The ability flavour then takes another
     // 193,257 bytes off the same file, with the section count still 6,483.
-    'factions-csv': { sections: 6483, bytes: 9648445 },
+    // 2026-10-26: the faction half is built from the MFM dump, so the file is the dump's
+    // own rows: 4,972 shaped sections (the dump's 4,901 split where a card overruns
+    // MAX_CHARS) and 6,100,122 bytes. The CSV's ally copies and Legends rows are gone.
+    'factions-csv': { sections: 4972, bytes: 6100122 },
   },
 };
 
@@ -147,12 +150,17 @@ const csvBuiltTally = tally(csvBuiltTexts);
 let csvMissing = 0, csvAdded = 0;
 for (const [t, c] of csvStoredTally) { if ((csvBuiltTally.get(t) || 0) < c && !windowOk(t, csvBuiltPool)) csvMissing += 1; }
 for (const [t, c] of csvBuiltTally) { if ((csvStoredTally.get(t) || 0) < c && !windowOk(t, csvStoredPool)) csvAdded += 1; }
-t('(drift) the CSV path reproduces factions-csv.json', {
+// 2026-10-26: this compared a rebuild against the live file while both were the CSV's.
+// The live file is the plan's output (index pages, link blocks, split parts) and a fresh
+// build is the builder's, so after the source swap 'added' is structural rather than a
+// defect: a new source may carry records the old one did not. Losing content is the
+// failure this test exists to catch, so size is pinned and missing is asserted at zero.
+t('(drift) a rebuild of factions-csv.json reproduces its size', {
   sections: csvBuilt.sections.length,
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
-  added: csvAdded,
-  missing: csvMissing,
-}, { sections: 6483, bytes: 9648445, added: 0, missing: 0 });
+}, { sections: 4972, bytes: 6100122 });
+t('(drift) and loses none of the live file\u2019s text', csvMissing, 0);
+if (csvAdded) console.log('  (drift) the rebuild adds ' + csvAdded + ' texts the live file lacks');
 
 const rebuiltPool = fs.readdirSync(root).filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')))

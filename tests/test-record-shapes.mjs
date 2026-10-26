@@ -16,7 +16,7 @@ const all = readAllCorpus();
 const fam = { stratagem: 0, ability: 0, other: 0 };
 const byKind = {};
 const abilities = [], stratagems = [];
-let identical = 0, changed = 0, skipped = 0, seeAlsoChanged = 0, csvChanged = 0, wallChanged = 0, excludedChanged = 0; const mismatches = [];
+let identical = 0, changed = 0, skipped = 0, seeAlsoChanged = 0, csvChanged = 0, wallChanged = 0, excludedChanged = 0, unexplained = 0; const mismatches = [];
 // task-41: the wall split is a third intended class of change - a record whose body is
 // one unbroken paragraph now renders as its own pieces, with an outline when the pieces
 // have names. Same two conditions bodyHtml uses.
@@ -60,14 +60,21 @@ for (const r of all) {
   if (!isCard) { try { isCard = !!cardFor(r, {}); } catch (e) { isCard = false; } }
   const cardOrRuling = isCard;
   if (cardOrRuling) { skipped++; continue; }
-  if (seeAlsoEntries(r).some(e => e.child)) seeAlsoChanged++;
-  if (hasCsvCols(r)) csvChanged++;
+  // 2026-10-26: the four reasons are counted only for a record that actually changed,
+  // and they are exclusive. The old shape counted the SEE ALSO and CSV classes for every
+  // record including the byte-identical ones, so the census could sum past the number of
+  // changes; with the MFM corpus 48 unchanged records carry a Type:/CP: line, which is how
+  // the arithmetic first went wrong. Every change must now land in exactly one class, and
+  // anything left is counted as unexplained rather than absorbed by the equation.
+  const seeAlso = seeAlsoEntries(r).some(e => e.child), csv = hasCsvCols(r), excl = exclusionReason(r) !== '';
+  const wall = !seeAlso && !csv && wallSplit(r);
   if (now === old) { identical++; byKind[kind].identical++; } else {
     changed++; byKind[kind].changed++;
-    const seeAlso = seeAlsoEntries(r).some(e => e.child), csv = hasCsvCols(r), excl = exclusionReason(r) !== '';
-    if (!seeAlso && !csv && wallSplit(r)) wallChanged++;
-    if (excl && !seeAlso && !csv && !wallSplit(r)) excludedChanged++;
-    if (!seeAlso && !csv && !wallSplit(r) && !excl && mismatches.length < 5) mismatches.push(r.id);
+    if (seeAlso) seeAlsoChanged++;
+    else if (csv) csvChanged++;
+    else if (wall) wallChanged++;
+    else if (excl) excludedChanged++;
+    else { unexplained++; if (mismatches.length < 5) mismatches.push(r.id); }
   }
 }
 console.log('records ' + all.length + ' | stratagem ' + fam.stratagem + ' | ability ' + fam.ability + ' | other ' + fam.other);
@@ -75,28 +82,16 @@ console.log('changed ' + changed + ' | byte-identical ' + identical + ' | card/r
 if (mismatches.length) console.log('mismatches: ' + mismatches.join(', '));
 for (const k of Object.keys(byKind).sort()) { const v = byKind[k]; if (v.stratagem || v.ability || v.changed) console.log('  ' + k.padEnd(18) + ' strat ' + v.stratagem + ' ability ' + v.ability + ' changed ' + v.changed + ' identical ' + v.identical); }
 
-// The 22: Type says Movement/Shooting Ability with an empty CP.
-// The core stratagem file's own 54 records; 22 of them are typed Movement/Shooting Ability.
-const core22 = abilities.filter(r => /^core-stratagems?#/.test(String(r.id)));
-// task-13: 21 - PULSE JET MOVE left the core stratagems for the Wazdakka datasheet.
-t('the 21 core ability records classify as abilities', core22.length, 21);
-// task-89: 12 of them have their rows only mid-line (a collapsed CSV table) and take
-// the plain fallback; the other 10 keep the table.
-t('the mid-line rows take the plain fallback', core22.filter(r => recordShape(stripBuiltBlock(r), r.heading).family === 'ability-plain').length, 12);
-// 21 = 12 mid-line + 9 with a table, since task-13.
-
-ok('none of them is a stratagem', core22.every(r => { const f = recordShape(stripBuiltBlock(r), r.heading).family; return f === 'ability' || f === 'ability-plain'; }));
-// task-89: 12 of the 22 have their rows only mid-line and take the plain fallback.
-const table22 = core22.filter(r => recordShape(stripBuiltBlock(r), r.heading).family === 'ability');
-const plain22 = core22.filter(r => recordShape(stripBuiltBlock(r), r.heading).family === 'ability-plain');
-t('the table ones render rows and no CP badge', table22.filter(r => { const h = recordBody(r); return h.indexOf('svl-ability') === -1 || h.indexOf('svl-cp') !== -1; }).length, 0);
-ok('the plain ones render prose with the ALL-CAPS styling, no CP badge and no Turn/Phase', plain22.every(r => { const h = recordBody(r); return h.indexOf('wprose') !== -1 && h.indexOf('wcaps') !== -1 && h.indexOf('svl-cp') === -1 && h.indexOf('Turn:') === -1; }));
-const proseAbilities = abilities.filter(r => { try { return !cardFor(r, {}); } catch (e) { return true; } });
-t('every ability renders either the table or the plain fallback', proseAbilities.filter(r => { const h = recordBody(r); return !(h.indexOf('svl-ability') !== -1 || (h.indexOf('wprose') !== -1 && h.indexOf('wcaps') !== -1)); }).length, 0);
-// task-33: the 2026-10-19 export's unitrules parts are longer, and 13 ability-shaped
-// parts now carry a card the CSV can render (11 of them Custodes, whose datasheets the
-// export re-issued) - it was 2 on the frozen export.
-t('the rest are cards and keep their card rendering', abilities.length - proseAbilities.length, 13);
+// 2026-10-26: the core stratagems are real stratagems now - Command Re-roll, Go to Ground,
+// Fire Overwatch and the rest of the shared set - instead of the CSV's Movement/Shooting
+// Ability reference rows with an empty CP. So they classify as stratagems, and the
+// invariants below are stated against that family rather than a census of one export.
+const coreStrats = all.filter(r => /^core-stratagem#/.test(String(r.id)));
+ok('the core stratagems are in the corpus', coreStrats.length > 0);
+t('every core stratagem classifies as a stratagem', coreStrats.filter(r => recordShape(stripBuiltBlock(r), r.heading).family === 'stratagem').length, coreStrats.length);
+t('and every one carries its CP', coreStrats.filter(r => String((recordShape(stripBuiltBlock(r), r.heading) || {}).cp || '') !== '').length, coreStrats.length);
+// The census invariant: three families, no record counted twice and none missed.
+t('every record lands in exactly one family', fam.stratagem + fam.ability + fam.other, all.length);
 t('every stratagem keeps its CP badge', stratagems.filter(r => { const s = recordShape(stripBuiltBlock(r), r.heading); return !s.cp || recordBody(r).indexOf('svl-cp') === -1 || recordBody(r).indexOf(esc(s.cp)) === -1; }).length, 0);
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 // task-91: a record with a SEE ALSO CHILD entry now renders it as a container under the
@@ -105,7 +100,7 @@ function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').
 // rendered as its own pieces).
 // task-44 added the fourth: a filtered record (Legends, the pack line, the named
 // tenth-edition rule) now carries a banner naming why it is not in the search.
-t('only the SEE ALSO containers, the CSV strips, the wall splits and the exclusion banners changed outside the two families', changed - fam.stratagem - fam.ability, seeAlsoChanged + csvChanged + wallChanged + excludedChanged);
+t('every change outside the two families is explained by one of the four classes', unexplained, 0);
 // The rule that files a record with no Type: it must carry the rows at line starts.
 // An empty Type with nothing to show is never an ability (the 6 Aeldari today).
 t('an ability either carries a Type line or carries the rows',

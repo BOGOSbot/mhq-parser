@@ -27,31 +27,36 @@ t('an empty record is not delivered', isDelivered(null), false);
 // task-33, the 2026-10-19 export with the Legends name rule: 6,327 delivered / 1,063
 // filtered. task-40: the $FAQ$ marker leaves one ability's text, which merges one
 // edition-0 part back, so the corpus is 7,390.
-t('the corpus splits into delivered and filtered with nothing lost', [all.length, delivered.length + filtered.length], [7408, 7408]);
-// 2026-10-24: the tournament cut. 6,171 delivered, 1,237 filtered - the 1,063 of the
-// task-33 export plus the 174 kind 'index' pages the predicate now filters. The corpus
-// also lost 18 records because the CSV lore column was what pushed 34 long detachments
-// over the split threshold, and they are 17 whole records now.
-t('delivered is 6,171 and filtered is 1,237 (tournament cut, 2026-10-24)', [delivered.length, filtered.length], [6171, 1237]);
+t('the corpus splits into delivered and filtered with nothing lost', all.length - delivered.length - filtered.length, 0);
+// 2026-10-26: the faction half comes from the MFM dump, so the CSV's 144 ally copies
+// and its 958 Legends records are gone at the source and 5,666 records are delivered.
+// The 134 filtered are the faction index pages, which the predicate drops by kind.
+t('delivered is 5,666 and filtered is 134 (MFM corpus, 2026-10-26)', [delivered.length, filtered.length], [5666, 134]);
 
 // --- the query path cannot return what the product does not deliver -----------
+// The ids are read from the corpus, never hardcoded: the faction half now comes from
+// the MFM dump and its ids are dump UUIDs, so a fixed id is a baseline that breaks on
+// every source change while proving nothing about the filter.
+const idOf = r => (typeof r === 'string' ? r : String(r && r.id));
+const filteredId = idOf(filtered[0]);
+const deliveredId = idOf(delivered.find(r => String(r && r.kind) === 'datasheet'));
 const ids = deliveredIds();
-ok('the delivered index does not carry the filtered id', !ids.has('faction-rule#000008445') && ids.size === delivered.length);
-t('a hit on a filtered id is dropped even if the index still holds it', deliveredHits([{ id: 'faction-rule#000008445', score: 0.99 }]), []);
-const kept = deliveredHits([{ id: 'faction-rule#000008445' }, { id: 'datasheet#000000958~1' }, { id: 'nope#nope' }]);
-t('and only delivered hits survive', kept.map(h => h.id), ['datasheet#000000958~1']);
+ok('the delivered index does not carry the filtered id', !ids.has(filteredId) && ids.size === delivered.length);
+t('a hit on a filtered id is dropped even if the index still holds it', deliveredHits([{ id: filteredId, score: 0.99 }]), []);
+const kept = deliveredHits([{ id: filteredId }, { id: deliveredId }, { id: 'nope#nope' }]);
+t('and only delivered hits survive', kept.map(h => h.id), [deliveredId]);
 const src = await import('node:fs').then(fs => fs.readFileSync(new URL('../src/rules-corpus.mjs', import.meta.url), 'utf8'));
 ok('both query backends return through that filter', (src.match(/deliveredHits\(/g) || []).length >= 3);
 
 // --- the ingest plan skips the filtered records -------------------------------
 const dry = await ingest(null, { set: 'factions', dryRun: true });
-t('a dry-run faction ingest filtered exactly the 1,237', dry.filtered, 1237);
+t('a dry-run faction ingest filtered exactly the corpus filtered count', dry.filtered, filtered.length);
 const row = dry.sources.find(s => s.source === 'factions-csv');
 ok('and the source row reports its delivered sections, not the corpus count', !!row && row.sections + row.filtered > row.sections);
-// 2026-10-24: the index pages are filtered by the predicate itself, so the source row's
-// indexable count and its filtered count are the same 5,246 and the index-excluded gap
-// the report computes (delivered minus indexable) is now structurally zero.
-ok('the source row reports its indexable, filtered and index-excluded counts', row.sections === 5246 && row.filtered === 1237 && row.indexExcluded === 0);
+// The index pages are filtered by the predicate itself, so the index-excluded gap the
+// report computes (delivered minus indexable) is structurally zero. The section count
+// is not pinned: the faction half is the dump's own row count now.
+ok('the source row reports its indexable, filtered and index-excluded counts', !!row && row.sections > 0 && row.filtered === filtered.length && row.indexExcluded === 0);
 t('and the dry run totals the exclusion', dry.indexExcluded, 0);
 const indexIds = indexedIds();
 ok('an index page is neither delivered nor indexed', !isDelivered({ id: 'faction-index#faction-ae', kind: 'index', edition: '11' }) && !indexIds.has('faction-index#faction-ae') && indexIds.size === delivered.length);

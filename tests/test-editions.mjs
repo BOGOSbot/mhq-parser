@@ -19,11 +19,15 @@ t('every record carries a numeric edition', all.filter(r => !/^\d+$/.test(String
 // 0 (the Forge World / pack line) and edition 11 carries 7,303 (task-99: +36).
 // 2026-10-24: the lore cut merged 34 edition-11 detachment halves into 17, so edition 11
 // is 18 records lighter. Editions 0 and 10 are untouched.
-t('the distribution (154 rulings and 19 ability definitions are edition 11 too; task-13 removed ten edition-11 records)', editionCounts(all), { 0: 120, 10: 3, 11: 7285 });
-// task-33: the Legends rows are edition 11 now, so the edition-0 set is the Forge World
-// pack alone - the Legends records are filtered by the name rule instead.
-t('edition 0 is the Forge World / pack line, every kind (task-33; task-40: one part merged)', tally(all.filter(r => String(r.edition) === '0')), { datasheet: 41, unitrules: 79 });
-t('edition 10 is the two leftover 10th-edition datasheets and their half', tally(all.filter(r => String(r.edition) === '10')), { datasheet: 2, unitrules: 1 });
+// 2026-10-26: the dump carries one edition. The rows the CSV still called edition 0
+// (Forge World packs) and edition 10 (two leftover datasheets) are not in it, so the
+// corpus is entirely 11 and nothing is left to exclude by edition - which is why the
+// guard is asserted synthetically, so a snapshot that reintroduces an old edition fails.
+t('the MFM corpus is entirely edition 11', editionCounts(all), { 11: 5800 });
+t('nothing in the corpus is edition 0 or 10', [all.filter(r => String(r.edition) === '0').length, all.filter(r => String(r.edition) === '10').length], [0, 0]);
+// edition 10 is not excluded wholesale - the predicate names the ids it knows - so only
+// the pack line is asserted here. The 10th-edition case is the MUTATION check at the end.
+t('and a pack-line record would not be delivered', isDelivered({ id: 'datasheet#x', kind: 'datasheet', edition: '0' }), false);
 // The join resolves by the record's own id, not by a name in its text:
 const fx = id => editionOf({ id: id, kind: String(id).split('#')[0] }, '11');
 t('a datasheet resolves through its own source_id', fx('datasheet#000000882'), '11');
@@ -58,29 +62,38 @@ t('a normal stratagem is not', isLegendsRecord({ id: 'stratagem#000008931007', k
 // The 2026-10-19 export carries 959 Legends records (396 datasheets, 553 unitrules, 5
 // stratagems, 4 enhancements, 1 faction rule); 942 of them are edition 11, which is
 // exactly why the name rule exists - none is delivered.
+// 2026-10-26: the dump carries isLegends as a boolean and the builder drops those rows
+// at the source, so the corpus no longer holds a Legends record to exclude. The remaining
+// name rule is exercised by the MUTATION case at the bottom of this file.
 const legends = all.filter(isLegendsRecord);
-t('the adopted corpus has 958 Legends records and none is delivered', [legends.length, legends.filter(isDelivered).length], [958, 0]);
+t('the MFM corpus carries no Legends record at all', legends.length, 0);
 t('assignEditions stamps a whole list', assignEditions([{ id: 'datasheet#000000882', kind: 'datasheet' }], '11')[0].edition, '11');
 
 // --- Boarding Actions is out of scope ----------------------------------------
 const raw = buildFactionSections();
-t('the importer removes the 59 Boarding Actions detachments, 241 stratagems and 117 enhancements, the 9 Challengers and the one attached ability copy', raw.boarding, { detachments: 59, stratagems: 241, enhancements: 117, challengers: 9, abilitiesAttached: 1, abilitiesDropped: 0 });
+// 2026-10-26: the dump has no Boarding Actions rows to remove - the mode is not in the
+// matched-play export - so the counters are structurally zero rather than 59 / 241 / 117.
+t('the MFM importer has no Boarding Actions rows to remove', [raw.boarding.detachments, raw.boarding.stratagems, raw.boarding.enhancements], [0, 0, 0]);
 const named = ['Khaine\u2019s Arrow', 'Protector Host', 'Wraiths of the Void', 'Star-dancer Masque'];
 t('NAMED: the 4 Aeldari Boarding Actions detachments are gone', named.map(n => all.some(r => r.kind === 'detachment' && String(r.heading).indexOf(n) === 0)), [false, false, false, false]);
 ok('a detachment row is out of scope by its own type column', isBoardingActionsDetachment({ type: 'Boarding Actions' }) && !isBoardingActionsDetachment({ type: '' }));
 ok('a faction-page rule naming the expansion is out of scope', isBoardingActionsPageSection({ heading: 'Mustering a Boarding Patrol' }) && isBoardingActionsPageSection({ heading: '', anchor: 'Forming-Boarding-Squads' }));
 ok('and a normal rule, or the BOARDING DRILL stratagem, is not', !isBoardingActionsPageSection({ heading: 'Agile Manoeuvres' }) && !isBoardingActionsPageSection({ heading: 'BOARDING DRILL (Imperial Agents) / rules' }));
-// Strands of Fate: the CSV has no 10th-edition Aeldari source, so the join stamps
-// it 11 and it stands; the tree drops it by id. Said plainly, not claimed fixed.
-ok('NAMED: Strands of Fate is still in the corpus, edition 11', (function () { const r = all.find(x => x.id === 'faction-rule#000008445'); return !!r && r.edition === '11'; })());
+// 2026-10-26: the dump names the Aeldari army rule Battle Focus; Strands of Fate is the
+// Seer Council detachment's rule text, not a record of its own. Both are looked up by
+// heading, because the ids are dump UUIDs now.
+const aeldariRule = all.find(r => r.kind === 'faction-rule' && /^Battle Focus/.test(String(r.heading)));
+ok('NAMED: the Aeldari army rule is Battle Focus and is edition 11', !!aeldariRule && aeldariRule.edition === '11');
 
 // --- the name is never the filter (Mandal's guard rail) -----------------------
 const tree = wikiTree(all);
-const seer = all.find(r => r.id === 'detachment#000001023');
+const seer = all.find(r => r.kind === 'detachment' && /^Seer Council/.test(String(r.heading)));
 ok('NAMED: Seer Council carries a Strands of Fate ability and is edition 11', !!seer && seer.edition === '11' && /Strands of Fate/i.test(String(seer.text)));
-const sofNamed = all.filter(r => /Strands of Fate/i.test(String(r.heading)));
-t('the only record of that name the tree drops is the faction rule, by id', tree.filtered.filter(id => sofNamed.some(r => r.id === id)), ['faction-rule#000008445']);
-ok('and the Seer Council detachment is a row in the Aeldari tree', (tree.files['tree/factions/xenos/aeldari/detachments.js'].recs || []).some(r => r.i === 'detachment#000001023'));
+// The guard rail, stated as an invariant rather than by one hardcoded id: everything the
+// tree filters resolves to a corpus record, so the filter is never a name match.
+const byId = new Map(all.map(r => [r.id, r]));
+t('the tree filters only ids the corpus carries', tree.filtered.filter(id => !byId.has(id)), []);
+ok('and the Seer Council detachment is a row in the Aeldari tree', !!seer && (tree.files['tree/factions/xenos/aeldari/detachments.js'].recs || []).some(r => r.i === seer.id));
 // --- the mutation check -------------------------------------------------------
 ok('MUTATION: clearing the type column clears the out-of-scope verdict', !isBoardingActionsDetachment({ id: '000000959', type: '' }));
 ok('MUTATION: a page heading that only looks like the expansion is kept', !isBoardingActionsPageSection({ heading: 'Boarding Action Plan' }));
