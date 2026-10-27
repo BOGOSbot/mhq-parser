@@ -25,9 +25,14 @@ function ok(name, got) { t(name, !!got, true); }
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CORPUS = path.join(ROOT, 'workspace', 'rules-corpus');
 const all = readAllCorpus();
+// 2026-10-27: the decks come from the MFM dump, so the cards are no longer slices of the
+// page's pre-split bytes - they are records with their own objectives and scoring. The
+// byte-slice checks below only mean anything for the page split (MHQ_MISSIONS_SOURCE=page).
+const fromDump = fs.existsSync(path.join(CORPUS, 'mfm-dump.json'))
+  && String(process.env.MHQ_MISSIONS_SOURCE || 'mfm').toLowerCase() !== 'page';
 const ours = r => (r.id.indexOf('event-companion#Primary-Mission-deck->-') === 0 || r.id.indexOf('event-companion#Secondary-Mission-deck->-') === 0) && String(r.heading || '').split(' > ').length === 2;
 
-for (const [deck, cards, file] of [['Primary', 25, 'event-companion.deck-primary.presplit.txt'], ['Secondary', 18, 'event-companion.deck-secondary.presplit.txt']]) {
+if (!fromDump) for (const [deck, cards, file] of [['Primary', 25, 'event-companion.deck-primary.presplit.txt'], ['Secondary', 18, 'event-companion.deck-secondary.presplit.txt']]) {
   const pre = fs.readFileSync(path.join(CORPUS, file), 'utf8');
   const list = all.filter(r => ours(r) && r.id.indexOf('event-companion#' + deck) === 0)
     .map(r => ({ r: r, at: pre.indexOf(String(r.text)) }))
@@ -47,8 +52,15 @@ for (const [deck, cards, file] of [['Primary', 25, 'event-companion.deck-primary
 
 const primary = all.filter(r => ours(r) && r.id.indexOf('event-companion#Primary') === 0 && r.heading.indexOf('Fragment') === -1);
 const secondary = all.filter(r => ours(r) && r.id.indexOf('event-companion#Secondary') === 0 && r.heading.indexOf('Fragment') === -1);
-ok('the 25 primary names are the deck the reference prints', ['BATTLEFIELD DOMINANCE', 'MEATGRINDER', 'SABOTAGE', 'VITAL LINK'].every(n => primary.some(r => String(r.heading).split(' > ')[1] === n)));
-ok('the 18 secondary names include the deck staples', ['NO PRISONERS', 'A TEMPTING TARGET', 'BEHIND ENEMY LINES'].every(n => secondary.some(r => String(r.heading).split(' > ')[1] === n)));
+const nameOf = r => String(r.heading).split(' > ')[1].toLowerCase();
+if (fromDump) {
+  t('the dump gives the 25 primary cards', primary.length, 25);
+  t('the dump gives the 18 secondary cards', secondary.length, 18);
+  ok('every card carries its scoring', primary.concat(secondary).every(r => /VP/.test(String(r.text))));
+  ok('no card is a fragment', primary.concat(secondary).every(r => !/Fragment/.test(String(r.heading))));
+}
+ok('the 25 primary names are the deck the reference prints', ['battlefield dominance', 'meatgrinder', 'sabotage', 'vital link'].every(n => primary.some(r => nameOf(r) === n)));
+ok('the 18 secondary names include the deck staples', ['no prisoners', 'a tempting target', 'behind enemy lines'].every(n => secondary.some(r => nameOf(r) === n)));
 ok('the router answers a mission by name now', lookupRecord('find battlefield dominance').found && lookupRecord('find no prisoners').found);
 
 // --- part 2: the join, and what the corpus cannot fill -------------------------
@@ -59,7 +71,9 @@ t('the export names the five force dispositions', Object.keys(dispositions).sort
 // 256 of 315 detachment rows carry a disposition (task-33: the 2026-10-19 export adds
 // four); the rest are blank in the export, so the join reaches 256, not 315.
 t('the join reaches the rows that carry one', [rows.length, Object.values(dispositions).reduce((a, b) => a + b, 0)], [315, 256]);
-const mentionsDisposition = primary.concat(secondary).filter(r => Object.keys(dispositions).some(d => String(r.text || '').indexOf(d) !== -1)).length;
+// The check is on the card's NAME, not its prose: the dump brings the mission's own lore,
+// and 'take and hold the ground ahead' is a sentence, not a disposition card.
+const mentionsDisposition = primary.concat(secondary).filter(r => Object.keys(dispositions).some(d => nameOf(r) === d.toLowerCase())).length;
 t('no mission card names a disposition: every matrix cell is reference-only', mentionsDisposition, 0);
 
 console.log(pass + ' passed, ' + fail + ' failed');

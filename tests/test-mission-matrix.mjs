@@ -33,7 +33,10 @@ t('and names 25 distinct missions', matrix.uniqueMissions.length, 25);
 // The corpus corroborates the NAMES and nothing else.
 t('zero matrix-only names: every mission is a corpus card', missingFromCorpus(matrix, cards), []);
 t('the corpus holds the 43 cards the reference needs', cards.length, 43);
-const mentions = all.filter(r => /-Mission-deck->-/.test(r.id)).filter(r => matrix.dispositions.some(d => String(r.text || '').indexOf(d) !== -1)).length;
+// The check is on the card's NAME: the dump brings each mission's own lore, and 'take and
+// hold the ground ahead' is prose, not a disposition card.
+const mentions = all.filter(r => /-Mission-deck->-/.test(r.id))
+  .filter(r => matrix.dispositions.some(d => String(r.heading || '').split(' > ').pop().toLowerCase() === String(d).toLowerCase())).length;
 t('no card names a disposition: the pairing cannot be corpus-verified', mentions, 0);
 
 // The table a reader sees says whose words these are.

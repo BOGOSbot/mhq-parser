@@ -47,6 +47,7 @@ import { TRACE_RETENTION_MONTHS, sweepTraces } from './rules-traces.mjs';
 // bytes are untouched, the finding's excerpt and the passage sheet are not bare.
 import { markWargearText } from './wargear-marks.mjs';
 import { buildMfmFactions, mfmDumpPath } from './mfm-factions.mjs';
+import { buildMissionSections } from './mfm-missions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // task-83: the corpus directory is resolved PER CALL. Captured at import it was a
@@ -1726,10 +1727,86 @@ export function splitMissionText(text, label) {
   return out;
 }
 
+// The mission decks come from the MFM dump. The page writes each card as a div, so the
+// scrape held a deck as one body and the chunker cut it by length - twelve different
+// secondaries carried one errata label and card section headings surfaced as card names.
+// The dump has the cards, their objectives, their scoring and the disposition matrix.
+// MHQ_MISSIONS_SOURCE=page keeps the old text split as the rollback.
+function missionsFromMfm() {
+  if (String(process.env.MHQ_MISSIONS_SOURCE || 'mfm').toLowerCase() === 'page') return false;
+  try { return fs.existsSync(mfmDumpPath()); } catch (e) { return false; }
+}
+
 export function splitMissionDecks() {
   const payload = readCorpusStamped('event-companion');
   if (!payload) return null;
   const sections = payload.sections || [];
+  if (missionsFromMfm()) {
+    const deckNames = new Set(MISSION_DECKS.map(d => d.deck));
+    // The corpus on disk has already been through the page split once, so the cards to
+    // replace are the records that split created: a two-segment deck heading. The page's
+    // own FAQ and errata cards under the same decks have a third segment and stay.
+    const isDeckCard = s => /^event-companion#(?:Primary|Secondary)-Mission-deck->-[^>]+$/.test(String(s.id || ''));
+    // A stray round label that lost its deck in an earlier split ('SECOND BATTLE ROUND
+    // ONWARDS') is a card section, not a mission: the dump names the cards themselves.
+    const isStrayCardLabel = s => /^(?:FIRST|SECOND|THIRD|FOURTH|FIFTH) BATTLE ROUND(?: ONWARDS)?$|^ANY BATTLE ROUND$|^END OF THE BATTLE$/.test(String(s.heading || '').trim());
+    // An earlier build merged the disposition matrix into the page's disposition cards;
+    // the matrix is reference material and must not be readable out of the corpus, so the
+    // lines it added ('- vs X: Y') leave the text. The cards themselves stay.
+    const stripMatrix = s => {
+      if (!/^Force Dispositions > /.test(String(s.heading || ''))) return s;
+      const lines = String(s.text || '').split('\n').filter(l => !/^- vs .+: .+$/.test(l.trim()));
+      const text = lines.join('\n').trim();
+      if (text === String(s.text || '').trim()) return s;
+      s.text = text; s.chars = text.length; s.hash = textHash(text);
+      return s;
+    };
+    const built = buildMissionSections({ dumpPath: mfmDumpPath() });
+    // A page fragment whose whole heading is a card name the dump now provides is the
+    // same card without a deck: the dump's record replaces it.
+    const mfmNames = new Set(built.sections.map(s => String(s.heading).split(' > ').pop().toLowerCase()));
+    const isStrayCard = s => {
+      const h = String(s.heading || '').trim();
+      return h.indexOf(' > ') === -1 && mfmNames.has(h.toLowerCase());
+    };
+    const kept = sections.filter(s => !deckNames.has(String(s.heading || '').trim()) && !isDeckCard(s) && !isStrayCardLabel(s) && !isStrayCard(s)).map(stripMatrix);
+    // The page's force-disposition cards carry the disposition's own text; the dump
+    // carries which mission each side plays. One node per disposition, both texts.
+    const pageByHeading = new Map(kept.filter(s => /^Force Dispositions > /.test(String(s.heading || ''))).map(s => [s.heading, s]));
+    const additions = [];
+    for (const sec of built.sections) {
+      const pageRec = pageByHeading.get(sec.heading);
+      if (pageRec) {
+        const extra = String(pageRec.text || '').split('\n').slice(1).join('\n').trim();
+        const merged = extra ? sec.text + '\n\n' + extra : sec.text;
+        pageRec.text = merged;
+        pageRec.chars = merged.length;
+        pageRec.hash = textHash(merged);
+        pageByHeading.delete(sec.heading);
+        continue;
+      }
+      additions.push(sec);
+    }
+    // One node per heading. The page repeats some cards and an earlier run left its own
+    // copy of a disposition card beside the merged one, so a heading that collides with a
+    // record whose text already contains it keeps the fuller record. A repeated card whose
+    // text differs (the same FAQ answered twice) is real content and stays.
+    const byHeading = new Map();
+    const extras = [];
+    for (const sec of kept.concat(additions)) {
+      const key = String(sec.heading || '');
+      const prev = byHeading.get(key);
+      if (!prev) { byHeading.set(key, sec); continue; }
+      const a = String(sec.text || ''), b = String(prev.text || '');
+      if (a.indexOf(b) !== -1) continue;
+      if (b.indexOf(a) !== -1) { byHeading.set(key, sec); continue; }
+      extras.push(sec);
+    }
+    const nextM = [...byHeading.values()].concat(extras).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const outM = Object.assign({}, payload, { sections: nextM, count: nextM.length, anchored: nextM.filter(s => s.hasAnchor).length });
+    writeCorpus('event-companion', outM);
+    return { chunks: sections.length - kept.length, cards: built.stats.primary + built.stats.secondary, fragments: 0, decks: [], source: 'mfm-dump', version: built.stats.version };
+  }
   const next = [];
   const report = { chunks: 0, cards: 0, fragments: 0, decks: [] };
   for (const deck of MISSION_DECKS) {
@@ -5704,7 +5781,13 @@ async function main() {
       // Not a scrape: the decks are already on disk, and the split is a local
       // transformation of their own text.
       const built = splitMissionDecks();
-      if (!built || !built.chunks) { console.log('no mission deck chunks left to split'); return; }
+      if (!built) { console.log('no event-companion corpus to read'); return; }
+      if (built.source === 'mfm-dump') {
+        console.log('  ' + 'missions from the dump'.padEnd(24) + String(built.cards).padStart(5) + '  (' + built.version + '), ' + built.chunks + ' page card(s) replaced');
+        console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 / 0');
+        return;
+      }
+      if (!built.chunks) { console.log('no mission deck chunks left to split'); return; }
       for (const d of built.decks) console.log('  ' + d.deck.padEnd(24) + String(d.chunks).padStart(3) + ' chunks -> ' + String(d.cards).padStart(3) + ' cards, ' + d.fragments + ' fragment(s), ' + d.bytes + ' bytes');
       console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 / 0');
       return;
