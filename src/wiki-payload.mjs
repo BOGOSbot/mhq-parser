@@ -100,7 +100,11 @@ export function snippetOf(text, heading, max) {
   // Work line by line while the lines still exist: the echo and the Source line
   // are whole lines, and collapsing first glues them into the sentence.
   const lines = String(text || '').split('\n').map(function (line) { return line.trim(); }).filter(Boolean);
-  if (lines.length && head && lines[0].indexOf(head) === 0) lines.shift();
+  // The echo is usually the whole heading, but a card writes its own name: the mission
+  // decks open 'Assassination - Secondary Mission' under the heading 'Secondary Mission
+  // deck > Assassination', so the leaf is what matches there.
+  const leaf = head.split(' > ').pop() || '';
+  if (lines.length && ((head && lines[0].indexOf(head) === 0) || (leaf && lines[0].indexOf(leaf) === 0))) lines.shift();
   if (lines.length && /^Source: /i.test(lines[0])) lines.shift();
   let t = lines.join(' ').replace(/\s+/g, ' ').trim();
   if (t.length <= limit) return t;

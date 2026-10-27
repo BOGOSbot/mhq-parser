@@ -38,3 +38,9 @@ Index re-ingested and pruned: 4,799 upserted, 5,300 stale ids deleted under `--a
 Cards: `buildUnitCard` is keyed on the CSV's numeric ids, so under dump UUIDs every card fell back to prose. `cardFor` now falls back to a name lookup that refuses ambiguity (the same rule `findDatasheet` already applies): 805 of 1,126 datasheets and 826 of 1,148 unitrules render a card, the rest keep the prose body. This is the app's card path; the shaped prototype renders prose by design.
 
 Still red, and needing semantic work rather than new numbers: `test-find` (9 assertions on the search fold's twin/chunk behaviour with UUID ids) and `test-record-outline` (5 assertions: the card census and the outline statistics the CSV corpus defined). Both were previously anchored on numeric CSV ids and now crash or miscount instead of mis-asserting.
+## Update 2026-10-27, third pass: the mission decks
+
+The missions come from the dump now, not from the scraped event-companion page. `src/mfm-missions.mjs` reads the Chapter Approved pack (25 primary, 18 secondary; Combat Patrol is a different game and is filtered out) and writes one record per card with its objectives, WHEN lines, victory points and caps. The page's deck chunks, stray card fragments and the card section labels that had surfaced as names are dropped; the dispositions section keeps its own page card, and the matrix stays reference material (`mission-matrix.mjs`), never written into the corpus. `MHQ_MISSIONS_SOURCE=page` is the rollback.
+
+Measured: event-companion corpus 88 sections (43 cards + the page's own non-deck content), payload 5,702 delivered, index rules 781 / factions 4,767 / rulings 154, strays 0. Tests green: mission-split 10, mission-matrix 13, mission-assets, corpus-drift, index-delivered, editions, record-shapes, wiki-plan.
+
