@@ -10,7 +10,10 @@ import { resolveExpectation } from './expectations.mjs';
 // corpus DELIVERS. An entry that cannot match cannot score, whatever retrieval
 // does: the harness just prints NOT FOUND and the question is a permanent loss.
 // That is how player question 10 named unitrules#000002541, which the part
-// splitter had divided into ~1 and ~2.
+// splitter had divided into ~1 and ~2, and how five entries went dead in the
+// MFM migration (2026-10-28): the parser stopped putting section numbers in the
+// id path, and the unit and stratagem ids became the dump's own, so the old
+// CSV-shaped ids named nothing. Both lanes are exercised below.
 let pass = 0, fail = 0;
 function t(name, got, want) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
@@ -48,11 +51,16 @@ for (const item of bank.questions) {
 }
 
 t('every bank expectation resolves to at least one delivered id', unscoreable, []);
-t('the guard would have caught the entry that was unscoreable by construction', preSplitUnscoreable.map(x => x.e), ['unitrules#000002541']);
-ok('and that is the player question about the Harlequin re-embarking', preSplitUnscoreable[0].q.indexOf('Harlequin') !== -1);
-t('the corpus has no unsuffixed unitrules#000002541', ix.byId.has('unitrules#000002541'), false);
-t('the split lane resolves it to the parts the corpus has', resolveExpectation('unitrules#000002541', ix).parts, ['unitrules#000002541~1', 'unitrules#000002541~2']);
-ok('both parts are delivered', resolveExpectation('unitrules#000002541', ix).parts.every(id => delivered.has(id)));
+// The split lane has no bank entry to lean on any more - the MFM migration
+// re-pointed the one that did - so the case is taken from the corpus itself.
+// The regression it guards is the resolver's, not that entry's: an id the part
+// splitter divided must resolve to its parts, and nothing else may widen.
+t('no bank expectation needs the split lane to resolve', preSplitUnscoreable, []);
+const splitBase = [...new Set(all.filter(s => /~\d+$/.test(s.id)).map(s => s.id.replace(/~\d+$/, '')))].find(b => !ix.byId.has(b) && resolveExpectation(b, ix).via === 'split');
+ok('the corpus still carries an id the part splitter divided', !!splitBase);
+const sp = splitBase ? resolveExpectation(splitBase, ix) : { parts: [] };
+t('the split lane resolves it to the parts the corpus has', sp.parts, splitBase ? ix.ids.filter(x => /^\d+$/.test(x.slice(splitBase.length + 1)) && x.startsWith(splitBase + '~')) : []);
+ok('both parts are delivered', sp.parts.length > 0 && sp.parts.every(id => delivered.has(id)));
 t('the split lane never widens to a fuzzy match', resolveExpectation('unitrules#0000025', ix).via, 'missing');
 t('an exact id still resolves to itself', resolveExpectation('core-rules#Battle-shock-Rolls', ix).via, 'exact');
 // task-53: two expectations were corrected by hand because the records they named did
