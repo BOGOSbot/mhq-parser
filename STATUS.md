@@ -4,7 +4,7 @@
 
 ## In progress
 
-- **P1** [Move the faction half onto the MFM](tasks/mfm-source.md) - the corpus is built from GW's own dump and the CSV is the rollback; the index re-ingest is owed before the next deploy.
+- **P1** [Move the corpus onto the MFM](tasks/mfm-source.md) - factions and mission decks read GW's dump, the CSV and the page are the rollbacks; two test files need semantic rework and the branch is unpushed (identity).
 
 
 ## Pending
