@@ -26,10 +26,23 @@ const coreCov = cov.filter((r) => String(r.source) === 'core-rules');
 const appCov = cov.filter((r) => String(r.source) === 'rules-appendix');
 ok('the core rules carry one 13.08 record', coreCov.length === 1);
 ok('and it is Benefit of Cover under Terrain', coreCov.length === 1 && /Benefit of Cover/i.test(leafOf(coreCov[0])) && /Terrain/i.test(String(coreCov[0].heading)));
-ok('the appendix carries one 13.08 record', appCov.length === 1);
-ok('and it is Benefit of Cover', appCov.length === 1 && /Benefit of Cover/i.test(leafOf(appCov[0])));
-ok('and no other source carries 13.08', cov.length === 2);
-ok('and its body is the rule, not a run of other rules', appCov.length === 1 && String(appCov[0].text).length < 1200 && String(appCov[0].text).indexOf('[TORRENT]') === -1 && String(appCov[0].text).indexOf('[EXTRA ATTACKS]') === -1);
+// 2026-10-28: the appendix's 13.08 was never an appendix entry. The page prints Benefit of
+// Cover only inside a hover tooltip, and the tooltip templates (104 copies of rules that live
+// elsewhere, all filed under '[ONE SHOT]') are no longer read on that page. The rule is the
+// core rules' record, once.
+ok('the appendix carries no 13.08 record (it was a tooltip copy)', appCov.length === 0);
+ok('and no other source carries 13.08', cov.length === 1);
+// The run-on itself stays guarded: no appendix record swallows the abilities after it.
+const runOnBodies = all.filter((r) => String(r.source) === 'rules-appendix' && String(r.text).indexOf('[TORRENT]') !== -1 && String(r.text).indexOf('[EXTRA ATTACKS]') !== -1 && String(r.text).length > 1200);
+ok('and no appendix body is a run of other rules', runOnBodies.length === 0);
+
+// '[ONE SHOT]' holds its own clarification only: the rules update filed after it (24.28.01,
+// 24.37.01) and the Universal Rules Updates section are not its children.
+const oneShot = all.filter((r) => String(r.source) === 'rules-appendix' && /^\[ONE SHOT\]/.test(String(r.heading)));
+ok('[ONE SHOT] is the entry and its 24.26.01 clarification', oneShot.length === 2 && oneShot.every((r) => !r.ruleId || /^24\.26/.test(String(r.ruleId))));
+const uru = byId.get('rules-appendix#Universal-Rules-Updates');
+ok('Universal Rules Updates is a section of its own', !!uru && !uru.parent);
+ok('and the stratagem updates sit under it', all.filter((r) => String(r.parent) === 'rules-appendix#Universal-Rules-Updates').length >= 5);
 
 // --- 2. no FAQ question is a parent ------------------------------------------------
 const faqParents = all.filter((r) => /^Q:/.test(leafOf(r)) && all.some((x) => String(x.parent) === String(r.id)));

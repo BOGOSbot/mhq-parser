@@ -34,7 +34,8 @@ t('the corpus splits into delivered and filtered with nothing lost', all.length 
 // 2026-10-28: 5,702 / 134 before the wargear options; the split datasheets add
 // records, and Leagues of Votann, Astra Militarum and Adepta Sororitas each gain
 // one index page for the extra entries.
-t('delivered is 5,777 and filtered is 137 (MFM corpus with options, 2026-10-28)', [delivered.length, filtered.length], [5777, 137]);
+// Then 5,673: the appendix stopped reading its tooltip templates (104 duplicate records).
+t('delivered is 5,673 and filtered is 137 (MFM corpus with options, appendix tooltips out, 2026-10-28)', [delivered.length, filtered.length], [5673, 137]);
 
 // --- the query path cannot return what the product does not deliver -----------
 // The ids are read from the corpus, never hardcoded: the faction half now comes from

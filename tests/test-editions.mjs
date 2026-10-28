@@ -24,7 +24,8 @@ t('every record carries a numeric edition', all.filter(r => !/^\d+$/.test(String
 // corpus is entirely 11 and nothing is left to exclude by edition - which is why the
 // guard is asserted synthetically, so a snapshot that reintroduces an old edition fails.
 // 5,836 before the wargear options split 68 long datasheets (2026-10-28).
-t('the MFM corpus is entirely edition 11', editionCounts(all), { 11: 5914 });
+// 5,810 once the appendix's 104 tooltip copies went (2026-10-28).
+t('the MFM corpus is entirely edition 11', editionCounts(all), { 11: 5810 });
 t('nothing in the corpus is edition 0 or 10', [all.filter(r => String(r.edition) === '0').length, all.filter(r => String(r.edition) === '10').length], [0, 0]);
 // edition 10 is not excluded wholesale - the predicate names the ids it knows - so only
 // the pack line is asserted here. The 10th-edition case is the MUTATION check at the end.

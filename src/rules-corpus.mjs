@@ -372,8 +372,20 @@ export function dropElements(html, predicate) {
   return out;
 }
 
-export function stripChrome(html) {
-  return dropElements(html, (tag, attrs) => CHROME.some(fn => fn(tag, attrs)));
+// The appendix's tooltip templates are hover copies of rules that live elsewhere:
+// on 2026-10-28 every one of the 104 records they produced duplicated a core-rules,
+// core-stratagem, ability-definition or event-companion record. They sit after the
+// page's last heading, so the splitter filed all of them under it - '[ONE SHOT] >
+// LETHAL HITS', '[ONE SHOT] > Coherency' - and those copies outranked the real
+// definitions in the lookup. The core-rules page is NOT treated this way: its
+// templates carry FAQ answers that exist nowhere else (the 53 questions above).
+const SOURCE_CHROME = {
+  'rules-appendix': [(tag, attrs) => tag === 'div' && /class="[^"]*\btooltip_templates\b/.test(attrs)],
+};
+
+export function stripChrome(html, source) {
+  const extra = SOURCE_CHROME[source && source.name ? source.name : source] || [];
+  return dropElements(html, (tag, attrs) => CHROME.some(fn => fn(tag, attrs)) || extra.some(fn => fn(tag, attrs)));
 }
 
 // --- html into sections -----------------------------------------------------
@@ -416,7 +428,9 @@ export function extractSections(html, source) {
     // and the link builder turns those names into links.
     if (/^See Also$/i.test(raw) && /CornerSeeAlso/.test(page.slice(Math.max(0, m.index - 300), m.index))) continue;
     const classMatch = attrs.match(/\bclass="([^"]*)"/i);
+    const outline = /(?:^|\s)outline_header(?:\s|$)/.test(classMatch ? classMatch[1] : '');
     marks.push({
+      outline,
       at: m.index,
       end: head.lastIndex,
       anchor: idMatch ? idMatch[1] : '',
@@ -463,7 +477,13 @@ export function extractSections(html, source) {
     // '02' = 1, '01.07' = 2, '01.05.01' = 3. Tag level is the fallback when it has none.
     const tagLevel = marks[i].level;
     const depth = ruleId ? ruleId.split('.').length : 0;
-    const level = depth || tagLevel;
+    // The appendix titles its sections ('Core Abilities', 'Universal Rules Updates')
+    // with an unnumbered h3.outline_header, while its entries are h2s - so by tag a
+    // section title sat one level BELOW the entry before it, and 'Universal Rules
+    // Updates' with all eight of its rules was filed under '[ONE SHOT]'. A section
+    // title closes the entry above it: it takes an entry's level. (The core-rules page
+    // numbers its section titles, so its depth already comes from the number.)
+    const level = depth || (source.name === RUN_ON_SOURCE && marks[i].outline ? 2 : tagLevel);
     // An h1 is the page, not a rule on it: its body is the introduction and a
     // citation to it says nothing. Same for the marker table the page carries at
     // the top - it is how we date the copy, not something anyone asks about.
@@ -480,6 +500,21 @@ export function extractSections(html, source) {
     if (/^(books|contents)$/i.test(pageTitle)) continue;
     if (/Book\s+Kind\s+Edition\s+Version\s+Last update/i.test(body.slice(0, 300))) continue;
     while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
+    // A rules update ships a sub-rule under whatever entry the page happened to end
+    // the block with: the appendix files 'Precision and Devastating Wounds 24.28.01'
+    // and '[TORRENT] 24.37.01' after '[ONE SHOT]', whose own clarification is
+    // 24.26.01. A bracketed entry names ONE weapon ability, so it takes its number
+    // from its first numbered child, and a later child numbered under a different
+    // ability is filed beside it instead. Only bracketed entries: 'Move Units' or
+    // 'Embarking' span several rule numbers, and their later children are theirs.
+    if (source.name === RUN_ON_SOURCE && depth >= 3 && stack.length) {
+      const top = stack[stack.length - 1];
+      const parentNum = ruleId.split('.').slice(0, -1).join('.');
+      if (!top.ruleId && /^\[[^\]]+\]$/.test(top.title)) {
+        if (!top.childNum) top.childNum = parentNum;
+        else if (top.childNum !== parentNum) stack.pop();
+      }
+    }
     // 'Show' and 'Hide' are the spoiler toggles: they end up as ancestors once a
     // promoted card hangs under them, and they say nothing about the rule.
     const path = stack.map(s => s.title).filter(t => !/^(show|hide)$/i.test(t));
@@ -527,7 +562,7 @@ export function extractSections(html, source) {
     // with a one-word answer is still the thing the reader searched for, and the floor
     // was dropping the short ones now that each card gets its own body.
     if (body.length < MIN_CHARS && !ruleId && !marks[i].promoted && !(hasChildren && !GENERIC_HEADING.test(pageTitle))) continue;
-    stack.push({ level, title });
+    stack.push({ level, title, ruleId });
     const anchor = marks[i].anchor || '';
     // The ancestors go in front of the body, so the vector is embedded with the
     // context it belongs to rather than as an orphan paragraph, and grep can
@@ -2139,11 +2174,24 @@ export function assignIds(sourceName, raw) {
   });
 }
 
-export async function scrapeSource(source) {
-  const r = await fetchPage(source.url);
-  if (r.status !== 200) throw new Error(source.name + ' returned HTTP ' + r.status);
+// The page as fetched is kept beside the corpus (<name>.html): the ability
+// definitions and the appendix table of contents already read it, and a parser
+// change can then be re-run without the network (--from-disk).
+export function pagePath(name, dir) { return path.join(dir || corpusDir(), name + '.html'); }
+
+export async function scrapeSource(source, opts) {
+  const o = opts || {};
+  let r;
+  if (o.fromDisk) {
+    const file = pagePath(source.name);
+    if (!fs.existsSync(file)) throw new Error(source.name + ': no saved page at ' + file);
+    r = { status: 200, body: fs.readFileSync(file, 'utf8') };
+  } else {
+    r = await fetchPage(source.url);
+    if (r.status !== 200) throw new Error(source.name + ' returned HTTP ' + r.status);
+  }
   const marker = parseMarker(r.body);
-  const sections = assignIds(source.name, extractSections(stripChrome(r.body), source).filter(sec => !isBoardingActionsPageSection(sec)));
+  const sections = assignIds(source.name, extractSections(stripChrome(r.body, source), source).filter(sec => !isBoardingActionsPageSection(sec)));
   const ids = new Set(sections.map(s => s.id));
   if (ids.size !== sections.length) {
     throw new Error(source.name + ': ' + sections.length + ' sections but only ' + ids.size + ' unique ids');
@@ -2160,11 +2208,13 @@ export async function scrapeSource(source) {
     anchored: sections.filter(s => s.hasAnchor).length,
     sections,
   };
+  if (!o.fromDisk) { try { fs.writeFileSync(pagePath(source.name), r.body); } catch (e) { /* the corpus is what matters */ } }
+  if (o.fromDisk) payload.fromDisk = pagePath(source.name);
   writeCorpus(source.name, payload);
   return payload;
 }
 
-export async function scrapeAll(only, setName) {
+export async function scrapeAll(only, setName, opts) {
   // Built sources come from the CSV download, not from a page, and must not be
   // scraped - their content is written by buildFactionCorpus.
   const list = (only ? sourcesFor(setName).filter(s => s.name === only) : sourcesFor(setName)).filter(s => !s.built);
@@ -2176,7 +2226,7 @@ export async function scrapeAll(only, setName) {
     let lastError = null;
     for (let attempt = 0; attempt < 3 && !payload; attempt++) {
       try {
-        payload = await scrapeSource(s);
+        payload = await scrapeSource(s, opts);
       } catch (e) {
         lastError = e;
         if (attempt < 2) await new Promise(r => setTimeout(r, 5000 * (attempt + 1)));
@@ -5863,7 +5913,7 @@ async function main() {
       console.log('next: run --ingest, then --prune, then check index-vs-corpus reads 0 / 0');
       return;
     }
-    const done = await scrapeAll(only, set);
+    const done = await scrapeAll(only, set, { fromDisk: flag('--from-disk') });
     for (const p of done) console.log(p.source.padEnd(17) + ' ' + String(p.count).padStart(4) + ' sections (' + p.anchored + ' anchored)  ' + Math.round(p.bytes / 1024) + ' KB');
     console.log('written to ' + corpusDir());
     if (scrapeBuildsWiki(argv)) await buildWikiShape(corpusDir());

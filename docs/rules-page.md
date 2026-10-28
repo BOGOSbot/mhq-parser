@@ -370,12 +370,23 @@ The on-disk corpus, the CSV export and the index state live in
 ```
 node src/rules-corpus.mjs --check              # is our copy behind? gdmissions.app first (docs/gdm-canon.md)
 node src/rules-corpus.mjs --update             # pull the newer dump and rebuild when gdmissions lists one
-node src/rules-corpus.mjs --scrape             # fetch the anchored pages
+node src/rules-corpus.mjs --scrape             # fetch the anchored pages (each page is kept as <name>.html)
+node src/rules-corpus.mjs --scrape --source rules-appendix --from-disk   # re-parse a saved page, no network
 node src/rules-corpus.mjs --scrape --set factions --cached   # rebuild from the cached CSV
 node src/rules-corpus.mjs --ingest             # embed + upsert what changed
 node src/rules-corpus.mjs --stats              # what is on disk, and in the index
 node src/rules-corpus.mjs --prune --set rules  # delete index vectors the corpus no longer has
 ```
+
+### The appendix's structure (2026-10-28)
+
+Three rules apply to the rules appendix only, because only its page is shaped this way:
+
+- **Its tooltip templates are not read.** They are hover copies of rules that live elsewhere; all 104 records they produced duplicated a core-rules, core-stratagem, ability-definition or event-companion record, and because they follow the page's last heading they were all filed under `[ONE SHOT]` (`[ONE SHOT] > LETHAL HITS` outranked the Lethal Hits definition in the lookup). The core-rules page keeps reading its tooltips: its FAQ answers live there.
+- **A section title closes the entry above it.** The appendix titles its sections with an unnumbered `h3.outline_header` and its entries with `h2`, so by tag "Universal Rules Updates" and its eight rules sat under `[ONE SHOT]`. A section title now takes an entry's level.
+- **A rules update filed under the wrong ability moves out.** A bracketed entry (`[ONE SHOT]`) names one weapon ability and takes its number from its first numbered child (24.26.01); a later child numbered under another ability (24.28.01 Precision and Devastating Wounds, 24.37.01 [TORRENT]) is filed beside it. Entries that span several numbers (`Move Units`, `Embarking`) are not touched.
+
+Tests: `tests/test-appendix-structure.mjs` (the three rules on a synthetic page), `tests/test-appendix-headings.mjs` (the corpus).
 
 `RULES_CORPUS_DIR` points the whole thing elsewhere; `RULES_VECTOR_BACKEND=local`
 switches from Upstash to the local bge-m3 store.
