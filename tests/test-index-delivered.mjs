@@ -30,8 +30,11 @@ t('an empty record is not delivered', isDelivered(null), false);
 t('the corpus splits into delivered and filtered with nothing lost', all.length - delivered.length - filtered.length, 0);
 // 2026-10-26: the faction half comes from the MFM dump, so the CSV's 144 ally copies
 // and its 958 Legends records are gone at the source and 5,666 records are delivered.
-// The 134 filtered are the faction index pages, which the predicate drops by kind.
-t('delivered is 5,702 and filtered is 134 (MFM corpus, 2026-10-27)', [delivered.length, filtered.length], [5702, 134]);
+// The 137 filtered are the faction index pages, which the predicate drops by kind.
+// 2026-10-28: 5,702 / 134 before the wargear options; the split datasheets add
+// records, and Leagues of Votann, Astra Militarum and Adepta Sororitas each gain
+// one index page for the extra entries.
+t('delivered is 5,777 and filtered is 137 (MFM corpus with options, 2026-10-28)', [delivered.length, filtered.length], [5777, 137]);
 
 // --- the query path cannot return what the product does not deliver -----------
 // The ids are read from the corpus, never hardcoded: the faction half now comes from

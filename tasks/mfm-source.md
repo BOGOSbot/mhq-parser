@@ -53,3 +53,15 @@ Verified on 995: current. The scraped core rules carry every Core Rules change t
 `tests/test-corpus-build.mjs` is red (10 assertions) on this branch's base as well as here: it still expects the CSV's core-stratagem anchors and ability rows. Not caused by this change; add it to the re-baseline list.
 
 Same day: the faction changelog (`/11th/rules/faction-changelog`) is read too. Both pickers merge into one row per version with Core Rules and faction counts; either page alone gives a verdict, and a BEHIND verdict names the factions the newest version touched. 995's 24 faction changes are in the corpus except the Death Company Captain's Power Fist, which is a wargear option (the open wargear-options slice). Tests: 36.
+
+## Update 2026-10-28: wargear options
+
+Datasheets now carry every weapon the unit can field and one `Option:` line per printed option (docs/mfm-source.md, "Wargear options"). 995's Death Company Captain Power Fist (A6 WS2+) is in. Corpus rebuilt and payload re-baked: 4,979 sections, 5,777 delivered, 137 filtered. Re-baselined `test-corpus-drift` (5,050 / 6,567,709), `test-index-delivered` (5,777 / 137) and `test-editions` (5,914); new `test-mfm-wargear-options` (11).
+
+Next action: `--ingest` then `--prune` (the index holds the pre-option texts and the unsplit ids of 68 datasheets), then the web bundle and the Android APK as already owed.
+
+Found while rebuilding, not caused by it - each reproduces by reshaping the 2026-10-28 01:08 snapshot with today's code:
+
+- `test-ability-defs`: "find lethal hits" / "find devastating wounds" now return `rules-appendix#[ONE-SHOT]->-LETHAL-HITS` instead of the ability definition. The shape stage now gives that appendix record kind `rule` (it was `''`), and `rule` ranks ahead of `ability` in `rankCmp`. The on-disk corpus predated the current shaping code, so any rebuild flips this. Needs a decision on the order, not a number.
+- `test-bodies` (2): the fixture pair is CSV ids (`datasheet#000000016~1`), and the store check asks for more than 6,000 delivered records, which the tournament-only MFM corpus has never had.
+- Red before and after, unchanged: `test-hidden-abilities` (3), `test-unit-card` (CSV id lookup), `test-corpus-build` (10), `test-find` (11), `test-record-outline` (5), and the rest of the suite's existing reds; a before/after run over the 52 corpus-reading tests changed only the ones named here.

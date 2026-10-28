@@ -242,6 +242,32 @@ export function buildMfmFactions(options) {
   const wargearAbilityById = new Map(tables('wargear_ability').map(function (a) { return [a.id, a]; }));
   const loadoutsByDatasheet = groupBy(tables('base_miniature_loadout'), 'datasheetId');
   const loadoutOptionsByLoadout = groupBy(tables('base_miniature_loadout_wargear_option'), 'baseMiniatureLoadoutId');
+  // Wargear OPTIONS: what a unit can take besides its default loadout. The card's
+  // printed option text is wargear_rule; the items it names are reachable through
+  // the option groups and the three choice tables (loadout, limited, all-model).
+  const wargearRulesByDatasheet = groupBy(tables('wargear_rule'), 'datasheetId');
+  const optionGroupsByDatasheet = groupBy(tables('wargear_option_group'), 'datasheetId');
+  const optionsByGroup = groupBy(tables('wargear_option'), 'wargearOptionGroupId');
+  const choiceItemsByDatasheet = new Map();
+  (function indexChoiceItems() {
+    const add = function (dsId, itemId) {
+      if (!dsId || !itemId) return;
+      if (!choiceItemsByDatasheet.has(dsId)) choiceItemsByDatasheet.set(dsId, []);
+      choiceItemsByDatasheet.get(dsId).push(itemId);
+    };
+    const via = function (setTable, choiceTable, itemTable, setKey, choiceKey) {
+      const sets = new Map(tables(setTable).map(function (r) { return [r.id, r]; }));
+      const choices = new Map(tables(choiceTable).map(function (r) { return [r.id, r]; }));
+      for (const r of tables(itemTable)) {
+        const c = choices.get(r[choiceKey]);
+        const set = c && sets.get(c[setKey]);
+        if (set) add(set.datasheetId, r.wargearItemId);
+      }
+    };
+    via('loadout_choice_set', 'loadout_choice', 'loadout_choice_wargear_item', 'loadoutChoiceSetId', 'loadoutChoiceId');
+    via('limited_wargear_choice_set', 'limited_wargear_choice', 'limited_wargear_choice_wargear_item', 'limitedWargearChoiceSetId', 'limitedWargearChoiceId');
+    via('all_model_wargear_choice_set', 'all_model_wargear_choice', 'all_model_wargear_choice_wargear_item', 'allModelWargearChoiceSetId', 'allModelWargearChoiceId');
+  })();
   const phasesByStratagem = groupBy(tables('stratagem_phase'), 'stratagemId');
   const forceDispositionById = new Map(tables('force_disposition').map(function (f) { return [f.id, en(f).name || '']; }));
   const dispositionsByDetachment = groupBy(tables('detachment_force_disposition'), 'detachmentId');
@@ -261,6 +287,7 @@ export function buildMfmFactions(options) {
     datasheets: 0, unitrules: 0, stratagems: 0, detachments: 0, enhancements: 0, factionRules: 0,
     skipped: { legends: 0, unmappedDatasheet: 0, unmappedDetachment: 0, emptyText: 0 },
     factionCounts: {},
+    wargear: { base: 0, optional: 0, options: 0 },
   };
 
   function push(id, source, heading, url, lines, kind, idFrom, set) {
@@ -296,35 +323,84 @@ export function buildMfmFactions(options) {
       ' Ld ' + miniature.leadership + ' OC ' + miniature.objectiveControl + (baseSize ? ' base ' + baseSize : '');
   }
 
-  function wargearLines(datasheetId) {
-    const lines = [];
+  // The weapons a datasheet can field, default loadout first and then every
+  // item its options can add, in the order the dump lists them. One line per
+  // distinct profile, the same 'Wargear <name> (<Melee|Ranged>): ...' line the
+  // CSV corpus wrote for every weapon including the optional ones.
+  function wargearItemIds(datasheetId) {
+    const ids = [];
     const seen = new Set();
+    const add = function (id) { if (id && !seen.has(id) && wargearItemById.has(id)) { seen.add(id); ids.push(id); } };
     for (const loadout of loadoutsByDatasheet.get(datasheetId) || []) {
       for (const opt of loadoutOptionsByLoadout.get(loadout.id) || []) {
         const option = wargearOptionById.get(opt.wargearOptionId);
-        if (!option || !option.wargearItemId) continue;
-        const item = wargearItemById.get(option.wargearItemId);
-        if (!item) continue;
-        const name = en(item).name || '';
-        const profiles = profilesByWargear.get(item.id) || [];
-        for (const profile of profiles) {
-          const key = name + '|' + profile.type + '|' + profile.range + '|' + profile.attacks;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          const weaponAbilities = (wargearAbilitiesByProfile.get(profile.id) || [])
-            .map(function (link) { return en(wargearAbilityById.get(link.wargearAbilityId) || {}).name || ''; })
-            .filter(Boolean);
-          const ruleText = plainText(en(item).ruleText);
-          const abilityText = weaponAbilities.length ? ' - ' + weaponAbilities.join(', ') : '';
-          const body = profile.type === 'melee'
-            ? 'A ' + profile.attacks + ' WS ' + (profile.weaponSkill || '-') + ' S ' + profile.strength + ' AP ' + profile.armourPenetration + ' D ' + profile.damage
-            : 'Range ' + profile.range + ' A ' + profile.attacks + ' BS ' + (profile.ballisticSkill || '-') + ' S ' + profile.strength + ' AP ' + profile.armourPenetration + ' D ' + profile.damage;
-          lines.push('Wargear ' + name + ' (' + (profile.type === 'melee' ? 'Melee' : 'Ranged') + '): ' + body + abilityText + (ruleText ? ' - ' + ruleText : ''));
-        }
-        if (!profiles.length) lines.push('Wargear ' + name);
+        if (option) add(option.wargearItemId);
+      }
+    }
+    stats.wargear.base += ids.length;
+    const groups = (optionGroupsByDatasheet.get(datasheetId) || []).slice()
+      .sort(function (a, b) { return Number(a.displayOrder || 0) - Number(b.displayOrder || 0); });
+    const before = ids.length;
+    for (const g of groups) {
+      for (const o of (optionsByGroup.get(g.id) || []).slice().sort(function (a, b) { return Number(a.displayOrder || 0) - Number(b.displayOrder || 0); })) add(o.wargearItemId);
+    }
+    for (const id of choiceItemsByDatasheet.get(datasheetId) || []) add(id);
+    stats.wargear.optional += ids.length - before;
+    return ids;
+  }
+
+  function wargearLines(datasheetId) {
+    const lines = [];
+    const seen = new Set();
+    for (const itemId of wargearItemIds(datasheetId)) {
+      const item = wargearItemById.get(itemId);
+      const name = en(item).name || '';
+      const ruleText = plainText(en(item).ruleText);
+      const profiles = (profilesByWargear.get(item.id) || []).slice()
+        .sort(function (a, b) { return Number(a.displayOrder || 0) - Number(b.displayOrder || 0); });
+      for (const profile of profiles) {
+        // A multi-profile weapon names each profile ('Plasma Pistol - supercharge');
+        // a single-profile one repeats the item's name, which says nothing new.
+        const pname = String(en(profile).name || '').trim();
+        const profileName = !pname || pname.toLowerCase() === name.toLowerCase() ? name
+          : (pname.toLowerCase().indexOf(name.toLowerCase()) === 0 ? pname : name + ' - ' + pname);
+        const key = profileName + '|' + profile.type + '|' + profile.range + '|' + profile.attacks + '|' + profile.strength + '|' + profile.armourPenetration + '|' + profile.damage;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const weaponAbilities = (wargearAbilitiesByProfile.get(profile.id) || [])
+          .map(function (link) { return en(wargearAbilityById.get(link.wargearAbilityId) || {}).name || ''; })
+          .filter(Boolean);
+        const abilityText = weaponAbilities.length ? ' - ' + weaponAbilities.join(', ') : '';
+        const body = profile.type === 'melee'
+          ? 'A ' + profile.attacks + ' WS ' + (profile.weaponSkill || '-') + ' S ' + profile.strength + ' AP ' + profile.armourPenetration + ' D ' + profile.damage
+          : 'Range ' + profile.range + ' A ' + profile.attacks + ' BS ' + (profile.ballisticSkill || '-') + ' S ' + profile.strength + ' AP ' + profile.armourPenetration + ' D ' + profile.damage;
+        lines.push('Wargear ' + profileName + ' (' + (profile.type === 'melee' ? 'Melee' : 'Ranged') + '): ' + body + abilityText + (ruleText ? ' - ' + ruleText : ''));
+      }
+      if (!profiles.length && !seen.has(name + '|none')) {
+        seen.add(name + '|none');
+        lines.push('Wargear ' + name + (ruleText ? ' - ' + ruleText : ''));
       }
     }
     return lines;
+  }
+
+  // The card's printed wargear options, one 'Option:' line each, as the CSV
+  // corpus wrote them. wargear_rule is the printed text; a datasheet with option
+  // groups and no printed rule (7 in data version 995) falls back to the groups'
+  // own instruction text. 'Default Wargear' groups are the loadout, not options.
+  function optionLines(datasheetId) {
+    const flat = function (t) { return plainText(t).replace(/^[\s■▪▫•-]+/, '').replace(/\s*\n\s*[■▪▫•]?\s*/g, ' ').replace(/\s+/g, ' ').trim(); };
+    const printed = (wargearRulesByDatasheet.get(datasheetId) || []).slice()
+      .sort(function (a, b) { return Number(a.displayOrder || 0) - Number(b.displayOrder || 0); })
+      .map(function (r) { return flat(en(r).rulesText); }).filter(Boolean);
+    const texts = printed.length ? printed : (optionGroupsByDatasheet.get(datasheetId) || []).slice()
+      .sort(function (a, b) { return Number(a.displayOrder || 0) - Number(b.displayOrder || 0); })
+      .map(function (g) { return flat(en(g).instructionText); })
+      .filter(function (t) { return t && !/^def\w*\s+warg\w*$/i.test(t); });
+    const out = [];
+    for (const t of texts) if (out.indexOf(t) === -1) out.push(t);
+    stats.wargear.options += out.length;
+    return out.map(function (t) { return 'Option: ' + t; });
   }
 
   function pointsLines(datasheetId) {
@@ -382,6 +458,7 @@ export function buildMfmFactions(options) {
       else statsLines.push(line);
     });
     for (const line of wargearLines(ds.id)) statsLines.push(line);
+    for (const line of optionLines(ds.id)) statsLines.push(line);
     for (const line of pointsLines(ds.id)) statsLines.push(line);
     for (const dmg of damageByDatasheet.get(ds.id) || []) {
       const dl = en(dmg);

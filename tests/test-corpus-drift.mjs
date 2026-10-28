@@ -74,9 +74,12 @@ const BASELINE = {
     // 6,483 sections and 402,171 fewer bytes. The ability flavour then takes another
     // 193,257 bytes off the same file, with the section count still 6,483.
     // 2026-10-26: the faction half is built from the MFM dump, so the file is the dump's
-    // own rows: 4,972 shaped sections (the dump's 4,901 split where a card overruns
-    // MAX_CHARS) and 6,100,122 bytes. The CSV's ally copies and Legends rows are gone.
-    'factions-csv': { sections: 4972, bytes: 6100122 },
+    // own rows: 5,050 shaped sections (the dump's 4,979 split where a card overruns
+    // MAX_CHARS) and 6,567,709 bytes. The CSV's ally copies and Legends rows are gone.
+    // 2026-10-28: was 4,972 / 6,100,122 before the datasheets carried their wargear
+    // options (every optional weapon profile and one 'Option:' line per printed
+    // option); 68 kill-team-sized cards now overrun MAX_CHARS and split.
+    'factions-csv': { sections: 5050, bytes: 6567709 },
   },
 };
 
@@ -161,7 +164,7 @@ for (const [t, c] of csvBuiltTally) { if ((csvStoredTally.get(t) || 0) < c && !w
 t('(drift) a rebuild of factions-csv.json reproduces its size', {
   sections: csvBuilt.sections.length,
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
-}, { sections: 4972, bytes: 6100122 });
+}, { sections: 5050, bytes: 6567709 });
 t('(drift) and loses none of the live file\u2019s text', csvMissing, 0);
 if (csvAdded) console.log('  (drift) the rebuild adds ' + csvAdded + ' texts the live file lacks');
 

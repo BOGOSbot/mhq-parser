@@ -31,7 +31,7 @@ The corpus file names still read `factions-csv.json` and `core-stratagems.json`:
 
 | kind | sections | text |
 |---|---:|---|
-| datasheet | 1,126 | statline with invulnerable save, base size, composition, every weapon profile with its abilities, one points row per size tier, damaged bracket |
+| datasheet | 1,126 | statline with invulnerable save, base size, composition, every weapon profile the unit can field (default loadout first, then each optional weapon) with its abilities, one `Option:` line per printed wargear option, one points row per size tier, damaged bracket |
 | unitrules | 1,126 | keywords, then every ability with its official rules text |
 | stratagem | 1,281 | type, CP, turn and phase, WHEN / TARGET / EFFECT / RESTRICTIONS |
 | detachment | 282 | detachment points, force disposition, the rule body with its sections |
@@ -49,7 +49,14 @@ The corpus file names still read `factions-csv.json` and `core-stratagems.json`:
 ## Still open
 
 - Missions still come from the scraped event companion. The dump has 51 primary missions and 18 secondary with their scoring, which is better and is the next slice.
-- Wargear options and choice groups are not emitted: only the base loadout is. `wargear_option`, `loadout_choice_set` and `limited_wargear_choice_set` hold the rest.
+## Wargear options (2026-10-28)
+
+A datasheet used to carry its default loadout only, so a balance change to an optional weapon could not reach the corpus: data version 995 changed the Death Company Captain's Power Fist (A 3 to 6, WS 3+ to 2+), and the Power Fist is an option. Now:
+
+- **Weapons.** Every item the unit can field gets its `Wargear <name> (<Melee|Ranged>): ...` line, the same line the CSV corpus wrote. The default loadout (`base_miniature_loadout`) comes first, then the items the option groups (`wargear_option_group` / `wargear_option`) and the three choice tables (`loadout_choice_*`, `limited_wargear_choice_*`, `all_model_wargear_choice_*`) can add, in card order. A multi-profile weapon names each profile (`Heavy missile launcher - krak`).
+- **Options.** One `Option: ...` line per printed option, from `wargear_rule` (the card's own text), bullets flattened. The 7 datasheets with option groups and no printed rule fall back to the groups' instruction text; a `Default Wargear` group is the loadout, never an option.
+
+Measured on 995: 2,634 default and 2,343 optional profiles, 1,312 option lines. 68 kill-team-sized cards now overrun `MAX_CHARS` and split, as they did under the CSV: 4,979 corpus sections, 5,777 delivered, 137 faction index pages. Test: `tests/test-mfm-wargear-options.mjs`.
 - Conditional keywords (345 rows) and FAQs (675) are untouched.
 - The French locale is in the dump and unused. It answers `tasks/french-overlay.md` better than a translated overlay does.
 - The vector index is now stale: `--ingest` and `--prune` are owed before the next deploy.
