@@ -142,6 +142,40 @@ export function mfmDumpPath() {
   return path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'workspace', 'rules-corpus', 'mfm-dump.json');
 }
 
+// The stamp on a dump file, without building anything from it. '' when there is
+// no file or it does not parse.
+export function dumpVersionOf(dumpPath) {
+  try { return String(((JSON.parse(fs.readFileSync(dumpPath || mfmDumpPath(), 'utf8')) || {}).metadata || {}).data_version || ''); }
+  catch (e) { return ''; }
+}
+
+// Download the dump beside the current one and swap it in only when it parses
+// and carries a version: a cut-off transfer or an error page must never replace
+// a good snapshot. The previous file is kept as mfm-dump.prev.json, one step of
+// rollback on top of the corpus snapshot. -> { path, version, previous, bytes }
+export async function downloadMfmDump(options) {
+  const opts = options || {};
+  const dest = opts.dest || mfmDumpPath();
+  const url = opts.url || process.env.MFM_DUMP_URL || MFM_DUMP_URL;
+  const fetchBuffer = opts.fetchBuffer || (async u => {
+    const r = await fetch(u, { signal: AbortSignal.timeout(opts.timeoutMs || 300000) });
+    if (!r.ok) throw new Error('MFM dump: HTTP ' + r.status + ' from ' + u);
+    return Buffer.from(await r.arrayBuffer());
+  });
+  const buf = await fetchBuffer(url);
+  let version = '';
+  try { version = String(((JSON.parse(buf.toString('utf8')) || {}).metadata || {}).data_version || ''); }
+  catch (e) { throw new Error('MFM dump: the download is not JSON (' + buf.length + ' bytes) - the file on disk is untouched'); }
+  if (!version) throw new Error('MFM dump: the download carries no metadata.data_version - the file on disk is untouched');
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  const part = dest + '.part';
+  fs.writeFileSync(part, buf);
+  const previous = fs.existsSync(dest) ? dumpVersionOf(dest) : '';
+  if (fs.existsSync(dest)) fs.renameSync(dest, dest.replace(/\.json$/, '') + '.prev.json');
+  fs.renameSync(part, dest);
+  return { path: dest, version, previous, bytes: buf.length };
+}
+
 function textHash(text) {
   return crypto.createHash('sha1').update(String(text)).digest('hex').slice(0, 16);
 }

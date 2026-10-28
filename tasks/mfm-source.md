@@ -44,3 +44,10 @@ The missions come from the dump now, not from the scraped event-companion page. 
 
 Measured: event-companion corpus 88 sections (43 cards + the page's own non-deck content), payload 5,702 delivered, index rules 781 / factions 4,767 / rulings 154, strays 0. Tests green: mission-split 10, mission-matrix 13, mission-assets, corpus-drift, index-delivered, editions, record-shapes, wiki-plan.
 
+## Update 2026-10-28: gdmissions.app as the staleness canon
+
+`--check` reads gdmissions.app's data changelog first and compares its latest data version with the dump the corpus was built from; `--update` pulls the dump and rebuilds when it is behind. Wahapedia markers are the fallback. Doc: `docs/gdm-canon.md`; tests: `tests/test-gdm-changelog.mjs` (23).
+
+Verified on 995: current. The scraped core rules carry every Core Rules change through 981, but 9 of the 84 official Core Rules FAQ/errata are missing (Wahapedia lags) and 590 of 591 faction FAQs were never in the corpus. Both close if the FAQs and the core rules are built from the dump; listed under "Still open" in the doc.
+
+`tests/test-corpus-build.mjs` is red (10 assertions) on this branch's base as well as here: it still expects the CSV's core-stratagem anchors and ability rows. Not caused by this change; add it to the re-baseline list.

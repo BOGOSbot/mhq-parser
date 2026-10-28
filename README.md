@@ -29,7 +29,7 @@ Routes: `GET /` the parser page, `POST /parse` a URL, `POST /parse-file` a saved
 
 ## The pipeline in one line
 
-scrape (`src/rules-corpus.mjs`) to shape (`src/wiki-build.mjs`) to payload (`src/wiki-payload.mjs`) to bundles (`src/web-bundle.mjs`, `src/app-bundle.mjs`) to the Box (`docs/deploy.md`). Each step is a file on disk, so any step can be rerun alone.
+scrape (`src/rules-corpus.mjs`; `--check` and `--update` ask gdmissions.app first whether the official export moved, see [`docs/gdm-canon.md`](docs/gdm-canon.md)) to shape (`src/wiki-build.mjs`) to payload (`src/wiki-payload.mjs`) to bundles (`src/web-bundle.mjs`, `src/app-bundle.mjs`) to the Box (`docs/deploy.md`). Each step is a file on disk, so any step can be rerun alone.
 
 ## Tests
 

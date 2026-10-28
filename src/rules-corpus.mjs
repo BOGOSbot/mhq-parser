@@ -9,6 +9,8 @@
  *   node src/rules-corpus.mjs --stats             what is on disk and in the index
  *   node src/rules-corpus.mjs --prune             delete index vectors the corpus no longer has
  *   node src/rules-corpus.mjs --source faqs       restrict --scrape/--ingest to one
+ *   node src/rules-corpus.mjs --check             is our copy behind? gdmissions.app first, Wahapedia as fallback
+ *   node src/rules-corpus.mjs --update            pull the newer dump when gdmissions lists one, and rebuild
  *
  * Why a corpus at all. The page used to answer by searching Wahapedia per
  * question: a query, a fetch, a lexical shortlist, then a model. It worked when
@@ -46,7 +48,8 @@ import { TRACE_RETENTION_MONTHS, sweepTraces } from './rules-traces.mjs';
 // task-34: the flat passage text gets the wargear marks at display time - the corpus
 // bytes are untouched, the finding's excerpt and the passage sheet are not bare.
 import { markWargearText } from './wargear-marks.mjs';
-import { buildMfmFactions, mfmDumpPath } from './mfm-factions.mjs';
+import { buildMfmFactions, mfmDumpPath, downloadMfmDump, dumpVersionOf } from './mfm-factions.mjs';
+import { fetchGdmChangelog, compareDataVersion, describeCanon, GDM_CHANGELOG_URL } from './gdm-changelog.mjs';
 import { buildMissionSections } from './mfm-missions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -5666,6 +5669,35 @@ export async function ingest(only, opts) {
 
 // --- cli --------------------------------------------------------------------
 
+// --- the canon: gdmissions.app's data changelog ------------------------------
+// Checked first, by --check and --update. It lists every data version of the
+// official app export, and the faction half and the missions are built from that
+// same export (docs/gdm-canon.md), so the comparison is one version number
+// against another. The Wahapedia markers are the fallback: they are read when
+// gdmissions cannot be, and they still cover the scraped core-rules pages.
+//
+// `ours` is what the corpus was BUILT from (the faction corpus marker), and
+// `onDisk` is the dump file itself; they differ when a dump was downloaded and
+// the rebuild did not follow.
+export function corpusDataVersion() {
+  const m = (readCorpus(FACTIONS_CSV.name) || {}).marker || {};
+  return String(m.kind || '') === 'MFM dump' ? String(m.version || '') : '';
+}
+
+export async function checkCanon(options) {
+  const opts = options || {};
+  const ours = corpusDataVersion();
+  const onDisk = dumpVersionOf(mfmDumpPath());
+  try {
+    const parsed = await fetchGdmChangelog({ fetchText: opts.fetchText });
+    const cmp = compareDataVersion(ours, parsed);
+    return Object.assign({ source: GDM_CHANGELOG_URL, onDisk, parsed }, cmp);
+  } catch (e) {
+    const cause = e && e.cause ? ' - ' + (e.cause.code || e.cause.message || e.cause) : '';
+    return { state: 'unreachable', source: GDM_CHANGELOG_URL, ours, onDisk, error: String((e && e.message) || e) + cause, missed: [], changes: 0 };
+  }
+}
+
 // --- when was this corpus last built? ----------------------------------------
 // Not "is it behind an official update": that compares clocks which date
 // different things and can only ever answer coarsely. What can be stated exactly
@@ -5714,6 +5746,9 @@ export function corpusState() {
     // When we last read them. This is the one to publish: it describes the copy
     // rather than the origin.
     updated: built,
+    // The official export's data_version the corpus was built from: the number
+    // gdmissions.app's changelog lists, so a reader can compare it there.
+    dataVersion: corpusDataVersion(),
     sets: indexed,
     delivered: deliveredCount,
     filtered: filteredCount,
@@ -5851,6 +5886,19 @@ async function main() {
     return;
   }
   if (flag('--check')) {
+    const canon = await checkCanon();
+    console.log('canon: ' + GDM_CHANGELOG_URL);
+    if (canon.state === 'unreachable') {
+      console.log('  gdmissions unreachable (' + canon.error + ') - the Wahapedia markers below are the only verdict');
+    } else {
+      const top = canon.parsed.versions[0];
+      console.log('  latest data version     v' + top.version + '  ' + (top.iso || top.date) + '  (' + top.changes + ' Core Rules change(s))');
+      console.log('  corpus built from       ' + (canon.ours ? 'v' + canon.ours : '-') + (canon.onDisk && canon.onDisk !== String(canon.ours) ? '   (the dump on disk is v' + canon.onDisk + ' - rebuild owed)' : ''));
+      console.log('  state                   ' + describeCanon(canon));
+      if (canon.state === 'behind') { console.log('  next: node src/rules-corpus.mjs --update'); process.exitCode = 2; }
+    }
+    console.log('');
+    console.log('fallback: the Wahapedia markers (they still date the scraped core-rules pages; the book table can lag the page text)');
     console.log('source                    edition  version  last update         state');
     for (const s of ALL_SOURCES.concat(REJECTED_SOURCES.map(r => Object.assign({ set: 'rejected' }, r)))) {
       const stored = (readCorpus(s.name) || {}).marker || null;
@@ -5858,7 +5906,21 @@ async function main() {
         // Built from the same export as the faction half, so its marker comes
         // from that file rather than from a page of its own.
         const parent = (readCorpus(FACTIONS_CSV.name) || {}).marker || {};
-        console.log('  ' + s.name.padEnd(24) + '11       -        ' + String(parent.lastUpdate || '-').padEnd(20) + 'built (from the CSV export)');
+        // Only the core stratagems come from the faction export; the rulings are
+        // the staged tournament FAQs and the ability definitions are re-read from
+        // the core-rules page, so each follows its own input, not the dump.
+        const fromDump = String(parent.kind || '') === 'MFM dump';
+        const label = s.name === RULINGS.name ? 'built (staged tournament FAQs - not version-checked)'
+          : s.name === ABILITY_DEFS.name ? 'built (re-read from core-rules - follows it)'
+          : (fromDump ? 'built (from the MFM dump, see canon)' : 'built (from the CSV export)');
+        const stamp = s.name === CORE_STRATAGEMS.name ? String(parent.lastUpdate || '-') : '-';
+        console.log('  ' + s.name.padEnd(24) + '11       -        ' + stamp.padEnd(20) + label);
+        continue;
+      }
+      if (s.set === 'factions' && corpusDataVersion()) {
+        // Built from the MFM dump: the canon block above is its verdict, and
+        // Wahapedia's Last_update.csv dates a different export.
+        console.log('  ' + s.name.padEnd(24) + '11       ' + ('v' + corpusDataVersion()).padEnd(9) + '-'.padEnd(20) + 'see canon (MFM dump)');
         continue;
       }
       if (s.set === 'factions') {
@@ -5879,6 +5941,50 @@ async function main() {
       console.log('  ' + s.name.padEnd(24) + String(live.edition || '-').padEnd(9) + String(live.version || '-').padEnd(9) + String(live.lastUpdate || '-').padEnd(20) + status.state + (status.detail ? '  (' + status.detail + ')' : ''));
       await new Promise(r => setTimeout(r, 400));
     }
+    return;
+  }
+  if (flag('--update')) {
+    // gdmissions first: it names the latest data version of the official export.
+    // When it lists a newer one than the corpus was built from (or --force), pull
+    // the dump, and rebuild the faction half, the missions and the wiki shape
+    // from it. When gdmissions cannot be read, fall back to the dump itself: a
+    // download that carries a newer data_version is a newer export whatever the
+    // changelog says. The index is not touched: --ingest then --prune follow, as
+    // after every rebuild.
+    const force = flag('--force');
+    const canon = await checkCanon();
+    console.log('canon      ' + (canon.state === 'unreachable' ? 'unreachable (' + canon.error + ') - falling back to the dump\'s own version' : describeCanon(canon)));
+    if (canon.state === 'current' && !force) {
+      if (canon.onDisk && canon.onDisk !== String(canon.ours)) console.log('note       the dump on disk is v' + canon.onDisk + ' but the corpus was built from v' + canon.ours);
+      console.log('nothing to do');
+      return;
+    }
+    if (canon.state === 'ahead' && !force) { console.log('nothing to do - our dump is newer than the changelog'); return; }
+    if (flag('--dry-run')) { console.log('dry run - would download ' + (process.env.MFM_DUMP_URL || 'the MFM dump') + ' and rebuild'); return; }
+    let got;
+    try { got = await downloadMfmDump(); }
+    catch (e) { console.log('dump       ' + e.message); process.exitCode = 1; return; }
+    console.log('dump       v' + got.version + ' (' + Math.round(got.bytes / 1048576) + ' MB), was v' + (got.previous || '-') + '  -> ' + got.path);
+    const built = Number(canon.ours || 0);
+    if (Number(got.version) <= built && !force) {
+      console.log('the export still reads v' + got.version + (canon.latest ? '; gdmissions lists v' + canon.latest + ' - the dump has not caught up yet, nothing rebuilt' : ' - nothing rebuilt'));
+      return;
+    }
+    if (canon.latest && Number(got.version) < canon.latest) console.log('note       the dump reads v' + got.version + ' and gdmissions lists v' + canon.latest + ': rebuilding to what the dump has');
+    // The same three steps as the manual recipe (docs/mfm-source.md), each in its
+    // own process so they run exactly as they do by hand.
+    const { spawnSync } = await import('node:child_process');
+    const self = fileURLToPath(import.meta.url);
+    const steps = [['--scrape', '--set', 'factions', '--cached'], ['--scrape', '--set', 'missions', '--no-snapshot']];
+    for (const args of steps) {
+      console.log('run        node src/rules-corpus.mjs ' + args.join(' '));
+      const r = spawnSync(process.execPath, [self].concat(args), { stdio: 'inherit', env: process.env });
+      if (r.status !== 0) { console.log('step failed (exit ' + r.status + ') - the corpus snapshot taken by the first step is the rollback'); process.exitCode = 1; return; }
+    }
+    await buildWikiShape(corpusDir());
+    corpusStateCache = null;
+    console.log('rebuilt    corpus now at data version v' + (corpusDataVersion() || '?'));
+    console.log('next: node src/wiki-payload.mjs, then --ingest, then --prune, then check /health reads behind: [] and ahead: []');
     return;
   }
   if (flag('--stats')) {
@@ -5919,7 +6025,7 @@ async function main() {
     console.log('editions: ' + JSON.stringify(editionCounts(corpus)) + '  (' + corpus.length + ' records; every record carries one)');
     return;
   }
-  console.log('usage: node src/rules-corpus.mjs --scrape | --ingest | --stats | --prune [--source <name>] [--set rules|factions] [--dry-run]');
+  console.log('usage: node src/rules-corpus.mjs --check | --update [--force] | --scrape | --ingest | --stats | --prune [--source <name>] [--set rules|factions] [--dry-run]');
 }
 
 if (process.argv[1] && process.argv[1].endsWith('rules-corpus.mjs')) {

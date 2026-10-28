@@ -10,7 +10,7 @@ https://pub-6443f136c6fc4c60a15cc7935463d637.r2.dev/dump.json
 
 It is the relational export the official app at https://mfm.warhammer-community.com/en renders from: 36.7 MB, 131 tables, eight locales, `metadata.data_version` as the stamp. The snapshot on disk is `workspace/rules-corpus/mfm-dump.json` (gitignored); `MFM_DUMP` points elsewhere.
 
-Refresh: download the dump to that path, then `node src/rules-corpus.mjs --scrape --set factions --cached`, `node src/wiki-payload.mjs`, then the prototype's `build-corpus.mjs` and `shape.mjs`.
+Refresh: `node src/rules-corpus.mjs --update` does the first two steps when gdmissions.app lists a newer data version ([gdm-canon.md](gdm-canon.md)). By hand: download the dump to that path, then `node src/rules-corpus.mjs --scrape --set factions --cached`, `node src/wiki-payload.mjs`, then the prototype's `build-corpus.mjs` and `shape.mjs`.
 
 ## Why
 

@@ -368,7 +368,8 @@ The on-disk corpus, the CSV export and the index state live in
 `docs/corpus-storage.md`):
 
 ```
-node src/rules-corpus.mjs --check              # is our copy behind the sources?
+node src/rules-corpus.mjs --check              # is our copy behind? gdmissions.app first (docs/gdm-canon.md)
+node src/rules-corpus.mjs --update             # pull the newer dump and rebuild when gdmissions lists one
 node src/rules-corpus.mjs --scrape             # fetch the anchored pages
 node src/rules-corpus.mjs --scrape --set factions --cached   # rebuild from the cached CSV
 node src/rules-corpus.mjs --ingest             # embed + upsert what changed

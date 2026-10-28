@@ -15,6 +15,8 @@
 | Doc | What it covers |
 | --- | --- |
 | [rules-page.md](rules-page.md) | The page itself: the two corpora, the ask path, the reader, the wiki tree, the decisions behind each |
+| [mfm-source.md](mfm-source.md) | The faction half and the missions read from GW's own app export (the MFM dump), and the CSV rollback |
+| [gdm-canon.md](gdm-canon.md) | gdmissions.app's data changelog as the canon for staleness: `--check`, `--update`, and the 2026-10-28 verification |
 | [corpus-storage.md](corpus-storage.md) | Where the corpus lives, how it is snapshotted, and what a rebuild re-downloads |
 | [corpus-wiki.md](corpus-wiki.md) | The original design of the corpus as a wiki, with the phase A and B measurements that shaped it |
 | [dataset.md](dataset.md) | The record shape and the label sources behind the citation metric |
