@@ -49,7 +49,7 @@ import { TRACE_RETENTION_MONTHS, sweepTraces } from './rules-traces.mjs';
 // bytes are untouched, the finding's excerpt and the passage sheet are not bare.
 import { markWargearText } from './wargear-marks.mjs';
 import { buildMfmFactions, mfmDumpPath, downloadMfmDump, dumpVersionOf } from './mfm-factions.mjs';
-import { fetchGdmChangelog, compareDataVersion, describeCanon, GDM_CHANGELOG_URL } from './gdm-changelog.mjs';
+import { parseGdmChangelog, compareDataVersion, describeCanon, mergeChangelogs, parseFactionBreakdown, GDM_CHANGELOG_URL, GDM_FACTION_CHANGELOG_URL } from './gdm-changelog.mjs';
 import { buildMissionSections } from './mfm-missions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -5684,18 +5684,35 @@ export function corpusDataVersion() {
   return String(m.kind || '') === 'MFM dump' ? String(m.version || '') : '';
 }
 
+// Both changelogs are read: the Core Rules one and the faction one. They list
+// the same data versions, and either alone is enough for a verdict; the faction
+// page also names the factions its newest version touched. Only when neither
+// can be read is the canon 'unreachable'.
 export async function checkCanon(options) {
   const opts = options || {};
   const ours = corpusDataVersion();
   const onDisk = dumpVersionOf(mfmDumpPath());
-  try {
-    const parsed = await fetchGdmChangelog({ fetchText: opts.fetchText });
-    const cmp = compareDataVersion(ours, parsed);
-    return Object.assign({ source: GDM_CHANGELOG_URL, onDisk, parsed }, cmp);
-  } catch (e) {
-    const cause = e && e.cause ? ' - ' + (e.cause.code || e.cause.message || e.cause) : '';
-    return { state: 'unreachable', source: GDM_CHANGELOG_URL, ours, onDisk, error: String((e && e.message) || e) + cause, missed: [], changes: 0 };
+  const why = e => String((e && e.message) || e) + (e && e.cause ? ' - ' + (e.cause.code || e.cause.message || e.cause) : '');
+  // One fetch per page; the faction page is parsed twice (picker, breakdown).
+  const fetchText = opts.fetchText || (async u => {
+    const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; mhq-rules/1)' }, signal: AbortSignal.timeout(60000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.text();
+  });
+  const [rulesHtml, factionHtml] = await Promise.allSettled([fetchText(GDM_CHANGELOG_URL), fetchText(GDM_FACTION_CHANGELOG_URL)]);
+  const read = (res, url) => {
+    if (res.status === 'rejected') return { url, error: why(res.reason) };
+    try { return { url, parsed: parseGdmChangelog(res.value) }; } catch (e) { return { url, error: why(e) }; }
+  };
+  const pages = { rules: read(rulesHtml, GDM_CHANGELOG_URL), factions: read(factionHtml, GDM_FACTION_CHANGELOG_URL) };
+  let breakdown = null;
+  if (factionHtml.status === 'fulfilled') { try { breakdown = parseFactionBreakdown(factionHtml.value); } catch (e) { breakdown = null; } }
+  if (!pages.rules.parsed && !pages.factions.parsed) {
+    return { state: 'unreachable', source: GDM_CHANGELOG_URL, ours, onDisk, pages, error: 'rules: ' + pages.rules.error + '; factions: ' + pages.factions.error, missed: [], changes: 0 };
   }
+  const parsed = mergeChangelogs(pages.rules.parsed, pages.factions.parsed);
+  const cmp = compareDataVersion(ours, parsed);
+  return Object.assign({ source: GDM_CHANGELOG_URL, onDisk, parsed, pages, breakdown }, cmp);
 }
 
 // --- when was this corpus last built? ----------------------------------------
@@ -5887,14 +5904,22 @@ async function main() {
   }
   if (flag('--check')) {
     const canon = await checkCanon();
-    console.log('canon: ' + GDM_CHANGELOG_URL);
+    console.log('canon: gdmissions.app data changelogs');
     if (canon.state === 'unreachable') {
       console.log('  gdmissions unreachable (' + canon.error + ') - the Wahapedia markers below are the only verdict');
     } else {
-      const top = canon.parsed.versions[0];
-      console.log('  latest data version     v' + top.version + '  ' + (top.iso || top.date) + '  (' + top.changes + ' Core Rules change(s))');
+      for (const [key, label] of [['rules', 'core rules'], ['factions', 'factions']]) {
+        const pg = canon.pages[key];
+        if (!pg.parsed) { console.log('  ' + (label + ' changelog').padEnd(24) + 'unreadable (' + pg.error + ')  ' + pg.url); continue; }
+        const v = pg.parsed.versions[0];
+        console.log('  ' + (label + ' changelog').padEnd(24) + 'v' + v.version + '  ' + (v.iso || v.date) + '  (' + v.changes + ' change(s))  ' + pg.url);
+      }
       console.log('  corpus built from       ' + (canon.ours ? 'v' + canon.ours : '-') + (canon.onDisk && canon.onDisk !== String(canon.ours) ? '   (the dump on disk is v' + canon.onDisk + ' - rebuild owed)' : ''));
       console.log('  state                   ' + describeCanon(canon));
+      const bd = canon.breakdown;
+      if (canon.state === 'behind' && bd && bd.version === canon.latest && bd.factions.length) {
+        console.log('  v' + bd.version + ' touched         ' + bd.factions.map(f => f.name + ' ' + f.changes).join(', '));
+      }
       if (canon.state === 'behind') { console.log('  next: node src/rules-corpus.mjs --update'); process.exitCode = 2; }
     }
     console.log('');

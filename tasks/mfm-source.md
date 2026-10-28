@@ -51,3 +51,5 @@ Measured: event-companion corpus 88 sections (43 cards + the page's own non-deck
 Verified on 995: current. The scraped core rules carry every Core Rules change through 981, but 9 of the 84 official Core Rules FAQ/errata are missing (Wahapedia lags) and 590 of 591 faction FAQs were never in the corpus. Both close if the FAQs and the core rules are built from the dump; listed under "Still open" in the doc.
 
 `tests/test-corpus-build.mjs` is red (10 assertions) on this branch's base as well as here: it still expects the CSV's core-stratagem anchors and ability rows. Not caused by this change; add it to the re-baseline list.
+
+Same day: the faction changelog (`/11th/rules/faction-changelog`) is read too. Both pickers merge into one row per version with Core Rules and faction counts; either page alone gives a verdict, and a BEHIND verdict names the factions the newest version touched. 995's 24 faction changes are in the corpus except the Death Company Captain's Power Fist, which is a wargear option (the open wargear-options slice). Tests: 36.

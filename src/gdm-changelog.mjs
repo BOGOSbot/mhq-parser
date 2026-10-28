@@ -1,5 +1,6 @@
-// The canon for "is our copy current": gdmissions.app's Core Rules Data
-// Changelog.
+// The canon for "is our copy current": gdmissions.app's two data changelogs,
+// Core Rules and Faction. Both list the same data versions; each counts the
+// changes on its own side of the export.
 //
 // Why this page and not a Wahapedia marker. The marker on Wahapedia's rules
 // pages is a book table that read "June 2026" on 2026-10-28 while the page text
@@ -22,6 +23,7 @@
 // error, never "current" - a layout change must not read as "nothing to do".
 
 export const GDM_CHANGELOG_URL = 'https://gdmissions.app/11th/rules/changelog';
+export const GDM_FACTION_CHANGELOG_URL = 'https://gdmissions.app/11th/rules/faction-changelog';
 export const GDM_VERSION_HISTORY_URL = 'https://gdmissions.app/version-history';
 
 const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
@@ -72,6 +74,50 @@ export function parseGdmChangelog(html) {
   return { latest: versions[0].version, versions, baseline };
 }
 
+// The faction changelog server-renders the latest version's per-faction
+// sections as well as the picker: <section id="v-995-blood-angels"> with an
+// <h2> name and an "N changes · M units" line. Read so that a BEHIND verdict
+// can name the factions the newest version touched. -> { version, factions }
+export function parseFactionBreakdown(html) {
+  const out = [];
+  let version = null;
+  const re = /<section\b[^>]*\bid="v-(\d+)-([a-z0-9-]+)"[^>]*>([\s\S]*?)<\/div>/gi;
+  let m;
+  while ((m = re.exec(String(html || '')))) {
+    if (/-u\d+$/.test(m[2])) continue;
+    if (version === null) version = Number(m[1]);
+    if (Number(m[1]) !== version) continue;
+    const head = decode(m[3]);
+    const name = decode((m[3].match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/i) || [])[1] || '') || m[2];
+    const changes = Number((head.match(/(\d+)\s+changes?/i) || [])[1] || 0);
+    const units = Number((head.match(/(\d+)\s+units?/i) || [])[1] || 0);
+    out.push({ slug: m[2], name, changes, units });
+  }
+  return { version, factions: out };
+}
+
+// The two picker lists as one: every version either page names, with the Core
+// Rules and the faction counts side by side. Either side may be missing (that
+// page could not be read); `pages` says which were.
+export function mergeChangelogs(rules, factions) {
+  const byVersion = new Map();
+  const add = (parsed, key) => {
+    if (!parsed) return;
+    for (const v of parsed.versions) {
+      const row = byVersion.get(v.version) || { version: v.version, date: v.date, iso: v.iso, rules: null, factions: null, changes: 0 };
+      row[key] = v.changes;
+      if (!row.iso && v.iso) { row.iso = v.iso; row.date = v.date; }
+      byVersion.set(v.version, row);
+    }
+  };
+  add(rules, 'rules');
+  add(factions, 'factions');
+  const versions = Array.from(byVersion.values()).sort((a, b) => b.version - a.version);
+  for (const v of versions) v.changes = (v.rules || 0) + (v.factions || 0);
+  if (!versions.length) throw new Error('gdmissions changelogs: neither page could be read');
+  return { latest: versions[0].version, versions, baseline: (rules && rules.baseline) || null, pages: { rules: !!rules, factions: !!factions } };
+}
+
 // Our dump's version against the changelog.
 //   current  - same number
 //   behind   - gdmissions lists newer versions; `missed` names them
@@ -104,6 +150,7 @@ export function describeCanon(cmp) {
   if (cmp.state === 'current') return 'current  (dump v' + cmp.ours + ' is the latest data version)';
   if (cmp.state === 'ahead') return 'ahead    (dump v' + cmp.ours + ', changelog lists v' + cmp.latest + ' - gdmissions has not caught up)';
   if (cmp.state === 'unknown') return 'unknown  (no dump version on disk - the faction half is not built from the MFM dump)';
-  const list = cmp.missed.map(v => 'v' + v.version + ' ' + (v.iso || v.date) + ' (' + (v.changes === null ? '?' : v.changes) + ')').join(', ');
-  return 'BEHIND   (dump v' + cmp.ours + ', latest v' + cmp.latest + '; missed ' + list + ' - ' + cmp.changes + ' Core Rules change(s))';
+  const split = v => ('rules' in v) ? 'rules ' + (v.rules === null ? '?' : v.rules) + ', factions ' + (v.factions === null ? '?' : v.factions) : (v.changes === null ? '?' : String(v.changes));
+  const list = cmp.missed.map(v => 'v' + v.version + ' ' + (v.iso || v.date) + ' (' + split(v) + ')').join(', ');
+  return 'BEHIND   (dump v' + cmp.ours + ', latest v' + cmp.latest + '; missed ' + list + ' - ' + cmp.changes + ' change(s))';
 }

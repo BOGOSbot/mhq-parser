@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseGdmChangelog, compareDataVersion, describeCanon, isoDate, fetchGdmChangelog } from '../src/gdm-changelog.mjs';
+import { parseGdmChangelog, compareDataVersion, describeCanon, isoDate, fetchGdmChangelog, parseFactionBreakdown, mergeChangelogs } from '../src/gdm-changelog.mjs';
 import { downloadMfmDump, dumpVersionOf } from '../src/mfm-factions.mjs';
 
 let pass = 0, fail = 0;
@@ -53,6 +53,35 @@ t('fetch through an injected reader', (await fetchGdmChangelog({ fetchText: asyn
 threw = '';
 try { await fetchGdmChangelog({ fetchText: async () => { throw new Error('HTTP 503'); } }); } catch (err) { threw = err.message; }
 t('a fetch failure propagates', threw, 'HTTP 503');
+
+// The faction changelog: the same picker, its own counts, and the latest
+// version's per-faction headers.
+const fhtml = fs.readFileSync(path.join(here, 'fixtures', 'gdm-faction-changelog-2026-10-28.html'), 'utf8');
+const f = parseGdmChangelog(fhtml);
+t('faction picker reads', [f.latest, f.versions.length, f.versions[3].changes, f.baseline], [995, 15, 5990, null]);
+const bd = parseFactionBreakdown(fhtml);
+t('breakdown names the latest version', bd.version, 995);
+t('breakdown: eight factions, 24 changes', [bd.factions.length, bd.factions.reduce((n, x) => n + x.changes, 0)], [8, 24]);
+t('a breakdown row', bd.factions[3], { slug: 'blood-angels', name: 'Blood Angels', changes: 2, units: 1 });
+t('singular change and unit read', bd.factions[4], { slug: 'dark-angels', name: 'Dark Angels', changes: 1, units: 1 });
+t('a page with no sections has no breakdown', parseFactionBreakdown(html).factions.length, 0);
+
+// The merge: one row per version, both counts side by side.
+const both = mergeChangelogs(p, f);
+t('merged latest and pages', [both.latest, both.pages], [995, { rules: true, factions: true }]);
+const v981 = both.versions.find(v => v.version === 981);
+t('a merged row carries both counts', [v981.rules, v981.factions, v981.changes], [16, 573, 589]);
+const onlyFactions = mergeChangelogs(null, f);
+t('one page is enough', [onlyFactions.latest, onlyFactions.pages, onlyFactions.versions[0].rules], [995, { rules: false, factions: true }, null]);
+threw = '';
+try { mergeChangelogs(null, null); } catch (err) { threw = err.message; }
+ok('no page at all throws', /neither page/.test(threw));
+const behindBoth = compareDataVersion('972', both);
+t('behind over the merge counts both sides', [behindBoth.missed.map(v => v.version), behindBoth.changes], [[995, 981], 1 + 24 + 16 + 573]);
+ok('the line splits rules and factions', /v981 2026-10-14 \(rules 16, factions 573\)/.test(describeCanon(behindBoth)));
+// A version on the faction page that the rules page has not listed yet still counts.
+const ahead = mergeChangelogs(p, parseGdmChangelog(fhtml.replace('<option value="995" selected="">', '<option value="1003">Data version 1003 · 4 Nov 2026 · 40 changes</option><option value="995" selected="">')));
+t('a newer version on one page wins', [ahead.latest, ahead.versions[0].rules, ahead.versions[0].factions], [1003, null, 40]);
 
 // The dump download swaps a file in only when it parses and carries a version.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhq-dump-'));
