@@ -14,8 +14,11 @@ Landed on feat/mfm-factions, which feat/gdm-canon contains:
 - src/mfm-missions.mjs builds the 25 primary and 18 secondary cards of the Chapter Approved pack, Combat Patrol filtered out; MHQ_MISSIONS_SOURCE=page is the rollback.
 - The heading parser in src/rules-corpus.mjs no longer derives a title from a table body, lifts list numbers out of headings, and never leaves a dropped label as a parent.
 - Wargear options landed as a later slice on the same branch, commit 4d65327.
+- **Combat Patrol is out** (Mandal, 2026-11-01), commit 8cc1c60. The dump marks the book, not the unit, so the filter is on the publication and covers everything it feeds: 26 booklets, 113 datasheets, 78 stratagems, 26 detachments, 52 enhancements. A name filter would have left the stratagems and detachment rules behind.
 
-Measured, latest: core rules 391 sections, event companion 88 (43 cards), appendix 270; payload 5,702 delivered of 5,836; index rules 781 / factions 4,767 / rulings 154 with 0 strays.
+Measured, latest: core rules 391 sections, event companion 88 (43 cards), appendix 270; factions 4,657 sections (was 5,050 before the cut); payload 5,290 delivered of 5,417; index rules 781 / factions 4,767 / rulings 154 with 0 strays, and no record in the corpus or the payload mentions Combat Patrol.
+
+Owed by the cut, and not done: the shaped prototype in the BOGOS folder and the Auspex APK are built from the old payload, so both carry the 383 records the payload no longer delivers. Rebuild them together, next time the prototype is touched.
 
 ## Next action
 
