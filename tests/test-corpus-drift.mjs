@@ -79,7 +79,9 @@ const BASELINE = {
     // 2026-10-28: was 4,972 / 6,100,122 before the datasheets carried their wargear
     // options (every optional weapon profile and one 'Option:' line per printed
     // option); 68 kill-team-sized cards now overrun MAX_CHARS and split.
-    'factions-csv': { sections: 5050, bytes: 6567709 },
+// 2026-11-01: Combat Patrol left the corpus (26 booklets, 113 datasheets, 78 stratagems, 26 detachments
+// and 52 enhancements), so every faction number here moved down with it.
+    'factions-csv': { sections: 4657, bytes: 6107436 },
   },
 };
 
@@ -164,7 +166,7 @@ for (const [t, c] of csvBuiltTally) { if ((csvStoredTally.get(t) || 0) < c && !w
 t('(drift) a rebuild of factions-csv.json reproduces its size', {
   sections: csvBuilt.sections.length,
   bytes: fs.statSync(path.join(root, 'factions-csv.json')).size,
-}, { sections: 5050, bytes: 6567709 });
+}, { sections: 4657, bytes: 6107436 });
 t('(drift) and loses none of the live file\u2019s text', csvMissing, 0);
 if (csvAdded) console.log('  (drift) the rebuild adds ' + csvAdded + ' texts the live file lacks');
 

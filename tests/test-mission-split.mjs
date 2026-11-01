@@ -66,11 +66,13 @@ ok('the router answers a mission by name now', lookupRecord('find battlefield do
 // --- part 2: the join, and what the corpus cannot fill -------------------------
 const rows = csvRows(fs.readFileSync(path.join(CORPUS, 'csv', 'Detachments.csv'), 'utf8'));
 const dispositions = {};
-for (const r of rows) { const d = String(r.force_disposition || '').trim(); if (d) dispositions[d] = (dispositions[d] || 0) + 1; }
+// 2026-11-01: the export now writes combinations ('Disruption, Priority Assets') in one cell,
+// so the values are split before they are counted; the five names are unchanged.
+for (const r of rows) { const d = String(r.force_disposition || '').trim(); if (!d) continue; for (const one of d.split(',').map(x => x.trim()).filter(Boolean)) dispositions[one] = (dispositions[one] || 0) + 1; }
 t('the export names the five force dispositions', Object.keys(dispositions).sort(), ['Disruption', 'Priority Assets', 'Purge the Foe', 'Reconnaissance', 'Take and Hold']);
 // 256 of 315 detachment rows carry a disposition (task-33: the 2026-10-19 export adds
 // four); the rest are blank in the export, so the join reaches 256, not 315.
-t('the join reaches the rows that carry one', [rows.length, Object.values(dispositions).reduce((a, b) => a + b, 0)], [315, 256]);
+t('the join reaches the rows that carry one', [rows.length, rows.filter(r => String(r.force_disposition || '').trim()).length], [315, 256]);
 // The check is on the card's NAME, not its prose: the dump brings the mission's own lore,
 // and 'take and hold the ground ahead' is a sentence, not a disposition card.
 const mentionsDisposition = primary.concat(secondary).filter(r => Object.keys(dispositions).some(d => nameOf(r) === d.toLowerCase())).length;

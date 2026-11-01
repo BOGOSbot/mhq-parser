@@ -285,7 +285,7 @@ export function buildMfmFactions(options) {
   const stats = {
     version: dump.version, scrapedAt: now,
     datasheets: 0, unitrules: 0, stratagems: 0, detachments: 0, enhancements: 0, factionRules: 0,
-    skipped: { legends: 0, unmappedDatasheet: 0, unmappedDetachment: 0, emptyText: 0 },
+    skipped: { legends: 0, combatPatrol: 0, unmappedDatasheet: 0, unmappedDetachment: 0, emptyText: 0 },
     factionCounts: {},
     wargear: { base: 0, optional: 0, options: 0 },
   };
@@ -431,12 +431,24 @@ export function buildMfmFactions(options) {
       .filter(Boolean);
   }
 
+  // --- what is not tournament material --------------------------------------
+  // Combat Patrol is out (Mandal, 2026-11-01: 'Combat patrol gets dropped'). The dump marks
+  // the book, not the unit, so the filter is on the publication and covers every table it
+  // feeds: 26 booklets carrying 113 datasheets, 78 stratagems, 26 detachments and 52
+  // enhancements. Filtering by unit name would have left the stratagems and the detachment
+  // rules behind, and by faction would have taken tournament units with it.
+  const combatPatrolPublications = new Set(tables('publication')
+    .filter(function (p) { return p.isCombatPatrol; })
+    .map(function (p) { return p.id; }));
+  function isCombatPatrol(publicationId) { return combatPatrolPublications.has(publicationId); }
+
   // --- datasheets -----------------------------------------------------------
   for (const ds of tables('datasheet')) {
     const loc = en(ds);
     const name = String(loc.name || '').trim();
     if (!name) continue;
     if (ds.isLegends) { stats.skipped.legends += 1; continue; }
+    if (isCombatPatrol(ds.publicationId)) { stats.skipped.combatPatrol += 1; continue; }
     const kwIds = (factionKeywordsByDatasheet.get(ds.id) || []).map(function (r) { return r.factionKeywordId; });
     const code = firstMappedCode(kwIds, factionKeywordNameById);
     if (!code) { stats.skipped.unmappedDatasheet += 1; continue; }
@@ -509,6 +521,7 @@ export function buildMfmFactions(options) {
     const dl = en(det);
     const name = String(dl.name || '').trim();
     if (!name) continue;
+    if (isCombatPatrol(det.publicationId)) { stats.skipped.combatPatrol += 1; continue; }
     const code = codeOfDetachment(det.id);
     if (!code) { stats.skipped.unmappedDetachment += 1; continue; }
     const factionName = factionKeywordNameById.get((factionKeywordsByDetachment.get(det.id) || [])
@@ -571,6 +584,7 @@ export function buildMfmFactions(options) {
     const sl = en(strat);
     const name = String(sl.name || '').trim();
     if (!name) continue;
+    if (isCombatPatrol(strat.publicationId)) { stats.skipped.combatPatrol += 1; continue; }
     const phases = (phasesByStratagem.get(strat.id) || [])
       .map(function (p) { return PHASE_NAME[p.phase] || p.phase; })
       .filter(Boolean);

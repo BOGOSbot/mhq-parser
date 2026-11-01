@@ -35,7 +35,9 @@ t('the corpus splits into delivered and filtered with nothing lost', all.length 
 // records, and Leagues of Votann, Astra Militarum and Adepta Sororitas each gain
 // one index page for the extra entries.
 // Then 5,673: the appendix stopped reading its tooltip templates (104 duplicate records).
-t('delivered is 5,673 and filtered is 137 (MFM corpus with options, appendix tooltips out, 2026-10-28)', [delivered.length, filtered.length], [5673, 137]);
+// 2026-11-01: Combat Patrol left the corpus - 26 booklets, 113 datasheets, 78 stratagems,
+// 26 detachments, 52 enhancements - so delivered falls by 383 and filtered by 10.
+t('delivered is 5,290 and filtered is 127 (MFM corpus with options, Combat Patrol out, 2026-11-01)', [delivered.length, filtered.length], [5290, 127]);
 
 // --- the query path cannot return what the product does not deliver -----------
 // The ids are read from the corpus, never hardcoded: the faction half now comes from
