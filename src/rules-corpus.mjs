@@ -527,7 +527,12 @@ export function extractSections(html, source) {
     // a clarification is a rule - but the label has to come from the content or
     // the citation is worthless. The same applies to a card under a container
     // heading, which is the mission decks.
-    if (GENERIC_HEADING.test(title) || (titleCount.get(title) || 0) > 1) {
+    // The page's own errata/FAQ title is a name it wrote ('Tank Shock Stratagem'), and the
+    // card repeats on several pages, so the repeat count is not a reason to throw it away:
+    // deriving from the body there produced a heading that was a whole sentence, and -- once
+    // the echo strip below ran -- a record with no body at all. Repetition only means the
+    // label is a container when the label is generic ('FAQ', 'Errata').
+    if (GENERIC_HEADING.test(title) || ((titleCount.get(title) || 0) > 1 && !marks[i].promoted)) {
       title = deriveTitle(body) || title;
     }
     // The page numbers some of its sub-headings positionally ('1. Datasheet Name',
