@@ -290,6 +290,10 @@ export function buildMfmFactions(options) {
   const stratagemsByDetachment = groupBy(tables('stratagem'), 'detachmentId');
   const enhancementsByDetachment = groupBy(tables('enhancement'), 'detachmentId');
   const detachmentById = new Map(tables('detachment').map(function (d) { return [d.id, d]; }));
+  const requiredDetachmentsByComposition = groupBy(tables('unit_composition_required_detachment'), 'unitCompositionId');
+  // The other half of the same idea: a price that applies only when the army carries a
+  // faction keyword (the Inquisitors cost 75 as Agents of the Imperium and 110 otherwise).
+  const requiredKeywordsByComposition = groupBy(tables('unit_composition_required_faction_keyword'), 'unitCompositionId');
 
   const sections = [];
   const stats = {
@@ -441,14 +445,29 @@ export function buildMfmFactions(options) {
   function pointsLines(datasheetId) {
     const rows = (compositionsByDatasheet.get(datasheetId) || []).filter(function (c) { return c.points != null; });
     if (!rows.length) return [];
-    return rows.map(function (c) {
+    // A unit can be priced a second time for one detachment: the C'tan shards cost 40 points
+    // more in Pantheon of Woe, the assassins 15 more in the Veiled Blade Elimination Force.
+    // The dump marks that on unit_composition_required_detachment, and printing both prices
+    // bare is what made 17 datasheets look like they disagreed with themselves.
+    const out = [];
+    for (const c of rows) {
       const minis = compositionMiniatures.get(c.id) || [];
       const sizes = minis.map(function (m) {
         return m.max && m.max !== m.min ? m.min + '-' + m.max : String(m.min);
       }).filter(Boolean);
       const models = sizes.length ? sizes.join('+') + (sizes[0] === '1' ? ' model' : ' models') : 'unit';
-      return 'Points: ' + models + ' ' + c.points + ' pts';
-    });
+      const only = (requiredDetachmentsByComposition.get(c.id) || [])
+        .map(function (row) { const det = detachmentById.get(row.detachmentId); return det ? String(en(det).name || '') : ''; })
+        .filter(Boolean);
+      const inArmy = (requiredKeywordsByComposition.get(c.id) || [])
+        .map(function (row) { const kw = factionKeywordNameById.get(row.factionKeywordId); return kw || ''; })
+        .filter(Boolean);
+      const condition = [only.length ? 'detachment: ' + only.sort().join(', ') : '', inArmy.length ? 'faction: ' + inArmy.sort().join(', ') : ''].filter(Boolean).join('; ');
+      const line = 'Points: ' + models + ' ' + c.points + ' pts' + (condition ? ' (' + condition + ')' : '');
+      // Two rows can carry the same price and the same size (Callidus, Culexus): one line.
+      if (out.indexOf(line) === -1) out.push(line);
+    }
+    return out;
   }
 
   function ruleComponents(map, id) {
