@@ -449,7 +449,7 @@ export function buildMfmFactions(options) {
     // more in Pantheon of Woe, the assassins 15 more in the Veiled Blade Elimination Force.
     // The dump marks that on unit_composition_required_detachment, and printing both prices
     // bare is what made 17 datasheets look like they disagreed with themselves.
-    const out = [];
+    const base = [], conditioned = [];
     for (const c of rows) {
       const minis = compositionMiniatures.get(c.id) || [];
       const sizes = minis.map(function (m) {
@@ -464,8 +464,17 @@ export function buildMfmFactions(options) {
         .filter(Boolean);
       const condition = [only.length ? 'detachment: ' + only.sort().join(', ') : '', inArmy.length ? 'faction: ' + inArmy.sort().join(', ') : ''].filter(Boolean).join('; ');
       const line = 'Points: ' + models + ' ' + c.points + ' pts' + (condition ? ' (' + condition + ')' : '');
-      // Two rows can carry the same price and the same size (Callidus, Culexus): one line.
-      if (out.indexOf(line) === -1) out.push(line);
+      // A conditioned row that repeats a price already printed unconditionally says nothing
+      // (Callidus is 100 in an Agents of the Imperium army, which is also its plain price),
+      // so only the plain line is kept.
+      (condition ? conditioned : base).push({ line: line, key: models + '|' + c.points });
+    }
+    const seen = new Set();
+    const out = [];
+    for (const row of base.concat(conditioned)) {
+      if (seen.has(row.key)) continue;
+      seen.add(row.key);
+      out.push(row.line);
     }
     return out;
   }
