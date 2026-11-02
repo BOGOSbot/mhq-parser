@@ -238,6 +238,16 @@ export function buildMfmFactions(options) {
   const wargearItemById = new Map(tables('wargear_item').map(function (w) { return [w.id, w]; }));
   const wargearOptionById = new Map(tables('wargear_option').map(function (w) { return [w.id, w]; }));
   const profilesByWargear = groupBy(tables('wargear_item_profile'), 'wargearItemId');
+  const profileById = new Map(tables('wargear_item_profile').map(function (p) { return [p.id, p]; }));
+  // An enhancement can grant a weapon profile that belongs to no item on any datasheet:
+  // two of them said 'This model has the following weapon.' and stopped, because the
+  // profile lives in this table and nothing read it.
+  const enhancementProfiles = groupBy(tables('enhancement_wargear_item_profile'), 'enhancementId');
+  // A detachment's printed detail block (usually the Keywords list) hangs off
+  // detachment_detail, not off the detachment: the ability text referred to it and the
+  // reader got a bare dash where the list should be.
+  const detailsByDetachment = groupBy(tables('detachment_detail'), 'detachmentId');
+  const bulletsByDetail = groupBy(tables('detachment_detail_bullet_point'), 'detachmentDetailId');
   const wargearAbilitiesByProfile = groupBy(tables('wargear_item_profile_wargear_ability'), 'wargearItemProfileId');
   const wargearAbilityById = new Map(tables('wargear_ability').map(function (a) { return [a.id, a]; }));
   const loadoutsByDatasheet = groupBy(tables('base_miniature_loadout'), 'datasheetId');
@@ -572,7 +582,16 @@ export function buildMfmFactions(options) {
       const rl = en(rule);
       const body = ruleComponents(componentsByDetachmentRule, rule.id);
       if (!body.length) continue;
-      lines.push('Ability: ' + (rl.name || 'Detachment rule') + ' - ' + body.join('\n'));
+      // The printed rule can end on a dash where a bullet list was: the list is emitted as
+      // the Detail line below, so the dangling dash is not left behind.
+      lines.push('Ability: ' + (rl.name || 'Detachment rule') + ' - ' + body.join('\n').replace(/\s*-\s*$/, ''));
+    }
+    for (const detail of detailsByDetachment.get(det.id) || []) {
+      const title = String(en(detail).name || en(detail).title || '').trim();
+      const bullets = (bulletsByDetail.get(detail.id) || []).slice()
+        .sort(function (a, b) { return Number(a.displayOrder || 0) - Number(b.displayOrder || 0); })
+        .map(function (b) { return plainText(en(b).text || en(b).name); }).filter(Boolean);
+      if (title || bullets.length) lines.push('Detail' + (title ? ' ' + title : '') + ':' + (bullets.length ? ' ' + bullets.join('; ') : ''));
     }
     push('detachment#' + det.id, source, name + ' (' + factionName + ')', '', lines, 'detachment', 'mfm-detachment-id');
     stats.detachments += 1;
@@ -609,6 +628,16 @@ export function buildMfmFactions(options) {
       enhLines.push('Detachment: ' + name);
       const body = plainText(el.rules);
       if (body) enhLines.push(body);
+      for (const link of enhancementProfiles.get(enh.id) || []) {
+        const profile = profileById.get(link.wargearItemProfileId);
+        if (!profile) continue;
+        const item = wargearItemById.get(profile.wargearItemId);
+        const pname = String(en(profile).name || en(item || {}).name || '').trim();
+        const stats = profile.type === 'melee'
+          ? 'A ' + profile.attacks + ' WS ' + (profile.weaponSkill || '-') + ' S ' + profile.strength + ' AP ' + profile.armourPenetration + ' D ' + profile.damage
+          : 'Range ' + profile.range + ' A ' + profile.attacks + ' BS ' + (profile.ballisticSkill || '-') + ' S ' + profile.strength + ' AP ' + profile.armourPenetration + ' D ' + profile.damage;
+        enhLines.push('Weapon ' + pname + ' (' + (profile.type === 'melee' ? 'Melee' : 'Ranged') + '): ' + stats);
+      }
       push('enhancement#' + enh.id, source, String(el.name) + ' (Enhancement - ' + factionName + ', ' + name + ')', '', enhLines, 'enhancement', 'mfm-enhancement-id');
       stats.enhancements += 1;
     }
