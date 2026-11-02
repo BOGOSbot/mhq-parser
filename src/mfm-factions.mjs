@@ -313,14 +313,39 @@ export function buildMfmFactions(options) {
     return [type, cls].filter(Boolean).join(' ');
   }
 
-  function statline(miniature, baseSize, datasheetId) {
+  // A datasheet's base size is one string for the whole unit, and for a multi-model unit it
+  // lists them: 'Mutant: 25mm\nTorment: 40mm', 'Skitarii Vanguards: 25mm\nTransuranic
+  // Arquebus: 60 x 35.5mm Oval Base', or a bare list '32mm, 40mm'. Stamping it on every
+  // model line put one model's base next to another model's statline (20 datasheets).
+  // Labelled lines are matched to the model by name; an unlabelled list is positional when
+  // the counts agree, and is printed once otherwise rather than guessed.
+  function baseFor(name, baseSize, index, count) {
+    const raw = String(baseSize || '').trim();
+    if (!raw) return '';
+    if (raw.indexOf(':') !== -1) {
+      const rows = raw.split('\n').map(function (line) {
+        const m = line.match(/^\s*(.+?):\s*(.+)$/);
+        return m ? { label: m[1].trim(), size: m[2].trim() } : null;
+      }).filter(Boolean);
+      const lower = String(name || '').toLowerCase();
+      const hit = rows.find(function (r) { return lower.indexOf(r.label.toLowerCase()) !== -1; })
+        || rows.find(function (r) { return /^other models$/i.test(r.label); });
+      return hit ? hit.size : '';
+    }
+    const sizes = raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    if (sizes.length <= 1) return raw;
+    return count === sizes.length ? sizes[index] : (index === 0 ? raw : '');
+  }
+
+  function statline(miniature, baseSize, datasheetId, index, count) {
     const dsInv = (invulnerableByDatasheet.get(datasheetId) || []).find(function (r) { return !r.miniatureId; });
     const miInv = (invulnerableByMiniature.get(miniature.id) || [])[0];
     const invRow = miInv || dsInv;
     const inv = invRow ? String(invRow.save).replace(/\+?$/, '') + '+' : '';
+    const base = baseFor(en(miniature).name, baseSize, index, count);
     return 'Model ' + (en(miniature).name || 'model') + ': M ' + miniature.movement + ' T ' + miniature.toughness +
       ' Sv ' + miniature.save + (inv ? ' inv ' + inv : '') + ' W ' + miniature.wounds +
-      ' Ld ' + miniature.leadership + ' OC ' + miniature.objectiveControl + (baseSize ? ' base ' + baseSize : '');
+      ' Ld ' + miniature.leadership + ' OC ' + miniature.objectiveControl + (base ? ' base ' + base : '');
   }
 
   // The weapons a datasheet can field, default loadout first and then every
@@ -463,7 +488,7 @@ export function buildMfmFactions(options) {
     const statsLines = [header];
     const pub = publicationById.get(ds.publicationId);
     if (pub) statsLines.push('Source: ' + (en(pub).name || '') + ' (edition 11)');
-    for (const m of miniatures) statsLines.push(statline(m, loc.baseSize, ds.id));
+    miniatures.forEach(function (m, mi) { statsLines.push(statline(m, loc.baseSize, ds.id, mi, miniatures.length)); });
     const composition = plainText(loc.unitComposition).split('\n').map(function (line) { return line.trim(); }).filter(Boolean);
     composition.forEach(function (line, index) {
       if (!index) statsLines.push('Composition: ' + line.replace(/^- /, ''));
@@ -474,7 +499,16 @@ export function buildMfmFactions(options) {
     for (const line of pointsLines(ds.id)) statsLines.push(line);
     for (const dmg of damageByDatasheet.get(ds.id) || []) {
       const dl = en(dmg);
-      if (dl.rules) statsLines.push('Damaged: ' + (dl.name ? dl.name + ' - ' : '') + plainText(dl.rules));
+      // The dump's own damaged text already opens with the label ('Damaged: 1-4 Wounds
+      // Remaining - ...'), so prefixing it printed 'Damaged: Damaged:' on 32 datasheets.
+      if (dl.rules) {
+        const body = plainText(dl.rules).replace(/^\s*(?:Damaged:\s*)+/i, '').trim();
+        const label = String(dl.name || '').replace(/^\s*(?:Damaged:\s*)+/i, '').trim();
+        // The dump puts the same words in the row's name and in its rules, so the name is
+        // dropped when the body already opens with it.
+        const keepLabel = label && body.toLowerCase().indexOf(label.toLowerCase()) !== 0;
+        statsLines.push('Damaged: ' + (keepLabel ? label + ' - ' : '') + body);
+      }
     }
     push('datasheet#' + ds.id, source, name, '', statsLines, 'datasheet', 'mfm-datasheet-id');
     stats.datasheets += 1;

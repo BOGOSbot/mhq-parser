@@ -37,7 +37,7 @@ t('the corpus splits into delivered and filtered with nothing lost', all.length 
 // Then 5,673: the appendix stopped reading its tooltip templates (104 duplicate records).
 // 2026-11-01: Combat Patrol left the corpus - 26 booklets, 113 datasheets, 78 stratagems,
 // 26 detachments, 52 enhancements - so delivered falls by 383 and filtered by 10.
-t('delivered is 5,290 and filtered is 127 (MFM corpus with options, Combat Patrol out, 2026-11-01)', [delivered.length, filtered.length], [5284, 127]);
+t('delivered is 5,290 and filtered is 127 (MFM corpus with options, Combat Patrol out, 2026-11-01)', [delivered.length, filtered.length], [5281, 127]);
 
 // --- the query path cannot return what the product does not deliver -----------
 // The ids are read from the corpus, never hardcoded: the faction half now comes from
