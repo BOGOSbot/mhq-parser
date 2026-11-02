@@ -381,6 +381,10 @@ export function dropElements(html, predicate) {
 // templates carry FAQ answers that exist nowhere else (the 53 questions above).
 const SOURCE_CHROME = {
   'rules-appendix': [(tag, attrs) => tag === 'div' && /class="[^"]*\btooltip_templates\b/.test(attrs)],
+  // The event companion draws its cards with a toolbar that holds the Hide/Show eye and
+  // the card's own title as an <h3>. The extractor cut at that h3 and produced a record
+  // whose id was 'WEC_LayTitle' and whose body was the layout widget's labels.
+  'event-companion': [(tag, attrs) => tag === 'div' && /class="[^"]*\bca7CardToolbar\b/.test(attrs)],
 };
 
 export function stripChrome(html, source) {
@@ -581,12 +585,29 @@ export function extractSections(html, source) {
         // different cards.
         let pieceTitle = part.title;
         let pieceHeading = part.heading;
+        // The page often prints a section's own title as the first line of its body, and
+        // the corpus puts the heading in front of the text: that reads as the heading
+        // twice. 'Welcome to the Warhammer 40,000 Core Rules.' was the visible case, and
+        // all eight event-companion questions carried their own question again.
+        let pieceText = piece.text;
         if (pieces.length > 1) {
           const firstLine = String(piece.text).split('\n')[0].trim();
-          if (isTitleLine(firstLine)) {
+          if (isTitleLine(firstLine) && !FIELD_LABEL_LINE.test(firstLine)) {
             pieceTitle = firstLine.replace(/^\d{1,2}\.\s+/, '').trim() || firstLine;
             pieceHeading = path.length ? path.concat([pieceTitle]).join(' > ') : pieceTitle;
           }
+        }
+        const titleLeaf = String(pieceHeading).split(' > ').pop().trim();
+        const bodyLines = String(pieceText).split('\n');
+        const firstLine = String(bodyLines[0] || '').trim();
+        // The page writes the title, then the paragraph that opens with the same words:
+        // 'Welcome to the Warhammer 40,000 Core Rules.' as the heading and 'Welcome to the
+        // Warhammer 40,000 Core Rules. This page contain...' as the body. Only a long title
+        // is stripped, so a one-word heading cannot eat a sentence that opens with it.
+        if (titleLeaf.length >= 12 && firstLine.indexOf(titleLeaf) === 0) {
+          const rest = firstLine.slice(titleLeaf.length).replace(/^[.:\s]+/, '');
+          if (rest) { bodyLines[0] = rest; pieceText = bodyLines.join('\n'); }
+          else { pieceText = bodyLines.slice(1).join('\n').replace(/^\s+/, ''); }
         }
         out.push({
           source: source.name,
@@ -597,7 +618,7 @@ export function extractSections(html, source) {
           anchor: part.anchor,
           hasAnchor: !!part.anchor,
           url: source.url + (part.anchor ? '#' + part.anchor : ''),
-          text: pieceHeading + '\n' + piece.text,
+          text: pieceHeading + '\n' + pieceText,
           part: piece.part,
           parts: pieces.length,
           chars: piece.text.length,
@@ -605,7 +626,15 @@ export function extractSections(html, source) {
       }
     }
   }
-  return out;
+  // A body that is only the accordion's toggle is not a rule: the core rules' FAQ and
+  // the Transports panel both came through as a record whose text was the word 'Show'.
+  const TOGGLE_ONLY = /^(show|hide|faq|errata|close|open)(\s+(show|hide|faq|errata|close|open))*$/i;
+  return out.filter(sec => {
+    const body = String(sec.text).split('\n').slice(1).join('\n').trim();
+    // An EMPTY body is a label the page wrote as a container, and the extractor keeps it
+    // on purpose; only a body made of the toggle word itself is junk.
+    return !TOGGLE_ONLY.test(body);
+  });
 }
 
 // Cut an over-long body on sentence ends, so a split never lands mid-rule.
@@ -821,8 +850,17 @@ export function isTitleLine(line) {
   return words.length > 1 && words.every(w => /^[^a-z]/.test(w));
 }
 
+// A field label is not a name. The consolidation move opens 'MAXIMUM DISTANCE: 3"', and
+// two records came out titled with that label and nothing else, so the reader's results
+// showed 'MAXIMUM DISTANCE: 3"' twice with no way to tell it from the move it describes.
+const FIELD_LABEL_LINE = /^(MAXIMUM DISTANCE|ELIGIBLE IF|EFFECT|BEFORE MOVING|WHILE MOVING|AFTER MOVING|WHEN|TARGET|RESTRICTIONS|CP|TURN|COST|DETACHMENT|SEE ALSO|Keywords)\b/i;
 export function deriveTitle(text) {
-  const flat = String(stripMarker(text)).replace(/\s+/g, ' ').replace(/^Show\s+/, '').trim();
+  const bodyLines = String(stripMarker(text)).split('\n').map(l => l.trim()).filter(Boolean);
+  const firstReal = bodyLines.find(l => !FIELD_LABEL_LINE.test(l));
+  // Every line is a field label: there is no name in this body, and inventing one from the
+  // label is what put 'MAXIMUM DISTANCE: 3"' in the reader's results.
+  if (!firstReal) return '';
+  const flat = String(firstReal).replace(/\s+/g, ' ').replace(/^Show\s+/, '').trim();
   if (!flat || /^Book\s+Kind\s+Edition/i.test(flat)) return '';
   const q = flat.match(/^Q:\s*([^?]{10,110}\?)/);
   if (q) return q[1].trim();

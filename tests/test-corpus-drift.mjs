@@ -58,12 +58,12 @@ const BASELINE = {
   // 2026-10-26: the heading parser keeps a container that parents something and drops
   // the list numbers, so the core rules scrape is 383 sections (287,100 characters) and
   // its shape 383 (281,181).
-  scrape: { sections: 387, chars: 287718 },
+  scrape: { sections: 386, chars: 277616 },
   shape: {
     // 2026-10-24: the flavour sentence is stripped on the way to disk (5,919 characters
     // over the 34 distinct sentences the page marks). The section count does not move,
     // because the strip runs after the chunker and never before it.
-    'core-rules': { sections: 387, chars: 281799 },
+    'core-rules': { sections: 386, chars: 271697 },
     // task-13: +710 bytes - the Wazdakka Gutsmek datasheet now carries the full
     // PULSE JET MOVE definition that used to be a core-stratagem record.
     // task-33 (2026-10-19 export): 6,502 shaped sections, 10,244,777 bytes - the new
