@@ -2,7 +2,7 @@
 
 *The Android shell changed when Legends left and no APK has been built since, so the phone still runs the old shell.*
 
-- **State:** pending
+- **State:** in progress: the patch landed, a test APK and the new bundle are on the LAN
 - **Priority:** P1, and it gates the next deploy
 - **Owner:** me
 
@@ -32,10 +32,26 @@ The French half is unchanged: `value(body, id)` is still the body. No Kotlin cha
 anywhere else. **An APK built from this parser commit before the patch is broken for the
 English record view**, so land the two together.
 
+## Where it stands, 2026-11-03
+
+`recordBody()` is patched (android repo `462ae46`): the ids map first, the body by hash, the
+French store unchanged. Version 0.7 (code 7).
+
+The index was re-ingested against the rebuilt corpus and pruned: rules 671, factions 4,455,
+rulings 154, **0 strays**. The web bundle was rebuilt from the payload (3,198,856 bytes,
+5,280 English and 375 French records, corpus stamp `6eba356f`).
+
+A **test APK, 0.7-lan**, is served from this machine: `http://192.168.0.125:8099/app.apk`
+(825,261 bytes, sha256 `BC7CF78771C3DA4AFA968F4423661F76B4298EA9DAD834176795DE8DABB2C206`), with
+the new `web-bundle.zip` beside it. It is built from a temporary variant of the tree:
+`SERVER_BASE` pointed at the LAN and that host added to `network_security_config.xml` as
+cleartext. Both are reverted in the committed tree, which is the launch shape.
+
 ## Next action
 
-Patch `LocalServer.kt::recordBody()` for the task-109 store (above), build the debug APK,
-publish it beside `app.apk` on the LAN serve root, and update the version name and code.
+The launch build is one constant away: the tree points at the Box, so it needs a Box deploy
+carrying the new payload, bundle and page (outward, Mandal's yes), then the APK built from
+this tree and published. Until then the phone's bundle comes from the LAN.
 
 ## Notes for a fresh session
 
