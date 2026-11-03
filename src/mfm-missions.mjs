@@ -67,6 +67,19 @@ function slugOf(name) {
   return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'card';
 }
 
+// The card's reverse: the action a mission's scoring names ('committed sabotage ... (see
+// reverse)'). Only some cards carry one; the corpus keeps it as text so a search finds it.
+const ACTION_FIELDS = [['startsText', 'Starts'], ['unitsText', 'Units'], ['useLimitText', 'Use limit'], ['completesText', 'Completes'], ['effectText', 'Effect'], ['restrictionText', 'Restrictions']];
+function actionLines(action) {
+  const al = en(action);
+  const lines = ['', 'Action: ' + String(al.name || 'Action').trim()];
+  for (const [field, label] of ACTION_FIELDS) {
+    const text = plainText(al[field]);
+    if (text && !(field === 'restrictionText' && text === 'None')) lines.push(label + ': ' + text);
+  }
+  return lines;
+}
+
 function groupBy(rows, key) {
   const map = new Map();
   for (const row of rows || []) {
@@ -109,6 +122,7 @@ export function buildMissionSections(options) {
   const primaryObjectives = groupBy(T.primary_mission_objective || [], 'primaryMissionId');
   const primaryScoring = groupBy(T.primary_mission_objective_scoring || [], 'primaryMissionObjectiveId');
   const primaryPeriods = groupBy(T.primary_mission_objective_scorable_period || [], 'primaryMissionObjectiveId');
+  const primaryActions = groupBy(T.primary_mission_action || [], 'primaryMissionId');
   for (const mission of (T.primary_mission || []).filter(inPack)) {
     const loc = en(mission);
     const name = String(loc.name || '').trim();
@@ -132,6 +146,7 @@ export function buildMissionSections(options) {
         lines.push('- ' + vp + cap + (flags ? ' [' + flags + ']' : '') + ': ' + plainText(sl.scoringCriteria));
       }
     }
+    for (const action of primaryActions.get(mission.id) || []) lines.push(...actionLines(action));
     push(DECK_PRIMARY, name, lines);
     stats.primary += 1;
   }
@@ -139,6 +154,7 @@ export function buildMissionSections(options) {
   // --- secondary missions ----------------------------------------------------
   const secondaryObjectives = groupBy(T.secondary_mission_objective || [], 'secondaryMissionId');
   const secondaryScoring = groupBy(T.secondary_mission_objective_scoring || [], 'secondaryMissionObjectiveId');
+  const secondaryActions = groupBy(T.secondary_mission_action || [], 'secondaryMissionId');
   for (const mission of (T.secondary_mission || []).filter(inPack)) {
     const loc = en(mission);
     const name = String(loc.name || '').trim();
@@ -159,6 +175,7 @@ export function buildMissionSections(options) {
         lines.push('- ' + vp + cap + ': ' + plainText(sl.scoringCriteria));
       }
     }
+    for (const action of secondaryActions.get(mission.id) || []) lines.push(...actionLines(action));
     push(DECK_SECONDARY, name, lines);
     stats.secondary += 1;
   }

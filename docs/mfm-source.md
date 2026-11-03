@@ -60,3 +60,18 @@ Measured on 995: 2,634 default and 2,343 optional profiles, 1,312 option lines. 
 - Conditional keywords (345 rows) and FAQs (675) are untouched.
 - The French locale is in the dump and unused. It answers `tasks/french-overlay.md` better than a translated overlay does.
 - The vector index is now stale: `--ingest` and `--prune` are owed before the next deploy.
+
+## Mission card reverses (2026-11-03)
+
+Eleven primary cards print an action on their reverse ('committed sabotage ... (see reverse)'), and the scoring on the front means nothing without it. The dump holds them in `primary_mission_action` (and `secondary_mission_action` for Cleanse and Plunder), keyed by mission: name, starts, units, use limit, completes, effect, restrictions. `src/mfm-missions.mjs` now appends each one to its card's text:
+
+```
+Action: SABOTAGE
+Starts: Your Shooting phase.
+Units: One unit within range of one objective (excluding your home objective).
+...
+```
+
+A restriction of `None` is not printed. Measured on 995: 13 of the 43 cards carry an action (11 primary, 2 secondary); the Combat Patrol pack's actions stay out with the rest of that pack.
+
+The faces: gdmissions.app serves each of those eleven reverses beside its front as `<slug>-back.png`. They are in the private cache under `workspace/rules-corpus/assets/missions/primary/<deck>/`, listed in `sources.json` with `role: "back"` (73 entries). The search index still needs `--ingest` for the new text.
