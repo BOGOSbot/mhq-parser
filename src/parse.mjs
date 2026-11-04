@@ -576,8 +576,12 @@ function findPlusBlock(lines) {
     return { openIdx: delimIdx, closeIdx: lines.length };
   }
 
-  // No delimiter anywhere — look for a block of + KEY: VALUE lines.
-  const firstPlusLine = lines.findIndex(l => /^\+\s*[A-ZÉÈÀÂÇÛÖÜ]/i.test(l.trim()));
+  // No delimiter anywhere — look for a block of + KEY: VALUE lines. The key
+  // must carry a colon: a lone "+Engine speaker (15pts)" is an equipment line
+  // under a unit, and treating it as the start of a header block threw away
+  // everything above it, because the block's end becomes the body's start.
+  // Measured 2026-11-04 on the archive: six lists lost a unit that way.
+  const firstPlusLine = lines.findIndex(l => /^\+\s*[A-ZÉÈÀÂÇÛÖÜ][^:]{0,60}:/.test(l.trim()));
   if (firstPlusLine === -1) return null;
   // No fence at all ("+ PLAYER: X" then the units), or a fence too short for
   // isDelim ("+++") — both are headers. The block ends at the first line that is
@@ -598,7 +602,13 @@ function findPlusBlock(lines) {
   // openIdx is the fence in the fenced path, so the call site's openIdx + 1 is
   // the first key; here there is no fence, so the line above the first key
   // stands in for one and the same slice starts on it.
-  return { openIdx: firstPlusLine - 1, closeIdx };
+  //
+  // endIdx is what the fenced path spells closeIdx + 1: the block has no
+  // closing fence to consume, so the first non-key line is both where the
+  // header ends and where the body starts. Reading it as a closing fence -
+  // closeIdx + 1 at the call site - dropped the line under the header, which
+  // is a unit whenever a list opens with a "+++ " fence too short for isDelim.
+  return { openIdx: firstPlusLine - 1, closeIdx, endIdx: closeIdx };
 }
 
 const HEADER_ALIAS = {
@@ -725,6 +735,15 @@ function parseNewRecruit(text) {
 // ============================================================
 const CAT_HDR = /^(?:PERSONNAGES?|CHARACTERS?|CHARACTER|LIGNE|LINE|BATTLELINE|OTHER DATASHEETS|OTHERS?|OTHER|AUTRES FICHES TECHNIQUES|VEHICULES?|VEHICLES?|TERRAIN|INDUSTRIALS?|BUILDINGS?|UNIQUE|ATTACHED UNITS|ALLIED UNITS|UNITÉS? ALLIÉES?|DEDICATED TRANSPORTS?|TRANSFERTS? ASSIGNÉ|TRANSFERTS? DÉDIÉ|TRANSPORTS? ASSIGNÉ|TRANSPORTS? DÉDIÉ|UNITÉS? ATTACH|HÉROS? ÉPIQUES?|HEROICS? EPICS?|BÊTES?|BEASTS?|MONTÉS?|MONTEES?|MONTER?|MONTEES?|INFANTERIE|FOOT|ELECTROMECANIQUE|ELECTROMECHANICAL|TERRAIN|AUTRES? FICHES TECHNIQUES)/i;
 const ATTACHED_RE = /^(?:UNIT|UNITÉS?)\s*(?:ATTACHED|ATTACHÉ(?:E)?S?)\s*\d*|(?:ATTACHED|ATTACHÉ)\s+UNIT|UNIT\s+\d+\s+ATTACHED|UNITÉ\s+\d+\s+ATTACHÉ|UNITÉ\s+ATTACHÉ(?:E)?\s*\d*/i;
+// A group header above its members, carrying the group's own total rather than
+// a unit's: "Attached Unit 1 (200 points)" in the app's header dialect, and
+// "Name + Name (290 pts)" in the league template that puts two datasheets in
+// one attached group. The members below repeat the same points, so a header
+// read as a unit counts the whole group twice. Measured 2026-11-04 over the
+// League Wars aller rounds: five lists, each over by exactly the sum of these
+// lines and exact once they are skipped.
+const ATTACHED_GROUP_RE = /^(?:(?:Attached|Attaché(?:e)?)\s+Units?|Unit[ée]s?\s+Attach[ée](?:e)?s?|Unit\s+\d+\s+Attached)\s*\d*\s*[\(\[]\s*\d+\s*(?:pts?|points?)\s*[\)\]]\s*$/i;
+const ATTACHED_PAIR_RE = /^[^()\[\]]+\s\+\s[^()+\[\]]+\s*[\(\[]\s*\d+\s*(?:pts?|points?)\s*[\)\]]\s*$/i;
 const ENHANCEMENT_RE = /^(?:Enhancement|Optimisation|Aggressive Deployment|Murderous Onslaught|Unleash Hell|Fade to Darkness|Sorrowsyphon|Rejuvenating Swarm|Murdermind|Psychic Celerity|Admonimortis|Fierce Conqueror|Lien dermique|Voile des Ténèbres|Deepening Madness|Mark of the Nekrosor|Lame Rapace|Tueuse Acculeuse|Leaping Shadows|Gene-tailored Toxins|Supa-snazz Dakka|Dreadherder|Targetin' Gizmos|Recon Hunter|Nightforged Battery|Intoxicating Elixir|Intoxicating|Intoxicating)/i;
 
 function parseBullets(text) {
@@ -756,6 +775,10 @@ function parseBullets(text) {
   });
   const sections = [];
   let current = null, currentCategory = null, currentAttachedUnit = null;
+  // Whether the reader is inside an ATTACHED UNITS section. Only the ambiguous
+  // group shape ("Name + Name (N pts)") needs it: outside such a section that
+  // line is more likely a player folding two units into one entry.
+  let inAttachedSection = false;
   const push = () => {
     if (current) {
       if (!current.attachedUnit) current.attachedUnit = currentAttachedUnit;
@@ -772,14 +795,24 @@ function parseBullets(text) {
     // Attached header (check BEFORE category — "Unités Attachées" starts with "Unités")
     if (!isBullet && !isUnitLine && ATTACHED_RE.test(trimmed)) {
       push(); current = null;
+      inAttachedSection = true;
       const m = trimmed.match(/(\d+)/);
       currentAttachedUnit = m ? 'Attached Unit ' + m[1] : null;
+      continue;
+    }
+    // A group header, before the unit patterns: it carries points, so the
+    // ordinary unit match would take it, and the group would be counted twice.
+    if (!isBullet && (ATTACHED_GROUP_RE.test(trimmed) || (inAttachedSection && ATTACHED_PAIR_RE.test(trimmed)))) {
+      push(); current = null;
+      const m = trimmed.match(/^(?:[^\d]*)(\d+)/);
+      currentAttachedUnit = ATTACHED_GROUP_RE.test(trimmed) && m ? 'Attached Unit ' + m[1] : null;
       continue;
     }
     if (!isBullet && !isUnitLine && /^[A-Za-zÉÈÀÂÇÛÖÜ][\w\s'ÉÈÀÂÇÛÖÜ-]*$/i.test(trimmed) && CAT_HDR.test(trimmed)) {
       push(); current = null;
       currentCategory = trimmed.toUpperCase();
       currentAttachedUnit = null;
+      inAttachedSection = /ATTACH/i.test(trimmed);
       continue;
     }
     // Enhancement lines that look like units (e.g. "Enhancement: Name (10 pts)")
@@ -803,6 +836,7 @@ function parseBullets(text) {
       push(); current = null;
       currentCategory = trimmed.replace(/^#+\s*/, '').trim().toUpperCase();
       currentAttachedUnit = null;
+      inAttachedSection = /ATTACH/i.test(trimmed);
       continue;
     }
     // French-style tabbed section separators (\t--- Section ---) (fixes Taal, terra-nid cluster)
@@ -810,6 +844,7 @@ function parseBullets(text) {
       push(); current = null;
       currentCategory = trimmed.replace(/^\t?---\s*(.+?)\s*---/, '$1').trim().toUpperCase();
       currentAttachedUnit = null;
+      inAttachedSection = /ATTACH/i.test(trimmed);
       continue;
     }
     // French-style "Unit Name : N pts" format (fixes Taal, terra-nid cluster)
@@ -972,7 +1007,7 @@ const DET_PATTERNS = [
   // "Règle de détachement : X", "+DETACHEMENT: X".
   [/^(?:[ \t]*\+[ \t]*)?(?:ARMY[ \t]+)?(?:D[ÉE]?TACH(?:E)?MENTS?(?:[ \t]+(?:UTILIS[ÉE]S?|USED|RULES?|RULE|CHOICE))?|R[ÈE]GLE[ \t]+DE[ \t]+D[ÉE]?TACH(?:E)?MENT)[ \t]*:[ \t]*(.+)$/im, m => m[1]],
   // "Détachements : X" / "Detachments : X", with or without markdown hashes.
-  [/^(?:#+[ \t]*)?(?:D[ÉE]?TACH(?:E)?MENTS?|DETACHMENTS?)[ \t]*:[ \t]*(.+)$/im, m => m[1]],
+  [/^(?:#+[ \t]*)?(?:D[ÉE]?TACH(?:E)?MENTS?|DETACHMENTS?)(?:[ \t]*\(s\))?[ \t]*:[ \t]*(.+)$/im, m => m[1]],
 ];
 
 // "Détachements :" alone, the values on the lines under it. armylistnetwork
@@ -1227,7 +1262,7 @@ function buildPlayers(articles) {
     const block = findPlusBlock(lines);
     if (block) {
       let header = parseHeaderLines(lines.slice(block.openIdx + 1, block.closeIdx));
-      let cursor = block.closeIdx + 1;
+      let cursor = block.endIdx != null ? block.endIdx : block.closeIdx + 1;
       // Check for a second header block starting within the next few lines
       const remaining = lines.slice(cursor);
       const block2 = findPlusBlock(remaining);
@@ -1235,7 +1270,7 @@ function buildPlayers(articles) {
         // Merge second block into header
         const header2 = parseHeaderLines(lines.slice(cursor + block2.openIdx + 1, cursor + block2.closeIdx));
         header = { ...header, ...header2 };
-        cursor += block2.closeIdx + 1;
+        cursor += block2.endIdx != null ? block2.endIdx : block2.closeIdx + 1;
       }
       player.header = header;
       const remainingLines = lines.slice(cursor);

@@ -412,5 +412,34 @@ t('total: bare TOTAL footer', totalOf('TOTAL : 2000 points - 53 figurines - 12')
 t('total: bare POINTS', totalOf('POINTS : 2000pts'), { declared: 2000, missing: false });
 t('total: an out-of-range bare TOTAL is not a total', totalOf('TOTAL : 80 pts'), { declared: null, missing: true });
 
+// --- the header block must not eat the body ------------------------------------
+// Two shapes measured on the 2026-11-04 archive sweep, both a lost unit worth
+// 100 to 900 points on a list that was otherwise read correctly.
+// A "+++" fence is shorter than the 20-plus delimiter test, so the header is
+// found by the fenceless path, whose end is the first line *after* the block.
+// Reading it as a closing fence skipped that line - which is a unit whenever a
+// list opens with its first unit directly under the fence.
+const fenceList = '+++\n+ FACTION KEYWORD: Xenos - Aeldari\n+ DETACHMENT: Armoured Warhost\n' +
+  '+ FORCE DISPOSITION: Reconnaissance\n+ TOTAL ARMY POINTS: 2000pts\n' +
+  '+ NUMBER OF UNITS: 2\n+++\n\n' +
+  'Char1: 1x Jain Zar (105 pts): Warlord, Silent Death\n\n' +
+  'Char2: 1x Lhykhis (135 pts): Brood Twain\n';
+const fenceP = parseListText(fenceList, { name: 'x' }).output.players[0];
+t('header: "+++" fence keeps the first unit', realUnits(fenceP).map(u => u.model), ['Jain Zar', 'Lhykhis']);
+t('header: "+++" fence totals', totals(fenceP), { parsedPts: 240, declaredPts: 2000 });
+
+// A lone "+Engine speaker (15pts)" is an equipment line under a unit. The
+// fenceless header path used to take any "+Word" line as its first key and end
+// the header at the next line that is not a "+ KEY" line, which put the body
+// start above everything in the list.
+const upgradeList = 'Attached Units Test (2000 points)\n\nAstra Militarum\n' +
+  'Bridgehead Strike (3 Detachment Points)\nPriority Assets\nStrike Force (2000 point)\n\n' +
+  'ATTACHED UNITS\n\nAttached Unit 1\n\nNork Deddog (60 points)\n\u2022 1x Ripper gun\n\n' +
+  'CHARACTER\n\nRogal Dorn Commander (290 points)\n\u2022 1x Oppressor cannon\n+Engine speaker (15pts)\n\n' +
+  'BATTLELINE\n\nCadian Shock Troops (70 points)\n\u2022 9x Shock Trooper\n';
+const upgradeP = parseListText(upgradeList, { name: 'x' }).output.players[0];
+// The upgrade is equipment under the commander, not a unit of its own.
+t('header: a lone +Upgrade line keeps the units above it', realUnits(upgradeP).map(u => u.model), ['Nork Deddog', 'Rogal Dorn Commander', 'Cadian Shock Troops']);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);
