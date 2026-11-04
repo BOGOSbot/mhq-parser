@@ -96,15 +96,24 @@ function report({ events, rows }, opts) {
     P('');
     P('| lists | exporter | version | basis | line |');
     P('|---:|---|---|---|---|');
+    // One row per signature *shape*, so the numbers are normalised and the
+    // version column is a range: the app prints its version inside the
+    // signature, and grouping by the literal line would split one shape into
+    // one row per version, while reporting the first sample's version reads as
+    // though every list carried it.
     const sigs = new Map();
     for (const r of rows) {
       if (r.basis !== 'trailer' && r.basis !== 'signature') continue;
       const norm = r.signature.replace(/\d+(?:\.\d+)*/g, '#');
-      if (!sigs.has(norm)) sigs.set(norm, { n: 0, ex: r.signature, id: r.exporter, ver: r.version, basis: r.basis });
-      sigs.get(norm).n++;
+      if (!sigs.has(norm)) sigs.set(norm, { n: 0, ex: r.signature, id: r.exporter, ver: new Set(), basis: r.basis });
+      const s = sigs.get(norm);
+      s.n++;
+      if (r.version) s.ver.add(r.version);
     }
     for (const [, v] of [...sigs].sort((a, b) => b[1].n - a[1].n)) {
-      P('| ' + v.n + ' | ' + v.id + ' | ' + (v.ver || '') + ' | ' + v.basis + ' | `' + v.ex + '` |');
+      const vers = [...v.ver].sort();
+      const range = vers.length ? vers[0] + (vers.length > 1 ? '..' + vers[vers.length - 1] : '') : '';
+      P('| ' + v.n + ' | ' + v.id + ' | ' + range + ' | ' + v.basis + ' | `' + v.ex + '` |');
     }
     P('');
     P('## By event year');

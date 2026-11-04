@@ -6,6 +6,7 @@ fault. [src/warnings.mjs](../src/warnings.mjs) is the survey:
 
 ```powershell
 node src/warnings.mjs --labelled archive=archive/events --labelled future=workspace/weekly/future-parses
+node src/warnings.mjs --reparse                   # read every stored body again, current parser
 node src/warnings.mjs --since <edition start>     # when a new edition lands
 node src/warnings.mjs --json <file>               # every warning as one JSON record
 node src/warnings.mjs --dir <dir>                 # any directory of parse outputs, repeatable
@@ -16,6 +17,14 @@ returns - and recomputes every warning through the same `playerWarnings()` /
 `getMeta()` pair the page renders. Nothing is read from a stored verdict, so a
 parser fix changes every list's warnings at once, including the lists archived
 before it: **the archived files store the text, not the warnings.**
+
+The units are a different matter, and it used to make the claim above half
+true: a stored parse carries the units the parser read when the event was
+archived, so a fix changed nothing until the event was fetched again.
+`--reparse` closes that gap - every army is rebuilt from its own body text by
+the current parser before it is judged. Use it whenever the question is "what
+does the parser say today"; leave it off when measuring what a harvest actually
+wrote.
 
 The report is built to separate a player's mistake from a parser's. A warning on
 one list is the player; the same warning across events, or concentrated in one
@@ -45,37 +54,57 @@ to 2026-05, then 98% from 2026-07 - is the measurement the cut rests on.
 When the next edition lands, `--since` measures across the seam; `--drop-before`
 cuts it.
 
-## The survey of 2026-10-17
+## The survey of 2026-11-04
 
-49 events, **1,194 lists**, **226 warnings** (18.9% of lists), after the five
-fixes below.
+64 events, **1,613 lists**, **246 warnings** (15.3% of lists), read by the
+current parser with `--reparse`: the 52 archived events and the 12 open League
+Wars fixtures.
 
 | warning | lists | share | per 100 lists |
 |---|---:|---:|---:|
-| `mismatch` | 119 | 52.7% | 10.0 |
-| `disposition` | 60 | 26.5% | 5.0 |
-| `missing-total` | 20 | 8.8% | 1.7 |
-| `detachment` | 19 | 8.4% | 1.6 |
-| `unrecognized` | 8 | 3.5% | 0.7 |
+| `mismatch` | 123 | 50.0% | 7.6 |
+| `disposition` | 66 | 26.8% | 4.1 |
+| `missing-total` | 24 | 9.8% | 1.5 |
+| `detachment` | 22 | 8.9% | 1.4 |
+| `unrecognized` | 11 | 4.5% | 0.7 |
 
 | exporter | lists | warnings | per 100 lists |
 |---|---:|---:|---:|
-| `app` | 923 | 101 | 10.9 |
-| `newrecruit` | 219 | 60 | 27.4 |
-| `warorgan` | 19 | 17 | 89.5 |
-| `armylistnetwork` | 16 | 19 | 118.8 |
-| `unknown` | 15 | 23 | 153.3 |
-| `ironbuilt` | 2 | 6 | 300.0 |
+| `app` | 1,241 | 110 | 8.9 |
+| `newrecruit` | 311 | 62 | 19.9 |
+| `armylistnetwork` | 21 | 19 | 90.5 |
+| `warorgan` | 20 | 19 | 95.0 |
+| `unknown` | 17 | 27 | 158.8 |
+| `ironbuilt` | 3 | 9 | 300.0 |
+
+Without `--reparse` the same corpus reads 266 warnings, because the stored
+units are older than the parser: 45 lists parse differently today, and 11 of
+them changed with the fixes below. The archive's stored units are not rewritten -
+see the last section.
 
 ## What each warning means here
 
-### mismatch - 119, the top warning, and not attributed
+### mismatch - 123, the top warning, and not attributed
 
 Half of every warning, so it is the one worth reading closely. What is known:
 
-- **Most of it is small and has no repeated value**: -10 x10, -110 x9, -100 x8,
-  -5 x6, -85 x4 - 26 of the 119 are under 30 points and 18 are 30-99. A
-  systematic misread would show one delta over and over.
+- **Most of it is small and has no repeated value**: -10 x12, -5 x10, -110 x7,
+  -100 x7, -20 x5 - and a long tail. A systematic misread would show one delta
+  over and over.
+- **Three systematic classes were found and fixed on 2026-11-04**: one
+  over-count and two that lost units, all of them a header read as something it
+  is not. The app's header export prints an `ATTACHED UNITS` section whose
+  `Attached Unit N (N points)` line carries the group's combined total over
+  members that carry their own points, and the league template prints the same
+  thing as `Name + Name (290 pts)`; counting the header as a unit counted every
+  group twice, which put five lists +550 to +900 over their own declared total,
+  and each was exact once the header was skipped. A header block that ends
+  without a closing fence consumed the line under it, which is a unit whenever
+  the list opens with a `+++` fence - four lists. A single
+  `+Engine speaker (15pts)` line under a unit read as a header start, which
+  moved the body start above every unit: one list lost seven units and 810
+  points. Pinned in `tests/test-attached-groups.mjs` and
+  `tests/test-list-text.mjs`.
 - **The battle size read as an army total was one class of false alarm** and is
   fixed: `Incursion (1000 points)` is the 1000-point game size the app prints on
   every list of that size, and the parser read it as a banner - an army called
@@ -91,29 +120,28 @@ Half of every warning, so it is the one worth reading closely. What is known:
 Not attributed: a per-list diff of the remaining tail. That is the next job here,
 not a fix that can be guessed at.
 
-### disposition - 60, all genuinely undeclared
+### disposition - 66, all genuinely undeclared
 
-Zero of them name a disposition the parser failed to read. The lists that carry
-the field are read: the ten that were not are fixed below. This is a real signal
-at 5%.
+Zero of them name a disposition the parser failed to read. This is a real signal
+at 4%.
 
-### missing-total - 20
+### missing-total - 24
 
-Down from 31 with the recognition fix below: an unrecognised list is also a list
-whose total is never read. The remainder print no total and no size line.
+An unrecognised list is also a list whose total is never read. The remainder
+print no total and no size line.
 
-### detachment - 19
+### detachment - 22
 
 Mostly app headers printing `+ DETACHMENT USED :` with nothing after the colon -
-the source leaving the field empty, not the parser missing a value.
+the source leaving the field empty, not the parser missing a value. The league
+template's `Detachment(s):` label is read.
 
-### unrecognized - 8, and none of them a dialect
+### unrecognized - 11
 
-The group is down from 24. What is left is not a format the parser cannot read,
-it is a submission with nothing in it: 2 empty bodies, one body that is only a
-URL, and 5 more that hold fewer than two units (2 Ironbuilt exports, one
-markdown-flavoured newrecruit list, 2 freeform pastes). When this warning fires
-now, it means the army is empty on the page too.
+Since the recognition rule became structural (fewer than two units), this fires
+on a submission with almost nothing in it: a handful of empty bodies, and lists
+of one or two units, plus the Ironbuilt exports and one league-template list.
+When it fires now, the army is empty on the page too.
 
 ## The fixes of 2026-10-17
 
@@ -134,6 +162,28 @@ its 16 lists hold 5 to 16 units each, all read correctly, and were rendered as
 empty armies. It is structural now: fewer than two units is unrecognised, and
 nothing else decides.
 
+## The fixes of 2026-11-04
+
+Three, found by the first harvest since the edition cut and measured over every
+stored body before each was written.
+
+| what | lists | where |
+|---|---:|---|
+| The attached-group header counted as a unit (`Attached Unit N (N points)`, and `Name + Name (290 pts)` in the league template) | 6 | `src/parse.mjs`, `ATTACHED_GROUP_RE` / `ATTACHED_PAIR_RE` |
+| A header block that consumed the line under it (a `+++` fence too short for the delimiter test) | 4 | `src/parse.mjs`, `findPlusBlock` end index |
+| A lone `+Engine speaker (15pts)` line read as a header start, which moved the body above every unit | 1 | `src/parse.mjs`, the key must carry a colon |
+
+Eleven lists parse differently after them and every one is closer to its own
+declared total: the five attached-group lists now match the export's
+`NUMBER OF UNITS` and its total exactly, and the five header-boundary lists
+recovered a unit worth 100 to 900 points. The survey's warning count falls from
+256 to 246 on the same corpus.
+
+`tests/test-attached-groups.mjs` is new; `tests/test-list-text.mjs` gained the
+two header-boundary cases. The 2026-10-17 fixes account for the other 34 lists
+that move when the stored bodies are read again, which is why the survey takes
+`--reparse` now.
+
 ## The weekly pass
 
 The one thing that cannot be re-fetched is a list whose event has passed and
@@ -146,14 +196,23 @@ node src/archive.mjs --months 12          # archive the newly closed events
 node src/archive.mjs --verify             # every entry still resolves
 node src/scan-open.mjs                    # parse the open events into workspace/weekly/future-parses
 node src/warnings.mjs --labelled archive=archive/events --labelled future=workspace/weekly/future-parses \\
-  --json workspace/weekly/warnings-<date>.json
+  --reparse --json workspace/weekly/warnings-<date>.json
 ```
 
 An upcoming event is parsed fresh each week rather than archived - its lists are
 still being submitted, which is why `/parse` declines the cache for one
 (`notYetPlayed()`). `src/scan-open.mjs` checks every event dated today or later
 and keeps a manifest of the verdicts; a failure is never recorded as a verdict,
-so the next run retries it. 2026-10-17: of 133 not-closed events, 4 had lists out
-(*LTC 12* and three *League Wars 2026-2027* fixtures); the other 120 had not
-published, and 9 were another game. Their parses live in
-`workspace/weekly/future-parses/`, untracked like the rest of `workspace/`.
+so the next run retries it. 2026-11-04: of 135 not-closed events, 11 had lists
+out (nine *League Wars 2026-2027* fixtures, plus *B4* and three aller rounds);
+118 had not published, and 6 were another game. The harvest that same day took
+the 7 closed events since 2026-10-17, which leaves 52 events in the window and
+40 checked against the sitemap's 1,221 closed ones.
+
+Their parses live in `workspace/weekly/future-parses/`, untracked like the rest
+of `workspace/`.
+
+One consequence worth knowing before reading a list on the site: the stored
+units are not rewritten, so an archived event keeps the parse its harvest made.
+A reader fix reaches the site for events harvested after it, or for one re-taken
+with `archive.mjs --refresh`.

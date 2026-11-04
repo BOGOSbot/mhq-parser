@@ -237,11 +237,11 @@ The parser picks the format by detecting `[Npts]` (newrecruit) vs. `(N pts)` (bu
 
 `detectExporter(bodyText)` returns `{ id, basis, version, language }`, and `buildPlayers()` stores `player.exporter` and `player.exporterVersion`. The id is one of `app`, `newrecruit`, `legacy`, `armylistnetwork`, `warorgan`, `battlebase`, `ironbuilt` or `unknown`.
 
-Signatures are checked first, bottom-up, so a signature sitting above trailing notes still counts (basis `signature` rather than `trailer`). Only 18.3% of the 7,128 lists the archive currently holds carry one, so the shape names the rest:
+Signatures are checked first, bottom-up, so a signature sitting above trailing notes still counts (basis `signature` rather than `trailer`). 738 of the 1,234 lists the archive holds (59.8%) carry one, so the shape names the rest:
 
 | exporter | signature | structural fingerprint |
 |---|---|---|
-| `app` | `Exported with App Version:`, `Exporté avec la Version de l'Appli :`, `END OF ROSTER` | `+ FACTION KEYWORD:` / `+ TOTAL ARMY POINTS:` header, `Char1: 1x … (N pts):` lines, ALL-CAPS categories over `Unit (N points)`, or a freeform `Strike Force (2000 points)` line |
+| `app` | `Exported with App Version:`, `Exporté avec la Version de l'Appli :`, `END OF ROSTER` | `+ FACTION KEYWORD:` / `+ TOTAL ARMY POINTS:` header, `Char1: 1x … (N pts):` lines, ALL-CAPS categories over `Unit (N points)`, a freeform `Strike Force (2000 points)` line, or an `ATTACHED UNITS` section with `Attached Unit N (N points)` group headers |
 | `newrecruit` | `Created with newrecruit.eu`, `Exported with New Recruit`, a `newrecruit.eu/app/list` URL | bracketed points, `[Npts]` |
 | `legacy` | none | `== DETACHEMENT … ==`, `QG 1 :`, `[8PP, 175pts]`, `++ Patrol Detachment 0CP …` |
 | `armylistnetwork` | `url : https://40k.armylistnetwork.com/…` | `### Détachements :`, `Total : N points - N figurines - N unités` |
@@ -295,6 +295,19 @@ Beyond `Attached as:` / `Attachée en tant que:`, the parser recognises two addi
 
 These are non-bullet lines that appear after a unit declaration and before the next unit.
 
+**A group header is not a unit.** The header dialect prints `ATTACHED UNITS`, then
+`Attached Unit 1 (200 points)`, then the leader and its bodyguard with their own
+points under it; the league template that opens `List Name:` prints the same
+thing as `Hyperadapted Raveners + Raveners (290 pts)`. The header carries a
+points total, so the ordinary unit match would take it and count the whole group
+twice. Two rules skip it: `ATTACHED_GROUP_RE` for the named group, and
+`ATTACHED_PAIR_RE` for the two-name line, the second only inside an
+`ATTACHED UNITS` section - outside one, a `A + B (N pts)` line is a player
+folding two choices into one entry and is left alone. The older category dialect
+prints `Attached unit 1` with no points, which `ATTACHED_RE` already handled.
+Measured 2026-11-04: six lists in the window, five of them +550 to +900 over
+their declared total, exact once the header is skipped.
+
 ### 5. Parse the +++ header (when present)
 
 Bullet-format lists often start with a + delimiter block:
@@ -319,7 +332,8 @@ Pitfalls baked in:
 - **+ is not always required on the value lines.** Some French lists put the delimiter ++++... lines but leave the content lines without a leading +. The parser strips an optional leading +.
 - **The & continuation.** When a WARLORD has multiple ENHANCEMENTS, the second and later tweaks are prefixed with & on their own line. The parser merges those into the previous key instead of treating them as junk keys.
 - **+ is also used as a unit bullet in some lists.** The parser only treats + lines as delimiters when the line consists of 20 or more consecutive + characters.
-- **Some headers are missing the opening delimiter.** The parser falls back to looking for a block of + KEY: VALUE lines followed by a closing delimiter.
+- **Some headers are missing the opening delimiter.** The parser falls back to looking for a block of + KEY: VALUE lines. The first key must carry a colon: a lone `+Engine speaker (15pts)` is equipment under a unit, and reading it as a header start moved the body start above every unit in the list (one list, 2026-11-04).
+- **A block with no closing fence ends where its last key ends.** That line is the first line of the body, not part of the header. Reading it as a closing fence - `closeIdx + 1` - skipped it, and it is a unit whenever a list opens with `+++`, which is too short for the 20-plus delimiter test. Four lists lost a unit that way, 2026-11-04. `findPlusBlock()` now returns the body start as `endIdx` for both paths.
 - **Multiple header blocks are merged.** The parser scans through consecutive +++-delimited sections and merges them into a single header. A block ends only when unit content appears: (N pts), [Npts], Char1:, bullets (• . ◦), or newrecruit attachment (|). Lines starting with + are always header content, never unit content (fixes false breaks from (30pts) inside enhancement text).
 
 ### 6. Parse the body
@@ -390,7 +404,7 @@ Rules, in order:
    
    The declared total is read from the `+++` header when it has a `totalPoints` key (any alias in `HEADER_ALIAS`). Otherwise the body is searched: first the banner line the app export prints — `<list name> (1995 points)`, `(1995 points)`, `[2000 pts]` — then a labelled total (`Points d'armée : 2000`, `Total Army Points: 1995`, `2000 / 2000 pts`, and the legacy `Strike force : 1995 PTS`). Only values between 1000 and 3000 qualify, so a unit cost can never be mistaken for a total. Thousands separators are accepted: comma, period, apostrophe, narrow and non-breaking spaces.
 
-   A force-layout line — `Strike Force (2000 points)`, `Force de Frappe (2 000 Points)`, `Battle Size: Strike Force (2000 point limit)` — is **not** a declaration: it is the game size the list is built for, read apart by `armyBudget()`. When it is the only army-sized figure the list prints, being under it is normal and warns nothing; only going over it warns. This matters because the app's freeform export prints the budget on every list and most lists name no total of their own, so before the split an army of 1995 under a 2000 budget read as a 5-point mismatch. The colon forms (`Strike force : 1995 PTS`) stay declarations — the legacy dialect prints the army total that way. Measured over the 7,128 lists the archive holds, the split removes **60** such false mismatches (427 → 367).
+   A force-layout line — `Strike Force (2000 points)`, `Force de Frappe (2 000 Points)`, `Battle Size: Strike Force (2000 point limit)` — is **not** a declaration: it is the game size the list is built for, read apart by `armyBudget()`. When it is the only army-sized figure the list prints, being under it is normal and warns nothing; only going over it warns. This matters because the app's freeform export prints the budget on every list and most lists name no total of their own, so before the split an army of 1995 under a 2000 budget read as a 5-point mismatch. The colon forms (`Strike force : 1995 PTS`) stay declarations — the legacy dialect prints the army total that way. Measured over the 7,128-list archive the survey ran on before the edition cut, the split removes **60** such false mismatches (427 → 367).
 
    Measured across the 240 lists with units from 11 events, the warning ratio was 14.6% (35 warnings: 24 points mismatch, 17 force disposition not found, 2 detachment not found, 2 missing total points). That was one snapshot of the outputs the parser had produced at the time, not a live measurement: the `cleanup` commit removed the generated event folders, so nothing in the tree can reproduce the number now. Most mismatches are small (≤100 pts) and indicate player-side data issues or enhancement points not included in unit points.
 4. **Skip preamble "units"** - anything with 1000+ pts (army banner, force line) or a name matching Strike Force / Force de Frappe / Reconnaissance / Take and Hold / Priority Assets / Purge the Foe / Disruption / etc.

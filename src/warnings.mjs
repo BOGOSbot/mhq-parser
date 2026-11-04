@@ -4,7 +4,7 @@
  * Cross-analyse the warnings the parser emits, over any set of parse outputs.
  *
  *   node src/warnings.mjs [--dir <dir>]... [--labelled <label=dir>]... [--md]
- *                         [--json <file>] [--min <n>] [--top <n>]
+ *                         [--json <file>] [--min <n>] [--top <n>] [--reparse]
  *
  * Every warning is recomputed through the same playerWarnings()/getMeta() pair
  * the site renders, so this reads the parser's own verdict and never a copy of
@@ -21,14 +21,14 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { getMeta, playerWarnings, totals, armyBudget, realUnits, detectExporter } from './parse.mjs';
+import { getMeta, playerWarnings, totals, armyBudget, realUnits, detectExporter, parseListText } from './parse.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const WARNING_TYPES = ['unrecognized', 'mismatch', 'over-budget', 'missing-total', 'detachment', 'disposition'];
 
 function parseArgs(argv) {
-  const o = { dirs: [], md: false, json: null, min: 3, top: 25, since: null };
+  const o = { dirs: [], md: false, json: null, min: 3, top: 25, since: null, reparse: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dir') o.dirs.push({ label: null, dir: argv[++i] });
@@ -41,6 +41,7 @@ function parseArgs(argv) {
     else if (a === '--json') o.json = argv[++i];
     else if (a === '--min') o.min = Number(argv[++i]) || 0;
     else if (a === '--top') o.top = Number(argv[++i]) || 0;
+    else if (a === '--reparse') o.reparse = true;
     else if (a === '--since') o.since = argv[++i];
     else if (a.startsWith('--since=')) o.since = a.slice(8);
     else { console.error('unknown flag: ' + a); process.exit(2); }
@@ -78,7 +79,21 @@ export function signature(text) {
 // spans two editions, and the two do not have the same warnings to give: a
 // 10th-edition list has no Force Disposition to declare, so its warning is a
 // fact about the edition, not about the parser. Measure the current one.
-export function readArmies(dirs, { since = null } = {}) {
+// A stored parse carries the units the parser read when the event was archived,
+// so a parser fix changes nothing here until the text is read again. --reparse
+// does that: every army is rebuilt from its own body text by the current
+// parser, which is what makes an archived fix measurable without re-harvesting.
+function reparse(p) {
+  if (!p || !p.bodyText) return p;
+  try {
+    const out = parseListText(String(p.bodyText), { name: p.name || 'x' });
+    return (out && out.output && out.output.players && out.output.players[0]) || p;
+  } catch {
+    return p;
+  }
+}
+
+export function readArmies(dirs, { since = null, reparseArmies = false } = {}) {
   const events = [];
   const armies = [];
   for (const { label, dir } of dirs) {
@@ -99,10 +114,15 @@ export function readArmies(dirs, { since = null } = {}) {
         armies: out.players.length,
         warnings: 0,
       };
-      for (const p of out.players) {
+      for (const stored of out.players) {
+        // Read the exporter off the stored text either way: a reparsed army's
+        // bodyText is its slice, and a slice can lose the signature at the
+        // bottom that named the tool.
+        const body = stored.bodyText || stored.bodyRest || '';
+        const p = reparseArmies ? reparse(stored) : stored;
         const meta = getMeta(p);
         const ws = playerWarnings(p, meta);
-        const ex = detectExporter(p.bodyText || p.bodyRest || '');
+        const ex = detectExporter(body);
         const t = totals(p);
         const row = {
           file,
@@ -258,7 +278,7 @@ export function report(s, o = {}) {
 
 async function main() {
   const o = parseArgs(process.argv.slice(2));
-  const { events, armies } = readArmies(o.dirs, { since: o.since });
+  const { events, armies } = readArmies(o.dirs, { since: o.since, reparseArmies: o.reparse });
   const s = summarise(events, armies);
   console.log(report(s, o));
   if (o.json) {
