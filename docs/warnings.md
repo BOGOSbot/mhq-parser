@@ -56,31 +56,44 @@ cuts it.
 
 ## The survey of 2026-11-04
 
-64 events, **1,613 lists**, **246 warnings** (15.3% of lists), read by the
+64 events, **1,613 lists**, **240 warnings** (14.9% of lists), read by the
 current parser with `--reparse`: the 52 archived events and the 12 open League
 Wars fixtures.
 
 | warning | lists | share | per 100 lists |
 |---|---:|---:|---:|
-| `mismatch` | 123 | 50.0% | 7.6 |
-| `disposition` | 66 | 26.8% | 4.1 |
-| `missing-total` | 24 | 9.8% | 1.5 |
-| `detachment` | 22 | 8.9% | 1.4 |
-| `unrecognized` | 11 | 4.5% | 0.7 |
+| `mismatch` | 123 | 51.3% | 7.6 |
+| `disposition` | 61 | 25.4% | 3.8 |
+| `missing-total` | 24 | 10.0% | 1.5 |
+| `detachment` | 21 | 8.8% | 1.3 |
+| `unrecognized` | 11 | 4.6% | 0.7 |
 
 | exporter | lists | warnings | per 100 lists |
 |---|---:|---:|---:|
-| `app` | 1,241 | 110 | 8.9 |
-| `newrecruit` | 311 | 62 | 19.9 |
+| `app` | 1,241 | 105 | 8.5 |
+| `newrecruit` | 311 | 61 | 19.6 |
 | `armylistnetwork` | 21 | 19 | 90.5 |
 | `warorgan` | 20 | 19 | 95.0 |
-| `unknown` | 17 | 27 | 158.8 |
+| `unknown` | 16 | 26 | 162.5 |
 | `ironbuilt` | 3 | 9 | 300.0 |
+| `league` | 1 | 1 | 100.0 |
 
 Without `--reparse` the same corpus reads 266 warnings, because the stored
-units are older than the parser: 45 lists parse differently today, and 11 of
-them changed with the fixes below. The archive's stored units are not rewritten -
-see the last section.
+units are older than the parser: 45 lists' units or totals differ from their
+stored parse, and 11 of those changed with the fixes below. The archive's stored
+units are not rewritten - see the last section.
+
+### The league fixtures, on their own
+
+`League Wars 2026-2027` is the fixture set this page is used for most, so it is
+worth reading apart from the pool: 11 events, **344 lists, 22 warnings** (6.4 per
+100 lists), 19 lists carrying one. Thirteen are `mismatch`, and ten of those are
+a player's own arithmetic at -5 to -10 points; the four `disposition` warnings
+are four different spellings of the field (a `Distruption` typo, a disposition
+written after the detachment on one line, a dash separator instead of a colon,
+and `Scénario :`), and the two `detachment` warnings are an Ironbuilt export no
+reader handles and one freeform header whose detachment carries a rule name in
+parentheses. Those four are player-side and left alone rather than guessed at.
 
 ## What each warning means here
 
@@ -120,28 +133,34 @@ Half of every warning, so it is the one worth reading closely. What is known:
 Not attributed: a per-list diff of the remaining tail. That is the next job here,
 not a fix that can be guessed at.
 
-### disposition - 66, all genuinely undeclared
+### disposition - 61, none of them a shape the parser was never taught
 
-Zero of them name a disposition the parser failed to read. This is a real signal
-at 4%.
+Every one of them is a list that prints no disposition in a form any reader
+knows. What is left in the League fixtures after today's spelling fixes is four
+players' own vocabulary: a `Distruption` typo, a disposition written after the
+detachment on one line, a dash separator in place of the colon, and
+`Scénario :`. They are left alone deliberately - guessing at a player's
+private shorthand is how a field starts lying - so this stays a real signal at
+3.8%.
 
 ### missing-total - 24
 
 An unrecognised list is also a list whose total is never read. The remainder
 print no total and no size line.
 
-### detachment - 22
+### detachment - 21
 
 Mostly app headers printing `+ DETACHMENT USED :` with nothing after the colon -
 the source leaving the field empty, not the parser missing a value. The league
-template's `Detachment(s):` label is read.
+submission's `Detachment(s):` label is read, and so is a bulleted
+`• Detachments:` line whose points are misspelt `Detachement`.
 
 ### unrecognized - 11
 
 Since the recognition rule became structural (fewer than two units), this fires
-on a submission with almost nothing in it: a handful of empty bodies, and lists
-of one or two units, plus the Ironbuilt exports and one league-template list.
-When it fires now, the army is empty on the page too.
+on a submission with almost nothing in it: a handful of empty bodies, lists of
+one or two units, and the Ironbuilt exports no reader handles. When it fires
+now, the army is empty on the page too.
 
 ## The fixes of 2026-10-17
 
@@ -164,7 +183,7 @@ nothing else decides.
 
 ## The fixes of 2026-11-04
 
-Three, found by the first harvest since the edition cut and measured over every
+Five, found by the first harvest since the edition cut and measured over every
 stored body before each was written.
 
 | what | lists | where |
@@ -172,17 +191,21 @@ stored body before each was written.
 | The attached-group header counted as a unit (`Attached Unit N (N points)`, and `Name + Name (290 pts)` in the league template) | 6 | `src/parse.mjs`, `ATTACHED_GROUP_RE` / `ATTACHED_PAIR_RE` |
 | A header block that consumed the line under it (a `+++` fence too short for the delimiter test) | 4 | `src/parse.mjs`, `findPlusBlock` end index |
 | A lone `+Engine speaker (15pts)` line read as a header start, which moved the body above every unit | 1 | `src/parse.mjs`, the key must carry a colon |
+| The league submission's header spellings (`DISPOSITION FORCE`, `Detachment(s)`, a bulleted `Detachments:`, `Detachement Points` with one t), and a detachment value that kept its own label and the points it costs | 12 | `src/parse.mjs`, header aliases, `DISPOSITION_LABEL_RE`, `DET_PATTERNS`, `cleanDetachment` |
+| The league submission itself, named instead of left as `unknown` | 1 | `src/parse.mjs`, `structureExporter` |
 
-Eleven lists parse differently after them and every one is closer to its own
-declared total: the five attached-group lists now match the export's
-`NUMBER OF UNITS` and its total exactly, and the five header-boundary lists
-recovered a unit worth 100 to 900 points. The survey's warning count falls from
-256 to 246 on the same corpus.
+Twenty-three lists parse differently after them: eleven on units and totals, and
+twelve on metadata. The five attached-group lists now match the export's
+`NUMBER OF UNITS` and its total exactly, the five header-boundary lists
+recovered a unit worth 100 to 900 points, and the metadata lists gained a
+detachment or a disposition, or lost a label from one. The survey's warning
+count falls from 256 to 240 on the same corpus.
 
 `tests/test-attached-groups.mjs` is new; `tests/test-list-text.mjs` gained the
-two header-boundary cases. The 2026-10-17 fixes account for the other 34 lists
-that move when the stored bodies are read again, which is why the survey takes
-`--reparse` now.
+two header-boundary cases and the three header labels above;
+`tests/test-formats.mjs` pins the league fingerprint. The 2026-10-17 fixes
+account for the other 34 lists that move when the stored bodies are read again,
+which is why the survey takes `--reparse` now.
 
 ## The weekly pass
 

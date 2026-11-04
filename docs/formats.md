@@ -79,6 +79,7 @@ name.
 | `warorgan` | `Created with WarOrgan` | `Battle Size:`, `Detachments:` + `Force Dispositions:` |
 | `battlebase` | `Exported with BattleBase` | (shares the app's category shape; signature only) |
 | `ironbuilt` | `https://ironbuilt.app/?s=…` | `+====` rules, `── CATEGORY ──`, `Weapons:` |
+| `league` | none, and no tool to name | three or more of `List Name:`, `Factions Used:`, `Army Points:`, `Army Enhancements`, `Detachment(s):`, `Disposition:` at a line start |
 
 ### app
 
@@ -148,23 +149,34 @@ the tool that produced the final text.
 - **battlebase** (0 in the window) - `Exported with BattleBase, Data Version: …`.
   Its body shape is the app's category dialect, so only the signature separates
   them; the one list that carried it is outside the window.
+- **league** (1 list, in the open fixtures and none in the archive yet) - not a
+  tool. It is the registration header a team league asks its players to paste
+  above whatever their builder exports, and `League Wars 2026-2027` is the
+  league using it: `List Name`, `Factions Used`, `Army Points`,
+  `Army Enhancements (list on which model)`, `Disposition`, `Detachment(s)`.
+  It is recognised on three of those fields together, before the body's shape,
+  because the wrapper is what names the submission. A signed export under it
+  keeps its own name - a signature is proof where the wrapper is only a form.
 
 ## What is left unrecognised
 
 15 lists (1.2%). Two are empty submissions, one holds a single unit and one
 holds two. The other eleven are ordinary armies of 4 to 19 units that no tool
-signs and no shape names: freeform submissions, hand-typed exports and league
-templates. They parse; what is missing is the maker, not the list. One of them - a league
-template that opens `List Name:` / `Factions Used:` / `Army Points:` and puts
-two datasheets in one attached group - is the shape most likely to become a
-named format of its own.
+signs and no shape names: freeform submissions, hand-typed exports and one
+markdown-flavoured paste. They parse; what is missing is the maker, not the
+list.
+
+The one shape here that did have a name to find is the league submission, and
+it is now named (below). It shows up in the open fixtures rather than the
+archive, so the count above has not moved: one list in `League Wars
+2026-2027` carries it today.
 
 ## What the parser reads out of each format
 
 Beyond the units, each format declares metadata in its own way, and the parser
 used to miss most of it. In the current window the detachment is missing from
-**20 lists (1.6%)** and the force disposition from **60 (4.9%)** - 1,174 lists,
-95.1%, declare one, because the archive now holds one edition and that edition
+**19 lists (1.5%)** and the force disposition from **57 (4.6%)** - 1,177 lists,
+95.4%, declare one, because the archive now holds one edition and that edition
 has the field. Of the lists that declare a detachment or a disposition, all but
 a handful are read. Detachments come from:
 
@@ -181,8 +193,15 @@ a handful are read. Detachments come from:
 - and, when a player writes the metadata *under* the units, a whole-text scan.
 
 Dispositions come from `Dispositions des Forces : Éliminez l'Adversaire`,
-`Force Dispositions: Purge the Foe`, `=> Disposition : Prendre et tenir`, and
-the bare names the freeform header prints on their own line.
+`Force Dispositions: Purge the Foe`, `=> Disposition : Prendre et tenir`,
+`DISPOSITION FORCE : PURGE THE FOE`, and the bare names the freeform header
+prints on their own line.
+
+Labels are not values either. A detachment that arrives as
+`• Detachments: Lions of the Emperor (3 Detachement Points)` - a bullet, the
+label, the points it costs, and "Detachement" with the second t missing - is
+read as `Lions of the Emperor`: the label and the points are stripped, in
+either bracket, with or without the typo.
 
 ## Why the format is worth capturing
 

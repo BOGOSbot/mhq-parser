@@ -315,6 +315,20 @@ t('det: freeform with no detachment', detOf(free('', '')), null);
 // positions.
 t('det: freeform faction before is skipped', detOf(
   'Bare (2000 points)\nNecrons\nStrike Force (2000 points)\nCHARACTERS\nChar1: 1x X (10 pts): y\nChar2: 1x Y (10 pts): z\n'), null);
+// The label is not part of the name, and the points a detachment costs are not
+// either: both survive a paren rule that takes the whole line above the figure.
+t('det: bracket points are stripped', detOf(
+  '++ Player : Alvi\n## Faction : T\'au Empire\n## Detachment: Mont\'ka [3 Detachment Points]\n' +
+  'Force Disposition: Priority Assets\n+++++++++++++++\nCHARACTERS\nChar1: 1x X (10 pts): y\nChar2: 1x Y (10 pts): z\n'),
+  "Mont'ka");
+// The league submission's field, with the misspelt "Detachement" that three
+// lists print and a bullet in front of the label.
+t('det: bulleted Detachments with Detachement Points', detOf(
+  'Army Roster [1990pts] (Imperium - Adeptus Custodes)\nKevin - DROKMAR\n\n' +
+  '• Battle Size: Strike Force (2000 Point limit)\n• Detachments: Lions of the Emperor (3 Detachement Points)\n' +
+  '• Force Disposition : Take and Hold\n\nATTACHED UNITS\n\nAttached unit 1\n\n' +
+  'Shield-Captain on Dawneagle Jetbike (155 Points)\n• 1x Hurricane bolter\n'),
+  'Lions of the Emperor');
 // Labelled dispositions, English and French, singular and plural.
 t('disp: Dispositions des Forces', dispOf(
   'Chevaliers du Chaos\nForce de Frappe (2000 points)\nInfernal Lance (3 Points de Détachement)\n' +
@@ -323,6 +337,13 @@ t('disp: Dispositions des Forces', dispOf(
 t('disp: Force Dispositions', dispOf(
   'Adeptus Custodes\nLions of the Emperor (3 Detachment Points)\nForce Dispositions: Purge the Foe\n' +
   'Strike Force (2000 points)\nCHARACTERS\nChar1: 1x X (10 pts): y\nChar2: 1x Y (10 pts): z\n'), 'Purge the Foe');
+// "+ DISPOSITION FORCE : PURGE THE FOE" - the label without its preposition.
+// Five lists across three events write it this way.
+t('disp: DISPOSITION FORCE', dispOf(
+  '+++++++++++++++\n+ FACTION KEYWORD: Black Templars\n+ DETACHMENT: Godhammer Assault Force\n' +
+  '+ TOTAL ARMY POINTS: 2000pts\n+ DISPOSITION FORCE : PURGE THE FOE\n+++++++++++++++\n' +
+  'ATTACHED UNITS\n\nAttached Unit 1\n\nWarboss (115 Points)\n• 1x Power Klaw\nBoyz (85 Points)\n8x Boy\n'),
+  'PURGE THE FOE');
 t('disp: bare line', dispOf(
   'Adeptus Custodes\nLions of the Emperor (3 Detachment Points)\nTake and Hold\nStrike Force (2000 points)\n' +
   'CHARACTERS\nChar1: 1x X (10 pts): y\nChar2: 1x Y (10 pts): z\n'), 'Take and Hold');

@@ -49,6 +49,17 @@ t('legacy == detachment', id('== DETACHEMENT Bataillon : T\'au Empire (0 PC) [10
 t('legacy ++ patrol', id('++ Patrol Detachment 0CP (Imperium - Grey Knights) [54 PL, 3CP, 1,000pts] ++\nHQ1: Canoness'), 'legacy');
 t('legacy pell', id('Starting Command Points: 6-1-1-1 = 3CP\nHQ1: Canoness, Blessed Blade(10)'), 'legacy');
 t('ironbuilt structure', id('── EPIC HEROES ───────────────────────────\nThe Red Terror [WARLORD]  [130 pts]\nWeapons: Gaping maw\nTotal: 2000 pts'), 'ironbuilt');
+// A league submission is not a tool: it is the registration header a team
+// league asks its players to paste above their export. Recognised so the shape
+// is named and its failures are attributable, not left as "unknown".
+const leagueHeader = '++++++++++++++++++++++++++++++++++\nList Name: NWA Test L3\nFactions Used: Tyranids\n' +
+  'Army Points: 2000\nArmy Enhancements (list on which model): X (on Y)\nDisposition: Reconnaissance\n' +
+  'Detachment(s): Ambush Predators\n++++++++++++++++++++++++++++++++++\n';
+t('league submission id', id(leagueHeader), 'league');
+t('league submission basis', basis(leagueHeader), 'submission');
+t('league submission needs three fields', id('+++++++++++++\nList Name: X\nFactions Used: Tyranids\n+++++++++++++\n'), 'unknown');
+// The header wraps the export, and the export names itself when it signs.
+t('a signed export under a league header keeps its signature', id(leagueHeader + 'Created with newrecruit.eu v36.31'), 'newrecruit');
 t('unknown freeform', id('Kill team nemesis claw'), 'unknown');
 t('unknown lunch order', id('Complet jambon / eau'), 'unknown');
 t('empty text', id(''), 'unknown');

@@ -248,6 +248,15 @@ Signatures are checked first, bottom-up, so a signature sitting above trailing n
 | `warorgan` | `Created with WarOrgan` | `Battle Size:`, `Detachments:` + `Force Dispositions:` |
 | `battlebase` | `Exported with BattleBase` | (shares the app category shape; signature only) |
 | `ironbuilt` | `https://ironbuilt.app/?s=…` | `+====` rules, `── CATEGORY ──`, `Weapons:` |
+| `league` | none; it is a form, not a tool | three or more of `List Name:`, `Factions Used:`, `Army Points:`, `Army Enhancements`, `Detachment(s):`, `Disposition:` at a line start |
+
+`league` is the one entry here that is not a tool. A team league (today
+`League Wars 2026-2027`) asks its players to paste a registration header above
+whatever their builder exports, and that header is what names the submission:
+`List Name`, `Factions Used`, `Army Points`, `Army Enhancements (list on which
+model)`, `Disposition`, `Detachment(s)`. The shape is checked before the body's,
+because the body can be any dialect at all, but a signature still wins - a list
+that signs itself is one whose tool is known, and the wrapper is only a form.
 
 Three ordering constraints are load-bearing. Ironbuilt is tested before the `[Npts]` rule, or `The Red Terror [130 pts]` reads as newrecruit. armylistnetwork is tested before the 9th-edition rule, because both print `[7PP, 135pts]`. And the 9th-edition rule must not claim `++ Total: [1,990pts] ++`, which is newrecruit's closing line.
 

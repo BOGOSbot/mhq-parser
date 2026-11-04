@@ -645,6 +645,9 @@ const HEADER_ALIAS = {
   'FORCE DE DISPOSITION': 'forceDisposition',
   'DISPOSITION DE FORCE': 'forceDisposition',
   'DISPOSITIONS DE FORCE': 'forceDisposition',
+  // "+ DISPOSITION FORCE : PURGE THE FOE" - the label without its preposition.
+  // Five lists, three events, measured 2026-11-04.
+  'DISPOSITION FORCE': 'forceDisposition',
   'TOTAL ARMY POINTS': 'totalPoints',
   'ARMY POINTS': 'totalPoints',
   "POINTS D'ARMÉE": 'totalPoints',
@@ -996,10 +999,10 @@ function parseBullets(text) {
 const FORCE_RE = /^(?:[+•◦-][ \t]*)?(?:Reconnaissance|Take and Hold|Prendre et Tenir|Priority Assets|Atouts Prioritaires|Purge the Foe|Prey in Ambush|Disruption|Perturbation|[ÉE]liminez l['\u2019]Adversaire|[ÉE]liminer l['\u2019]adversaire|Purger l['\u2019]Ennemi|Proie en Embuscade)\s*$/im;
 // "Dispositions des Forces : Éliminez l'Adversaire", "Force Dispositions: Purge
 // the Foe", "=> Disposition : Prendre et tenir", "Force de disposition : …".
-const DISPOSITION_LABEL_RE = /^(?:=>[ \t]*)?(?:[+•◦-][ \t]*)?(?:FORCE[ \t]+)?(?:DISPOSITIONS?(?:[ \t]+(?:DES|DE)[ \t]+FORCES?)?|DE[ \t]+FORCE|FORCE[ \t]+DE[ \t]+DISPOSITION)[ \t]*:[ \t]*(.+)$/im;
+const DISPOSITION_LABEL_RE = /^(?:=>[ \t]*)?(?:[+•◦-][ \t]*)?(?:FORCE[ \t]+)?(?:DISPOSITIONS?(?:[ \t]+(?:DES|DE)[ \t]+FORCES?|(?:[ \t]+(?:DES|DE)[ \t]+FORCES?)?[ \t]+FORCE)?|DE[ \t]+FORCE|FORCE[ \t]+DE[ \t]+DISPOSITION)[ \t]*:[ \t]*(.+)$/im;
 const DET_PATTERNS = [
   // "Lions of the Emperor (3 Detachment Points)" / "(3 Points de Détachement)".
-  [/^(.+?)[ \t]*\([ \t]*\d+[ \t]*(?:Points?[ \t]+de[ \t]+D[ée]tachement|Detachment[ \t]+Points?)[ \t]*\)/im, m => m[1]],
+  [/^(.+?)[ \t]*\([ \t]*\d+[ \t]*(?:Points?[ \t]+de[ \t]+D[ée]?tach(?:e)?ment|D[ée]?tach(?:e)?ment[ \t]+Points?)[ \t]*\)/im, m => m[1]],
   // "== DETACHEMENT Bataillon : Tyranids [2000pts] ==" - the name is what
   // precedes the faction, and the colon is what separates the two.
   [/^=+[ \t]*D[ÉE]?TACH(?:E)?MENT[ \t]+([^:\[(=]+?)[ \t]*(?::|\[|\(|=|$)/im, m => m[1]],
@@ -1007,7 +1010,7 @@ const DET_PATTERNS = [
   // "Règle de détachement : X", "+DETACHEMENT: X".
   [/^(?:[ \t]*\+[ \t]*)?(?:ARMY[ \t]+)?(?:D[ÉE]?TACH(?:E)?MENTS?(?:[ \t]+(?:UTILIS[ÉE]S?|USED|RULES?|RULE|CHOICE))?|R[ÈE]GLE[ \t]+DE[ \t]+D[ÉE]?TACH(?:E)?MENT)[ \t]*:[ \t]*(.+)$/im, m => m[1]],
   // "Détachements : X" / "Detachments : X", with or without markdown hashes.
-  [/^(?:#+[ \t]*)?(?:D[ÉE]?TACH(?:E)?MENTS?|DETACHMENTS?)(?:[ \t]*\(s\))?[ \t]*:[ \t]*(.+)$/im, m => m[1]],
+  [/^(?:[#•◦]+[ \t]*)?(?:D[ÉE]?TACH(?:E)?MENTS?|DETACHMENTS?)(?:[ \t]*\(s\))?[ \t]*:[ \t]*(.+)$/im, m => m[1]],
 ];
 
 // "Détachements :" alone, the values on the lines under it. armylistnetwork
@@ -1148,7 +1151,10 @@ function parsePreamble(bodyText, faction = null) {
   // on line 0 (findPreambleEnd then leaves no preamble at all), still names it.
   const dispM = preamble.match(FORCE_RE) || preamble.match(DISPOSITION_LABEL_RE)
     || bodyText.match(FORCE_RE) || bodyText.match(DISPOSITION_LABEL_RE);
-  return { detachment, forceDisposition: dispM ? (dispM[1] || dispM[0]).trim() : null };
+  // The value is cleaned here as well as at getMeta: the whole-text fallbacks
+  // above can hand back a labelled line ("• Detachments: Lions of the Emperor"),
+  // and the fallback path never passed through the header cleaner.
+  return { detachment: detachment ? cleanDetachment(detachment) : null, forceDisposition: dispM ? (dispM[1] || dispM[0]).trim() : null };
 }
 
 // ============================================================
@@ -1430,8 +1436,14 @@ function renderPlayer(player) {
 function cleanDetachment(s) {
   if (!s) return null;
   return s
-    .replace(/\s*\(\s*\d+\s+Detachment\s+Points?\s*\)/ig, '')
-    .replace(/\s*\(\s*\d+\s*Points\s+de\s+Détachement\s*\)/ig, '')
+    // A value that still carries its own label: the paren rule takes the whole
+    // line above the points, so a bulleted "• Detachments: Lions of the
+    // Emperor (3 Detachement Points)" arrives labelled.
+    .replace(/^[\s•◦]*[\-–—]?\s*(?:ARMY[ \t]+)?D[ÉE]?TACH(?:E)?MENTS?(?:[ \t]*\(s\))?[ \t]*[:\-][ \t]*/i, '')
+    // The points a detachment costs, in either spelling and either bracket:
+    // "Detachement" without the second t is what three lists print.
+    .replace(/\s*[\(\[]\s*\d+\s*D[ée]?tach(?:e)?ment[ \t]+Points?\s*[\)\]]/ig, '')
+    .replace(/\s*[\(\[]\s*\d+\s*Points?\s+de\s+D[ée]?tachement\s*[\)\]]/ig, '')
     .trim() || null;
 }
 // ============================================================
@@ -1905,6 +1917,21 @@ function exporterLanguage(text) {
 // is the only honest answer and neither is guessed at here.
 function structureExporter(text) {
   const has = re => re.test(text);
+  // A league submission, not a tool: the registration header a team league
+  // asks its players to paste above their export. "List Name",
+  // "Factions Used", "Army Points", "Army Enhancements (list on which model)",
+  // "Disposition" and "Detachment(s)" are its fields, and three or more of them
+  // at a line start are the fingerprint. Checked first, because it wraps whatever
+  // body sits under it and the wrapper is what names the submission; a signed
+  // export still wins, since a signature is checked before any shape.
+  let leagueFields = 0;
+  if (/^[ \t]*List Name[ \t]*:/im.test(text)) leagueFields++;
+  if (/^[ \t]*Factions Used[ \t]*:/im.test(text)) leagueFields++;
+  if (/^[ \t]*Army Points[ \t]*:/im.test(text)) leagueFields++;
+  if (/^[ \t]*Army Enhancements\b/im.test(text)) leagueFields++;
+  if (/^[ \t]*Detachment\(s\)[ \t]*:/im.test(text)) leagueFields++;
+  if (/^[ \t]*Disposition[ \t]*:/im.test(text)) leagueFields++;
+  if (leagueFields >= 3) return { id: 'league', basis: 'submission' };
   // Official 40k app, "+" header dialect: the FACTION KEYWORD / TOTAL ARMY
   // POINTS block, or "Char1: 1x …" unit lines.
   if (has(/^\+\s*FACTION KEYWORD\s*:/im) || has(/^\+\s*TOTAL ARMY POINTS\s*:/im) ||
@@ -1953,8 +1980,9 @@ function structureExporter(text) {
 // Identify the source tool. Returns
 //   { id, basis, version, language }
 // where id is one of app, newrecruit, legacy, armylistnetwork, warorgan,
-// battlebase, ironbuilt or unknown; basis is 'trailer' for the last line, 'signature' for a
-// signature found elsewhere in the text, or the structural fingerprint's name;
+// battlebase, ironbuilt, league or unknown; basis is 'trailer' for the last line,
+// 'signature' for a signature found elsewhere in the text, 'submission' for the
+// league wrapper, or the structural fingerprint's name;
 // version and language are null when the exporter prints neither.
 function detectExporter(bodyText) {
   const text = String(bodyText || '').replace(/\r\n?/g, '\n');
