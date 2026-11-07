@@ -235,7 +235,7 @@ The parser picks the format by detecting `[Npts]` (newrecruit) vs. `(N pts)` (bu
 
 `player.format` answers *which reader ran*; `player.exporter` answers *which tool wrote the text*. They are different questions, and the second is the one that characterises the corpus: a newrecruit export can be read by the bullet reader, and an app export is not a "bullet list" even when it uses bullets.
 
-`detectExporter(bodyText)` returns `{ id, basis, version, language }`, and `buildPlayers()` stores `player.exporter` and `player.exporterVersion`. The id is one of `app`, `newrecruit`, `legacy`, `armylistnetwork`, `warorgan`, `battlebase`, `ironbuilt` or `unknown`.
+`detectExporter(bodyText)` returns `{ id, basis, version, language }`, and `buildPlayers()` stores `player.exporter` and `player.exporterVersion`. The id is one of `app`, `newrecruit`, `legacy`, `armylistnetwork`, `warorgan`, `battlebase`, `ironbuilt`, `mhq` (MiniHeadQuarters' own export, signed `Liste générée par MiniHeadQuarters`) or `unknown`.
 
 Signatures are checked first, bottom-up, so a signature sitting above trailing notes still counts (basis `signature` rather than `trailer`). 738 of the 1,234 lists the archive holds (59.8%) carry one, so the shape names the rest:
 

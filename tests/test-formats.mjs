@@ -23,6 +23,7 @@ t('newrecruit signature id', id('X [10pts]\nCreated with newrecruit.eu v35.66'),
 t('newrecruit "Exported with New Recruit"', id('Exported with New Recruit v36.31, Data Version: v18'), 'newrecruit');
 t('warorgan signature', id('Chaos Rhino [75 points]\nCreated with WarOrgan (https://warorgan.com)'), 'warorgan');
 t('battlebase signature', id('Captain (95 Points)\nExported with BattleBase, Data Version: v20251223'), 'battlebase');
+t('mhq signature', id('Tyrannofex (180 points)\n\nListe générée par MiniHeadQuarters'), 'mhq');
 t('ironbuilt signature', id('Tyrannofex  [190 pts]\nhttps://ironbuilt.app/?s=BFV7Ki8g'), 'ironbuilt');
 t('armylistnetwork url', id('Total : 2000 points - 59 figurines - 15 unités\nurl : https://40k.armylistnetwork.com/liste-123-x.html'), 'armylistnetwork');
 t('newrecruit app-list url', id('X [10pts]\nhttps://www.newrecruit.eu/app/list/ARFlQ'), 'newrecruit');

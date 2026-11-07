@@ -79,6 +79,7 @@ name.
 | `warorgan` | `Created with WarOrgan` | `Battle Size:`, `Detachments:` + `Force Dispositions:` |
 | `battlebase` | `Exported with BattleBase` | (shares the app's category shape; signature only) |
 | `ironbuilt` | `https://ironbuilt.app/?s=…` | `+====` rules, `── CATEGORY ──`, `Weapons:` |
+| `mhq` | `Liste générée par MiniHeadQuarters` | none known yet (signature only) |
 | `league` | none, and no tool to name | three or more of `List Name:`, `Factions Used:`, `Army Points:`, `Army Enhancements`, `Detachment(s):`, `Disposition:` at a line start |
 
 ### app

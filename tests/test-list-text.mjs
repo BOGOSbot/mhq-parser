@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { parseListText, listStartIndexes, isUnrecognizedFormat, playerWarnings, getMeta, totals, armyBudget, realUnits, nameFromFile } from '../src/parse.mjs';
+import { parseListText, listStartIndexes, isUnrecognizedFormat, playerWarnings, getMeta, totals, armyBudget, realUnits, nameFromFile, detectExporter } from '../src/parse.mjs';
 
 let pass = 0, fail = 0;
 function t(name, got, want) {
@@ -45,8 +45,18 @@ t('single: faction from the header', one.players[0].faction, 'Xenos - Aeldari');
 t('single: unnamed falls back to "Not found"', one.players[0].name, 'Not found');
 // A paste has no file, so it names itself rather than falling back to a slug.
 t('single: a paste has no file name', parseListText(example, {}).output.event.name, 'Pasted lists');
-// The footer is not a unit and must not appear in the raw text panel.
-ok('single: the footer is stripped', !one.players[0].bodyRest.includes('Created with newrecruit'));
+// The footer is the exporter's signature: it stays in the raw text, so the
+// stored body can be detected again and a reader can check it. It is not a unit.
+ok('single: the footer stays in the raw text', one.players[0].bodyRest.includes('Created with newrecruit'));
+t('single: the footer is not a unit', one.players[0].units.length, 21);
+t('single: the stored body is detected again', detectExporter(one.players[0].bodyText).id, one.players[0].exporter);
+{
+  const p = parseListText('Liste test (1995 points)\n\nTyranids\nTake and Hold\nStrike Force (2000 points)\n\nCHARACTERS\n\nThe Swarmlord (210 points)\n\nListe générée par MiniHeadQuarters', {}).output.players[0];
+  t('mhq: exporter from the signature', p.exporter, 'mhq');
+  ok('mhq: the marker stays in the raw text', p.bodyText.includes('Liste générée par MiniHeadQuarters'));
+  t('mhq: and is detected again from the stored body', detectExporter(p.bodyText).id, 'mhq');
+  t('mhq: the marker is not a unit', p.units.map(u => u.model), ['The Swarmlord']);
+}
 
 // --- one list must never come apart -----------------------------------------
 // The worst failure available: a pasted list that splits. Each corpus list is

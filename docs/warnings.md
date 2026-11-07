@@ -207,6 +207,54 @@ two header-boundary cases and the three header labels above;
 account for the other 34 lists that move when the stored bodies are read again,
 which is why the survey takes `--reparse` now.
 
+## The fixes of 2026-11-07
+
+Found on one event, "League Wars 2026-2027 - Ligue 2 - L2 Sud-Est - Aller" (48
+armies, seven warnings). Four were the parser; the other three were the lists.
+
+| what | list | where |
+|---|---|---|
+| A cost with a tag before it, `Commander Farsight (QUE 70 points)`, was not a unit: 70 points vanished | 1 | `src/parse.mjs`, `parseBullets`, `isUnitLine` / `unitM` |
+| `FORCES DISPOSITIONS:` (plural FORCES) | 1 | `HEADER_ALIAS`, `DISPOSITION_LABEL_RE` |
+| `Detachment [3 Detachment Points] --> A [1 Points], B [2 Points]`: names after an arrow, costs in brackets | 1 | `DET_PATTERNS`, `cleanDetachment` |
+| A detachment with no label, on the line above a bare disposition and with no `Strike Force` line | 1 | `barePreambleDetachment`, the disposition is the second anchor |
+
+Replaying the 52-event archive with `--reparse` removes two warnings (217 to
+215, both Skaerssen's `FORCES DISPOSITIONS`, in two events) and adds none.
+
+Three warnings stay, and they are the lists: Fid0's first Plaguebearers squad
+is written 130 where the data prices ten at 115 (his total is 2000 with 115,
+2015 as written); Clement13's units add up to 1995 against 2000, from an export
+of an older data version; and Liabdeh's, which reads 2340 against a declared 1995.
+
+**Liabdeh's is left to warn on purpose.** His Berzerkers appear twice, as
+`Khorne Berzerkers (170 Points)` (the app's header) and `10x Khorne Berzerkers
+(170 pts)` (New Recruit's composition line) - a hand-merged list. No exporter
+writes that shape (1 army in 1,282 does it; the other hit is a Doomsday Ark in an
+unrelated event). Merging the two lines would hide a formatting error the warning
+exists to report, so the parser counts both and the +345 stands. A trial merge
+brought it to +5, the list's own overage.
+
+`tests/test-league-l2-shapes.mjs` pins the four fixes and pins that the
+hand-merged list keeps warning.
+
+## MiniHeadQuarters' own export
+
+MiniHeadQuarters now generates lists itself and signs them `Liste générée par
+MiniHeadQuarters`. `detectExporter()` returns `mhq` (language `fr`) for that line,
+so the survey counts these lists apart from the app's. Only the signature is
+known: no sample of the body has been seen yet, so the bullet reader still reads
+it, and the first real list should be checked for new warnings. `tests/test-formats.mjs`
+pins the signature.
+
+The signature stays in the raw text. `parseListText()` used to cut the last line
+(`Created with newrecruit.eu…`, `Liste générée par MiniHeadQuarters`) off a pasted
+list after reading the exporter from it, so the stored body no longer carried the
+marker: a second detection, `archive.readEvent()` or the survey, saw an unsigned
+list, and a reader checking the raw text could not see it. It is kept now, as it
+always was for a list read from an MHQ page, and it is still not a unit
+(`tests/test-list-text.mjs`).
+
 ## The weekly pass
 
 The one thing that cannot be re-fetched is a list whose event has passed and

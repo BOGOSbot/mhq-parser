@@ -638,6 +638,9 @@ const HEADER_ALIAS = {
   'DISPOSITION': 'forceDisposition',
   'FORCE DISPOSITION': 'forceDisposition',
   'FORCE DISPOSITIONS': 'forceDisposition',
+  // "+ FORCES DISPOSITIONS: Take and Hold" - the plural FORCES, seen 2026-11.
+  'FORCES DISPOSITION': 'forceDisposition',
+  'FORCES DISPOSITIONS': 'forceDisposition',
   'DISPOSITION': 'forceDisposition',
   'DISPOSITIONS': 'forceDisposition',
   'DISPOSITION DES FORCES': 'forceDisposition',
@@ -793,7 +796,8 @@ function parseBullets(text) {
     const line = raw.replace(/\s+$/, '');
     const trimmed = line.trim();
     if (!trimmed) continue;
-    const isUnitLine = /\(\s*\d+\s*(?:pts?|points?)\s*\)/i.test(trimmed) || /\[\s*\d+\s*pts?\s*\]/.test(trimmed);
+    // "(QUE 70 points)": the app prefixes some epic heroes' cost with a short tag.
+    const isUnitLine = /\(\s*(?:[A-Z]{2,5}\s+)?\d+\s*(?:pts?|points?)\s*\)/i.test(trimmed) || /\[\s*\d+\s*pts?\s*\]/.test(trimmed);
     const isBullet = /^•/.test(trimmed) || /^◦/.test(trimmed);
     // Attached header (check BEFORE category — "Unités Attachées" starts with "Unités")
     if (!isBullet && !isUnitLine && ATTACHED_RE.test(trimmed)) {
@@ -910,8 +914,12 @@ function parseBullets(text) {
         continue;
       }
     }
-    const unitM = trimmed.match(/^(Char\d+\s*:\s*)?(?:\d+x\s+)?(.+?)\s*[\(\[]\s*(\d+)\s*(?:pts?|points?)\s*[\)\]]/i);
+    const unitM = trimmed.match(/^(Char\d+\s*:\s*)?(?:\d+x\s+)?(.+?)\s*[\(\[]\s*(?:[A-Z]{2,5}\s+)?(\d+)\s*(?:pts?|points?)\s*[\)\]]/i);
     if (unitM && !isBullet) {
+      // A unit header followed by a second line of the same name and cost
+      // ("Khorne Berzerkers (170 Points)", "10x Khorne Berzerkers (170 pts)") is
+      // a hand-merged list, not an export. It is deliberately counted twice: the
+      // inflated total is the warning that tells the organiser the list is malformed.
       push();
       const after = trimmed.slice(unitM[0].length).trim();
       const equipment = [];
@@ -999,8 +1007,11 @@ function parseBullets(text) {
 const FORCE_RE = /^(?:[+•◦-][ \t]*)?(?:Reconnaissance|Take and Hold|Prendre et Tenir|Priority Assets|Atouts Prioritaires|Purge the Foe|Prey in Ambush|Disruption|Perturbation|[ÉE]liminez l['\u2019]Adversaire|[ÉE]liminer l['\u2019]adversaire|Purger l['\u2019]Ennemi|Proie en Embuscade)\s*$/im;
 // "Dispositions des Forces : Éliminez l'Adversaire", "Force Dispositions: Purge
 // the Foe", "=> Disposition : Prendre et tenir", "Force de disposition : …".
-const DISPOSITION_LABEL_RE = /^(?:=>[ \t]*)?(?:[+•◦-][ \t]*)?(?:FORCE[ \t]+)?(?:DISPOSITIONS?(?:[ \t]+(?:DES|DE)[ \t]+FORCES?|(?:[ \t]+(?:DES|DE)[ \t]+FORCES?)?[ \t]+FORCE)?|DE[ \t]+FORCE|FORCE[ \t]+DE[ \t]+DISPOSITION)[ \t]*:[ \t]*(.+)$/im;
+const DISPOSITION_LABEL_RE = /^(?:=>[ \t]*)?(?:[+•◦-][ \t]*)?(?:FORCES?[ \t]+)?(?:DISPOSITIONS?(?:[ \t]+(?:DES|DE)[ \t]+FORCES?|(?:[ \t]+(?:DES|DE)[ \t]+FORCES?)?[ \t]+FORCE)?|DE[ \t]+FORCE|FORCE[ \t]+DE[ \t]+DISPOSITION)[ \t]*:[ \t]*(.+)$/im;
 const DET_PATTERNS = [
+  // "Detachment [3 Detachment Points] --> Dominus Foebreakers [1 Points],
+  // Valourstrike Lance [2 Points]": the budget in brackets, the names after the arrow.
+  [/^Detachments?[ \t]*\[[^\]\n]*\][ \t]*(?:-+>|=+>|→)[ \t]*(.+)$/im, m => m[1]],
   // "Lions of the Emperor (3 Detachment Points)" / "(3 Points de Détachement)".
   [/^(.+?)[ \t]*\([ \t]*\d+[ \t]*(?:Points?[ \t]+de[ \t]+D[ée]?tach(?:e)?ment|D[ée]?tach(?:e)?ment[ \t]+Points?)[ \t]*\)/im, m => m[1]],
   // "== DETACHEMENT Bataillon : Tyranids [2000pts] ==" - the name is what
@@ -1064,7 +1075,15 @@ function bareLabelDetachment(lines) {
 }
 
 function barePreambleDetachment(lines, faction) {
-  const idx = lines.findIndex(l => /^(?:Strike\s+Force|Force\s+de\s+Frappe)\b.*\(/i.test(l));
+  let idx = lines.findIndex(l => /^(?:Strike\s+Force|Force\s+de\s+Frappe)\b.*\(/i.test(l));
+  // No budget line: a bare disposition line is the other anchor, and the
+  // detachment is the unlabelled line right above it ("Crusher Stampede +
+  // Prédateurs Embusqués" over "Perturbation").
+  let viaDisposition = false;
+  if (idx < 1) {
+    idx = lines.findIndex(l => FORCE_RE.test(l.trim()));
+    viaDisposition = true;
+  }
   if (idx < 1) return null;
   const before = lines[idx - 1];
   const after = lines[idx + 1];
@@ -1086,7 +1105,8 @@ function barePreambleDetachment(lines, faction) {
   const clean = t => String(t).replace(/^(?:name\s+)?battle\s+force\s*:\s*/i, '').trim() || null;
   // Prefer the line after the budget line, then the one before it; the faction
   // and the disposition are excluded either way.
-  for (const t of [after, before]) {
+  for (const t of (viaDisposition ? [before] : [after, before])) {
+    if (viaDisposition && t && /:/.test(t)) continue;
     if (usable(t) && !isFaction(t)) return clean(t);
   }
   return null;
@@ -1444,6 +1464,8 @@ function cleanDetachment(s) {
     // "Detachement" without the second t is what three lists print.
     .replace(/\s*[\(\[]\s*\d+\s*D[ée]?tach(?:e)?ment[ \t]+Points?\s*[\)\]]/ig, '')
     .replace(/\s*[\(\[]\s*\d+\s*Points?\s+de\s+D[ée]?tachement\s*[\)\]]/ig, '')
+    // The per-detachment cost some lists print after each name: "Lance [2 Points]".
+    .replace(/\s*\[\s*\d+\s*Points?\s*\]/ig, '')
     .trim() || null;
 }
 // ============================================================
@@ -1894,6 +1916,8 @@ const EXPORTER_SIGNATURES = [
   { id: 'app', re: /^Exported with App Version/i, version: true, language: 'en' },
   { id: 'app', re: /^Export\u00e9 avec la Version de l'Appli/i, version: true, language: 'fr' },
   { id: 'app', re: /^END OF ROSTER\s*$/i },
+  // MiniHeadQuarters' own list builder: "Liste générée par MiniHeadQuarters".
+  { id: 'mhq', re: /^Liste\s+g[ée]n[ée]r[ée]e\s+par\s+MiniHeadQuarters\b/i, language: 'fr' },
   { id: 'ironbuilt', re: /^https?:\/\/\S*ironbuilt\.app/i },
   { id: 'armylistnetwork', re: /^url\s*:\s*https?:\/\/\S*armylistnetwork/i },
   { id: 'armylistnetwork', re: /^https?:\/\/\S*armylistnetwork\.com/i },
@@ -2266,11 +2290,13 @@ function parseListText(text, { name = null } = {}) {
     const from = bounds[i];
     const to = i + 1 < bounds.length ? bounds[i + 1] : lines.length;
     const raw = lines.slice(from, to);
-    // Read the source format before stripTrailer takes the signature off: the
-    // signature is the most precise thing an exporter prints, and the version it
-    // carries would otherwise be lost for every pasted list.
+    // The signature stays in the stored text. It is the most precise thing an
+    // exporter prints, the stored body is what archive.readEvent() and the survey
+    // detect the exporter from again, and a list read from an MHQ page keeps its
+    // signature the same way. Stripping it made every pasted list look unsigned
+    // on the second read, and hid the line from anyone checking the raw text.
     const exporter = detectExporter(raw.join('\n'));
-    let slice = stripTrailer(raw);
+    let slice = raw.slice();
     while (slice.length && !slice[0].trim()) slice.shift();
     while (slice.length && !slice[slice.length - 1].trim()) slice.pop();
     if (!slice.length) continue;
